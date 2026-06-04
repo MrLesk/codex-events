@@ -30,6 +30,13 @@ export interface LumaAttendanceCheckInEvent {
   checkedInAt: string | null
 }
 
+export interface LumaGuestCancellationEvent {
+  eventApiId: string | null
+  guestId: string | null
+  guestEmail: string | null
+  approvalStatus: string
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
@@ -78,6 +85,19 @@ function normalizeIsoTimestamp(value: unknown) {
 
   const timestamp = Date.parse(normalized)
   return Number.isNaN(timestamp) ? null : new Date(timestamp).toISOString()
+}
+
+function normalizeLumaGuestStatus(value: unknown) {
+  const normalized = normalizeOptionalString(value)
+
+  return normalized?.toLowerCase().replace(/[\s-]+/g, '_') ?? null
+}
+
+function isLumaGuestCancellationStatus(value: string | null): value is string {
+  return value === 'declined'
+    || value === 'canceled'
+    || value === 'cancelled'
+    || value === 'not_going'
 }
 
 function bytesToHex(bytes: Uint8Array) {
@@ -391,6 +411,64 @@ export function extractLumaAttendanceCheckInEvent(rawBody: string): {
       guestId,
       guestEmail,
       checkedInAt
+    }
+  }
+}
+
+export function extractLumaGuestCancellationEvent(rawBody: string): {
+  envelope: LumaWebhookEnvelope
+  cancellationEvent: LumaGuestCancellationEvent | null
+} {
+  const envelope = parseWebhookEnvelope(rawBody)
+
+  if (envelope.type !== 'guest.updated') {
+    return {
+      envelope,
+      cancellationEvent: null
+    }
+  }
+
+  const approvalStatus = normalizeLumaGuestStatus(
+    firstString(
+      getNestedValue(envelope.data, ['guest', 'approval_status']),
+      getNestedValue(envelope.data, ['approval_status']),
+      getNestedValue(envelope.data, ['guest', 'approvalStatus']),
+      getNestedValue(envelope.data, ['approvalStatus']),
+      getNestedValue(envelope.data, ['guest', 'status']),
+      getNestedValue(envelope.data, ['status'])
+    )
+  )
+
+  if (!isLumaGuestCancellationStatus(approvalStatus)) {
+    return {
+      envelope,
+      cancellationEvent: null
+    }
+  }
+
+  return {
+    envelope,
+    cancellationEvent: {
+      eventApiId: firstString(
+        getNestedValue(envelope.data, ['event', 'api_id']),
+        getNestedValue(envelope.data, ['event', 'id']),
+        getNestedValue(envelope.data, ['event_id']),
+        getNestedValue(envelope.data, ['event_api_id']),
+        getNestedValue(envelope.data, ['guest', 'event_id']),
+        getNestedValue(envelope.data, ['guest', 'event_api_id'])
+      ),
+      guestId: firstString(
+        getNestedValue(envelope.data, ['guest', 'api_id']),
+        getNestedValue(envelope.data, ['guest', 'id']),
+        getNestedValue(envelope.data, ['guest_id'])
+      ),
+      guestEmail: firstString(
+        getNestedValue(envelope.data, ['guest', 'user_email']),
+        getNestedValue(envelope.data, ['guest', 'email']),
+        getNestedValue(envelope.data, ['user_email']),
+        getNestedValue(envelope.data, ['email'])
+      ),
+      approvalStatus
     }
   }
 }

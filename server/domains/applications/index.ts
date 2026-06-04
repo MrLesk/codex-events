@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, count, desc, eq, getTableColumns, inArray, isNull } from 'drizzle-orm'
+import { and, asc, count, desc, eq, getTableColumns, inArray, isNull, ne } from 'drizzle-orm'
 import { z } from 'zod'
 
 import {
@@ -19,12 +19,14 @@ import {
 import { getDatabase, type AppDatabase } from '#server/database/client'
 import {
   submissions,
+  teamJoinRequests,
   teamMembers,
   teams,
   userApplications,
   userApplicationStatuses,
   users
 } from '#server/database/schema'
+import { writeAuditLog } from '#server/database/audit-log'
 import type {
   eventTermsDocuments,
   events
@@ -39,6 +41,22 @@ import {
   serializeEventTermsDocument
 } from '#server/domains/events'
 import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
+import {
+  buildApplicationLumaSyncQueueMessage,
+  enqueueApplicationLumaSyncMessage,
+  getApplicationLumaSyncFailureStatus
+} from '#server/domains/applications/luma-sync-queue'
+import {
+  isEventLumaEmailRequired,
+  isEventLumaSyncEnabled
+} from '#server/domains/applications/luma-config'
+
+export {
+  getInitialApplicationLumaSyncStatus,
+  isEventLumaAttendanceSyncEnabled,
+  isEventLumaEmailRequired,
+  isEventLumaSyncEnabled
+} from '#server/domains/applications/luma-config'
 
 export const applicationParamsSchema = routeIdParamsSchema.extend({
   applicationId: z.string().trim().min(1)
@@ -76,6 +94,7 @@ type TeamMemberRecord = typeof teamMembers.$inferSelect
 type SubmissionRecord = typeof submissions.$inferSelect
 type SubmitApplicationBody = z.infer<typeof submitApplicationBodySchema>
 type ListApplicationsQuery = z.infer<typeof listApplicationsQuerySchema>
+type UserApplicationLumaSyncStatus = UserApplicationRecord['lumaSyncStatus']
 
 export type AdminApplicationWithdrawalTeamAction = 'none' | 'remove_member' | 'dissolve_team'
 
@@ -87,7 +106,20 @@ export interface AdminApplicationWithdrawalAvailability {
   teamAction: AdminApplicationWithdrawalTeamAction
 }
 
-interface AdminApplicationWithdrawalPlan extends AdminApplicationWithdrawalAvailability {
+export type AdminApplicationWithdrawalTrigger = 'admin_withdrawal' | 'luma_cancellation'
+
+export type WithdrawUserApplicationWithAdminPolicyResult
+  = | {
+    status: 'blocked'
+    withdrawalPlan: AdminApplicationWithdrawalPlan
+  }
+  | {
+    status: 'withdrawn'
+    application: UserApplicationRecord
+    withdrawalPlan: AdminApplicationWithdrawalPlan
+  }
+
+export interface AdminApplicationWithdrawalPlan extends AdminApplicationWithdrawalAvailability {
   activeTeam: TeamRecord | null
   targetMembership: TeamMemberRecord | null
   activeMembers: TeamMemberRecord[]
@@ -279,6 +311,190 @@ export async function getAdminApplicationWithdrawalPlan(
   }
 }
 
+export async function withdrawUserApplicationWithAdminPolicy(options: {
+  h3Event: H3Event
+  database: AppDatabase
+  event: EventRecord
+  application: UserApplicationRecord
+  actorUserId?: string | null
+  trigger: AdminApplicationWithdrawalTrigger
+}): Promise<WithdrawUserApplicationWithAdminPolicyResult> {
+  const actorUserId = options.actorUserId ?? null
+  const eventId = options.event.id
+  const withdrawalPlan = await getAdminApplicationWithdrawalPlan(options.database, eventId, options.application)
+
+  if (!withdrawalPlan.isAllowed) {
+    return {
+      status: 'blocked',
+      withdrawalPlan
+    }
+  }
+
+  const withdrawnAt = new Date().toISOString()
+  const shouldSyncLuma = isEventLumaSyncEnabled(options.event)
+  let lumaSyncStatus: UserApplicationLumaSyncStatus = shouldSyncLuma ? 'not_synced' : null
+  let updatedAt = withdrawnAt
+
+  await options.database.batch([
+    options.database
+      .update(userApplications)
+      .set({
+        status: 'withdrawn',
+        preApprovalStatus: null,
+        lumaSyncStatus,
+        withdrawnAt,
+        updatedAt
+      })
+      .where(eq(userApplications.id, options.application.id)),
+    ...(withdrawalPlan.teamAction === 'remove_member' && withdrawalPlan.targetMembership
+      ? [
+          options.database
+            .update(teamMembers)
+            .set({
+              leftAt: withdrawnAt
+            })
+            .where(eq(teamMembers.id, withdrawalPlan.targetMembership.id))
+        ]
+      : []),
+    ...(withdrawalPlan.teamAction === 'dissolve_team' && withdrawalPlan.activeTeam
+      ? [
+          ...(withdrawalPlan.targetMembership
+            ? [
+                options.database
+                  .update(teamMembers)
+                  .set({
+                    leftAt: withdrawnAt
+                  })
+                  .where(and(
+                    eq(teamMembers.teamId, withdrawalPlan.activeTeam.id),
+                    isNull(teamMembers.leftAt),
+                    ne(teamMembers.id, withdrawalPlan.targetMembership.id)
+                  ))
+              ]
+            : []),
+          ...(withdrawalPlan.targetMembership
+            ? [
+                options.database
+                  .update(teamMembers)
+                  .set({
+                    leftAt: withdrawnAt
+                  })
+                  .where(eq(teamMembers.id, withdrawalPlan.targetMembership.id))
+              ]
+            : []),
+          options.database
+            .update(teams)
+            .set({
+              isOpenToJoinRequests: false,
+              updatedAt: withdrawnAt
+            })
+            .where(eq(teams.id, withdrawalPlan.activeTeam.id)),
+          options.database
+            .update(teamJoinRequests)
+            .set({
+              status: 'rejected',
+              reviewedAt: withdrawnAt,
+              reviewedByUserId: actorUserId
+            })
+            .where(and(
+              eq(teamJoinRequests.teamId, withdrawalPlan.activeTeam.id),
+              eq(teamJoinRequests.status, 'pending')
+            ))
+        ]
+      : [])
+  ])
+
+  await writeAuditLog(options.database, {
+    actorUserId,
+    entityType: 'user_application',
+    entityId: options.application.id,
+    action: options.trigger === 'luma_cancellation'
+      ? 'user_application.luma_withdrawn'
+      : 'user_application.admin_withdrawn',
+    metadata: {
+      eventId,
+      userId: options.application.userId,
+      previousStatus: options.application.status,
+      nextStatus: 'withdrawn',
+      activeTeamId: withdrawalPlan.activeTeamId,
+      teamAction: withdrawalPlan.teamAction,
+      trigger: options.trigger
+    }
+  })
+
+  for (const membership of withdrawalPlan.teamAction === 'dissolve_team'
+    ? withdrawalPlan.activeMembers
+    : withdrawalPlan.targetMembership
+      ? [withdrawalPlan.targetMembership]
+      : []) {
+    await writeAuditLog(options.database, {
+      actorUserId,
+      entityType: 'team_member',
+      entityId: membership.id,
+      action: 'team_member.removed',
+      metadata: {
+        eventId,
+        teamId: membership.teamId,
+        userId: membership.userId,
+        removedByUserId: actorUserId,
+        triggeredByApplicationId: options.application.id,
+        teamDissolved: withdrawalPlan.teamAction === 'dissolve_team',
+        trigger: options.trigger
+      }
+    })
+  }
+
+  if (shouldSyncLuma) {
+    const lumaEnqueueResult = await enqueueApplicationLumaSyncMessage(
+      options.h3Event,
+      buildApplicationLumaSyncQueueMessage({
+        applicationId: options.application.id,
+        decision: 'rejected'
+      })
+    )
+
+    if (lumaEnqueueResult.status !== 'enqueued') {
+      lumaSyncStatus = getApplicationLumaSyncFailureStatus('rejected')
+      updatedAt = new Date().toISOString()
+
+      await options.database
+        .update(userApplications)
+        .set({
+          lumaSyncStatus,
+          updatedAt
+        })
+        .where(eq(userApplications.id, options.application.id))
+    }
+
+    await writeAuditLog(options.database, {
+      actorUserId,
+      entityType: 'user_application',
+      entityId: options.application.id,
+      action: 'user_application.luma_sync_enqueued',
+      metadata: {
+        eventId,
+        userId: options.application.userId,
+        decision: 'rejected',
+        enqueue: lumaEnqueueResult,
+        trigger: options.trigger
+      }
+    })
+  }
+
+  return {
+    status: 'withdrawn',
+    application: {
+      ...options.application,
+      status: 'withdrawn',
+      preApprovalStatus: null,
+      lumaSyncStatus,
+      withdrawnAt,
+      updatedAt
+    },
+    withdrawalPlan
+  }
+}
+
 async function listAdminApplicationWithdrawalAvailabilityByApplicationId(
   database: AppDatabase,
   eventId: string,
@@ -368,35 +584,6 @@ async function listAdminApplicationWithdrawalAvailabilityByApplicationId(
 
     return [application.id, availability] as const
   }))
-}
-
-export function isEventLumaEmailRequired(
-  event: Pick<EventRecord, 'applicationLumaEmailVisible' | 'requireLumaEmail'>
-) {
-  return event.applicationLumaEmailVisible && event.requireLumaEmail
-}
-
-export function isEventLumaAttendanceSyncEnabled(
-  event: Pick<EventRecord, 'lumaEventApiId' | 'lumaApiKey' | 'lumaWebhookSecret' | 'lumaWebhookStatus'>
-) {
-  return Boolean(
-    event.lumaEventApiId?.trim()
-    && event.lumaApiKey?.trim()
-    && event.lumaWebhookSecret?.trim()
-    && event.lumaWebhookStatus === 'configured'
-  )
-}
-
-export function isEventLumaSyncEnabled(
-  event: Pick<EventRecord, 'applicationLumaEmailVisible' | 'requireLumaEmail' | 'lumaEventApiId' | 'lumaApiKey' | 'lumaWebhookSecret' | 'lumaWebhookStatus'>
-) {
-  return isEventLumaEmailRequired(event) && isEventLumaAttendanceSyncEnabled(event)
-}
-
-export function getInitialApplicationLumaSyncStatus(
-  event: Pick<EventRecord, 'applicationLumaEmailVisible' | 'requireLumaEmail' | 'lumaEventApiId' | 'lumaApiKey' | 'lumaWebhookSecret' | 'lumaWebhookStatus'>
-) {
-  return isEventLumaSyncEnabled(event) ? 'not_synced' as const : null
 }
 
 export function serializeRegistrationDetailsJson(

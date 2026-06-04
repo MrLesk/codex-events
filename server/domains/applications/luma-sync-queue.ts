@@ -10,7 +10,7 @@ import {
   userApplications,
   users
 } from '#server/database/schema'
-import { isEventLumaSyncEnabled } from '#server/domains/applications'
+import { isEventLumaSyncEnabled } from '#server/domains/applications/luma-config'
 
 export const defaultApplicationLumaSyncQueueBinding = 'APPLICATION_LUMA_SYNC_QUEUE'
 export const defaultApplicationLumaSyncQueueName = 'codex-events-dev-application-luma-sync'

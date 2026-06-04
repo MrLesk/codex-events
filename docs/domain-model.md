@@ -285,6 +285,7 @@ Rules:
 - If the event auto-approves applications and shows and requires a Luma email with configured Luma sync, application submission also enqueues a Luma approval sync.
 - If the event shows and requires a Luma email and has configured Luma sync, applying staged decisions also enqueues a Luma guest-status sync for the final approval or rejection.
 - If the event shows and requires a Luma email and has configured Luma sync, participant withdrawal and admin-managed withdrawal both enqueue the canonical Luma rejection sync so the user is removed from the event guest list.
+- If a valid signed Luma guest update says the participant is no longer going, the matching submitted or approved application is withdrawn through the admin-managed withdrawal behavior.
 - Platform admins can run an event-scoped operational backfill route to resolve stored legacy Luma usernames into canonical Luma emails for already-registered users.
 - In Hackathon events, a user must be approved before creating or joining a team in that event.
 - In Meetup and Build events, an approved application is the participant's event access record.

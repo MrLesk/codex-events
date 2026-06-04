@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 
 import lumaWebhooksPostHandler from '../../../../server/api/public/events/[slug]/luma/webhooks.post'
@@ -6,6 +6,9 @@ import {
   auditLogs,
   events,
   eventTermsDocuments,
+  teamJoinRequests,
+  teamMembers,
+  teams,
   userApplications,
   users
 } from '../../../../server/database/schema'
@@ -102,6 +105,12 @@ async function buildSignedHeaders(rawBody: string) {
   }
 }
 
+function createQueueProducerStub() {
+  return {
+    send: vi.fn(async () => {})
+  }
+}
+
 describe('public Luma webhook routes', () => {
   const harnesses: Array<ReturnType<typeof createApiRouteTestHarness>> = []
   const webhookPath = '/api/public/events/event_1/luma/webhooks'
@@ -177,6 +186,152 @@ describe('public Luma webhook routes', () => {
     ])
   })
 
+  test('withdraws a matching participant when Luma guest is declined', async () => {
+    const lumaQueueProducer = createQueueProducerStub()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/public/events/:slug/luma/webhooks', handler: lumaWebhooksPostHandler }
+      ],
+      cloudflareEnv: {
+        APPLICATION_LUMA_SYNC_QUEUE: lumaQueueProducer
+      },
+      runtimeConfig: {
+        luma: {
+          queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE'
+        }
+      }
+    })
+    harnesses.push(harness)
+    await seedAttendanceContext(harness)
+
+    await harness.database.insert(teams).values({
+      id: 'team_1',
+      eventId: 'event_1',
+      name: 'Solo Team',
+      slug: 'solo-team',
+      isOpenToJoinRequests: true,
+      createdByUserId: 'participant_user',
+      createdAt: '2026-03-22T12:30:00.000Z',
+      updatedAt: '2026-03-22T12:30:00.000Z'
+    })
+    await harness.database.insert(teamMembers).values({
+      id: 'team_member_participant',
+      teamId: 'team_1',
+      userId: 'participant_user',
+      role: 'admin',
+      joinedAt: '2026-03-22T12:30:00.000Z',
+      leftAt: null,
+      createdAt: '2026-03-22T12:30:00.000Z'
+    })
+    await harness.database.insert(teamJoinRequests).values({
+      id: 'team_join_request_1',
+      teamId: 'team_1',
+      userId: 'platform_admin',
+      status: 'pending',
+      requestedAt: '2026-03-22T12:35:00.000Z',
+      reviewedAt: null,
+      reviewedByUserId: null,
+      createdAt: '2026-03-22T12:35:00.000Z'
+    })
+
+    const rawBody = JSON.stringify({
+      type: 'guest.updated',
+      data: {
+        event_id: 'evt-123',
+        guest: {
+          api_id: 'gst-123',
+          user_email: 'guest@example.com',
+          approval_status: 'declined'
+        }
+      }
+    })
+    const response = await harness.request(webhookPath, {
+      method: 'POST',
+      headers: await buildSignedHeaders(rawBody),
+      body: rawBody
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      data: {
+        status: 'acknowledged'
+      }
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: eq(userApplications.id, 'application_1')
+    })
+    const dissolvedMembership = await harness.database.query.teamMembers.findFirst({
+      where: eq(teamMembers.id, 'team_member_participant')
+    })
+    const updatedTeam = await harness.database.query.teams.findFirst({
+      where: eq(teams.id, 'team_1')
+    })
+    const closedJoinRequest = await harness.database.query.teamJoinRequests.findFirst({
+      where: eq(teamJoinRequests.id, 'team_join_request_1')
+    })
+
+    expect(storedApplication).toMatchObject({
+      status: 'withdrawn',
+      lumaSyncStatus: 'not_synced',
+      checkedInAt: null,
+      withdrawnAt: expect.any(String)
+    })
+    expect(dissolvedMembership?.leftAt).toBeTruthy()
+    expect(updatedTeam).toMatchObject({
+      isOpenToJoinRequests: false
+    })
+    expect(closedJoinRequest).toMatchObject({
+      status: 'rejected',
+      reviewedByUserId: null
+    })
+    expect(lumaQueueProducer.send).toHaveBeenCalledWith(expect.objectContaining({
+      applicationId: 'application_1',
+      decision: 'rejected'
+    }), {
+      contentType: 'json'
+    })
+
+    const auditRows = await harness.database.select().from(auditLogs)
+    expect(auditRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        actorUserId: null,
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.luma_withdrawn',
+        metadata: expect.objectContaining({
+          eventId: 'event_1',
+          userId: 'participant_user',
+          previousStatus: 'approved',
+          nextStatus: 'withdrawn',
+          teamAction: 'dissolve_team',
+          trigger: 'luma_cancellation'
+        })
+      }),
+      expect.objectContaining({
+        actorUserId: null,
+        entityType: 'team_member',
+        entityId: 'team_member_participant',
+        action: 'team_member.removed',
+        metadata: expect.objectContaining({
+          eventId: 'event_1',
+          teamId: 'team_1',
+          trigger: 'luma_cancellation'
+        })
+      }),
+      expect.objectContaining({
+        actorUserId: null,
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.luma_sync_enqueued',
+        metadata: expect.objectContaining({
+          decision: 'rejected',
+          trigger: 'luma_cancellation'
+        })
+      })
+    ]))
+  })
+
   test('returns 200 without mutation for a valid signed delivery from an unknown event', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -194,6 +349,7 @@ describe('public Luma webhook routes', () => {
         event_id: 'evt-unknown',
         guest: {
           user_email: 'guest@example.com',
+          approval_status: 'declined',
           checked_in_at: '2026-04-13T17:30:00.000Z'
         }
       }
@@ -273,6 +429,61 @@ describe('public Luma webhook routes', () => {
     expect(await harness.database.select().from(auditLogs)).toEqual([])
   })
 
+  test('returns 200 without mutation when Luma declines an application that cannot be withdrawn', async () => {
+    const lumaQueueProducer = createQueueProducerStub()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/public/events/:slug/luma/webhooks', handler: lumaWebhooksPostHandler }
+      ],
+      cloudflareEnv: {
+        APPLICATION_LUMA_SYNC_QUEUE: lumaQueueProducer
+      },
+      runtimeConfig: {
+        luma: {
+          queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE'
+        }
+      }
+    })
+    harnesses.push(harness)
+    await seedAttendanceContext(harness, {
+      applicationStatus: 'rejected'
+    })
+
+    const rawBody = JSON.stringify({
+      type: 'guest.updated',
+      data: {
+        event_id: 'evt-123',
+        guest: {
+          user_email: 'guest@example.com',
+          approval_status: 'declined'
+        }
+      }
+    })
+    const response = await harness.request(webhookPath, {
+      method: 'POST',
+      headers: await buildSignedHeaders(rawBody),
+      body: rawBody
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      data: {
+        status: 'acknowledged'
+      }
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: eq(userApplications.id, 'application_1')
+    })
+
+    expect(storedApplication).toMatchObject({
+      status: 'rejected',
+      withdrawnAt: null
+    })
+    expect(lumaQueueProducer.send).not.toHaveBeenCalled()
+    expect(await harness.database.select().from(auditLogs)).toEqual([])
+  })
+
   test('ignores later non-check-in guest updates after attendance is set', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -290,6 +501,7 @@ describe('public Luma webhook routes', () => {
         event_id: 'evt-123',
         guest: {
           user_email: 'guest@example.com',
+          approval_status: 'approved',
           checked_in_at: null
         }
       }

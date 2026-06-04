@@ -139,17 +139,17 @@ Testing:
 ## Luma Webhooks
 
 Purpose:
-- Accept signed Luma guest updates used for event attendance sync.
+- Accept signed Luma guest updates used for event attendance and cancellation sync.
 
 Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| Receive Luma guest updates | `POST /api/public/events/:eventId/luma/webhooks` | public integration | Verifies the signed Luma webhook request against the event's stored webhook signing secret. Processes `guest.updated` check-in updates only. The payload `event_api_id` must match the event's Luma event API ID. The participant is resolved by `lumaEmail`, and approved applications are marked attended exactly once. Valid signed deliveries for the wrong Luma event, unknown participants, non-approved applications, duplicate check-ins, and non-check-in guest updates return HTTP `200` with no mutation. Invalid signatures are rejected. |
+| Receive Luma guest updates | `POST /api/public/events/:eventId/luma/webhooks` | public integration | Verifies the signed Luma webhook request against the event's stored webhook signing secret. Processes `guest.updated` check-in and cancellation updates. The payload Luma event API ID must match the event's Luma event API ID. The participant is resolved by `lumaEmail`. Approved applications are marked attended exactly once when Luma records a check-in. Submitted or approved applications are withdrawn through the same admin-managed withdrawal behavior when Luma marks the guest as not going. Valid signed deliveries for the wrong Luma event, unknown participants, terminal application states, blocked withdrawals, duplicate check-ins, and unrelated guest updates return HTTP `200` with no mutation. Invalid signatures are rejected. |
 
 Testing:
 - Unit: signature verification, replay-window enforcement, and payload extraction.
-- Integration: valid signed attendance sync, duplicate delivery idempotency, invalid signatures, unknown events, unmatched participants, and sticky attendance behavior.
+- Integration: valid signed attendance sync, valid signed cancellation sync, duplicate delivery idempotency, invalid signatures, unknown events, unmatched participants, and sticky attendance behavior.
 
 ## Session
 

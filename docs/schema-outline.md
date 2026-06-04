@@ -479,7 +479,7 @@ It describes the intended persistent model at the level of entities, key fields,
   - `whyThisEvent`: trimmed free-form motivation text when visible
   - `proofOfExecutionUrl`: optional string carrying one or more comma-separated `http` or `https` links to prior execution evidence when visible
   - `aiKnowledgeLevel`: `beginner`, `intermediate`, `advanced`, or an empty string when AI Knowledge is hidden or visible but not required and not selected
-- `withdrawn_at` records when the participant withdrew from the event.
+- `withdrawn_at` records when the application was withdrawn from the event, including participant withdrawal, admin-managed withdrawal, and Luma guest cancellation sync.
 - `checked_in_at` records when a valid signed Luma guest check-in update first marked the approved participant as attended.
 - `pre_approval_status` stores a staged admin review decision that is applied later to transition the canonical `status`.
 - Applications created while `auto_approve_applications` is true are stored directly as `approved` with `reviewed_at` equal to `submitted_at` and no reviewing user.

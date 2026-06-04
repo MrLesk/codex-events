@@ -5,6 +5,7 @@ import { describe, expect, test, vi } from 'vitest'
 import {
   buildLumaWebhookSignatureHeader,
   extractLumaAttendanceCheckInEvent,
+  extractLumaGuestCancellationEvent,
   resolveLumaAttendanceGuestEmail,
   verifyLumaWebhookRequest
 } from '../../../../../server/domains/applications/luma-webhooks'
@@ -116,6 +117,64 @@ describe('luma webhook utilities', () => {
         guestEmail: 'guest@example.com',
         checkedInAt: '2026-04-13T17:30:00.000Z'
       }
+    })
+  })
+
+  test('extracts a guest cancellation from the webhook payload', () => {
+    const rawBody = JSON.stringify({
+      type: 'guest.updated',
+      data: {
+        event: {
+          api_id: 'evt-123'
+        },
+        guest: {
+          api_id: 'gst-123',
+          email: 'guest@example.com',
+          approval_status: 'declined'
+        }
+      }
+    })
+
+    expect(extractLumaGuestCancellationEvent(rawBody)).toEqual({
+      envelope: {
+        type: 'guest.updated',
+        data: {
+          event: {
+            api_id: 'evt-123'
+          },
+          guest: {
+            api_id: 'gst-123',
+            email: 'guest@example.com',
+            approval_status: 'declined'
+          }
+        }
+      },
+      cancellationEvent: {
+        eventApiId: 'evt-123',
+        guestId: 'gst-123',
+        guestEmail: 'guest@example.com',
+        approvalStatus: 'declined'
+      }
+    })
+  })
+
+  test('does not extract non-cancellation guest updates as cancellations', () => {
+    const rawBody = JSON.stringify({
+      type: 'guest.updated',
+      data: {
+        event_id: 'evt-123',
+        guest: {
+          email: 'guest@example.com',
+          approval_status: 'approved'
+        }
+      }
+    })
+
+    expect(extractLumaGuestCancellationEvent(rawBody)).toMatchObject({
+      envelope: {
+        type: 'guest.updated'
+      },
+      cancellationEvent: null
     })
   })
 
