@@ -12,6 +12,7 @@ import {
   serializeAdminEvent
 } from '#server/domains/events'
 import { reconcileEventLumaWebhook } from '#server/domains/events/luma-webhook-registration'
+import { enqueueMissingEventApplicationLumaSyncMessages } from '#server/domains/applications/luma-sync-queue'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
 import { parseValidatedParams } from '#server/http/validation'
@@ -22,7 +23,7 @@ export default defineApiHandler(async (h3Event) => {
   const { event } = await requireEventAdmin(h3Event, eventId)
   const database = getDatabase(h3Event)
 
-  await reconcileEventLumaWebhook({
+  const lumaReconciliation = await reconcileEventLumaWebhook({
     database,
     event,
     runtimeConfig: useRuntimeConfig(h3Event)
@@ -39,6 +40,16 @@ export default defineApiHandler(async (h3Event) => {
   const updatedEvent = await database.query.events.findFirst({
     where: eq(events.id, eventId)
   })
+
+  if (lumaReconciliation.status === 'configured' && updatedEvent) {
+    await enqueueMissingEventApplicationLumaSyncMessages({
+      h3Event,
+      database,
+      event: updatedEvent,
+      actorUserId: actor.platformUser.id
+    })
+  }
+
   const currentTerms = await getCurrentEventTerms(database, updatedEvent!)
   const tracks = await listEventTracks(database, eventId)
 

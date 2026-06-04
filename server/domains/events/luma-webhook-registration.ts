@@ -32,7 +32,7 @@ interface LumaWebhookRecord {
 type EventRecord = typeof events.$inferSelect
 
 function resolveFetchImpl(fetchImpl?: FetchLike): FetchLike {
-  return fetchImpl ?? globalThis.fetch
+  return fetchImpl ?? ((input, init) => globalThis.fetch(input, init))
 }
 
 function getAppBaseUrl(runtimeConfig: LumaRuntimeConfig) {
@@ -76,7 +76,7 @@ function getLumaErrorMessage(payload: unknown, response: Response) {
 
 function parseWebhookRecord(payload: unknown) {
   const webhook = payload && typeof payload === 'object'
-    ? (payload as { webhook?: unknown }).webhook
+    ? ((payload as { webhook?: unknown }).webhook ?? payload)
     : null
 
   if (!webhook || typeof webhook !== 'object') {
@@ -84,10 +84,10 @@ function parseWebhookRecord(payload: unknown) {
   }
 
   const record = webhook as Record<string, unknown>
-  const id = typeof record.api_id === 'string' ? record.api_id : record.id
-  const secret = typeof record.signing_secret === 'string'
-    ? record.signing_secret
-    : record.secret
+  const id = typeof record.id === 'string' ? record.id : record.api_id
+  const secret = typeof record.secret === 'string'
+    ? record.secret
+    : record.signing_secret
 
   if (typeof id !== 'string' || !id.trim()) {
     throw new Error('Luma did not return a webhook ID.')
@@ -137,7 +137,7 @@ async function verifyLumaEventAccess(options: {
   lumaEventApiId: string
   fetchImpl: FetchLike
 }) {
-  const path = `/v1/event/get?event_id=${encodeURIComponent(options.lumaEventApiId)}`
+  const path = `/v1/event/get?id=${encodeURIComponent(options.lumaEventApiId)}`
   await requestLumaJson({
     runtimeConfig: options.runtimeConfig,
     apiKey: options.apiKey,
@@ -155,7 +155,7 @@ async function createLumaWebhook(options: {
   const payload = await requestLumaJson({
     runtimeConfig: options.runtimeConfig,
     apiKey: options.apiKey,
-    path: '/v1/webhooks/create',
+    path: '/v2/webhooks/create',
     fetchImpl: options.fetchImpl,
     method: 'POST',
     body: {
@@ -171,18 +171,16 @@ async function updateLumaWebhook(options: {
   runtimeConfig: LumaRuntimeConfig
   apiKey: string
   webhookId: string
-  webhookUrl: string
   fetchImpl: FetchLike
 }) {
   const payload = await requestLumaJson({
     runtimeConfig: options.runtimeConfig,
     apiKey: options.apiKey,
-    path: '/v1/webhooks/update',
+    path: '/v2/webhooks/update',
     fetchImpl: options.fetchImpl,
     method: 'POST',
     body: {
       id: options.webhookId,
-      url: options.webhookUrl,
       event_types: desiredWebhookEventTypes,
       status: desiredWebhookStatus
     }
@@ -200,7 +198,7 @@ async function getLumaWebhook(options: {
   const payload = await requestLumaJson({
     runtimeConfig: options.runtimeConfig,
     apiKey: options.apiKey,
-    path: `/v1/webhooks/get?id=${encodeURIComponent(options.webhookId)}`,
+    path: `/v2/webhooks/get?id=${encodeURIComponent(options.webhookId)}`,
     fetchImpl: options.fetchImpl
   })
 
@@ -261,7 +259,6 @@ export async function reconcileEventLumaWebhook(options: {
           runtimeConfig: options.runtimeConfig,
           apiKey,
           webhookId: options.event.lumaWebhookId,
-          webhookUrl,
           fetchImpl
         }).catch(() => null)
       : null

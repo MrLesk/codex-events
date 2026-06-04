@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { asc, eq, isNotNull } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { writeAuditLog } from '#server/database/audit-log'
@@ -83,6 +83,14 @@ export type ApplicationLumaSyncStartupRecoveryResult = {
   applicationIds: string[]
 }
 
+export type EventApplicationLumaSyncBackfillResult = {
+  status: 'queued' | 'skipped'
+  reason: string
+  queuedCount: number
+  failedCount: number
+  applicationIds: string[]
+}
+
 interface QueueProducerLike {
   send: (message: unknown, options?: {
     contentType?: 'text' | 'json' | 'bytes' | 'v8'
@@ -130,6 +138,10 @@ type RecoverableApplicationRecord
     status: 'withdrawn'
     withdrawnAt: string
   })
+
+type DecidedApplicationRecord = typeof userApplications.$inferSelect & {
+  status: 'approved' | 'rejected' | 'withdrawn'
+}
 
 let applicationLumaSyncStartupRecoveryPromise: Promise<ApplicationLumaSyncStartupRecoveryResult> | null = null
 
@@ -841,6 +853,113 @@ export async function enqueueApplicationLumaSyncMessage(
   }
 }
 
+function getApplicationLumaSyncDecisionForStatus(
+  status: DecidedApplicationRecord['status']
+): ApplicationLumaSyncDecision {
+  return status === 'approved' ? 'approved' : 'rejected'
+}
+
+export async function enqueueMissingEventApplicationLumaSyncMessages(options: {
+  h3Event: H3Event
+  database: AppDatabase
+  event: typeof events.$inferSelect
+  actorUserId?: string | null
+}): Promise<EventApplicationLumaSyncBackfillResult> {
+  if (!isEventLumaSyncEnabled(options.event)) {
+    return {
+      status: 'skipped',
+      reason: 'luma_sync_not_enabled',
+      queuedCount: 0,
+      failedCount: 0,
+      applicationIds: []
+    }
+  }
+
+  const applications = await options.database.query.userApplications.findMany({
+    where: and(
+      eq(userApplications.eventId, options.event.id),
+      isNull(userApplications.lumaSyncStatus),
+      inArray(userApplications.status, ['approved', 'rejected', 'withdrawn'])
+    )
+  })
+  const decidedApplications = applications as DecidedApplicationRecord[]
+
+  if (decidedApplications.length === 0) {
+    return {
+      status: 'skipped',
+      reason: 'no_missing_application_luma_sync_status',
+      queuedCount: 0,
+      failedCount: 0,
+      applicationIds: []
+    }
+  }
+
+  let queuedCount = 0
+  let failedCount = 0
+  const applicationIds: string[] = []
+
+  for (const application of decidedApplications) {
+    const decision = getApplicationLumaSyncDecisionForStatus(application.status)
+    const enqueuedAt = new Date().toISOString()
+
+    await options.database
+      .update(userApplications)
+      .set({
+        lumaSyncStatus: 'not_synced',
+        updatedAt: enqueuedAt
+      })
+      .where(eq(userApplications.id, application.id))
+
+    const enqueue = await enqueueApplicationLumaSyncMessage(
+      options.h3Event,
+      buildApplicationLumaSyncQueueMessage({
+        applicationId: application.id,
+        decision
+      })
+    )
+
+    if (enqueue.status === 'enqueued') {
+      queuedCount += 1
+    } else {
+      failedCount += 1
+
+      await options.database
+        .update(userApplications)
+        .set({
+          lumaSyncStatus: getApplicationLumaSyncFailureStatus(decision),
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(userApplications.id, application.id))
+    }
+
+    applicationIds.push(application.id)
+
+    await writeAuditLog(options.database, {
+      actorUserId: options.actorUserId ?? null,
+      entityType: 'user_application',
+      entityId: application.id,
+      action: 'user_application.luma_sync_enqueued',
+      metadata: {
+        eventId: options.event.id,
+        userId: application.userId,
+        decision,
+        enqueue,
+        source: 'event_luma_configuration'
+      }
+    })
+  }
+
+  return {
+    status: queuedCount > 0 ? 'queued' : 'skipped',
+    reason: queuedCount > 0
+      ? 'missing_application_luma_sync_messages_enqueued'
+      : 'missing_application_luma_sync_messages_failed',
+    queuedCount,
+    failedCount,
+    applicationIds
+  }
+}
+
 export async function processApplicationLumaSyncQueueMessage(
   message: QueueMessageLike,
   options?: {
@@ -1092,7 +1211,7 @@ async function listRecoverableLumaSyncApplications(
 }
 
 function getRecoverableApplicationLumaSyncDecision(application: RecoverableApplicationRecord): ApplicationLumaSyncDecision {
-  return application.status === 'withdrawn' ? 'rejected' : application.status
+  return getApplicationLumaSyncDecisionForStatus(application.status)
 }
 
 export async function recoverStaleApplicationLumaSyncMessages(options?: {

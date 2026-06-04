@@ -14,6 +14,7 @@ import {
 import {
   buildApplicationLumaSyncQueueMessage,
   enqueueApplicationLumaSyncMessage,
+  enqueueMissingEventApplicationLumaSyncMessages,
   lookupLumaEventGuestByEmail,
   processApplicationLumaSyncQueueBatch,
   processApplicationLumaSyncQueueMessage,
@@ -159,7 +160,7 @@ async function seedLumaSyncContext(options?: {
     eventId: 'event_1',
     userId: 'regular_user',
     status: applicationStatus,
-    lumaSyncStatus: options?.lumaSyncStatus ?? 'not_synced',
+    lumaSyncStatus: options && 'lumaSyncStatus' in options ? options.lumaSyncStatus : 'not_synced',
     submittedAt: '2026-03-22T12:10:00.000Z',
     withdrawnAt: applicationStatus === 'withdrawn'
       ? options?.withdrawnAt ?? '2026-03-22T12:35:00.000Z'
@@ -229,6 +230,65 @@ describe('application luma sync queue utilities', () => {
       status: 'skipped',
       reason: 'queue_binding_missing:APPLICATION_LUMA_SYNC_QUEUE'
     })
+  })
+
+  test('event configuration backfill enqueues decided applications with missing Luma sync status', async () => {
+    const { d1Database, database } = await seedLumaSyncContext({
+      lumaSyncStatus: null
+    })
+    d1Databases.push(d1Database)
+    const send = vi.fn(async () => undefined)
+    const event = await database.query.events.findFirst({
+      where: eq(events.id, 'event_1')
+    })
+
+    const result = await enqueueMissingEventApplicationLumaSyncMessages({
+      h3Event: createEvent({
+        queueProducer: { send }
+      }),
+      database,
+      event: event!,
+      actorUserId: 'platform_admin'
+    })
+
+    expect(result).toEqual({
+      status: 'queued',
+      reason: 'missing_application_luma_sync_messages_enqueued',
+      queuedCount: 1,
+      failedCount: 0,
+      applicationIds: ['application_1']
+    })
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({
+      applicationId: 'application_1',
+      decision: 'approved'
+    }), {
+      contentType: 'json'
+    })
+
+    const storedApplication = await database.query.userApplications.findFirst({
+      where: eq(userApplications.id, 'application_1')
+    })
+    expect(storedApplication?.lumaSyncStatus).toBe('not_synced')
+
+    const auditRows = await database.select().from(auditLogs)
+    expect(auditRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        actorUserId: 'platform_admin',
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.luma_sync_enqueued',
+        metadata: expect.objectContaining({
+          eventId: 'event_1',
+          userId: 'regular_user',
+          decision: 'approved',
+          source: 'event_luma_configuration',
+          enqueue: expect.objectContaining({
+            status: 'enqueued'
+          })
+        })
+      })
+    ]))
   })
 
   test('queue message processing stores approve_synced after a successful Luma sync', async () => {

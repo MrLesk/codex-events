@@ -67,6 +67,8 @@ describe('event Luma webhook registration', () => {
   const d1Databases: Array<ReturnType<typeof createTestD1Database>> = []
 
   afterEach(async () => {
+    vi.unstubAllGlobals()
+
     while (d1Databases.length > 0) {
       await d1Databases.pop()?.close()
     }
@@ -118,31 +120,27 @@ describe('event Luma webhook registration', () => {
       })
 
       if (url.pathname === '/v1/event/get') {
-        expect(url.searchParams.get('event_id')).toBe('evt-123')
+        expect(url.searchParams.get('id')).toBe('evt-123')
         return createLumaJsonResponse({})
       }
 
-      if (url.pathname === '/v1/webhooks/create') {
+      if (url.pathname === '/v2/webhooks/create') {
         expect(init?.method).toBe('POST')
         expect(JSON.parse(String(init?.body))).toEqual({
           url: 'https://test.codex-events.com/api/public/events/event_1/luma/webhooks',
           event_types: ['guest.updated']
         })
         return createLumaJsonResponse({
-          webhook: {
-            api_id: 'wh_1',
-            signing_secret: 'whsec_created'
-          }
+          id: 'wh_1',
+          secret: 'whsec_created'
         })
       }
 
-      if (url.pathname === '/v1/webhooks/get') {
+      if (url.pathname === '/v2/webhooks/get') {
         expect(url.searchParams.get('id')).toBe('wh_1')
         return createLumaJsonResponse({
-          webhook: {
-            api_id: 'wh_1',
-            signing_secret: 'whsec_created'
-          }
+          id: 'wh_1',
+          secret: 'whsec_created'
         })
       }
 
@@ -173,6 +171,104 @@ describe('event Luma webhook registration', () => {
       lumaWebhookError: null,
       lumaWebhookRegisteredAt: expect.any(String)
     })
+  })
+
+  test('keeps the default fetch bound to globalThis for Cloudflare Workers', async () => {
+    const { d1Database, database, event } = await seedEvent()
+    d1Databases.push(d1Database)
+    const fetchImpl = vi.fn(async function (this: unknown, input: string | URL | Request, init?: RequestInit) {
+      expect(this).toBe(globalThis)
+
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
+
+      if (url.pathname === '/v1/event/get') {
+        return createLumaJsonResponse({})
+      }
+
+      if (url.pathname === '/v2/webhooks/create') {
+        expect(init?.method).toBe('POST')
+        return createLumaJsonResponse({
+          id: 'wh_bound',
+          secret: 'whsec_bound'
+        })
+      }
+
+      if (url.pathname === '/v2/webhooks/get') {
+        return createLumaJsonResponse({
+          id: 'wh_bound',
+          secret: 'whsec_bound'
+        })
+      }
+
+      throw new Error(`Unexpected Luma URL: ${url.toString()}`)
+    })
+    vi.stubGlobal('fetch', fetchImpl)
+
+    await expect(reconcileEventLumaWebhook({
+      database,
+      event,
+      runtimeConfig: {
+        auth0: {
+          appBaseUrl: 'https://test.codex-events.com'
+        }
+      }
+    })).resolves.toEqual({
+      status: 'configured',
+      webhookUrl: 'https://test.codex-events.com/api/public/events/event_1/luma/webhooks'
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(3)
+  })
+
+  test('updates an existing event webhook using the current Luma v2 endpoint', async () => {
+    const { d1Database, database, event } = await seedEvent({
+      lumaWebhookId: 'wh_existing'
+    })
+    d1Databases.push(d1Database)
+    const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
+
+      if (url.pathname === '/v1/event/get') {
+        return createLumaJsonResponse({})
+      }
+
+      if (url.pathname === '/v2/webhooks/update') {
+        expect(init?.method).toBe('POST')
+        expect(JSON.parse(String(init?.body))).toEqual({
+          id: 'wh_existing',
+          event_types: ['guest.updated'],
+          status: 'active'
+        })
+        return createLumaJsonResponse({
+          id: 'wh_existing',
+          secret: 'whsec_updated'
+        })
+      }
+
+      if (url.pathname === '/v2/webhooks/get') {
+        expect(url.searchParams.get('id')).toBe('wh_existing')
+        return createLumaJsonResponse({
+          id: 'wh_existing',
+          secret: 'whsec_updated'
+        })
+      }
+
+      throw new Error(`Unexpected Luma URL: ${url.toString()}`)
+    })
+
+    await expect(reconcileEventLumaWebhook({
+      database,
+      event,
+      runtimeConfig: {
+        auth0: {
+          appBaseUrl: 'https://test.codex-events.com'
+        }
+      },
+      fetchImpl
+    })).resolves.toEqual({
+      status: 'configured',
+      webhookUrl: 'https://test.codex-events.com/api/public/events/event_1/luma/webhooks'
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(3)
   })
 
   test('stores failed status when Luma rejects the event API key', async () => {
