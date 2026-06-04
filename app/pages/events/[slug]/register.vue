@@ -3,7 +3,7 @@ import {
   formatEventDate,
   formatEventLocation,
   formatEventWindow,
-  formatMaxTeamMembers,
+  getEventRegistrationTeamSizeMetaItems,
   getEventEarliestStartAt,
   type PublicEvent
 } from '~/domains/events/presentation'
@@ -96,7 +96,7 @@ const visibleProfileFieldKeys = computed(() => new Set(visibleProfileFields.valu
 const detailSummary = computed(() => [
   formatEventWindow(event.value.registrationOpensAt, event.value.submissionClosesAt),
   formatEventLocation(event.value),
-  formatMaxTeamMembers(event.value.maxTeamMembers)
+  ...getEventRegistrationTeamSizeMetaItems(event.value)
 ].join(' • '))
 const inPersonCommitmentDateLabel = computed(() =>
   formatEventDate(getEventEarliestStartAt(event.value))

@@ -8,6 +8,7 @@ import {
   formatEventDateWithWeekday,
   formatPrizeReward,
   getEventDashboardTeamSizeMetaItems,
+  getEventRegistrationTeamSizeMetaItems,
   getPublicEventStatePresentation,
   resolvePublicEventHeaderStateClass,
   summarizeEventState,
@@ -46,6 +47,23 @@ describe('public event agenda presentation helpers', () => {
     })).toEqual([])
 
     expect(getEventDashboardTeamSizeMetaItems({
+      eventType: 'build',
+      maxTeamMembers: 1
+    })).toEqual([])
+  })
+
+  test('limits registration team size metadata to hackathon events', () => {
+    expect(getEventRegistrationTeamSizeMetaItems({
+      eventType: 'hackathon',
+      maxTeamMembers: 4
+    })).toEqual(['Maximum 4 team members'])
+
+    expect(getEventRegistrationTeamSizeMetaItems({
+      eventType: 'meetup',
+      maxTeamMembers: 1
+    })).toEqual([])
+
+    expect(getEventRegistrationTeamSizeMetaItems({
       eventType: 'build',
       maxTeamMembers: 1
     })).toEqual([])

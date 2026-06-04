@@ -2,7 +2,7 @@
 import {
   formatEventLocation,
   formatEventWindow,
-  formatMaxTeamMembers,
+  getEventRegistrationTeamSizeMetaItems,
   type PublicEvent
 } from '~/domains/events/presentation'
 import type {
@@ -88,7 +88,7 @@ const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
 const detailSummary = computed(() => [
   formatEventWindow(event.value.registrationOpensAt, event.value.submissionClosesAt),
   formatEventLocation(event.value),
-  formatMaxTeamMembers(event.value.maxTeamMembers)
+  ...getEventRegistrationTeamSizeMetaItems(event.value)
 ].join(' • '))
 
 const accountActorCacheKey = computed(() => {

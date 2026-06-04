@@ -573,6 +573,10 @@ export function formatMaxTeamMembers(maxTeamMembers: number) {
   return `Maximum ${maxTeamMembers} team members`
 }
 
+export function getEventRegistrationTeamSizeMetaItems(event: Pick<PublicEvent, 'eventType' | 'maxTeamMembers'>) {
+  return event.eventType === 'hackathon' ? [formatMaxTeamMembers(event.maxTeamMembers)] : []
+}
+
 export function getEventDashboardTeamSizeMetaItems(event: Pick<PublicEvent, 'eventType' | 'maxTeamMembers'>) {
   return event.eventType === 'hackathon' ? [`${event.maxTeamMembers} max/team`] : []
 }
