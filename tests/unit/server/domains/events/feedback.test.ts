@@ -2,6 +2,10 @@ import { describe, expect, test } from 'vitest'
 
 import { ApiError } from '../../../../../server/http/api-error'
 import {
+  eventFeedbackQuestionIds,
+  getEventFeedbackQuestions
+} from '../../../../../shared/domains/events/feedback'
+import {
   assertEventFeedbackAvailable,
   buildEventFeedbackInsertValues,
   createEventFeedbackBodySchema,
@@ -32,6 +36,19 @@ describe('event feedback utilities', () => {
     expect(createEventFeedbackBodySchema.parse(validPayload)).toEqual({
       ...validPayload,
       comment: 'Great event.'
+    })
+  })
+
+  test('selects participant-facing feedback questions by event type', () => {
+    expect(getEventFeedbackQuestions('hackathon').map(question => question.id)).toEqual(eventFeedbackQuestionIds)
+    expect(getEventFeedbackQuestions('hackathon').find(question => question.id === 'judgesRating')).toMatchObject({
+      label: 'Judging Process'
+    })
+    expect(getEventFeedbackQuestions('meetup').find(question => question.id === 'judgesRating')).toMatchObject({
+      label: 'Talks And Sessions'
+    })
+    expect(getEventFeedbackQuestions('build').find(question => question.id === 'judgesRating')).toMatchObject({
+      label: 'Mentor And Expert Support'
     })
   })
 

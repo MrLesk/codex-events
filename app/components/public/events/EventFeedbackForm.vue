@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type {
+  EventFeedbackEventType,
   EventFeedbackQuestionId,
   EventFeedbackRatingValue,
   EventFeedbackSelectionValue
@@ -9,13 +10,14 @@ import {
   eventFeedbackNotApplicableLabel,
   eventFeedbackNotApplicableValue,
   eventFeedbackQuestionIds,
-  eventFeedbackQuestions,
+  getEventFeedbackQuestions,
   eventFeedbackRatingValues
 } from '#shared/domains/events/feedback'
 import { normalizeApiError } from '~/lib/api'
 
 const props = defineProps<{
   eventSlug: string
+  eventType: EventFeedbackEventType
 }>()
 
 function createEmptyRatings() {
@@ -30,9 +32,11 @@ const isSubmitting = ref(false)
 const submitAttempted = ref(false)
 const submitError = ref('')
 const submitSuccess = ref(false)
+const feedbackQuestions = computed(() => getEventFeedbackQuestions(props.eventType))
+const visibleQuestionIds = computed(() => feedbackQuestions.value.map(question => question.id))
 
 const missingQuestionCount = computed(() =>
-  eventFeedbackQuestionIds.filter(questionId => ratings.value[questionId] === null).length
+  visibleQuestionIds.value.filter(questionId => ratings.value[questionId] === null).length
 )
 
 function isQuestionMissing(questionId: EventFeedbackQuestionId) {
@@ -122,7 +126,7 @@ async function submitFeedback() {
     >
       <div class="divide-y divide-black/8 overflow-hidden rounded-xl border border-black/8 bg-[#0F0F10]/70 dark:divide-white/[0.08] dark:border-white/[0.08] dark:bg-[#101112]">
         <div
-          v-for="question in eventFeedbackQuestions"
+          v-for="question in feedbackQuestions"
           :key="question.id"
           class="px-5 py-5"
         >

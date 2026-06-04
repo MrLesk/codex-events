@@ -19,7 +19,7 @@ export default defineApiHandler(async (h3Event) => {
   assertEventFeedbackResultsAccess(authorization)
 
   const database = getDatabase(h3Event)
-  await getEventOrThrow(database, eventId)
+  const event = await getEventOrThrow(database, eventId)
 
-  return apiData(await getEventFeedbackSummary(database, eventId))
+  return apiData(await getEventFeedbackSummary(database, eventId, event.eventType))
 })

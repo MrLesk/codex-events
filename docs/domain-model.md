@@ -166,7 +166,10 @@ Rules:
 - The public event feedback route is `/events/:slug/feedback`.
 - The public feedback route is available only after the event reaches `completed`.
 - Each feedback topic records either a participant-selected `1..5` rating or an explicit `Not applicable` response when the participant did not directly experience that area.
-- The canonical feedback topics are food, staff, organization, platform, judges, venue, participants and community, communication before the event, communication during the event, clarity and fairness of the rules, overall experience, schedule and pacing, technical setup, safety/accessibility/inclusion, and outcomes.
+- Feedback questions are selected from platform-defined defaults by event type, not configured per individual event.
+- Hackathon feedback covers communication, organization, venue, food, technical setup, platform experience, staff support, team formation and community, event rules, judging, schedule and pacing, safety/accessibility/inclusion, outcomes, and overall experience.
+- Meetup feedback covers communication, organization, venue, food, room and AV setup, platform experience, staff support, networking and community, event expectations, talks and sessions, schedule and pacing, safety/accessibility/inclusion, value for the participant's goals, and overall experience.
+- Build feedback covers communication, organization, venue, food, technical setup, platform experience, staff support, builder community, participation guidance, mentor or expert support, schedule and pacing, safety/accessibility/inclusion, progress toward the participant's goals, and overall experience.
 - A feedback submission can include one optional free-text comment.
 - Feedback submissions are anonymous in product data and do not reference a user, application, or team.
 - Anonymous feedback submission is protected by per-IP rate limiting rather than by account identity.

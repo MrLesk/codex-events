@@ -339,6 +339,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - Each row records one anonymous post-event feedback submission for an event.
 - Feedback rows do not reference a platform user, application, or team.
+- Rating fields are stable storage slots; participant-facing labels and prompts are selected from the event type's platform-defined feedback question set.
 - A null rating means the participant explicitly chose `Not applicable` for that topic.
 - `comment` is optional.
 - Feedback submission is available only after the event reaches `completed`.

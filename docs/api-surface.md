@@ -389,8 +389,8 @@ Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| Submit public event feedback | `POST /api/public/events/:slug/feedback` | public or authenticated user | Allowed only after the event reaches `completed`. Accepts one explicit answer for each canonical feedback topic: either a `1..5` rating or `null` for `Not applicable`, plus one optional free-text comment. Records anonymous event-scoped feedback and enforces a Cloudflare-backed per-IP rate limit for repeated submissions. |
-| Get event feedback results | `GET /api/events/:eventId/feedback` | judge, staff, event admin, or platform admin | Returns event-scoped feedback results for the account workspace, including total response count, per-question rating distributions, rated-response counts, `Not applicable` counts, averages computed from rated responses only, and optional written comments. |
+| Submit public event feedback | `POST /api/public/events/:slug/feedback` | public or authenticated user | Allowed only after the event reaches `completed`. Accepts one explicit answer for each platform-defined feedback question for the event type: either a `1..5` rating or `null` for `Not applicable`, plus one optional free-text comment. Records anonymous event-scoped feedback and enforces a Cloudflare-backed per-IP rate limit for repeated submissions. |
+| Get event feedback results | `GET /api/events/:eventId/feedback` | judge, staff, event admin, or platform admin | Returns event-scoped feedback results for the account workspace, including total response count, event-type-specific question labels and prompts, per-question rating distributions, rated-response counts, `Not applicable` counts, averages computed from rated responses only, and optional written comments. |
 
 Testing:
 - Unit: feedback payload validation, completed-state visibility rules, skip semantics, and result summarization.
@@ -671,7 +671,7 @@ Testing:
 - Approved participants can claim at most one uploaded value from each event credit offer.
 - Hackathon prize-eligible team membership freezes when submitted work is locked for judging.
 - Event feedback submission is anonymous in product data and becomes available only after the event reaches `completed`.
-- Each feedback topic accepts either a `1..5` rating or an explicit `Not applicable` response.
+- Each event type has a platform-defined feedback question set, and each feedback answer accepts either a `1..5` rating or an explicit `Not applicable` response.
 - Blind judging excludes team identity even when the reviewing actor is also an admin.
 - Pitch judging exposes project and team identity to the pitch panel.
 - Blind assignment scores are normalized to the shared `1..5` scale by dividing weighted criterion totals by total criterion weight.

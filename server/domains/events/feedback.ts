@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import type {
+  EventFeedbackEventType,
   EventFeedbackQuestionId,
   EventFeedbackSummary
 } from '#shared/domains/events/feedback'
@@ -9,7 +10,7 @@ import { desc, eq } from 'drizzle-orm'
 
 import {
   eventFeedbackQuestionIds,
-  eventFeedbackQuestions,
+  getEventFeedbackQuestions,
   eventFeedbackRatingValues
 } from '#shared/domains/events/feedback'
 import type { EventAuthorization } from '#server/auth/authorization'
@@ -94,16 +95,18 @@ export function assertEventFeedbackResultsAccess(authorization: EventAuthorizati
 
 export async function getEventFeedbackSummary(
   database: AppDatabase,
-  eventId: string
+  eventId: string,
+  eventType: EventFeedbackEventType
 ): Promise<EventFeedbackSummary> {
   const rows = await database.query.eventFeedback.findMany({
     where: eq(eventFeedback.eventId, eventId),
     orderBy: [desc(eventFeedback.createdAt), desc(eventFeedback.id)]
   })
+  const feedbackQuestions = getEventFeedbackQuestions(eventType)
 
   return {
     responseCount: rows.length,
-    questionSummaries: eventFeedbackQuestions.map((question) => {
+    questionSummaries: feedbackQuestions.map((question) => {
       const ratingCounts = Object.fromEntries(
         eventFeedbackRatingValues.map(rating => [rating, 0])
       ) as Record<(typeof eventFeedbackRatingValues)[number], number>

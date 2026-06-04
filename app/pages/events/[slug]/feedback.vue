@@ -130,7 +130,10 @@ useSeoMeta({
           </h2>
         </div>
 
-        <EventFeedbackForm :event-slug="slug" />
+        <EventFeedbackForm
+          :event-slug="slug"
+          :event-type="event.eventType"
+        />
       </section>
     </AppContainer>
   </div>

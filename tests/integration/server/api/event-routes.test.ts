@@ -2166,6 +2166,94 @@ describe('TASK-3.5 event CRUD routes', () => {
     }
   })
 
+  test('GET /api/events/:eventId/feedback uses build-event question wording in summaries', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/events/:eventId/feedback', handler: eventFeedbackGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|staff_user',
+        email: 'staff@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'staff_user',
+        auth0Subject: 'auth0|staff_user',
+        email: 'staff@example.com',
+        displayName: 'Staff User'
+      }
+    ])
+    await harness.database.insert(events).values({
+      id: 'event_feedback_build_results',
+      eventType: 'build',
+      name: 'Build Feedback Results Event',
+      slug: 'build-feedback-results-event',
+      description: 'Build feedback reporting',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'completed',
+      maxTeamMembers: 1,
+      createdByUserId: 'creator_1'
+    })
+    await harness.database.insert(eventRoleAssignments).values({
+      id: 'assignment_build_staff',
+      eventId: 'event_feedback_build_results',
+      userId: 'staff_user',
+      role: 'staff',
+      isInJudgePool: false,
+      isStaff: true,
+      createdAt: '2026-03-10T09:10:00.000Z'
+    })
+    await harness.database.insert(eventFeedback).values({
+      id: 'feedback_build_1',
+      eventId: 'event_feedback_build_results',
+      foodRating: 5,
+      staffRating: 4,
+      organizationRating: 4,
+      platformRating: 3,
+      judgesRating: 5,
+      venueRating: 5,
+      participantsCommunityRating: 5,
+      communicationBeforeRating: 4,
+      communicationDuringRating: 4,
+      rulesFairnessRating: 5,
+      overallExperienceRating: 5,
+      schedulePacingRating: 4,
+      technicalSetupRating: 3,
+      safetyAccessibilityInclusionRating: 5,
+      outcomesRating: 4,
+      createdAt: '2026-03-25T10:00:00.000Z'
+    })
+
+    const response = await harness.request('/api/events/event_feedback_build_results/feedback')
+
+    expect(response.status).toBe(200)
+    const payload = await response.json()
+
+    expect(payload.data.questionSummaries).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'judgesRating',
+        label: 'Mentor And Expert Support',
+        prompt: 'How useful was any mentor, expert, or review support you received?',
+        averageRating: 5
+      })
+    ]))
+  })
+
   test('GET /api/events/:eventId/feedback rejects platform users without judge, staff, or admin access', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
