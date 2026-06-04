@@ -94,7 +94,8 @@ Key characteristics:
 - Each event can optionally define a participant approval limit used as an indicative planning target during admin review.
 - Each event can approve new participant applications automatically after required submission checks pass.
 - Each event can optionally reference a restricted Discord server URL.
-- Each event has a fixed application field configuration. First name and family name are always visible and required. Event admins can mark X, LinkedIn, GitHub, ChatGPT email, OpenAI org ID, Luma email, `why this event`, proof-of-execution links, participation mode, and AI Knowledge as visible or hidden.
+- Each event has a fixed application field configuration. First name and family name are always visible and required. Event admins can mark X, LinkedIn, GitHub, ChatGPT email, OpenAI org ID, `why this event`, proof-of-execution links, participation mode, and AI Knowledge as visible or hidden.
+- When Luma Sync is enabled for an event, Luma email is visible and required during registration so the platform can match Codex participants with Luma guests.
 - Each visible application field can be optional or required. A field cannot be required while hidden.
 - AI Knowledge is optional by default when visible. Event admins can require it when they need every applicant to self-assess AI agent experience as Beginner, Intermediate, or Advanced.
 - The current application field configuration applies when a participant views or submits the form. Changing the configuration does not rewrite existing application records.

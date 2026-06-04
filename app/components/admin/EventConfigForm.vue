@@ -78,6 +78,15 @@ const showInlineDetailsActions = computed(() => formMode.value === 'details')
 const isSettingsMode = computed(() => formMode.value === 'settings')
 const isLumaApiKeyRevealed = ref(false)
 const lumaApiKeyInputType = computed(() => isLumaApiKeyRevealed.value ? 'text' : 'password')
+const hasLumaSyncFields = computed(() =>
+  Boolean(form.value.lumaEventApiId.trim() || form.value.lumaApiKey.trim())
+)
+const lumaSyncEnabled = computed({
+  get: () => hasLumaSyncFields.value || (form.value.applicationLumaEmailVisible && form.value.requireLumaEmail),
+  set: (enabled: boolean) => {
+    setLumaSyncEnabled(enabled)
+  }
+})
 const lumaWebhookStatusLabel = computed(() => {
   switch (props.lumaWebhookStatus) {
     case 'configured':
@@ -160,6 +169,23 @@ function updateParticipantsLimitInput(event: Event) {
   }
 
   participantsLimitInput.value = event.target.value
+}
+
+function requireLumaRegistrationEmail() {
+  form.value.applicationLumaEmailVisible = true
+  form.value.requireLumaEmail = true
+}
+
+function setLumaSyncEnabled(enabled: boolean) {
+  if (enabled) {
+    requireLumaRegistrationEmail()
+    return
+  }
+
+  form.value.lumaEventApiId = ''
+  form.value.lumaApiKey = ''
+  form.value.applicationLumaEmailVisible = false
+  form.value.requireLumaEmail = false
 }
 
 async function copyLumaWebhookUrl() {
@@ -431,6 +457,16 @@ watch(() => form.value.eventType, (nextEventType, previousEventType) => {
   applyEventTypeApplicationFieldDefaults(form.value, nextEventType)
 })
 
+watch(lumaSyncEnabled, (enabled) => {
+  if (!enabled) {
+    return
+  }
+
+  requireLumaRegistrationEmail()
+}, {
+  immediate: true
+})
+
 watch(() => form.value.name, (nextName) => {
   if (!props.autoGenerateSlug || hasManuallyEditedSlug.value) {
     return
@@ -600,108 +636,152 @@ const submitConfigForm = handleSubmit(() => {
               <span class="text-xs text-muted">Optional public Luma link.</span>
             </label>
 
-            <label class="grid gap-2">
-              <span class="text-sm font-medium text-toned">Luma event API ID</span>
-              <AppInput
-                v-model="form.lumaEventApiId"
-                type="text"
-                placeholder="evt-FSlTqAmG9QanU4s"
-              />
-              <span class="text-xs text-muted">Use the Luma API ID, not the public URL.</span>
-            </label>
-
-            <section class="grid gap-4 border-t border-black/8 pt-5 dark:border-white/[0.08] md:grid-cols-[minmax(0,1fr)_minmax(16rem,0.9fr)] md:items-start">
-              <div class="grid gap-2">
-                <label
-                  for="event-luma-api-key"
-                  class="text-sm font-medium text-toned"
-                >
-                  Luma API key
-                </label>
-                <span class="relative">
-                  <AppInput
-                    id="event-luma-api-key"
-                    v-model="form.lumaApiKey"
-                    :type="lumaApiKeyInputType"
-                    placeholder="luma_..."
-                    class="pr-12"
-                  />
-                  <AppButton
-                    type="button"
-                    color="neutral"
-                    variant="ghost"
-                    size="sm"
-                    :icon="isLumaApiKeyRevealed ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-                    class="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 gap-0 px-0"
-                    :aria-label="isLumaApiKeyRevealed ? 'Hide Luma API key' : 'Show Luma API key'"
-                    :aria-pressed="isLumaApiKeyRevealed"
-                    :title="isLumaApiKeyRevealed ? 'Hide key' : 'Show key'"
-                    @click="isLumaApiKeyRevealed = !isLumaApiKeyRevealed"
-                  >
-                    <span class="sr-only">
-                      {{ isLumaApiKeyRevealed ? 'Hide Luma API key' : 'Show Luma API key' }}
-                    </span>
-                  </AppButton>
-                </span>
-                <span class="text-xs text-muted">Use a key that can manage this Luma event.</span>
+            <section class="grid gap-4 border-t border-black/8 pt-5 dark:border-white/[0.08]">
+              <div class="space-y-1">
+                <h3 class="text-base font-semibold text-highlighted">
+                  Luma Sync
+                </h3>
+                <p class="text-sm text-muted">
+                  Keep participant approval, cancellation, and attendance updates aligned with this Luma event.
+                </p>
               </div>
 
+              <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                <input
+                  v-model="lumaSyncEnabled"
+                  type="checkbox"
+                  class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+                >
+                <span class="grid gap-0.5">
+                  <span>Enable Luma Sync</span>
+                  <span class="text-xs text-muted">Register event webhooks and sync Codex participant decisions with Luma guests.</span>
+                </span>
+              </label>
+
               <div
-                v-if="lumaWebhookUrl"
-                class="grid gap-3 md:border-l md:border-black/8 md:pl-5 md:dark:border-white/[0.08]"
+                v-if="lumaSyncEnabled"
+                class="grid gap-5"
+                :class="lumaWebhookUrl ? 'md:grid-cols-[minmax(0,1fr)_minmax(16rem,0.9fr)] md:items-start' : ''"
               >
-                <div class="flex items-start gap-3">
-                  <span
-                    class="mt-1.5 size-2.5 rounded-full"
-                    :class="lumaWebhookStatusDotClass"
-                    aria-hidden="true"
-                  />
-                  <div class="min-w-0 space-y-1">
-                    <p class="text-sm font-medium text-highlighted">
-                      {{ lumaWebhookStatusLabel }}
-                    </p>
-                    <p class="text-xs text-muted">
-                      {{ lumaWebhookStatusDescription }}
-                    </p>
-                    <p
-                      v-if="lumaWebhookRegisteredAt && lumaWebhookStatus === 'configured'"
-                      class="text-xs text-muted"
+                <div class="grid gap-5">
+                  <label class="grid gap-2">
+                    <span class="text-sm font-medium text-toned">Luma event API ID</span>
+                    <AppInput
+                      v-model="form.lumaEventApiId"
+                      type="text"
+                      placeholder="evt-FSlTqAmG9QanU4s"
+                      required
+                    />
+                    <span class="text-xs text-muted">Use the Luma API ID, not the public URL.</span>
+                  </label>
+
+                  <div class="grid gap-2">
+                    <label
+                      for="event-luma-api-key"
+                      class="text-sm font-medium text-toned"
                     >
-                      Last registered at {{ lumaWebhookRegisteredAt }}.
-                    </p>
+                      Luma API key
+                    </label>
+                    <span class="relative">
+                      <AppInput
+                        id="event-luma-api-key"
+                        v-model="form.lumaApiKey"
+                        :type="lumaApiKeyInputType"
+                        placeholder="luma_..."
+                        class="pr-12"
+                        required
+                      />
+                      <AppButton
+                        type="button"
+                        color="neutral"
+                        variant="ghost"
+                        size="sm"
+                        :icon="isLumaApiKeyRevealed ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                        class="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 gap-0 px-0"
+                        :aria-label="isLumaApiKeyRevealed ? 'Hide Luma API key' : 'Show Luma API key'"
+                        :aria-pressed="isLumaApiKeyRevealed"
+                        :title="isLumaApiKeyRevealed ? 'Hide key' : 'Show key'"
+                        @click="isLumaApiKeyRevealed = !isLumaApiKeyRevealed"
+                      >
+                        <span class="sr-only">
+                          {{ isLumaApiKeyRevealed ? 'Hide Luma API key' : 'Show Luma API key' }}
+                        </span>
+                      </AppButton>
+                    </span>
+                    <span class="text-xs text-muted">Use a key that can manage this Luma event.</span>
                   </div>
+
+                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                    <input
+                      type="checkbox"
+                      class="size-4 rounded border-black/20 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white/[0.3]"
+                      checked
+                      disabled
+                    >
+                    <span class="grid gap-0.5">
+                      <span>Require Luma email during registration</span>
+                      <span class="text-xs text-muted">Luma Sync needs the participant's Luma email to match Codex users with Luma guests.</span>
+                    </span>
+                  </label>
                 </div>
 
-                <div class="grid gap-2">
-                  <span class="text-sm font-medium text-toned">Webhook URL</span>
-                  <code class="min-w-0 break-all rounded-lg bg-black/[0.04] px-3 py-2 font-mono text-xs text-highlighted dark:bg-white/[0.06]">
-                    {{ lumaWebhookUrl }}
-                  </code>
-                  <div class="flex flex-wrap gap-2">
-                    <AppButton
-                      type="button"
-                      color="neutral"
-                      variant="soft"
-                      size="sm"
-                      icon="i-lucide-copy"
-                      @click="copyLumaWebhookUrl"
-                    >
-                      Copy webhook URL
-                    </AppButton>
+                <div
+                  v-if="lumaWebhookUrl"
+                  class="grid gap-3 md:border-l md:border-black/8 md:pl-5 md:dark:border-white/[0.08]"
+                >
+                  <div class="flex items-start gap-3">
+                    <span
+                      class="mt-1.5 size-2.5 rounded-full"
+                      :class="lumaWebhookStatusDotClass"
+                      aria-hidden="true"
+                    />
+                    <div class="min-w-0 space-y-1">
+                      <p class="text-sm font-medium text-highlighted">
+                        {{ lumaWebhookStatusLabel }}
+                      </p>
+                      <p class="text-xs text-muted">
+                        {{ lumaWebhookStatusDescription }}
+                      </p>
+                      <p
+                        v-if="lumaWebhookRegisteredAt && lumaWebhookStatus === 'configured'"
+                        class="text-xs text-muted"
+                      >
+                        Last registered at {{ lumaWebhookRegisteredAt }}.
+                      </p>
+                    </div>
+                  </div>
 
-                    <AppButton
-                      v-if="showLumaRetryButton"
-                      type="button"
-                      color="neutral"
-                      variant="ghost"
-                      size="sm"
-                      icon="i-lucide-refresh-cw"
-                      :loading="isRetryingLumaConfiguration"
-                      :disabled="isRetryingLumaConfiguration || isSubmitting"
-                      @click="emit('retryLumaConfiguration')"
-                    >
-                      Retry Luma configuration
-                    </AppButton>
+                  <div class="grid gap-2">
+                    <span class="text-sm font-medium text-toned">Webhook URL</span>
+                    <code class="min-w-0 break-all rounded-lg bg-black/[0.04] px-3 py-2 font-mono text-xs text-highlighted dark:bg-white/[0.06]">
+                      {{ lumaWebhookUrl }}
+                    </code>
+                    <div class="flex flex-wrap gap-2">
+                      <AppButton
+                        type="button"
+                        color="neutral"
+                        variant="soft"
+                        size="sm"
+                        icon="i-lucide-copy"
+                        @click="copyLumaWebhookUrl"
+                      >
+                        Copy webhook URL
+                      </AppButton>
+
+                      <AppButton
+                        v-if="showLumaRetryButton"
+                        type="button"
+                        color="neutral"
+                        variant="ghost"
+                        size="sm"
+                        icon="i-lucide-refresh-cw"
+                        :loading="isRetryingLumaConfiguration"
+                        :disabled="isRetryingLumaConfiguration || isSubmitting"
+                        @click="emit('retryLumaConfiguration')"
+                      >
+                        Retry Luma configuration
+                      </AppButton>
+                    </div>
                   </div>
                 </div>
               </div>

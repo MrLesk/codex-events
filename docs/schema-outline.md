@@ -215,6 +215,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `banner_image_url` stores only the event-specific uploaded banner image URL.
 - `luma_event_url` is optional because not every event has a public Luma event page to link.
 - `luma_event_api_id` and `luma_api_key` are optional because not every event has Luma configured for approval, rejection, and attendance sync.
+- Luma email visibility and requirement are enabled together when an event uses Luma Sync because guest sync matches Codex participants to Luma guests by that email.
 - `luma_webhook_id`, `luma_webhook_secret`, `luma_webhook_status`, `luma_webhook_error`, and `luma_webhook_registered_at` store the event's webhook registration state. Webhook status is `not_configured` until the event has enough Luma configuration for registration, `configured` after Luma returns a webhook ID and signing secret, and `failed` when registration cannot be completed with the stored event API ID and key.
 - `agenda_items_json` stores a validated ordered JSON array of agenda items (`id`, `startsAt`, optional `endsAt`, `title`, optional `details`, `displayOrder`).
 

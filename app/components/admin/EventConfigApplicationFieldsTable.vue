@@ -62,13 +62,6 @@ const fieldRows: ApplicationFieldRow[] = [
     requiredKey: 'requireOpenaiOrgId'
   },
   {
-    id: 'luma-email',
-    label: 'Luma email',
-    description: 'email used for Luma registration',
-    visibleKey: 'applicationLumaEmailVisible',
-    requiredKey: 'requireLumaEmail'
-  },
-  {
     id: 'why-this-event',
     label: 'Why this event',
     description: 'motivation question',

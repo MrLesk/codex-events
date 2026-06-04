@@ -81,7 +81,7 @@ const hackathonApplicationFieldDefaults = {
   applicationGithubProfileVisible: true,
   applicationChatgptEmailVisible: true,
   applicationOpenaiOrgIdVisible: true,
-  applicationLumaEmailVisible: true,
+  applicationLumaEmailVisible: false,
   applicationWhyThisEventVisible: true,
   applicationProofOfExecutionVisible: true,
   applicationTeamIntentVisible: true,
@@ -91,7 +91,7 @@ const hackathonApplicationFieldDefaults = {
   requireGithubProfile: false,
   requireChatgptEmail: true,
   requireOpenaiOrgId: true,
-  requireLumaEmail: true,
+  requireLumaEmail: false,
   requireWhyThisEvent: false,
   requireProofOfExecution: false,
   requireTeamIntent: false,
@@ -338,6 +338,8 @@ const eventConfigFormBaseSchema = z.object({
   const submissionOpensAt = Date.parse(input.submissionOpensAt)
   const submissionClosesAt = Date.parse(input.submissionClosesAt)
   const isHackathon = input.eventType === 'hackathon'
+  const hasLumaSyncConfiguration = input.lumaEventApiId.length > 0 || input.lumaApiKey.length > 0
+  const hasLumaRegistrationEmail = input.applicationLumaEmailVisible && input.requireLumaEmail
 
   if (Number.isNaN(registrationOpensAt)) {
     context.addIssue({
@@ -361,6 +363,40 @@ const eventConfigFormBaseSchema = z.object({
         code: z.ZodIssueCode.custom,
         path: [requiredKey],
         message: `${label} cannot be required while hidden from the application form.`
+      })
+    }
+  }
+
+  if (hasLumaSyncConfiguration || hasLumaRegistrationEmail) {
+    if (input.lumaEventApiId.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['lumaEventApiId'],
+        message: 'Enter the Luma event API ID to enable Luma Sync.'
+      })
+    }
+
+    if (input.lumaApiKey.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['lumaApiKey'],
+        message: 'Enter the Luma API key to enable Luma Sync.'
+      })
+    }
+
+    if (!input.applicationLumaEmailVisible) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['applicationLumaEmailVisible'],
+        message: 'Luma email must be shown when Luma Sync is enabled.'
+      })
+    }
+
+    if (!input.requireLumaEmail) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['requireLumaEmail'],
+        message: 'Luma email must be required when Luma Sync is enabled.'
       })
     }
   }
@@ -520,7 +556,7 @@ export function createEmptyEventFormState(): EventFormState {
     requireGithubProfile: false,
     requireChatgptEmail: true,
     requireOpenaiOrgId: true,
-    requireLumaEmail: true,
+    requireLumaEmail: false,
     requireWhyThisEvent: false,
     requireProofOfExecution: false,
     requireTeamIntent: false,

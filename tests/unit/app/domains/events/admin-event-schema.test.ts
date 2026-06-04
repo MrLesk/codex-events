@@ -198,6 +198,67 @@ describe('event config form schema', () => {
     })
   })
 
+  test('keeps Luma email disabled by default and includes it when Luma Sync is enabled', () => {
+    expect(createEmptyEventFormState().applicationLumaEmailVisible).toBe(false)
+    expect(createEmptyEventFormState().requireLumaEmail).toBe(false)
+
+    const lumaSyncState = {
+      ...createValidEventFormState(),
+      lumaEventApiId: 'evt-123',
+      lumaApiKey: 'luma_test_key',
+      applicationLumaEmailVisible: true,
+      requireLumaEmail: true
+    }
+
+    expect(eventConfigFormSchema.safeParse(lumaSyncState).success).toBe(true)
+    expect(buildEventConfigurationPatch(lumaSyncState, 'hackathon')).toMatchObject({
+      lumaEventApiId: 'evt-123',
+      lumaApiKey: 'luma_test_key',
+      applicationLumaEmailVisible: true,
+      requireLumaEmail: true
+    })
+  })
+
+  test('requires complete Luma Sync configuration', () => {
+    const missingLumaCredentials = eventConfigFormSchema.safeParse({
+      ...createValidEventFormState(),
+      applicationLumaEmailVisible: true,
+      requireLumaEmail: true
+    })
+
+    expect(missingLumaCredentials.success).toBe(false)
+
+    if (missingLumaCredentials.success) {
+      return
+    }
+
+    expect(missingLumaCredentials.error.flatten().fieldErrors.lumaEventApiId).toEqual([
+      'Enter the Luma event API ID to enable Luma Sync.'
+    ])
+    expect(missingLumaCredentials.error.flatten().fieldErrors.lumaApiKey).toEqual([
+      'Enter the Luma API key to enable Luma Sync.'
+    ])
+
+    const missingLumaEmail = eventConfigFormSchema.safeParse({
+      ...createValidEventFormState(),
+      lumaEventApiId: 'evt-123',
+      lumaApiKey: 'luma_test_key'
+    })
+
+    expect(missingLumaEmail.success).toBe(false)
+
+    if (missingLumaEmail.success) {
+      return
+    }
+
+    expect(missingLumaEmail.error.flatten().fieldErrors.applicationLumaEmailVisible).toEqual([
+      'Luma email must be shown when Luma Sync is enabled.'
+    ])
+    expect(missingLumaEmail.error.flatten().fieldErrors.requireLumaEmail).toEqual([
+      'Luma email must be required when Luma Sync is enabled.'
+    ])
+  })
+
   test('normalizes nullable participant limit input values', () => {
     expect(formatParticipantsLimitInput(null)).toBe('')
     expect(formatParticipantsLimitInput(80)).toBe('80')
