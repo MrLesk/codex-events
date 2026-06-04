@@ -67,6 +67,16 @@ export interface GeneratedDeployWranglerConfig {
   build: {
     command: string
   }
+  observability: {
+    logs: {
+      enabled: boolean
+      invocation_logs: boolean
+    }
+    traces: {
+      enabled: boolean
+      head_sampling_rate: number
+    }
+  }
   ratelimits: Array<{
     name: string
     namespace_id: string
@@ -356,6 +366,16 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
     preview_urls: false,
     build: {
       command: 'bun run build:cloudflare'
+    },
+    observability: {
+      logs: {
+        enabled: true,
+        invocation_logs: true
+      },
+      traces: {
+        enabled: true,
+        head_sampling_rate: 0.1
+      }
     },
     ratelimits: [
       {

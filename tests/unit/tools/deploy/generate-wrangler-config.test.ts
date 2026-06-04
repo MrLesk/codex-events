@@ -127,6 +127,16 @@ describe('deploy Wrangler config generator', () => {
       '3002',
       '3003'
     ])
+    expect(config.observability).toEqual({
+      logs: {
+        enabled: true,
+        invocation_logs: true
+      },
+      traces: {
+        enabled: true,
+        head_sampling_rate: 0.1
+      }
+    })
   })
 
   test('uses the outbound from email as reply-to when no reply-to override is configured', () => {
