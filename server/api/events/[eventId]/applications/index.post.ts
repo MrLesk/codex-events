@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
@@ -19,7 +19,7 @@ import {
   serializeUserApplication,
   submitApplicationBodySchema
 } from '#server/domains/applications'
-import { finalizeUserApplicationReview } from '#server/domains/applications/review-finalization'
+import { applyPostRegistrationApplicationOutcome } from '#server/domains/applications/review-finalization'
 import { getVisibleEventOrThrow, routeIdParamsSchema } from '#server/domains/events'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
@@ -100,39 +100,11 @@ export default defineApiHandler(async (h3Event) => {
     updatedAt: submittedAt
   })
 
-  if (event.autoApproveApplications) {
-    const autoApprovalWhere = event.participantsLimit === null
-      ? and(
-          eq(userApplications.id, applicationId),
-          eq(userApplications.status, 'submitted')
-        )
-      : and(
-          eq(userApplications.id, applicationId),
-          eq(userApplications.status, 'submitted'),
-          sql`(
-            select count(*)
-            from ${userApplications}
-            where ${userApplications.eventId} = ${eventId}
-              and ${userApplications.status} = 'approved'
-          ) < ${event.participantsLimit}`
-        )
-
-    await database
-      .update(userApplications)
-      .set({
-        status: 'approved',
-        reviewedAt: submittedAt,
-        reviewedByUserId: null,
-        updatedAt: submittedAt
-      })
-      .where(autoApprovalWhere)
-  }
-
-  const applicationRecord = await database.query.userApplications.findFirst({
+  const createdApplication = await database.query.userApplications.findFirst({
     where: eq(userApplications.id, applicationId)
   })
 
-  if (!applicationRecord) {
+  if (!createdApplication) {
     throw new ApiError({
       statusCode: 500,
       code: 'user_application_creation_failed',
@@ -144,24 +116,14 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  if (applicationRecord.status === 'approved') {
-    const finalizedReview = await finalizeUserApplicationReview({
-      h3Event,
-      database,
-      event,
-      application: applicationRecord,
-      applicant: actor.platformUser,
-      decision: 'approved',
-      reviewedAt: submittedAt,
-      reviewedByUserId: null,
-      auditActorUserId: null,
-      source: 'auto_approval',
-      persistReview: false
-    })
-
-    applicationRecord.lumaSyncStatus = finalizedReview.lumaSyncStatus
-    applicationRecord.updatedAt = finalizedReview.updatedAt
-  }
+  const applicationRecord = await applyPostRegistrationApplicationOutcome({
+    h3Event,
+    database,
+    event,
+    application: createdApplication,
+    applicant: actor.platformUser,
+    outcomeAt: submittedAt
+  })
 
   return apiData(serializeUserApplication({
     ...applicationRecord

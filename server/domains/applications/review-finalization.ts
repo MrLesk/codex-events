@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 
 import { writeAuditLog } from '#server/database/audit-log'
 import type { AppDatabase } from '#server/database/client'
@@ -9,6 +9,7 @@ import {
   type events,
   type users
 } from '#server/database/schema'
+import { ApiError } from '#server/http/api-error'
 import { isEventLumaSyncEnabled } from '#server/domains/applications'
 import {
   buildApplicationLumaSyncQueueMessage,
@@ -150,4 +151,88 @@ export async function finalizeUserApplicationReview(options: {
     lumaSyncStatus,
     updatedAt
   }
+}
+
+export async function applyPostRegistrationApplicationOutcome(options: {
+  h3Event: H3Event
+  database: AppDatabase
+  event: EventRecord
+  application: UserApplicationRecord
+  applicant: Pick<UserRecord, 'email' | 'displayName'> | null
+  outcomeAt: string
+}) {
+  let applicationRecord = options.application
+
+  if (!options.event.autoApproveApplications) {
+    return applicationRecord
+  }
+
+  const autoApprovalWhere = options.event.participantsLimit === null
+    ? and(
+        eq(userApplications.id, options.application.id),
+        eq(userApplications.status, 'submitted')
+      )
+    : and(
+        eq(userApplications.id, options.application.id),
+        eq(userApplications.status, 'submitted'),
+        sql`(
+          select count(*)
+          from ${userApplications}
+          where ${userApplications.eventId} = ${options.event.id}
+            and ${userApplications.status} = 'approved'
+        ) < ${options.event.participantsLimit}`
+      )
+
+  await options.database
+    .update(userApplications)
+    .set({
+      status: 'approved',
+      reviewedAt: options.outcomeAt,
+      reviewedByUserId: null,
+      updatedAt: options.outcomeAt
+    })
+    .where(autoApprovalWhere)
+
+  const updatedApplication = await options.database.query.userApplications.findFirst({
+    where: eq(userApplications.id, options.application.id)
+  })
+
+  if (!updatedApplication) {
+    throw new ApiError({
+      statusCode: 500,
+      code: 'user_application_update_failed',
+      message: 'The application could not be updated.',
+      details: {
+        eventId: options.event.id,
+        applicationId: options.application.id,
+        userId: options.application.userId
+      }
+    })
+  }
+
+  applicationRecord = updatedApplication
+
+  if (applicationRecord.status === 'approved') {
+    const finalizedReview = await finalizeUserApplicationReview({
+      h3Event: options.h3Event,
+      database: options.database,
+      event: options.event,
+      application: applicationRecord,
+      applicant: options.applicant,
+      decision: 'approved',
+      reviewedAt: options.outcomeAt,
+      reviewedByUserId: null,
+      auditActorUserId: null,
+      source: 'auto_approval',
+      persistReview: false
+    })
+
+    applicationRecord = {
+      ...applicationRecord,
+      lumaSyncStatus: finalizedReview.lumaSyncStatus,
+      updatedAt: finalizedReview.updatedAt
+    }
+  }
+
+  return applicationRecord
 }

@@ -102,6 +102,7 @@ This document defines the canonical permissions for the Codex event platform.
 | Withdraw own application | Yes, if the application is still `submitted` and the user has no active team membership in the event | Yes, if the application is `approved` and the user has no active team membership in the event | No | No | No |
 | View event application records | No | No | Yes | Yes | Yes |
 | Withdraw application | No | No | No | Yes, if the application is `submitted` or `approved`; if the participant has an active team, the withdrawal can remove that membership or dissolve the team, but it cannot dissolve a team with an active draft, submitted, or locked submission | Yes, if the application is `submitted` or `approved`; if the participant has an active team, the withdrawal can remove that membership or dissolve the team, but it cannot dissolve a team with an active draft, submitted, or locked submission |
+| Restore withdrawn application | No | No | No | Yes, if the application is `withdrawn` and the event is `registration_open`; restoration follows the normal registration outcome and does not restore team side effects | Yes, if the application is `withdrawn` and the event is `registration_open`; restoration follows the normal registration outcome and does not restore team side effects |
 | Approve application | No | No | No | Yes | Yes |
 | Reject application | No | No | No | Yes | Yes |
 

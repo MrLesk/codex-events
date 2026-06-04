@@ -8,7 +8,8 @@ import {
   filterAdminApplicationReviewGroupsByApplicant,
   hasAdminApplicationReviewApplicantApprovalSelected,
   hasAdminApplicationReviewGroupApprovalSelected,
-  searchAdminApplicationReviewGroups
+  searchAdminApplicationReviewGroups,
+  shouldShowAdminApplicationWithdrawalUndoAction
 } from '../../../../../app/domains/applications/admin-application-review'
 import type { AdminApplicationRecord } from '../../../../../app/domains/applications/admin-application-record'
 
@@ -56,6 +57,29 @@ function createApplication(options: {
 }
 
 describe('buildAdminApplicationReviewGroups', () => {
+  test('shows withdrawal undo only for withdrawn participants during registration open', () => {
+    expect(shouldShowAdminApplicationWithdrawalUndoAction(createApplication({
+      id: 'application-1',
+      displayName: 'Alice Example',
+      email: 'alice@example.com',
+      status: 'withdrawn'
+    }), 'registration_open')).toBe(true)
+
+    expect(shouldShowAdminApplicationWithdrawalUndoAction(createApplication({
+      id: 'application-2',
+      displayName: 'Bob Example',
+      email: 'bob@example.com',
+      status: 'withdrawn'
+    }), 'submission_open')).toBe(false)
+
+    expect(shouldShowAdminApplicationWithdrawalUndoAction(createApplication({
+      id: 'application-3',
+      displayName: 'Carol Example',
+      email: 'carol@example.com',
+      status: 'submitted'
+    }), 'registration_open')).toBe(false)
+  })
+
   test('groups applicants by exact teammate-hint email matches before considering names', () => {
     const applications = [
       createApplication({

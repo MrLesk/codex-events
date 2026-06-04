@@ -301,6 +301,7 @@ Rules:
 - When automatic approval reaches a configured participant approval limit, later applications remain submitted for admin review.
 - A participant can withdraw their own application while they do not have an active Hackathon team membership in that event.
 - An event admin or platform admin can manually withdraw a submitted or approved application on behalf of the participant.
+- An event admin or platform admin can restore a withdrawn application while registration is open. The restored application follows the same post-registration outcome rules as a new registration: automatic approval applies when configured and capacity is available, otherwise the application returns to submitted review.
 - Admin review uses a staged pre-approval decision (`approved` or `rejected`) that is persisted until explicitly applied.
 - Applying staged decisions updates final application outcomes and enqueues participant-facing approval or rejection emails.
 - Event admins and platform admins can apply staged approvals above the participant approval limit.
@@ -318,6 +319,7 @@ Rules:
 - Admin-managed withdrawal removes the participant from any active team in that event when the team can remain valid.
 - If admin-managed withdrawal targets the last active member of a team, or the last active admin of a team, the withdrawal dismantles that team.
 - Admin-managed withdrawal is blocked if dismantling the participant's team would affect an active draft, submitted, or locked submission.
+- Restoring a withdrawn application does not restore team membership, dissolved teams, or closed join requests created by the withdrawal.
 - Blind judging uses application information without exposing team identity.
 - When the event has current application terms, user application acceptance references the exact application terms version accepted for that event.
 - A user can submit a `UserApplication` only if the user profile satisfies the event's currently visible required profile fields.

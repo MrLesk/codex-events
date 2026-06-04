@@ -6,6 +6,7 @@ import type {
   AdminApplicationReviewPendingTeammate,
   AdminApplicationReviewView
 } from '~/domains/applications/admin-application-review'
+import type { EventRecord } from '~/domains/events/records'
 
 import {
   buildAdminApplicationReviewGroups,
@@ -15,7 +16,8 @@ import {
   filterAdminApplicationReviewGroupsByApplicant,
   hasAdminApplicationReviewApplicantApprovalSelected,
   hasAdminApplicationReviewGroupApprovalSelected,
-  searchAdminApplicationReviewGroups
+  searchAdminApplicationReviewGroups,
+  shouldShowAdminApplicationWithdrawalUndoAction
 } from '~/domains/applications/admin-application-review'
 import {
   aiKnowledgeLevelLabels,
@@ -49,6 +51,7 @@ const props = withDefaults(defineProps<{
   showAttendance?: boolean
   showAiKnowledge?: boolean
   autoApproveApplications?: boolean
+  eventState?: EventRecord['state']
 }>(), {
   isLoading: false,
   errorMessage: '',
@@ -57,7 +60,8 @@ const props = withDefaults(defineProps<{
   searchEnabled: false,
   showAttendance: false,
   showAiKnowledge: false,
-  autoApproveApplications: false
+  autoApproveApplications: false,
+  eventState: 'draft'
 })
 
 const emit = defineEmits<{
@@ -65,6 +69,7 @@ const emit = defineEmits<{
   approveTeam: [applications: AdminApplicationRecord[]]
   reject: [application: AdminApplicationRecord]
   withdraw: [application: AdminApplicationRecord]
+  undoWithdrawal: [application: AdminApplicationRecord]
   saveDecisions: []
 }>()
 
@@ -333,7 +338,7 @@ function getFailedLumaSyncParticipantMeta(application: AdminApplicationRecord) {
   }
 }
 
-function getDecisionButtonClass(tone: 'approve' | 'approve_team' | 'reject' | 'withdraw', isActive: boolean) {
+function getDecisionButtonClass(tone: 'approve' | 'approve_team' | 'reject' | 'withdraw' | 'undo', isActive: boolean) {
   const baseClass = 'inline-flex w-full items-center justify-between rounded-xl border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-45'
 
   if (isActive) {
@@ -353,6 +358,10 @@ function getDecisionButtonClass(tone: 'approve' | 'approve_team' | 'reject' | 'w
     return `${baseClass} border-warning/20 bg-transparent text-warning hover:border-warning/40 hover:bg-warning/8 dark:border-warning/25 dark:hover:border-warning/50`
   }
 
+  if (tone === 'undo') {
+    return `${baseClass} border-black/10 bg-white/60 text-highlighted hover:border-black/20 hover:bg-white dark:border-white/[0.10] dark:bg-white/[0.04] dark:hover:border-white/[0.20] dark:hover:bg-white/[0.08]`
+  }
+
   return `${baseClass} border-black/8 bg-transparent text-toned hover:border-black/20 hover:text-highlighted dark:border-white/[0.08] dark:hover:border-white/[0.18] dark:hover:text-white`
 }
 
@@ -370,8 +379,12 @@ function shouldShowWithdrawAction(application: AdminApplicationRecord) {
   return application.status === 'submitted' || application.status === 'approved'
 }
 
+function shouldShowUndoWithdrawalAction(application: AdminApplicationRecord) {
+  return shouldShowAdminApplicationWithdrawalUndoAction(application, props.eventState)
+}
+
 function shouldShowApplicationActionColumn(application: AdminApplicationRecord) {
-  return !props.readOnly && shouldShowWithdrawAction(application)
+  return !props.readOnly && (shouldShowWithdrawAction(application) || shouldShowUndoWithdrawalAction(application))
 }
 
 function formatWithdrawalTimestamp(application: AdminApplicationRecord) {
@@ -963,14 +976,14 @@ const emptyState = computed(() => {
                   class="grid gap-2 self-center xl:pl-2"
                 >
                   <AppAlert
-                    v-if="getAdminWithdrawalAvailability(applicant.application).warning"
+                    v-if="shouldShowWithdrawAction(applicant.application) && getAdminWithdrawalAvailability(applicant.application).warning"
                     color="warning"
                     variant="soft"
                     title="This withdrawal will dismantle the team"
                     :description="getAdminWithdrawalAvailability(applicant.application).warning ?? ''"
                   />
                   <p
-                    v-else-if="getAdminWithdrawalAvailability(applicant.application).reason"
+                    v-else-if="shouldShowWithdrawAction(applicant.application) && getAdminWithdrawalAvailability(applicant.application).reason"
                     class="text-xs leading-5 text-muted"
                   >
                     {{ getAdminWithdrawalAvailability(applicant.application).reason }}
@@ -1052,6 +1065,7 @@ const emptyState = computed(() => {
                   </button>
 
                   <button
+                    v-if="shouldShowWithdrawAction(applicant.application)"
                     type="button"
                     :data-testid="`admin-application-withdraw-${applicant.application.id}`"
                     :class="getDecisionButtonClass('withdraw', false)"
@@ -1067,6 +1081,27 @@ const emptyState = computed(() => {
                     <AppIcon
                       v-else
                       name="i-lucide-undo-2"
+                      class="size-4"
+                    />
+                  </button>
+
+                  <button
+                    v-if="shouldShowUndoWithdrawalAction(applicant.application)"
+                    type="button"
+                    :data-testid="`admin-application-undo-withdrawal-${applicant.application.id}`"
+                    :class="getDecisionButtonClass('undo', false)"
+                    :disabled="pendingActionKey !== null && pendingActionKey !== `undo-withdrawal:${applicant.application.id}`"
+                    @click="emit('undoWithdrawal', applicant.application)"
+                  >
+                    <span>Undo</span>
+                    <AppIcon
+                      v-if="pendingActionKey === `undo-withdrawal:${applicant.application.id}`"
+                      name="i-lucide-loader-circle"
+                      class="size-4 animate-spin"
+                    />
+                    <AppIcon
+                      v-else
+                      name="i-lucide-rotate-ccw"
                       class="size-4"
                     />
                   </button>

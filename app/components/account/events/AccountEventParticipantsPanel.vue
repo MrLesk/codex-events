@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AdminApplicationReviewView } from '~/domains/applications/admin-application-review'
 import type { AdminApplicationRecord } from '~/domains/applications/admin-application-record'
+import type { EventRecord } from '~/domains/events/records'
 
 import { LazyApplicationsAdminApplicationsReviewPanel as LazyAdminApplicationsReviewPanel } from '#components'
 import {
@@ -21,6 +22,7 @@ const props = withDefaults(defineProps<{
   showAiKnowledge?: boolean
   participantsLimit?: number | null
   autoApproveApplications?: boolean
+  eventState?: EventRecord['state']
 }>(), {
   isLoading: false,
   errorMessage: '',
@@ -29,7 +31,8 @@ const props = withDefaults(defineProps<{
   showAttendance: false,
   showAiKnowledge: false,
   participantsLimit: null,
-  autoApproveApplications: false
+  autoApproveApplications: false,
+  eventState: 'draft'
 })
 
 const emit = defineEmits<{
@@ -37,6 +40,7 @@ const emit = defineEmits<{
   approveTeam: [applications: AdminApplicationRecord[]]
   reject: [application: AdminApplicationRecord]
   withdraw: [application: AdminApplicationRecord]
+  undoWithdrawal: [application: AdminApplicationRecord]
   saveDecisions: []
 }>()
 
@@ -245,10 +249,12 @@ function selectParticipantView(nextView: AdminApplicationReviewView) {
       :show-attendance="showAttendance"
       :show-ai-knowledge="showAiKnowledge"
       :auto-approve-applications="autoApproveApplications"
+      :event-state="eventState"
       @approve="emit('approve', $event)"
       @approve-team="emit('approveTeam', $event)"
       @reject="emit('reject', $event)"
       @withdraw="emit('withdraw', $event)"
+      @undo-withdrawal="emit('undoWithdrawal', $event)"
       @save-decisions="emit('saveDecisions')"
     />
   </div>

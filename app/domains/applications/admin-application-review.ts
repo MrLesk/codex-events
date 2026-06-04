@@ -1,6 +1,7 @@
 import Fuse from 'fuse.js'
 
 import type { AdminApplicationRecord } from '~/domains/applications/admin-application-record'
+import type { EventRecord } from '~/domains/events/records'
 import type { ParticipantAiKnowledgeLevel, ParticipantRegistrationDetails } from './participant-application'
 
 import { parseParticipantRegistrationDetailsJson } from './participant-application'
@@ -37,6 +38,13 @@ export interface AdminApplicationReviewGroup {
 
 export function canApproveAdminApplicationReviewGroup(group: AdminApplicationReviewGroup) {
   return group.applicants.length > 1 || group.pendingTeammates.length > 0
+}
+
+export function shouldShowAdminApplicationWithdrawalUndoAction(
+  application: Pick<AdminApplicationRecord, 'status'>,
+  eventState: EventRecord['state']
+) {
+  return eventState === 'registration_open' && application.status === 'withdrawn'
 }
 
 export function hasAdminApplicationReviewGroupApprovalSelected(group: AdminApplicationReviewGroup) {

@@ -253,6 +253,7 @@ Behavior:
 - When Luma sync is enabled for the event, withdrawal also triggers Luma guest removal for this participant.
 - Admin-managed withdrawal can also remove the participant from an active team, or dismantle the participant's team, when team invariants require that outcome.
 - Admin-managed withdrawal is blocked when dismantling the participant's team would affect an active draft, submitted, or locked submission.
+- Event admins and platform admins can restore the application while registration is open. Restoration does not restore team membership, dissolved teams, or closed join requests.
 - The user cannot create a team.
 - The user cannot join a team.
 - The application record remains stored for auditability, event-terms acceptance history when present, and operational history.
@@ -273,6 +274,12 @@ Behavior:
   Actor: participant, event admin, or platform admin.
   Guard: participant self-withdraw requires no active team membership in the event.
   Guard: admin-managed withdrawal can remove an active team membership or dismantle the team when doing so does not affect an active draft, submitted, or locked submission.
+- `withdrawn -> submitted`
+  Actor: event admin or platform admin.
+  Guard: the event is in `registration_open`, automatic approval is disabled or the participant approval limit has already been reached.
+- `withdrawn -> approved`
+  Actor: event admin or platform admin.
+  Guard: the event is in `registration_open`, automatic approval is enabled, and approved participation is below the participant approval limit when one exists.
 
 ## Team Join Request
 

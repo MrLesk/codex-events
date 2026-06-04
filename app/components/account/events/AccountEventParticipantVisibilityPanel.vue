@@ -52,5 +52,6 @@ const showAttendance = computed(() =>
     :show-ai-knowledge="event?.applicationAiKnowledgeVisible ?? false"
     :participants-limit="event?.participantsLimit ?? null"
     :auto-approve-applications="event?.autoApproveApplications ?? false"
+    :event-state="event?.state ?? 'draft'"
   />
 </template>

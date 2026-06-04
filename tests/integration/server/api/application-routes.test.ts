@@ -8,6 +8,7 @@ import ownApplicationHandler from '../../../../server/api/events/[eventId]/appli
 import withdrawOwnApplicationHandler from '../../../../server/api/events/[eventId]/applications/me/actions/withdraw.post'
 import approveApplicationHandler from '../../../../server/api/events/[eventId]/applications/[applicationId]/actions/approve.post'
 import adminWithdrawApplicationHandler from '../../../../server/api/events/[eventId]/applications/[applicationId]/actions/withdraw.post'
+import undoApplicationWithdrawalHandler from '../../../../server/api/events/[eventId]/applications/[applicationId]/actions/undo-withdrawal.post'
 import applyStagedDecisionsHandler from '../../../../server/api/events/[eventId]/applications/actions/apply-staged-decisions.post'
 import rejectApplicationHandler from '../../../../server/api/events/[eventId]/applications/[applicationId]/actions/reject.post'
 import {
@@ -203,6 +204,30 @@ async function seedApplicationContext(
       })
       .where(eq(events.id, 'event_1'))
   }
+}
+
+async function insertWithdrawnApplication(
+  harness: ReturnType<typeof createApiRouteTestHarness>,
+  overrides: Partial<typeof userApplications.$inferInsert> = {}
+) {
+  await harness.database.insert(userApplications).values({
+    id: 'application_1',
+    eventId: 'event_1',
+    userId: 'regular_user',
+    status: 'withdrawn',
+    preApprovalStatus: 'approved',
+    lumaSyncStatus: 'reject_synced',
+    submittedAt: '2026-03-22T12:10:00.000Z',
+    withdrawnAt: '2026-03-23T12:00:00.000Z',
+    checkedInAt: '2026-03-22T18:00:00.000Z',
+    reviewedAt: '2026-03-22T12:20:00.000Z',
+    reviewedByUserId: 'event_admin',
+    applicationTermsDocumentId: 'terms_app_2',
+    applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+    createdAt: '2026-03-22T12:10:00.000Z',
+    updatedAt: '2026-03-23T12:00:00.000Z',
+    ...overrides
+  })
 }
 
 describe('TASK-3.6 application routes', () => {
@@ -2063,6 +2088,360 @@ describe('TASK-3.6 application routes', () => {
         })
       })
     ]))
+  })
+
+  test('POST /api/events/:eventId/applications/:applicationId/actions/undo-withdrawal restores a withdrawn application to submitted review', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/events/:eventId/applications/:applicationId/actions/undo-withdrawal',
+          handler: undoApplicationWithdrawalHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness)
+    await insertWithdrawnApplication(harness)
+
+    const response = await harness.request('/api/events/event_1/applications/application_1/actions/undo-withdrawal', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'application_1',
+        status: 'submitted',
+        preApprovalStatus: null,
+        lumaSyncStatus: null,
+        withdrawnAt: null,
+        checkedInAt: null,
+        reviewedAt: null,
+        reviewedByUserId: null
+      }
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: eq(userApplications.id, 'application_1')
+    })
+    expect(storedApplication).toMatchObject({
+      status: 'submitted',
+      preApprovalStatus: null,
+      lumaSyncStatus: null,
+      withdrawnAt: null,
+      checkedInAt: null,
+      reviewedAt: null,
+      reviewedByUserId: null
+    })
+
+    const auditRows = await harness.database.select().from(auditLogs)
+    expect(auditRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        actorUserId: 'event_admin',
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.admin_withdrawal_undone',
+        metadata: expect.objectContaining({
+          nextStatus: 'submitted'
+        })
+      })
+    ]))
+  })
+
+  test('POST /api/events/:eventId/applications/:applicationId/actions/undo-withdrawal auto-approves while capacity remains', async () => {
+    const queueProducer = createQueueProducerStub()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/events/:eventId/applications/:applicationId/actions/undo-withdrawal',
+          handler: undoApplicationWithdrawalHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
+      },
+      cloudflareEnv: {
+        APPLICATION_REVIEW_EMAIL_QUEUE: queueProducer
+      },
+      runtimeConfig: {
+        applicationReviewEmails: {
+          queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
+        }
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      autoApproveApplications: true,
+      participantsLimit: 2
+    })
+    await harness.database.insert(userApplications).values({
+      id: 'application_existing_approved',
+      eventId: 'event_1',
+      userId: 'staff_user',
+      status: 'approved',
+      submittedAt: '2026-03-22T12:00:00.000Z',
+      reviewedAt: '2026-03-22T12:00:00.000Z',
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:00:00.000Z',
+      createdAt: '2026-03-22T12:00:00.000Z',
+      updatedAt: '2026-03-22T12:00:00.000Z'
+    })
+    await insertWithdrawnApplication(harness)
+
+    const response = await harness.request('/api/events/event_1/applications/application_1/actions/undo-withdrawal', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'application_1',
+        status: 'approved',
+        preApprovalStatus: null,
+        withdrawnAt: null,
+        checkedInAt: null,
+        reviewedAt: expect.any(String),
+        reviewedByUserId: null
+      }
+    })
+
+    expect(queueProducer.send).toHaveBeenCalledTimes(1)
+    expect(queueProducer.send).toHaveBeenCalledWith(expect.objectContaining({
+      applicationId: 'application_1',
+      decision: 'approved',
+      recipientEmail: 'regular@example.com'
+    }), {
+      contentType: 'json'
+    })
+
+    const auditRows = await harness.database.select().from(auditLogs)
+    expect(auditRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        actorUserId: null,
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.approved',
+        metadata: expect.objectContaining({
+          reviewSource: 'auto_approval'
+        })
+      }),
+      expect.objectContaining({
+        actorUserId: 'event_admin',
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.admin_withdrawal_undone',
+        metadata: expect.objectContaining({
+          nextStatus: 'approved'
+        })
+      })
+    ]))
+  })
+
+  test('POST /api/events/:eventId/applications/:applicationId/actions/undo-withdrawal leaves applications submitted when auto-approval capacity is full', async () => {
+    const queueProducer = createQueueProducerStub()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/events/:eventId/applications/:applicationId/actions/undo-withdrawal',
+          handler: undoApplicationWithdrawalHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
+      },
+      cloudflareEnv: {
+        APPLICATION_REVIEW_EMAIL_QUEUE: queueProducer
+      },
+      runtimeConfig: {
+        applicationReviewEmails: {
+          queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
+        }
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      autoApproveApplications: true,
+      participantsLimit: 1
+    })
+    await harness.database.insert(userApplications).values({
+      id: 'application_existing_approved',
+      eventId: 'event_1',
+      userId: 'staff_user',
+      status: 'approved',
+      submittedAt: '2026-03-22T12:00:00.000Z',
+      reviewedAt: '2026-03-22T12:00:00.000Z',
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:00:00.000Z',
+      createdAt: '2026-03-22T12:00:00.000Z',
+      updatedAt: '2026-03-22T12:00:00.000Z'
+    })
+    await insertWithdrawnApplication(harness)
+
+    const response = await harness.request('/api/events/event_1/applications/application_1/actions/undo-withdrawal', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'application_1',
+        status: 'submitted',
+        reviewedAt: null,
+        reviewedByUserId: null
+      }
+    })
+    expect(queueProducer.send).toHaveBeenCalledTimes(0)
+  })
+
+  test('POST /api/events/:eventId/applications/:applicationId/actions/undo-withdrawal enqueues standard Luma approval sync after auto-approval', async () => {
+    const reviewEmailQueueProducer = createQueueProducerStub()
+    const lumaQueueProducer = createQueueProducerStub()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/events/:eventId/applications/:applicationId/actions/undo-withdrawal',
+          handler: undoApplicationWithdrawalHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
+      },
+      cloudflareEnv: {
+        APPLICATION_REVIEW_EMAIL_QUEUE: reviewEmailQueueProducer,
+        APPLICATION_LUMA_SYNC_QUEUE: lumaQueueProducer
+      },
+      runtimeConfig: {
+        applicationReviewEmails: {
+          queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
+        },
+        luma: {
+          queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE'
+        }
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      autoApproveApplications: true,
+      requireLumaEmail: true,
+      lumaEventUrl: 'https://luma.com/codex',
+      lumaEventApiId: 'evt-123'
+    })
+    await insertWithdrawnApplication(harness)
+
+    const response = await harness.request('/api/events/event_1/applications/application_1/actions/undo-withdrawal', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'application_1',
+        status: 'approved',
+        lumaSyncStatus: 'not_synced'
+      }
+    })
+
+    expect(reviewEmailQueueProducer.send).toHaveBeenCalledTimes(1)
+    expect(lumaQueueProducer.send).toHaveBeenCalledTimes(1)
+    expect(lumaQueueProducer.send).toHaveBeenCalledWith(expect.objectContaining({
+      applicationId: 'application_1',
+      decision: 'approved'
+    }), {
+      contentType: 'json'
+    })
+  })
+
+  test('POST /api/events/:eventId/applications/:applicationId/actions/undo-withdrawal requires event admin access', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/events/:eventId/applications/:applicationId/actions/undo-withdrawal',
+          handler: undoApplicationWithdrawalHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|staff',
+        email: 'staff@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness)
+    await insertWithdrawnApplication(harness)
+
+    const response = await harness.request('/api/events/event_1/applications/application_1/actions/undo-withdrawal', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'event_admin_required'
+      }
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: eq(userApplications.id, 'application_1')
+    })
+    expect(storedApplication).toMatchObject({
+      status: 'withdrawn',
+      withdrawnAt: '2026-03-23T12:00:00.000Z'
+    })
+  })
+
+  test('POST /api/events/:eventId/applications/:applicationId/actions/undo-withdrawal is blocked after registration closes', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/events/:eventId/applications/:applicationId/actions/undo-withdrawal',
+          handler: undoApplicationWithdrawalHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness)
+    await harness.database
+      .update(events)
+      .set({
+        state: 'submission_open'
+      })
+      .where(eq(events.id, 'event_1'))
+    await insertWithdrawnApplication(harness)
+
+    const response = await harness.request('/api/events/event_1/applications/application_1/actions/undo-withdrawal', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'event_state_invalid'
+      }
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: eq(userApplications.id, 'application_1')
+    })
+    expect(storedApplication).toMatchObject({
+      status: 'withdrawn',
+      withdrawnAt: '2026-03-23T12:00:00.000Z'
+    })
   })
 
   test('admin application routes list, stage decisions, and apply them with audit logging', async () => {

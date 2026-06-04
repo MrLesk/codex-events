@@ -1925,6 +1925,22 @@ async function withdrawApplication(application: AdminApplicationRecord) {
   )
 }
 
+async function undoApplicationWithdrawal(application: AdminApplicationRecord) {
+  await runMutation(
+    `undo-withdrawal:${application.id}`,
+    async () => await $fetch<StageApplicationResponse>(
+      `/api/events/${application.eventId}/applications/${application.id}/actions/undo-withdrawal`,
+      {
+        method: 'POST'
+      }
+    ),
+    {
+      title: 'Withdrawal undone',
+      description: 'The participant has re-entered the registration flow.'
+    }
+  )
+}
+
 async function approveApplicationGroup(applicationsToApprove: AdminApplicationRecord[]) {
   const submittedApplications = applicationsToApprove.filter(application => application.status === 'submitted')
   const shouldClearApproval = submittedApplications.length > 0
@@ -2285,10 +2301,12 @@ async function runLifecycleAction() {
           :show-ai-knowledge="currentEvent.applicationAiKnowledgeVisible"
           :participants-limit="currentEvent.participantsLimit ?? null"
           :auto-approve-applications="currentEvent.autoApproveApplications"
+          :event-state="currentEvent.state"
           @approve="approveApplication"
           @approve-team="approveApplicationGroup"
           @reject="rejectApplication"
           @withdraw="withdrawApplication"
+          @undo-withdrawal="undoApplicationWithdrawal"
           @save-decisions="applyStagedApplicationDecisions"
         />
       </section>
