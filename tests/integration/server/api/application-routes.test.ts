@@ -65,6 +65,7 @@ async function seedApplicationContext(
     lumaEventApiId?: string | null
     lumaApiKey?: string | null
     inPersonEvent?: boolean
+    participantsLimit?: number | null
     autoApproveApplications?: boolean
     currentApplicationTerms?: boolean
   }
@@ -124,6 +125,7 @@ async function seedApplicationContext(
     submissionClosesAt: fixtureSubmissionClosesAt,
     state: 'registration_open',
     maxTeamMembers: 5,
+    participantsLimit: options?.participantsLimit ?? null,
     autoApproveApplications: options?.autoApproveApplications ?? false,
     inPersonEvent: options?.inPersonEvent ?? false,
     applicationChatgptEmailVisible: options?.applicationChatgptEmailVisible ?? Boolean(options?.requireChatgptEmail),
@@ -588,6 +590,134 @@ describe('TASK-3.6 application routes', () => {
         })
       })
     ]))
+  })
+
+  test('POST /api/events/:eventId/applications auto-approves while the participant limit still has capacity', async () => {
+    const queueProducer = createQueueProducerStub()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      },
+      cloudflareEnv: {
+        APPLICATION_REVIEW_EMAIL_QUEUE: queueProducer
+      },
+      runtimeConfig: {
+        applicationReviewEmails: {
+          queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
+        }
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      autoApproveApplications: true,
+      participantsLimit: 2
+    })
+    await harness.database.insert(userApplications).values({
+      id: 'application_existing_approved',
+      eventId: 'event_1',
+      userId: 'staff_user',
+      status: 'approved',
+      submittedAt: '2026-03-22T12:00:00.000Z',
+      reviewedAt: '2026-03-22T12:00:00.000Z',
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:00:00.000Z',
+      createdAt: '2026-03-22T12:00:00.000Z',
+      updatedAt: '2026-03-22T12:00:00.000Z'
+    })
+
+    const response = await harness.request('/api/events/event_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        userId: 'regular_user',
+        status: 'approved',
+        preApprovalStatus: null,
+        reviewedAt: expect.any(String),
+        reviewedByUserId: null
+      }
+    })
+
+    expect(queueProducer.send).toHaveBeenCalledTimes(1)
+  })
+
+  test('POST /api/events/:eventId/applications leaves applicants submitted after auto approval reaches the participant limit', async () => {
+    const queueProducer = createQueueProducerStub()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      },
+      cloudflareEnv: {
+        APPLICATION_REVIEW_EMAIL_QUEUE: queueProducer
+      },
+      runtimeConfig: {
+        applicationReviewEmails: {
+          queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
+        }
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      autoApproveApplications: true,
+      participantsLimit: 1
+    })
+    await harness.database.insert(userApplications).values({
+      id: 'application_existing_approved',
+      eventId: 'event_1',
+      userId: 'staff_user',
+      status: 'approved',
+      submittedAt: '2026-03-22T12:00:00.000Z',
+      reviewedAt: '2026-03-22T12:00:00.000Z',
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:00:00.000Z',
+      createdAt: '2026-03-22T12:00:00.000Z',
+      updatedAt: '2026-03-22T12:00:00.000Z'
+    })
+
+    const response = await harness.request('/api/events/event_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        userId: 'regular_user',
+        status: 'submitted',
+        preApprovalStatus: null,
+        reviewedAt: null,
+        reviewedByUserId: null
+      }
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: and(
+        eq(userApplications.eventId, 'event_1'),
+        eq(userApplications.userId, 'regular_user')
+      )
+    })
+
+    expect(storedApplication).toMatchObject({
+      status: 'submitted',
+      reviewedAt: null,
+      reviewedByUserId: null
+    })
+    expect(queueProducer.send).toHaveBeenCalledTimes(0)
   })
 
   test('POST /api/events/:eventId/applications requires in-person attendance commitment when configured', async () => {
@@ -2062,6 +2192,97 @@ describe('TASK-3.6 application routes', () => {
     }), {
       contentType: 'json'
     })
+  })
+
+  test('admin application routes can manually approve above the participant limit', async () => {
+    const queueProducer = createQueueProducerStub()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/events/:eventId/applications/:applicationId/actions/approve',
+          handler: approveApplicationHandler
+        },
+        {
+          method: 'post',
+          path: '/api/events/:eventId/applications/actions/apply-staged-decisions',
+          handler: applyStagedDecisionsHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
+      },
+      cloudflareEnv: {
+        APPLICATION_REVIEW_EMAIL_QUEUE: queueProducer
+      },
+      runtimeConfig: {
+        applicationReviewEmails: {
+          queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
+        }
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      autoApproveApplications: true,
+      participantsLimit: 1
+    })
+    await harness.database.insert(userApplications).values([
+      {
+        id: 'application_existing_approved',
+        eventId: 'event_1',
+        userId: 'staff_user',
+        status: 'approved',
+        submittedAt: '2026-03-22T12:00:00.000Z',
+        reviewedAt: '2026-03-22T12:00:00.000Z',
+        applicationTermsDocumentId: 'terms_app_2',
+        applicationTermsAcceptedAt: '2026-03-22T12:00:00.000Z',
+        createdAt: '2026-03-22T12:00:00.000Z',
+        updatedAt: '2026-03-22T12:00:00.000Z'
+      },
+      {
+        id: 'application_1',
+        eventId: 'event_1',
+        userId: 'regular_user',
+        status: 'submitted',
+        submittedAt: '2026-03-22T12:10:00.000Z',
+        applicationTermsDocumentId: 'terms_app_2',
+        applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+        createdAt: '2026-03-22T12:10:00.000Z',
+        updatedAt: '2026-03-22T12:10:00.000Z'
+      }
+    ])
+
+    const approveResponse = await harness.request('/api/events/event_1/applications/application_1/actions/approve', {
+      method: 'POST'
+    })
+    expect(approveResponse.status).toBe(200)
+    expect(await approveResponse.json()).toMatchObject({
+      data: {
+        id: 'application_1',
+        status: 'submitted',
+        preApprovalStatus: 'approved'
+      }
+    })
+
+    const applyResponse = await harness.request('/api/events/event_1/applications/actions/apply-staged-decisions', {
+      method: 'POST'
+    })
+    expect(applyResponse.status).toBe(200)
+    expect(await applyResponse.json()).toMatchObject({
+      data: {
+        appliedCount: 1,
+        approvedCount: 1,
+        rejectedCount: 0,
+        applications: [
+          expect.objectContaining({
+            id: 'application_1',
+            status: 'approved'
+          })
+        ]
+      }
+    })
+    expect(queueProducer.send).toHaveBeenCalledTimes(1)
   })
 
   test('staff can list applications but cannot stage review decisions', async () => {

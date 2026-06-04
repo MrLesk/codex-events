@@ -91,8 +91,8 @@ Key characteristics:
 - An event street address is visible only in account-scoped event workspace views for approved participants, judges, staff, event admins, and platform admins.
 - Each event has its own registration window.
 - Each event has a registration flow that can be activated manually within its configured registration window.
-- Each event can optionally define a participant approval limit used as an indicative planning target during admin review.
-- Each event can approve new participant applications automatically after required submission checks pass.
+- Each event can optionally define a participant approval limit used as an indicative planning target during admin review and as the capacity boundary for automatic approval.
+- Each event can approve new participant applications automatically after required submission checks pass while approved participation is below the participant approval limit when one is configured.
 - Each event can optionally reference a restricted Discord server URL.
 - Each event has a fixed application field configuration. First name and family name are always visible and required. Event admins can mark X, LinkedIn, GitHub, ChatGPT email, OpenAI org ID, `why this event`, proof-of-execution links, participation mode, and AI Knowledge as visible or hidden.
 - When Luma Sync is enabled for an event, Luma email is visible and required during registration so the platform can match Codex participants with Luma guests.
@@ -297,11 +297,13 @@ Rules:
 - A user can have at most one application per event.
 - The public registration route is an application-entry flow only. Once a user has an application for an event, ongoing status and participation workflow continue in the account-scoped event workspace rather than in the public registration route.
 - Application approval is handled by event admins.
-- When an event auto-approves applications, new applications are approved immediately after all required submission checks pass.
+- When an event auto-approves applications, new applications are approved immediately after all required submission checks pass while approved participation is below the participant approval limit when one is configured.
+- When automatic approval reaches a configured participant approval limit, later applications remain submitted for admin review.
 - A participant can withdraw their own application while they do not have an active Hackathon team membership in that event.
 - An event admin or platform admin can manually withdraw a submitted or approved application on behalf of the participant.
 - Admin review uses a staged pre-approval decision (`approved` or `rejected`) that is persisted until explicitly applied.
 - Applying staged decisions updates final application outcomes and enqueues participant-facing approval or rejection emails.
+- Event admins and platform admins can apply staged approvals above the participant approval limit.
 - Auto-approved applications enqueue the same participant-facing approval email as manually approved applications.
 - If the event shows and requires a Luma email and has configured Luma sync, application submission verifies that the participant's saved Luma email is registered as a guest on that Luma event.
 - If the event auto-approves applications and shows and requires a Luma email with configured Luma sync, application submission also enqueues a Luma approval sync.

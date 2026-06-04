@@ -198,8 +198,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `active_pitch_presentation_submission_id` stores the submission currently enabled to present during the live `pitch` stage, or null when the lineup has not started or is already complete.
 - `pitch_presentations_completed_at` records when the full live pitch lineup was completed and gates the transition into `pitch_review`.
 - `final_ranking_submission_ids_json` stores the full saved shortlist order when `shortlist` is used and is later updated by any explicit final-ranking reorder recorded during `final_deliberation`.
-- `participants_limit` is an indicative planning target surfaced in admin approval workflows and does not enforce approval writes by itself.
-- `auto_approve_applications` controls whether newly submitted applications are approved immediately after required submission checks pass. It defaults to false and does not affect already submitted applications when changed.
+- `participants_limit` is an indicative planning target surfaced in admin approval workflows and does not enforce staged or applied admin approval writes by itself. When auto approval is enabled, it is also the capacity boundary for automatic approval.
+- `auto_approve_applications` controls whether newly submitted applications are approved immediately after required submission checks pass while approved participation is below `participants_limit` when one is configured. It defaults to false and does not affect already submitted applications when changed.
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.
 - Application field visibility columns control whether each optional application field appears on the participant application form. First name and family name are always visible and required.
 - `require_x_profile`, `require_linkedin_profile`, `require_github_profile`, `require_chatgpt_email`, `require_openai_org_id`, `require_luma_profile`, `require_why_this_event`, `require_proof_of_execution`, `require_team_intent`, and `require_ai_knowledge` control whether the corresponding visible field is required.

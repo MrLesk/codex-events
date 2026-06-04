@@ -1,3 +1,5 @@
+import { and, eq, sql } from 'drizzle-orm'
+
 import { requirePlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
 import { userApplications } from '#server/database/schema'
@@ -80,18 +82,16 @@ export default defineApiHandler(async (h3Event) => {
   const submittedAt = new Date().toISOString()
   const applicationId = crypto.randomUUID()
   const lumaSyncStatus = getInitialApplicationLumaSyncStatus(event)
-  const status = event.autoApproveApplications ? 'approved' : 'submitted'
-  const reviewedAt = event.autoApproveApplications ? submittedAt : null
 
   await database.insert(userApplications).values({
     id: applicationId,
     eventId,
     userId: actor.platformUser.id,
-    status,
+    status: 'submitted',
     preApprovalStatus: null,
     lumaSyncStatus,
     submittedAt,
-    reviewedAt,
+    reviewedAt: null,
     reviewedByUserId: null,
     applicationTermsDocumentId: currentTermsDocument?.id ?? null,
     applicationTermsAcceptedAt: currentTermsDocument ? submittedAt : null,
@@ -100,26 +100,51 @@ export default defineApiHandler(async (h3Event) => {
     updatedAt: submittedAt
   })
 
-  const applicationRecord: typeof userApplications.$inferSelect = {
-    id: applicationId,
-    eventId,
-    userId: actor.platformUser.id,
-    status,
-    preApprovalStatus: null,
-    lumaSyncStatus,
-    submittedAt,
-    withdrawnAt: null,
-    checkedInAt: null,
-    reviewedAt,
-    reviewedByUserId: null,
-    applicationTermsDocumentId: currentTermsDocument?.id ?? null,
-    applicationTermsAcceptedAt: currentTermsDocument ? submittedAt : null,
-    registrationDetailsJson,
-    createdAt: submittedAt,
-    updatedAt: submittedAt
+  if (event.autoApproveApplications) {
+    const autoApprovalWhere = event.participantsLimit === null
+      ? and(
+          eq(userApplications.id, applicationId),
+          eq(userApplications.status, 'submitted')
+        )
+      : and(
+          eq(userApplications.id, applicationId),
+          eq(userApplications.status, 'submitted'),
+          sql`(
+            select count(*)
+            from ${userApplications}
+            where ${userApplications.eventId} = ${eventId}
+              and ${userApplications.status} = 'approved'
+          ) < ${event.participantsLimit}`
+        )
+
+    await database
+      .update(userApplications)
+      .set({
+        status: 'approved',
+        reviewedAt: submittedAt,
+        reviewedByUserId: null,
+        updatedAt: submittedAt
+      })
+      .where(autoApprovalWhere)
   }
 
-  if (event.autoApproveApplications) {
+  const applicationRecord = await database.query.userApplications.findFirst({
+    where: eq(userApplications.id, applicationId)
+  })
+
+  if (!applicationRecord) {
+    throw new ApiError({
+      statusCode: 500,
+      code: 'user_application_creation_failed',
+      message: 'The application could not be created.',
+      details: {
+        eventId,
+        userId: actor.platformUser.id
+      }
+    })
+  }
+
+  if (applicationRecord.status === 'approved') {
     const finalizedReview = await finalizeUserApplicationReview({
       h3Event,
       database,
