@@ -16,7 +16,6 @@ import {
   updateEventBodySchema
 } from '#server/domains/events'
 import { reconcileEventLumaWebhook } from '#server/domains/events/luma-webhook-registration'
-import { enqueueMissingEventApplicationLumaSyncMessages } from '#server/domains/applications/luma-sync-queue'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 import { eq } from 'drizzle-orm'
@@ -64,29 +63,19 @@ export default defineApiHandler(async (h3Event) => {
     where: eq(events.id, eventId)
   })
 
-  let configuredEvent = updatedEvent
-
   if (shouldReconcileLuma) {
-    const lumaReconciliation = await reconcileEventLumaWebhook({
+    await reconcileEventLumaWebhook({
       database,
       event: updatedEvent!,
       runtimeConfig: useRuntimeConfig(h3Event)
     })
-
-    configuredEvent = await database.query.events.findFirst({
-      where: eq(events.id, eventId)
-    })
-
-    if (lumaReconciliation.status === 'configured' && configuredEvent) {
-      await enqueueMissingEventApplicationLumaSyncMessages({
-        h3Event,
-        database,
-        event: configuredEvent,
-        actorUserId: actor.platformUser.id
-      })
-    }
   }
 
+  const configuredEvent = shouldReconcileLuma
+    ? await database.query.events.findFirst({
+        where: eq(events.id, eventId)
+      })
+    : updatedEvent
   const [updatedTracks, imageOptions] = await Promise.all([
     listEventTracks(database, eventId),
     getEventDisplayImageOptions(database)
