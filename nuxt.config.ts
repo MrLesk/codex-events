@@ -1,6 +1,18 @@
+import { mkdirSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import tailwindcss from '@tailwindcss/vite'
+
+const nuxtTemporaryDirectory = process.platform === 'win32'
+  ? join(tmpdir(), 'codex-events-nuxt')
+  : '/tmp/codex-events-nuxt'
+
+mkdirSync(nuxtTemporaryDirectory, { recursive: true })
+process.env.TMPDIR = nuxtTemporaryDirectory
+process.env.TMP = nuxtTemporaryDirectory
+process.env.TEMP = nuxtTemporaryDirectory
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
