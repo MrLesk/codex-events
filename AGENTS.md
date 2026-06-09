@@ -184,6 +184,12 @@ current source of truth and flag the mismatch.
   explicitly asks not to.
 - Do not create feature branches or PRs unless the user explicitly asks for
   them.
+- When creating a GitHub Release, do not manually update `package.json` or
+  create a local version-bump commit first. The production release workflow
+  derives the package version from the published release tag, writes
+  `package.json`, and commits that version sync back to `main` automatically.
+  Check `.github/workflows/deploy-production.yml` before changing release
+  automation behavior.
 - Separate product concepts from storage details when possible.
 - Record unresolved product questions explicitly instead of implying false
   certainty.
