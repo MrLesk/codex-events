@@ -1,4 +1,5 @@
 import type { EventState } from '~/domains/events/states'
+import { resolveEventCertificateDateIso } from '#shared/domains/events/certificates'
 
 export type PublicEventState = EventState
 export type PublicEventType = 'hackathon' | 'meetup' | 'build'
@@ -450,21 +451,7 @@ export function describeEventWindowNote(start: string, end: string, now = new Da
 export function getEventEarliestStartAt(
   event: Pick<PublicEvent, 'agendaItems' | 'submissionOpensAt'>
 ) {
-  let earliestAgendaStartAt: string | null = null
-  let earliestAgendaTimestamp = Number.POSITIVE_INFINITY
-
-  for (const item of event.agendaItems) {
-    const startsAtTimestamp = Date.parse(item.startsAt)
-
-    if (Number.isNaN(startsAtTimestamp) || startsAtTimestamp >= earliestAgendaTimestamp) {
-      continue
-    }
-
-    earliestAgendaTimestamp = startsAtTimestamp
-    earliestAgendaStartAt = item.startsAt
-  }
-
-  return earliestAgendaStartAt ?? event.submissionOpensAt
+  return resolveEventCertificateDateIso(event.agendaItems, event.submissionOpensAt)
 }
 
 export function shouldShowAgendaDayContext(

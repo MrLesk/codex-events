@@ -15,6 +15,7 @@ import type {
   EventParticipationPayload,
   EventParticipationRecord
 } from '~/domains/events/participation'
+import { buildEventCertificatePath } from '#shared/domains/events/certificates'
 import type {
   EventCreditApiListResponse,
   ParticipantEventCreditOffer
@@ -289,6 +290,15 @@ const workspaceBackLink = computed(() => getAccountEventWorkspaceBackLink({
 const applicationStatus = computed(() =>
   participationRecord.value?.application?.status ?? accessRecord.value?.applicationStatus ?? null
 )
+const participantCertificatePath = computed(() => {
+  const application = participationRecord.value?.application
+
+  if (actor.value.kind !== 'platform_user' || application?.status !== 'approved' || !application.checkedInAt) {
+    return null
+  }
+
+  return buildEventCertificatePath(slug.value, actor.value.platformUser.id)
+})
 const canClaimCredits = computed(() => applicationStatus.value === 'approved')
 const hasCreditInventory = computed(() =>
   participantCreditOffers.value.some(offer => offer.totalCount > 0)
@@ -684,6 +694,7 @@ function updateParticipationRecordApplication(nextApplication: ParticipantApplic
             submittedAt: nextApplication.submittedAt,
             withdrawnAt: nextApplication.withdrawnAt,
             reviewedAt: nextApplication.reviewedAt,
+            checkedInAt: nextApplication.checkedInAt,
             updatedAt: nextApplication.updatedAt
           }
         }
@@ -877,6 +888,33 @@ useSeoMeta({
           :team-name="participantRankTeamName"
           :rank-summary="participationRank"
         />
+
+        <section
+          v-if="participantCertificatePath"
+          data-testid="account-event-certificate-panel"
+          class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="space-y-1">
+              <h2 class="text-lg font-semibold text-highlighted dark:text-white">
+                Your participation certificate
+              </h2>
+              <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                You checked in at this event. View, share, or download your certificate.
+              </p>
+            </div>
+
+            <AppButton
+              :to="participantCertificatePath"
+              color="neutral"
+              variant="solid"
+              trailing-icon="i-lucide-arrow-up-right"
+              class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+            >
+              View certificate
+            </AppButton>
+          </div>
+        </section>
 
         <EventOverviewPanel :description="event.description" />
 

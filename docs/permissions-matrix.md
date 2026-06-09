@@ -240,6 +240,7 @@ Event credit permissions apply to every event type.
 - Approved participants can view event photo galleries for events where they are approved.
 - Judges, staff, event admins, and platform admins can manage event photo galleries for events where they hold that access.
 - Public event detail pages expose a Gallery tab only when the event has one or more gallery photos marked public.
+- Participation certificates at `/events/:slug/:userId` are publicly viewable for approved, checked-in participants with active accounts, including the participant's name, the event, the certificate date, and the Hackathon submission track when one applies. Image and PDF downloads are offered only to authenticated sessions.
 - The public event feedback route is unlinked and available only after the event reaches `completed`.
 - Participants can see shortlist status only for their own team, and only from `pitch` onward when that team advanced.
 - Winner-project visibility and opt-in published-project visibility are delayed until `completed`; before completion, public and account detail pages keep the `Prizes` surface and participant overview or workspace views do not expose completed project showcase snippets.

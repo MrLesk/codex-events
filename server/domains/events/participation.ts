@@ -92,6 +92,7 @@ function serializeApplicationSummary(application: ApplicationRecord) {
     submittedAt: application.submittedAt,
     withdrawnAt: application.withdrawnAt,
     reviewedAt: application.reviewedAt,
+    checkedInAt: application.checkedInAt,
     updatedAt: application.updatedAt
   }
 }

@@ -22,6 +22,7 @@ export interface EventParticipationApplicationSummary {
   submittedAt: string
   withdrawnAt: string | null
   reviewedAt: string | null
+  checkedInAt: string | null
   updatedAt: string
 }
 

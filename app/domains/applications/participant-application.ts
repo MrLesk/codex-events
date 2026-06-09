@@ -82,6 +82,7 @@ export interface ParticipantApplicationRecord {
   status: 'submitted' | 'approved' | 'rejected' | 'withdrawn'
   submittedAt: string
   withdrawnAt: string | null
+  checkedInAt: string | null
   reviewedAt: string | null
   reviewedByUserId: string | null
   applicationTermsDocumentId: string | null

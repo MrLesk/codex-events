@@ -347,6 +347,20 @@ Rules:
 - A `UserApplication` can record `checkedInAt` when a valid signed Luma guest check-in update confirms the approved participant attended the event.
 - Luma attendance sync is sticky in this version. Once `checkedInAt` is recorded, later Luma uncheck changes do not clear it.
 
+### Participation Certificate
+
+A public, shareable record that an approved participant attended an event.
+
+Key characteristics:
+
+- A participation certificate exists for every approved user application with a recorded `checkedInAt` on a publicly visible event whose participant account is active.
+- The certificate is derived state computed from the event, user, application, and Hackathon submission records. It is not stored as a separate entity.
+- The certificate names the participant using the canonical first and family name, with the display name used while canonical name fields are empty.
+- The certificate date is the earliest agenda item start when the event has agenda items, otherwise the submission window start, formatted in UTC.
+- A Hackathon certificate names the track of the participant team's `submitted` or `locked` submission when that submission has a track. Meetup and Build certificates never name a track.
+- The certificate ID is derived from the event type, city, certificate date, and participant name, with the user application identifier as the fallback for names without usable characters.
+- The certificate page at `/events/:slug/:userId`, its JSON read, and its social-preview image are public. PDF and image downloads are offered on the page only to authenticated sessions, and the PDF read requires one.
+
 ### Team
 
 A team within a single Hackathon event. Solo participation is modeled as a one-member team.
