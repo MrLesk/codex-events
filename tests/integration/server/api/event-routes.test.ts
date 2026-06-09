@@ -3385,6 +3385,19 @@ describe('TASK-3.5 event CRUD routes', () => {
         slug: 'organizer-event',
         description: 'Organizer-owned event',
         agendaItems: [],
+        tracks: [{
+          id: 'track_build_agents',
+          name: 'Agents',
+          description: 'Build with agents.',
+          resources: [{
+            id: 'resource_agent_guide',
+            title: 'Starter guide',
+            url: 'https://example.com/agents',
+            description: 'Read before the event.',
+            displayOrder: 1
+          }],
+          displayOrder: 1
+        }],
         city: 'Vienna',
         country: 'Austria',
         address: 'Address',
@@ -3400,6 +3413,16 @@ describe('TASK-3.5 event CRUD routes', () => {
       data: {
         eventType: 'build',
         slug: 'organizer-event',
+        tracks: [{
+          id: 'track_build_agents',
+          name: 'Agents',
+          resources: [{
+            id: 'resource_agent_guide',
+            title: 'Starter guide',
+            url: 'https://example.com/agents',
+            description: 'Read before the event.'
+          }]
+        }],
         createdByUserId: 'event_organizer'
       }
     })
@@ -3410,6 +3433,19 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect(createdEvent).toMatchObject({
       eventType: 'build',
       createdByUserId: 'event_organizer'
+    })
+    const createdTrack = await harness.database.query.eventTracks.findFirst({
+      where: eq(eventTracks.eventId, createdEvent!.id)
+    })
+    expect(createdTrack).toMatchObject({
+      id: 'track_build_agents',
+      resourcesJson: JSON.stringify([{
+        id: 'resource_agent_guide',
+        title: 'Starter guide',
+        url: 'https://example.com/agents',
+        description: 'Read before the event.',
+        displayOrder: 1
+      }])
     })
 
     const assignments = await harness.database.query.eventRoleAssignments.findMany({

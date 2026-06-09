@@ -28,6 +28,7 @@ async function createEvent(form: EventFormState) {
   submitError.value = ''
   isSubmitting.value = true
   const isHackathon = form.eventType === 'hackathon'
+  const supportsTracks = isHackathon || form.eventType === 'build'
 
   try {
     const response = await $fetch<ApiDataResponse<EventRecord>>('/api/events', {
@@ -42,7 +43,7 @@ async function createEvent(form: EventFormState) {
         lumaApiKey: form.lumaApiKey.trim() || null,
         description: form.description,
         agendaItems: toEventAgendaPayload(form.agendaItems),
-        tracks: isHackathon ? toEventTracksPayload(form.tracks) : [],
+        tracks: supportsTracks ? toEventTracksPayload(form.tracks) : [],
         city: form.city,
         country: form.country,
         address: form.address,

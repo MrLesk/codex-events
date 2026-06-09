@@ -106,6 +106,13 @@ describe('event config form schema', () => {
           id: 'track-1',
           name: 'Best AI Agent',
           description: 'Projects focused on autonomous workflows.',
+          resources: [{
+            id: 'resource-1',
+            title: 'Starter guide',
+            url: 'https://example.com/guide',
+            description: 'Read before choosing this track.',
+            displayOrder: 1
+          }],
           displayOrder: 1
         }
       ]
@@ -123,6 +130,7 @@ describe('event config form schema', () => {
           id: 'track-1',
           name: '',
           description: '',
+          resources: [],
           displayOrder: 1
         }
       ],
@@ -277,6 +285,7 @@ describe('event config form schema', () => {
           id: 'track-1',
           name: 'Track',
           description: 'Track description',
+          resources: [],
           displayOrder: 1
         }
       ],
@@ -311,6 +320,46 @@ describe('event config form schema', () => {
     expect(patch).not.toHaveProperty('requireSubmissionDemoUrl')
   })
 
+  test('includes build event tracks with resources in configuration patches', () => {
+    const patch = buildEventConfigurationPatch({
+      ...createValidEventFormState(),
+      eventType: 'build',
+      tracks: [
+        {
+          id: 'track-1',
+          name: 'Agents',
+          description: 'Build with agents.',
+          resources: [{
+            id: 'resource-1',
+            title: 'Starter guide',
+            url: 'https://example.com/guide',
+            description: 'Read before the event.',
+            displayOrder: 1
+          }],
+          displayOrder: 1
+        }
+      ]
+    }, 'build')
+
+    expect(patch).toMatchObject({
+      tracks: [{
+        id: 'track-1',
+        name: 'Agents',
+        description: 'Build with agents.',
+        resources: [{
+          id: 'resource-1',
+          title: 'Starter guide',
+          url: 'https://example.com/guide',
+          description: 'Read before the event.',
+          displayOrder: 1
+        }],
+        displayOrder: 1
+      }]
+    })
+    expect(patch).not.toHaveProperty('submissionOpensAt')
+    expect(patch).not.toHaveProperty('maxTeamMembers')
+  })
+
   test('rejects invalid hackathon tracks', () => {
     const result = eventConfigFormSchema.safeParse({
       ...createValidEventFormState(),
@@ -319,6 +368,7 @@ describe('event config form schema', () => {
           id: 'track-1',
           name: '',
           description: 'Projects focused on autonomous workflows.',
+          resources: [],
           displayOrder: 1
         }
       ]

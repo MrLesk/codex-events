@@ -23,11 +23,20 @@ export interface EventAgendaItem {
   displayOrder: number
 }
 
+export interface EventTrackResource {
+  id: string
+  title: string
+  url: string
+  description: string | null
+  displayOrder: number
+}
+
 export interface EventTrack {
   id: string
   eventId: string
   name: string
   description: string
+  resources: EventTrackResource[]
   displayOrder: number
   createdAt: string
 }

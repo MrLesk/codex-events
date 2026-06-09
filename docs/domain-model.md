@@ -102,11 +102,12 @@ Key characteristics:
 - Each event can optionally reference event-specific application terms.
 - A configured Discord server URL is visible only in the account-scoped event workspace for approved participants, judges, staff, event admins, and platform admins.
 - Each event can define credit offers with uploaded redeemable values for approved participants.
+- Hackathon and Build events can define ordered tracks with a participant-facing name, description, and resource links.
 
 Hackathon-only characteristics:
 
 - A Hackathon has its own submission window and submission flow.
-- A Hackathon can define ordered submission tracks with a name and description.
+- A Hackathon uses tracks as submission categories.
 - A Hackathon has a judging flow that is activated manually.
 - A Hackathon must enable at least one judging stage.
 - A Hackathon can require `0`, `1`, or `2` blind reviews per submitted project.
@@ -123,19 +124,24 @@ Meetup and Build rules:
 - Meetups and Builds use only `draft`, `registration_open`, and `completed`.
 - Meetups and Builds can approve, reject, and withdraw applications through the shared `UserApplication` model.
 - Approved applications represent participation directly.
+- Build tracks organize participant-visible resource links and do not create submission, judging, or outcome workflows.
 - Meetups and Builds do not create teams, submissions, judging assignments, prizes, winner records, or completed competition outcomes.
 - Competition-only APIs and UI surfaces are unavailable for Meetups and Builds.
 
 ### EventTrack
 
-An ordered submission category belonging to one Hackathon event.
+An ordered participant-facing category belonging to one Hackathon or Build event.
 
 Rules:
 
-- Each track belongs to exactly one Hackathon event.
+- Each track belongs to exactly one Hackathon or Build event.
 - A track has a name and a description.
+- A track can include zero or more resources.
+- Each track resource has a title, an `http` or `https` link, and an optional description.
 - Tracks are ordered for admin editing and public display.
 - Tracks are visible on the public and account-scoped event detail pages when configured.
+- Hackathon tracks are available as submission choices.
+- Build tracks are resource groups for participants.
 - Tracks do not change judging assignment, scoring criteria, or blind-review behavior in this version.
 - A track cannot be deleted once one or more submissions reference it.
 

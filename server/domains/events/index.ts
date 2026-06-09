@@ -65,6 +65,15 @@ const nullableLumaEventApiIdSchema = z.string()
   .optional()
 const nullableLumaApiKeySchema = z.string().trim().min(1).nullable().optional()
 const nullableTrimmedStringSchema = z.string().trim().min(1).nullable().optional()
+const httpUrlSchema = z.string().url()
+  .refine((value) => {
+    try {
+      const parsed = new URL(value)
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+    } catch {
+      return false
+    }
+  }, 'Expected an http or https URL.')
 
 const roleEnumSchema = z.enum(eventRoleTypes)
 const eventTypeEnumSchema = z.enum(eventTypes)
@@ -140,10 +149,47 @@ const agendaItemsSchema = z.array(agendaItemSchema)
 const storedSubmissionIdsSchema = z.array(z.string().trim().min(1))
   .default([])
 
+const trackResourceSchema = z.object({
+  id: z.string().trim().min(1),
+  title: z.string().trim().min(1),
+  url: httpUrlSchema,
+  description: nullableTrimmedStringSchema.default(null),
+  displayOrder: z.coerce.number().int().min(0)
+})
+
+const trackResourcesSchema = z.array(trackResourceSchema)
+  .superRefine((resources, ctx) => {
+    const ids = new Set<string>()
+    const displayOrders = new Set<number>()
+
+    resources.forEach((resource, index) => {
+      if (ids.has(resource.id)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Track resource IDs must be unique.',
+          path: [index, 'id']
+        })
+      } else {
+        ids.add(resource.id)
+      }
+
+      if (displayOrders.has(resource.displayOrder)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Track resource display order values must be unique.',
+          path: [index, 'displayOrder']
+        })
+      } else {
+        displayOrders.add(resource.displayOrder)
+      }
+    })
+  })
+
 const trackSchema = z.object({
   id: z.string().trim().min(1),
   name: z.string().trim().min(1),
   description: z.string().trim().min(1),
+  resources: trackResourcesSchema.default([]),
   displayOrder: z.coerce.number().int().min(0)
 })
 
@@ -534,6 +580,7 @@ type PrizeRecord = typeof prizes.$inferSelect
 type UserRecord = typeof users.$inferSelect
 export type EventAgendaItem = z.infer<typeof agendaItemSchema>
 export type EventTrackInput = z.infer<typeof trackSchema>
+export type EventTrackResourceInput = z.infer<typeof trackResourceSchema>
 export type EventType = typeof eventTypes[number]
 export type EventLumaWebhookStatus = (typeof eventLumaWebhookStatuses)[number]
 
@@ -624,6 +671,19 @@ function compareEventTracks(
     || left.id.localeCompare(right.id)
 }
 
+function compareEventTrackResources(
+  left: EventTrackResourceInput,
+  right: EventTrackResourceInput
+) {
+  return left.displayOrder - right.displayOrder
+    || left.title.localeCompare(right.title)
+    || left.id.localeCompare(right.id)
+}
+
+function eventTypeSupportsTracks(eventType: EventType) {
+  return eventType === 'hackathon' || eventType === 'build'
+}
+
 export async function listEventTracks(database: AppDatabase, eventId: string) {
   const tracks = await database.query.eventTracks.findMany({
     where: eq(eventTracks.eventId, eventId),
@@ -633,12 +693,29 @@ export async function listEventTracks(database: AppDatabase, eventId: string) {
   return tracks.sort(compareEventTracks)
 }
 
+export function parseEventTrackResources(value: string | null | undefined) {
+  if (!value) {
+    return []
+  }
+
+  try {
+    return trackResourcesSchema.parse(JSON.parse(value)).sort(compareEventTrackResources)
+  } catch {
+    return []
+  }
+}
+
+export function serializeEventTrackResources(resources: EventTrackResourceInput[]) {
+  return JSON.stringify([...resources].sort(compareEventTrackResources))
+}
+
 export function serializeEventTrack(track: EventTrackRecord) {
   return {
     id: track.id,
     eventId: track.eventId,
     name: track.name,
     description: track.description,
+    resources: parseEventTrackResources(track.resourcesJson),
     displayOrder: track.displayOrder,
     createdAt: track.createdAt
   }
@@ -648,6 +725,12 @@ export function serializePublicEventTrack(track: EventTrackRecord) {
   return {
     name: track.name,
     description: track.description,
+    resources: parseEventTrackResources(track.resourcesJson).map(resource => ({
+      title: resource.title,
+      url: resource.url,
+      description: resource.description,
+      displayOrder: resource.displayOrder
+    })),
     displayOrder: track.displayOrder
   }
 }
@@ -671,6 +754,7 @@ export async function createEventTracks(
         eventId,
         name: track.name,
         description: track.description,
+        resourcesJson: serializeEventTrackResources(track.resources),
         displayOrder: track.displayOrder,
         createdAt
       }))
@@ -778,6 +862,7 @@ export async function replaceEventTracks(
         .set({
           name: track.name,
           description: track.description,
+          resourcesJson: serializeEventTrackResources(track.resources),
           displayOrder: track.displayOrder
         })
         .where(eq(eventTracks.id, track.id))
@@ -789,6 +874,7 @@ export async function replaceEventTracks(
       eventId,
       name: track.name,
       description: track.description,
+      resourcesJson: serializeEventTrackResources(track.resources),
       displayOrder: track.displayOrder,
       createdAt: new Date().toISOString()
     })
@@ -967,7 +1053,6 @@ export function buildEventUpdatePayload(
   patch: z.infer<typeof updateEventBodySchema>
 ) {
   const hackathonOnlyPatchFields = [
-    'tracks',
     'submissionOpensAt',
     'submissionClosesAt',
     'maxTeamMembers',
@@ -980,17 +1065,18 @@ export function buildEventUpdatePayload(
     'requireSubmissionRepositoryUrl',
     'requireSubmissionDemoUrl'
   ] as const
-  const unsupportedHackathonOnlyFields = existingEvent.eventType === 'hackathon'
+  const supportsTracks = eventTypeSupportsTracks(existingEvent.eventType)
+  const unsupportedTrackFields = supportsTracks || patch.tracks === undefined || patch.tracks.length === 0
     ? []
-    : hackathonOnlyPatchFields.filter(field => field === 'tracks' && patch.tracks !== undefined && patch.tracks.length > 0)
+    : ['tracks']
 
-  assertGuard(unsupportedHackathonOnlyFields.length === 0, {
+  assertGuard(unsupportedTrackFields.length === 0, {
     code: 'hackathon_event_required',
-    message: 'Competition configuration is available only for hackathon events.',
+    message: 'Track configuration is available only for hackathon and build events.',
     details: {
       eventId: existingEvent.id,
       eventType: existingEvent.eventType,
-      fields: unsupportedHackathonOnlyFields
+      fields: unsupportedTrackFields
     },
     statusCode: 403
   })
@@ -1588,7 +1674,7 @@ export function serializeEvent(
     updatedAt: event.updatedAt,
     ...(tracks
       ? {
-          tracks: isCompetitionEvent ? tracks.map(serializeEventTrack) : []
+          tracks: eventTypeSupportsTracks(event.eventType) ? tracks.map(serializeEventTrack) : []
         }
       : {}),
     ...(currentTerms
@@ -1690,7 +1776,7 @@ export function serializePublicEvent(
     requireSubmissionDemoUrl: event.requireSubmissionDemoUrl,
     ...(tracks
       ? {
-          tracks: tracks.map(serializePublicEventTrack)
+          tracks: eventTypeSupportsTracks(event.eventType) ? tracks.map(serializePublicEventTrack) : []
         }
       : {}),
     ...(currentTerms

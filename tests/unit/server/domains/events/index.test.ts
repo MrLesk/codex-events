@@ -503,15 +503,38 @@ describe('event management utilities', () => {
 
   test('rejects competition configuration patches on registration-only events', () => {
     expect(() => buildEventUpdatePayload(buildEventRecord({
+      eventType: 'meetup'
+    }), {
+      tracks: [{
+        id: 'track_1',
+        name: 'Track',
+        description: 'Track description',
+        resources: [],
+        displayOrder: 1
+      }]
+    })).toThrowError(ApiError)
+  })
+
+  test('accepts track configuration patches on build events', () => {
+    const patch = buildEventUpdatePayload(buildEventRecord({
       eventType: 'build'
     }), {
       tracks: [{
         id: 'track_1',
         name: 'Track',
         description: 'Track description',
+        resources: [{
+          id: 'resource_1',
+          title: 'Starter guide',
+          url: 'https://example.com/guide',
+          description: null,
+          displayOrder: 1
+        }],
         displayOrder: 1
       }]
-    })).toThrowError(ApiError)
+    })
+
+    expect(patch).not.toHaveProperty('tracks')
   })
 
   test('allows common application requirement patches on registration-only events', () => {
@@ -618,9 +641,54 @@ describe('event management utilities', () => {
         id: 'track_1',
         name: 'Track',
         description: 'Track description',
+        resources: [],
         displayOrder: 1
       }]
     })).toThrowError(ApiError)
+  })
+
+  test('serializes track resources in internal and public event responses', () => {
+    const tracks = [{
+      id: 'track_1',
+      eventId: 'event_1',
+      name: 'Agents',
+      description: 'Build with agents.',
+      resourcesJson: JSON.stringify([{
+        id: 'resource_1',
+        title: 'Starter guide',
+        url: 'https://example.com/guide',
+        description: 'Read this before the event.',
+        displayOrder: 1
+      }]),
+      displayOrder: 1,
+      createdAt: '2026-03-20T10:00:00.000Z'
+    }]
+
+    expect(serializeEvent(buildEventRecord(), undefined, tracks)).toMatchObject({
+      tracks: [{
+        id: 'track_1',
+        resources: [{
+          id: 'resource_1',
+          title: 'Starter guide',
+          url: 'https://example.com/guide',
+          description: 'Read this before the event.',
+          displayOrder: 1
+        }]
+      }]
+    })
+    expect(serializePublicEvent(buildEventRecord({
+      eventType: 'build'
+    }), undefined, tracks)).toMatchObject({
+      tracks: [{
+        name: 'Agents',
+        resources: [{
+          title: 'Starter guide',
+          url: 'https://example.com/guide',
+          description: 'Read this before the event.',
+          displayOrder: 1
+        }]
+      }]
+    })
   })
 
   test('serializes configurable judging fields for internal event responses', () => {

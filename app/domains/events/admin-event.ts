@@ -72,6 +72,15 @@ export interface EventFormTrack {
   id: string
   name: string
   description: string
+  resources: EventFormTrackResource[]
+  displayOrder: number
+}
+
+export interface EventFormTrackResource {
+  id: string
+  title: string
+  url: string
+  description: string
   displayOrder: number
 }
 
@@ -228,10 +237,36 @@ const agendaItemsFormSchema = z.array(agendaItemSchema).superRefine((items, cont
   })
 })
 
+const trackResourceSchema = z.object({
+  id: z.string().trim().min(1),
+  title: z.string().trim().min(1, 'Enter a resource title.'),
+  url: z.string().trim().min(1, 'Enter a resource URL.').refine(isHttpUrl, 'Enter a valid resource URL.'),
+  description: z.string(),
+  displayOrder: z.number().int().min(0)
+})
+
+const trackResourcesFormSchema = z.array(trackResourceSchema).superRefine((resources, context) => {
+  const ids = new Set<string>()
+
+  resources.forEach((resource, index) => {
+    if (!ids.has(resource.id)) {
+      ids.add(resource.id)
+      return
+    }
+
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: [index, 'id'],
+      message: 'Track resource IDs must be unique.'
+    })
+  })
+})
+
 const trackSchema = z.object({
   id: z.string().trim().min(1),
   name: z.string().trim().min(1, 'Enter a track name.'),
   description: z.string().trim().min(1, 'Enter a track description.'),
+  resources: trackResourcesFormSchema.default([]),
   displayOrder: z.number().int().min(0)
 })
 
@@ -263,9 +298,11 @@ function normalizeEventConfigFormInput(candidate: unknown) {
     return candidate
   }
 
+  const supportsTracks = input.eventType === 'build'
+
   return {
     ...input,
-    tracks: [],
+    tracks: supportsTracks ? input.tracks : [],
     submissionOpensAt: '',
     submissionClosesAt: '',
     maxTeamMembers: 1,
@@ -620,6 +657,15 @@ export function createEventFormState(event: EventRecord): EventFormState {
         id: track.id,
         name: track.name,
         description: track.description,
+        resources: [...track.resources]
+          .sort((left, right) => left.displayOrder - right.displayOrder || left.title.localeCompare(right.title))
+          .map(resource => ({
+            id: resource.id,
+            title: resource.title,
+            url: resource.url,
+            description: resource.description ?? '',
+            displayOrder: resource.displayOrder
+          })),
         displayOrder: track.displayOrder
       })),
     backgroundImageUrl: event.backgroundImageUrl ?? '',
@@ -668,6 +714,7 @@ export function createEventFormState(event: EventRecord): EventFormState {
 
 export function buildEventConfigurationPatch(configForm: EventFormState, eventType: EventType) {
   const isHackathon = eventType === 'hackathon'
+  const supportsTracks = isHackathon || eventType === 'build'
 
   return {
     name: configForm.name,
@@ -706,9 +753,13 @@ export function buildEventConfigurationPatch(configForm: EventFormState, eventTy
     requireProofOfExecution: configForm.requireProofOfExecution,
     requireTeamIntent: configForm.requireTeamIntent,
     requireAiKnowledge: configForm.requireAiKnowledge,
+    ...(supportsTracks
+      ? {
+          tracks: toEventTracksPayload(configForm.tracks)
+        }
+      : {}),
     ...(isHackathon
       ? {
-          tracks: toEventTracksPayload(configForm.tracks),
           submissionOpensAt: fromDateTimeLocalValue(configForm.submissionOpensAt),
           submissionClosesAt: fromDateTimeLocalValue(configForm.submissionClosesAt),
           maxTeamMembers: configForm.maxTeamMembers,
@@ -744,6 +795,15 @@ export function toEventTracksPayload(items: EventFormTrack[]) {
       id: track.id,
       name: track.name.trim(),
       description: track.description.trim(),
+      resources: track.resources
+        .map(resource => ({
+          id: resource.id,
+          title: resource.title.trim(),
+          url: resource.url.trim(),
+          description: resource.description.trim() || null,
+          displayOrder: resource.displayOrder
+        }))
+        .sort((left, right) => left.displayOrder - right.displayOrder || left.id.localeCompare(right.id)),
       displayOrder: track.displayOrder
     }))
     .sort((left, right) => left.displayOrder - right.displayOrder || left.id.localeCompare(right.id))

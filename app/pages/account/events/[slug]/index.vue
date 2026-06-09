@@ -141,6 +141,12 @@ type AccountWorkspaceEvent = Omit<PublicEvent, 'tracks'> & {
     id: string
     name: string
     description: string
+    resources: Array<{
+      title: string
+      url: string
+      description: string | null
+      displayOrder: number
+    }>
     displayOrder: number
   }>
 }
@@ -1116,7 +1122,7 @@ useSeoMeta({
         />
 
         <LazyEventTracksPanel
-          v-if="isCompetitionEvent"
+          :event-type="event.eventType"
           :tracks="event.tracks ?? []"
         />
 

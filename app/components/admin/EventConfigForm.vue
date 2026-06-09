@@ -72,8 +72,9 @@ const showAgendaItemsSection = computed(() => formModeView.value.showAgendaItems
 const showProgramIdentitySection = computed(() => formModeView.value.showProgramIdentitySection)
 const showProgramSettingsSections = computed(() => formModeView.value.showProgramSettingsSections)
 const isHackathon = computed(() => form.value.eventType === 'hackathon')
+const isBuildEvent = computed(() => form.value.eventType === 'build')
 const showEventTypeField = computed(() => formMode.value === 'full' && showBasicInformationFields.value)
-const showTracksSection = computed(() => formMode.value !== 'details' && isHackathon.value)
+const showTracksSection = computed(() => formMode.value !== 'details' && (isHackathon.value || isBuildEvent.value))
 const showInlineDetailsActions = computed(() => formMode.value === 'details')
 const isSettingsMode = computed(() => formMode.value === 'settings')
 const isLumaApiKeyRevealed = ref(false)
@@ -119,6 +120,10 @@ const lumaWebhookStatusDotClass = computed(() => {
       return 'bg-zinc-400'
   }
 })
+const trackSectionDescription = computed(() => isHackathon.value
+  ? 'Add the submission tracks participants can choose from. Add resource links when a track needs supporting material.'
+  : 'Add build tracks and resource links participants can use before or during the event.'
+)
 const showLumaRetryButton = computed(() =>
   Boolean(
     props.lumaWebhookUrl
@@ -225,12 +230,24 @@ function createTrackId() {
   return `track-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
 }
 
+function createTrackResourceId() {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID()
+  }
+
+  return `resource-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
+}
+
 function nextAgendaDisplayOrder() {
   return form.value.agendaItems.length + 1
 }
 
 function nextTrackDisplayOrder() {
   return form.value.tracks.length + 1
+}
+
+function nextTrackResourceDisplayOrder(track: TrackFormItem) {
+  return track.resources.length + 1
 }
 
 function applyAgendaOrderFromList(items: AgendaFormItem[]) {
@@ -243,6 +260,13 @@ function applyAgendaOrderFromList(items: AgendaFormItem[]) {
 function applyTrackOrderFromList(items: TrackFormItem[]) {
   form.value.tracks = items.map((item, index) => ({
     ...item,
+    displayOrder: index + 1
+  }))
+}
+
+function applyTrackResourceOrderFromList(track: TrackFormItem, resources: TrackFormItem['resources']) {
+  track.resources = resources.map((resource, index) => ({
+    ...resource,
     displayOrder: index + 1
   }))
 }
@@ -273,7 +297,18 @@ function addTrack() {
     id: createTrackId(),
     name: '',
     description: '',
+    resources: [],
     displayOrder: nextTrackDisplayOrder()
+  })
+}
+
+function addTrackResource(track: TrackFormItem) {
+  track.resources.push({
+    id: createTrackResourceId(),
+    title: '',
+    url: '',
+    description: '',
+    displayOrder: nextTrackResourceDisplayOrder(track)
   })
 }
 
@@ -283,6 +318,10 @@ function removeAgendaItem(itemId: string) {
 
 function removeTrack(trackId: string) {
   applyTrackOrderFromList(form.value.tracks.filter(track => track.id !== trackId))
+}
+
+function removeTrackResource(track: TrackFormItem, resourceId: string) {
+  applyTrackResourceOrderFromList(track, track.resources.filter(resource => resource.id !== resourceId))
 }
 
 function moveAgendaItem(itemId: string, direction: -1 | 1) {
@@ -315,6 +354,22 @@ function moveTrack(trackId: string, direction: -1 | 1) {
   }
 
   applyTrackOrderFromList(moveListItemByIndex(form.value.tracks, currentIndex, nextIndex))
+}
+
+function moveTrackResource(track: TrackFormItem, resourceId: string, direction: -1 | 1) {
+  const currentIndex = track.resources.findIndex(resource => resource.id === resourceId)
+
+  if (currentIndex < 0) {
+    return
+  }
+
+  const nextIndex = currentIndex + direction
+
+  if (nextIndex < 0 || nextIndex >= track.resources.length) {
+    return
+  }
+
+  applyTrackResourceOrderFromList(track, moveListItemByIndex(track.resources, currentIndex, nextIndex))
 }
 
 function destroyAgendaSortable() {
@@ -807,7 +862,7 @@ const submitConfigForm = handleSubmit(() => {
                 Tracks
               </h3>
               <p class="text-sm text-muted">
-                Add the submission tracks participants can choose from. Judges will also see the selected track in blind review.
+                {{ trackSectionDescription }}
               </p>
             </div>
 
@@ -887,9 +942,131 @@ const submitConfigForm = handleSubmit(() => {
                       <AppTextarea
                         v-model="track.description"
                         rows="1"
-                        placeholder="Describe what kinds of submissions belong in this track."
+                        placeholder="Describe what belongs in this track."
                       />
                     </label>
+
+                    <div class="grid gap-3 border-t border-black/8 pt-3 dark:border-white/[0.08]">
+                      <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div class="min-w-0">
+                          <p class="text-xs font-medium text-toned">
+                            Resources
+                          </p>
+                          <p class="mt-1 text-xs text-muted">
+                            Add links participants should have for this track.
+                          </p>
+                        </div>
+
+                        <AppButton
+                          type="button"
+                          color="neutral"
+                          variant="soft"
+                          size="xs"
+                          @click="addTrackResource(track)"
+                        >
+                          <AppIcon
+                            name="i-lucide-plus"
+                            class="size-3.5"
+                          />
+                          Add resource
+                        </AppButton>
+                      </div>
+
+                      <p
+                        v-if="track.resources.length === 0"
+                        class="text-xs text-muted"
+                      >
+                        No resources yet.
+                      </p>
+
+                      <div
+                        v-else
+                        class="divide-y divide-black/8 dark:divide-white/[0.08]"
+                      >
+                        <div
+                          v-for="(resource, resourceIndex) in track.resources"
+                          :key="resource.id"
+                          class="grid gap-3 py-3 first:pt-0 last:pb-0"
+                        >
+                          <div class="flex flex-wrap items-center justify-between gap-2">
+                            <span class="text-xs font-medium text-muted">
+                              Resource {{ resourceIndex + 1 }}
+                            </span>
+
+                            <div class="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                                :aria-label="`Move ${resource.title || `resource ${resourceIndex + 1}`} up`"
+                                :disabled="resourceIndex === 0"
+                                @click="moveTrackResource(track, resource.id, -1)"
+                              >
+                                <AppIcon
+                                  name="i-lucide-arrow-up"
+                                  class="size-3.5"
+                                />
+                              </button>
+
+                              <button
+                                type="button"
+                                class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                                :aria-label="`Move ${resource.title || `resource ${resourceIndex + 1}`} down`"
+                                :disabled="resourceIndex === track.resources.length - 1"
+                                @click="moveTrackResource(track, resource.id, 1)"
+                              >
+                                <AppIcon
+                                  name="i-lucide-arrow-down"
+                                  class="size-3.5"
+                                />
+                              </button>
+
+                              <button
+                                type="button"
+                                class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-red-400/50 hover:text-red-600 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-red-400/40 dark:hover:text-red-300"
+                                :aria-label="`Delete ${resource.title || `resource ${resourceIndex + 1}`}`"
+                                @click="removeTrackResource(track, resource.id)"
+                              >
+                                <AppIcon
+                                  name="i-lucide-trash-2"
+                                  class="size-3.5"
+                                />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                            <label class="grid gap-2">
+                              <span class="text-xs font-medium text-toned">Title</span>
+                              <AppInput
+                                v-model="resource.title"
+                                type="text"
+                                placeholder="Starter guide"
+                                required
+                              />
+                            </label>
+
+                            <label class="grid gap-2">
+                              <span class="text-xs font-medium text-toned">Link</span>
+                              <AppInput
+                                v-model="resource.url"
+                                type="url"
+                                placeholder="https://example.com/guide"
+                                required
+                              />
+                            </label>
+                          </div>
+
+                          <label class="grid gap-2">
+                            <span class="text-xs font-medium text-toned">Description</span>
+                            <AppTextarea
+                              v-model="resource.description"
+                              rows="1"
+                              placeholder="Optional note about when to use this resource."
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <template #actions>

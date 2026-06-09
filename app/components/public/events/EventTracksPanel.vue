@@ -1,13 +1,24 @@
 <script setup lang="ts">
-import type { PublicEventTrack } from '~/domains/events/presentation'
+import type { PublicEventTrack, PublicEventType } from '~/domains/events/presentation'
 
 const props = defineProps<{
+  eventType: PublicEventType
   tracks: PublicEventTrack[]
 }>()
 
 const sortedTracks = computed(() =>
   [...props.tracks].sort((left, right) => left.displayOrder - right.displayOrder || left.name.localeCompare(right.name))
 )
+const hasResources = computed(() => sortedTracks.value.some(track => track.resources.length > 0))
+const panelDescription = computed(() => {
+  if (props.eventType === 'hackathon') {
+    return hasResources.value
+      ? 'Participants choose one track for their project. Use the resource links to prepare.'
+      : 'Participants choose one track when they submit their project.'
+  }
+
+  return 'Use these track resources to prepare for the event.'
+})
 </script>
 
 <template>
@@ -37,7 +48,7 @@ const sortedTracks = computed(() =>
           Tracks
         </h2>
         <p class="mt-1 text-[14px] text-neutral-500 dark:text-[#A3A3A3]">
-          Participants choose one track when they submit their project.
+          {{ panelDescription }}
         </p>
       </div>
     </div>
@@ -68,6 +79,46 @@ const sortedTracks = computed(() =>
             <p class="max-w-[62ch] text-[14px] leading-relaxed text-neutral-500 dark:text-[#A3A3A3]">
               {{ track.description }}
             </p>
+
+            <div
+              v-if="track.resources.length > 0"
+              class="mt-4 flex flex-wrap gap-2"
+            >
+              <a
+                v-for="resource in track.resources"
+                :key="`${track.displayOrder}-${resource.displayOrder}-${resource.title}`"
+                :href="resource.url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex max-w-full items-center gap-2 rounded-lg border border-black/8 bg-white/78 px-3 py-2 text-[13px] font-medium text-highlighted transition hover:border-sky-500/40 hover:text-sky-700 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-white dark:hover:border-sky-300/35 dark:hover:text-sky-200"
+              >
+                <AppIcon
+                  name="i-lucide-link"
+                  class="size-3.5 shrink-0 text-sky-700 dark:text-sky-300"
+                />
+                <span class="min-w-0 truncate">
+                  {{ resource.title }}
+                </span>
+                <AppIcon
+                  name="i-lucide-external-link"
+                  class="size-3 shrink-0 text-neutral-500 dark:text-[#A3A3A3]"
+                />
+              </a>
+            </div>
+
+            <div
+              v-if="track.resources.some(resource => resource.description)"
+              class="mt-3 grid gap-2"
+            >
+              <p
+                v-for="resource in track.resources.filter(item => item.description)"
+                :key="`${track.displayOrder}-${resource.displayOrder}-description`"
+                class="text-[13px] leading-relaxed text-neutral-500 dark:text-[#A3A3A3]"
+              >
+                <span class="font-medium text-toned">{{ resource.title }}:</span>
+                {{ resource.description }}
+              </p>
+            </div>
           </div>
         </div>
       </article>

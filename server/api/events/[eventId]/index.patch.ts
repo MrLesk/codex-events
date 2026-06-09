@@ -32,7 +32,7 @@ export default defineApiHandler(async (h3Event) => {
     await assertEventSlugAvailable(database, body.slug, event.id)
   }
 
-  const replacementTracks = event.eventType === 'hackathon' ? body.tracks : undefined
+  const replacementTracks = event.eventType === 'hackathon' || event.eventType === 'build' ? body.tracks : undefined
 
   if (replacementTracks !== undefined) {
     await assertEventTrackReplacementAllowed(database, eventId, replacementTracks)

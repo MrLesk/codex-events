@@ -463,7 +463,7 @@ useSeoMeta({
         />
 
         <EventTracksPanel
-          v-if="isCompetitionEvent"
+          :event-type="event.eventType"
           :tracks="event.tracks ?? []"
         />
 

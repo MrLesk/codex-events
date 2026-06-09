@@ -36,6 +36,7 @@ export default defineApiHandler(async (h3Event) => {
   const eventId = crypto.randomUUID()
   const createdAt = new Date().toISOString()
   const isHackathon = body.eventType === 'hackathon'
+  const supportsTracks = isHackathon || body.eventType === 'build'
   const submissionOpensAt = isHackathon ? body.submissionOpensAt! : body.registrationClosesAt
   const submissionClosesAt = isHackathon
     ? body.submissionClosesAt!
@@ -104,7 +105,7 @@ export default defineApiHandler(async (h3Event) => {
     creatorUserId: actor.platformUser.id,
     createdAt
   })
-  await createEventTracks(database, eventId, isHackathon ? body.tracks : [])
+  await createEventTracks(database, eventId, supportsTracks ? body.tracks : [])
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,

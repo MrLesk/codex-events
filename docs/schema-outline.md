@@ -227,6 +227,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `event_id`
 - `name`
 - `description`
+- `resources_json`
 - `display_order`
 - `created_at`
 
@@ -239,6 +240,9 @@ It describes the intended persistent model at the level of entities, key fields,
 - Each track belongs to one event.
 - Tracks are ordered for admin editing and public display.
 - A track stores a participant-facing name and description.
+- `resources_json` stores a validated ordered JSON array of track resources (`id`, `title`, `url`, optional `description`, `displayOrder`).
+- Hackathon and Build events can define tracks. Meetup events do not use tracks.
+- Hackathon tracks are submission choices. Build tracks are participant-visible resource groups.
 - Tracks do not control judge assignment in this version.
 - Track deletion is blocked once submissions reference it.
 

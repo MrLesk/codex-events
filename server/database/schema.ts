@@ -234,6 +234,7 @@ export const eventTracks = sqliteTable(
       .references(() => events.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     description: text('description').notNull(),
+    resourcesJson: text('resources_json').notNull().default('[]'),
     displayOrder: integer('display_order').notNull(),
     createdAt: createdAtColumn()
   },

@@ -136,6 +136,7 @@ describe('shared schema foundation', () => {
     expect(eventColumns.requireSubmissionDemoUrl.name).toBe('require_submission_demo_url')
     expect(trackColumns.eventId.name).toBe('event_id')
     expect(trackColumns.description.name).toBe('description')
+    expect(trackColumns.resourcesJson.name).toBe('resources_json')
     expect(trackColumns.displayOrder.name).toBe('display_order')
     expect(feedbackColumns.eventId.name).toBe('event_id')
     expect(feedbackColumns.foodRating.name).toBe('food_rating')
