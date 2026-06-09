@@ -32,6 +32,15 @@ interface SessionLike {
   user?: SessionUserProfile | null
 }
 
+interface Auth0UserInfoProfile {
+  sub?: unknown
+  email?: unknown
+  email_verified?: unknown
+  name?: unknown
+  nickname?: unknown
+  picture?: unknown
+}
+
 type PlatformUserRecord = typeof users.$inferSelect
 
 export interface AnonymousActor {
@@ -119,6 +128,86 @@ function readSessionUser(session: SessionLike | null | undefined): SessionUserPr
     picture: session.user.picture ?? null,
     githubProfileUrl,
     linkedAuth0Subjects
+  }
+}
+
+function buildAuth0UserInfoUrl(domain: string | null | undefined) {
+  const normalizedDomain = domain?.trim()
+
+  if (!normalizedDomain) {
+    return null
+  }
+
+  const baseUrl = normalizedDomain.startsWith('http://') || normalizedDomain.startsWith('https://')
+    ? normalizedDomain
+    : `https://${normalizedDomain}`
+
+  try {
+    return new URL('/userinfo', baseUrl).toString()
+  } catch {
+    return null
+  }
+}
+
+function readStringClaim(value: unknown, fallback: string | null | undefined) {
+  return typeof value === 'string' ? value : fallback
+}
+
+function mergeSessionUserInfo(
+  sessionUser: SessionUserProfile,
+  userInfo: Auth0UserInfoProfile
+): SessionUserProfile {
+  const userInfoSubject = typeof userInfo.sub === 'string' ? userInfo.sub.trim() : ''
+
+  if (userInfoSubject && userInfoSubject !== sessionUser.sub) {
+    return sessionUser
+  }
+
+  return {
+    ...sessionUser,
+    email: readStringClaim(userInfo.email, sessionUser.email),
+    email_verified: typeof userInfo.email_verified === 'boolean'
+      ? userInfo.email_verified
+      : sessionUser.email_verified,
+    name: readStringClaim(userInfo.name, sessionUser.name),
+    nickname: readStringClaim(userInfo.nickname, sessionUser.nickname),
+    picture: readStringClaim(userInfo.picture, sessionUser.picture)
+  }
+}
+
+async function refreshAuthenticatedIdentitySessionUser(
+  event: H3Event,
+  sessionUser: SessionUserProfile
+) {
+  if (sessionUser.email_verified === true) {
+    return sessionUser
+  }
+
+  const userInfoUrl = buildAuth0UserInfoUrl(useRuntimeConfig(event).auth0.domain)
+
+  if (!userInfoUrl) {
+    return sessionUser
+  }
+
+  try {
+    const auth0 = useAuth0(event)
+    const { accessToken } = await auth0.getAccessToken()
+    const response = await fetch(userInfoUrl, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    })
+
+    if (!response.ok) {
+      return sessionUser
+    }
+
+    return mergeSessionUserInfo(
+      sessionUser,
+      await response.json() as Auth0UserInfoProfile
+    )
+  } catch {
+    return sessionUser
   }
 }
 
@@ -222,9 +311,11 @@ export async function resolveRequestActor(event: H3Event): Promise<RequestActor>
     return await buildPlatformActor(database, sessionUser, effectivePlatformUser)
   }
 
+  const refreshedSessionUser = await refreshAuthenticatedIdentitySessionUser(event, sessionUser)
+
   return await buildAuthenticatedIdentityActor(
     database,
-    sessionUser,
+    refreshedSessionUser,
     useRuntimeConfig(event).firstPlatformAdminEmail
   )
 }

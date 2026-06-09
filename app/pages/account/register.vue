@@ -9,7 +9,7 @@ import {
   getUnverifiedIdentityEmailMessage,
   missingIdentityEmailMessage
 } from '~/domains/accounts/registration'
-import { accountDashboardHref, normalizeAuthReturnTo } from '#shared/domains/accounts/auth-navigation'
+import { accountDashboardHref, buildAuthLoginHref, normalizeAuthReturnTo } from '#shared/domains/accounts/auth-navigation'
 
 definePageMeta({
   middleware: ['require-auth']
@@ -99,6 +99,7 @@ const identityEmailVerificationMessage = computed(() =>
     ? getUnverifiedIdentityEmailMessage(actor.value.sessionUser.email.trim())
     : ''
 )
+const identityEmailVerificationCheckHref = computed(() => buildAuthLoginHref(route.fullPath))
 const accountRegistrationBlocked = computed(() =>
   identityEmailUnavailable.value || identityEmailUnverified.value
 )
@@ -259,6 +260,17 @@ useSeoMeta({
           title="Confirm your email to finish registration"
           :description="identityEmailVerificationMessage"
         />
+        <div class="flex justify-end">
+          <AppButton
+            :to="identityEmailVerificationCheckHref"
+            external
+            color="neutral"
+            variant="solid"
+            class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+          >
+            I confirmed my email
+          </AppButton>
+        </div>
       </section>
 
       <form

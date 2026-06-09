@@ -2398,6 +2398,96 @@ describe('TASK-3.5 actor-facing API routes', () => {
     }
   })
 
+  test('POST /api/account/registration accepts a stale unverified session after Auth0 userinfo reports the email as verified', async () => {
+    const sessionUser = {
+      sub: 'auth0|stale-verification-user',
+      email: 'stale-verification@example.com',
+      email_verified: false,
+      name: 'Stale Verification'
+    }
+    const getAccessToken = vi.fn(async () => ({
+      accessToken: 'userinfo-token',
+      audience: 'default',
+      expiresAt: Math.floor(Date.now() / 1000) + 300,
+      scope: 'openid profile email'
+    }))
+    const userInfoFetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      expect(String(url)).toBe('https://codex-events-test.eu.auth0.com/userinfo')
+      expect(new Headers(init?.headers).get('authorization')).toBe('Bearer userinfo-token')
+
+      return new Response(JSON.stringify({
+        sub: sessionUser.sub,
+        email: sessionUser.email,
+        email_verified: true,
+        name: sessionUser.name
+      }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json'
+        }
+      })
+    })
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler },
+        { method: 'get', path: '/api/session', handler: sessionHandler }
+      ],
+      runtimeConfig: {
+        auth0: {
+          domain: 'codex-events-test.eu.auth0.com'
+        }
+      },
+      sessionUser
+    })
+    databases.push(harness)
+    vi.stubGlobal('useAuth0', vi.fn(() => ({
+      getSession: vi.fn(async () => ({ user: sessionUser })),
+      getAccessToken
+    })))
+    vi.stubGlobal('fetch', userInfoFetch)
+
+    await seedCurrentPlatformDocuments(harness)
+
+    const sessionResponse = await harness.request('/api/session')
+
+    expect(sessionResponse.status).toBe(200)
+    expect(await sessionResponse.json()).toMatchObject({
+      data: {
+        actor: {
+          kind: 'authenticated_identity',
+          sessionUser: {
+            email: sessionUser.email,
+            email_verified: true
+          }
+        }
+      }
+    })
+
+    const registrationResponse = await harness.request('/api/account/registration', {
+      method: 'POST',
+      body: JSON.stringify({
+        privacyPolicyDocumentId: 'privacy_v1',
+        platformTermsDocumentId: 'terms_v1'
+      })
+    })
+    const createdUser = await harness.database.query.users.findFirst({
+      where: eq(users.auth0Subject, sessionUser.sub)
+    })
+
+    expect(registrationResponse.status).toBe(200)
+    expect(await registrationResponse.json()).toMatchObject({
+      data: {
+        user: {
+          email: sessionUser.email,
+          displayName: sessionUser.name
+        }
+      }
+    })
+    expect(createdUser?.email).toBe(sessionUser.email)
+    expect(getAccessToken).toHaveBeenCalled()
+    expect(userInfoFetch).toHaveBeenCalled()
+  })
+
   test('POST /api/account/registration rejects outdated or mismatched platform document ids', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
