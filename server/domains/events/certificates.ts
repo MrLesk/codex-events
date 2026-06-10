@@ -12,6 +12,7 @@ import {
 } from '#server/database/schema'
 import {
   getPublicEventBySlugOrThrow,
+  listEventTracks,
   parseEventAgendaItems
 } from '#server/domains/events'
 import {
@@ -65,6 +66,12 @@ async function resolveParticipantTeamContext(database: AppDatabase, eventId: str
   return rows[0] ?? null
 }
 
+async function resolveBuildTrackName(database: AppDatabase, eventId: string) {
+  const tracks = await listEventTracks(database, eventId)
+
+  return tracks.length === 1 ? tracks[0]?.name ?? null : null
+}
+
 export async function getEventCertificateOrThrow(
   database: AppDatabase,
   slug: string,
@@ -95,9 +102,12 @@ export async function getEventCertificateOrThrow(
     throw buildCertificateNotFoundError(slug, userId)
   }
 
-  const [teamContext, imageOptions] = await Promise.all([
+  const [teamContext, buildTrackName, imageOptions] = await Promise.all([
     event.eventType === 'hackathon'
       ? resolveParticipantTeamContext(database, event.id, userId)
+      : Promise.resolve(null),
+    event.eventType === 'build'
+      ? resolveBuildTrackName(database, event.id)
       : Promise.resolve(null),
     getEventDisplayImageOptions(database)
   ])
@@ -122,7 +132,7 @@ export async function getEventCertificateOrThrow(
     eventDateLabel: formatEventCertificateDate(eventDateIso),
     city: event.city,
     country: event.country,
-    trackName: teamContext?.trackName ?? null,
+    trackName: teamContext?.trackName ?? buildTrackName,
     teamName: showCompetitionOutcome ? teamContext?.teamName ?? null : null,
     projectName: showCompetitionOutcome ? teamContext?.projectName ?? null : null,
     placement: outcome?.finalRank ?? null,

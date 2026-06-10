@@ -45,6 +45,7 @@ async function seedCertificateContext(
     submissionStatus?: typeof submissions.$inferInsert['status'] | null
     submissionTrackId?: string | null
     participantDeletedAt?: string | null
+    buildTrackCount?: number
   }
 ) {
   await harness.database.insert(users).values([
@@ -99,6 +100,18 @@ async function seedCertificateContext(
     status: options?.applicationStatus ?? 'approved',
     checkedInAt: options?.checkedInAt === undefined ? '2026-06-20T08:05:00.000Z' : options.checkedInAt
   })
+
+  if ((options?.eventType ?? 'build') === 'build' && options?.buildTrackCount) {
+    await harness.database.insert(eventTracks).values(
+      Array.from({ length: options.buildTrackCount }, (_, index) => ({
+        id: `build_track_${index + 1}`,
+        eventId: 'event_1',
+        name: index === 0 ? 'Advanced Builders' : `Build Track ${index + 1}`,
+        description: 'Build resources',
+        displayOrder: index + 1
+      }))
+    )
+  }
 
   if (options?.eventType === 'hackathon') {
     await harness.database.insert(eventTracks).values({
@@ -210,6 +223,18 @@ describe('public certificate routes', () => {
       certificateId: 'BLD-VIE-2026-0620-MNOVAK',
       backgroundImageUrl: null
     })
+  })
+
+  test('includes the single configured Build track name', async () => {
+    const harness = createHarness()
+    await seedCertificateContext(harness, { buildTrackCount: 1 })
+
+    const response = await harness.request(certificatePath)
+
+    expect(response.status).toBe(200)
+    const payload = await response.json() as { data: { eventType: string, trackName: string | null } }
+    expect(payload.data.eventType).toBe('build')
+    expect(payload.data.trackName).toBe('Advanced Builders')
   })
 
   test('uses the display name when canonical name fields are empty', async () => {
