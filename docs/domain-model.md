@@ -364,6 +364,7 @@ Key characteristics:
 - Certificates with a top-three placement present gold, silver, or bronze trophy treatments on the certificate card and the social-preview image.
 - The certificate ID is derived from the event type, city, certificate date, and participant name, with the user application identifier as the fallback for names without usable characters.
 - The certificate page at `/events/:slug/:userId`, its JSON read, and its social-preview image are public. PDF and image downloads are offered on the page only to authenticated sessions, and the PDF read requires one.
+- The certificate page is the live verification record for the certificate. The PDF embeds a QR code that resolves back to that page, and the page exposes schema.org structured data describing the credential.
 
 ### Team
 

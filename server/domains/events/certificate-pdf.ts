@@ -1,6 +1,7 @@
 import fontkit from '@pdf-lib/fontkit'
 import type { PDFFont, PDFPage } from 'pdf-lib'
 import { PDFDocument, rgb } from 'pdf-lib'
+import qrcode from 'qrcode-generator'
 
 import { loadCertificateFonts } from '#server/domains/events/certificate-fonts'
 import type {
@@ -56,6 +57,40 @@ function fitFontSize(font: PDFFont, text: string, maxWidth: number, preferredSiz
   }
 
   return size
+}
+
+function drawVerificationQrCode(page: PDFPage, verifyUrl: string, options: { x: number, y: number, size: number }) {
+  const qr = qrcode(0, 'M')
+  qr.addData(verifyUrl)
+  qr.make()
+
+  const moduleCount = qr.getModuleCount()
+  const quietZone = 8
+  const cellSize = (options.size - quietZone * 2) / moduleCount
+
+  page.drawRectangle({
+    x: options.x,
+    y: options.y,
+    width: options.size,
+    height: options.size,
+    color: rgb(1, 1, 1)
+  })
+
+  for (let row = 0; row < moduleCount; row += 1) {
+    for (let column = 0; column < moduleCount; column += 1) {
+      if (!qr.isDark(row, column)) {
+        continue
+      }
+
+      page.drawRectangle({
+        x: options.x + quietZone + column * cellSize,
+        y: options.y + options.size - quietZone - (row + 1) * cellSize,
+        width: cellSize,
+        height: cellSize,
+        color: rgb(0.04, 0.05, 0.08)
+      })
+    }
+  }
 }
 
 function drawRightAlignedText(
@@ -184,10 +219,16 @@ export async function renderEventCertificatePdf(certificate: EventCertificate, v
   })
 
   drawRightAlignedText(page, certificate.certificateId, {
-    y: 112,
+    y: 128,
     font: semiBold,
     size: 12,
     color: palette.accent
+  })
+
+  drawVerificationQrCode(page, verifyUrl, {
+    x: pageWidth - pageMargin - 78,
+    y: 42,
+    size: 78
   })
 
   return document.save()

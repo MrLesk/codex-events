@@ -104,11 +104,45 @@ useSeoMeta({
   twitterImage: () => certificateImageUrl.value
 })
 
+const certificateStructuredData = computed(() => JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'EducationalOccupationalCredential',
+  'name': 'Certificate of Participation',
+  'credentialCategory': 'Participation',
+  'identifier': certificate.value.certificateId,
+  'url': certificateUrl.value,
+  'dateCreated': certificate.value.eventDateIso,
+  'description': certificateSummary.value,
+  'recognizedBy': {
+    '@type': 'Organization',
+    'name': 'Codex Events'
+  },
+  'about': {
+    '@type': 'Event',
+    'name': certificate.value.eventName,
+    'startDate': certificate.value.eventDateIso,
+    'location': {
+      '@type': 'Place',
+      'address': {
+        '@type': 'PostalAddress',
+        'addressLocality': certificate.value.city,
+        'addressCountry': certificate.value.country
+      }
+    }
+  }
+}).replace(/</g, '\\u003c'))
+
 useHead({
   link: [
     {
       rel: 'canonical',
       href: certificateUrl
+    }
+  ],
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: certificateStructuredData
     }
   ]
 })
@@ -352,12 +386,12 @@ useHead({
           This certificate is issued by the Codex Community Events Platform.
         </p>
         <p class="text-[13px] text-neutral-600 dark:text-white/60">
-          Verify authenticity by visiting
+          This page at
           <a
             :href="certificateUrl"
             class="font-medium text-indigo-600 transition-colors hover:text-neutral-950 dark:text-[#8b9bff] dark:hover:text-white"
           >{{ certificateHost }}</a>
-          and checking the Certificate ID.
+          is the live verification record for certificate {{ certificate.certificateId }}.
         </p>
         <p
           v-if="!isSignedIn"

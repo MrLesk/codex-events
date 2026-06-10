@@ -57,6 +57,7 @@
     "nuxt": "4.4.7",
     "pdf-lib": "1.17.1",
     "photoswipe": "^5.4.4",
+    "qrcode-generator": "1.5.0",
     "reka-ui": "^2.9.6",
     "satori": "0.15.2",
     "shadcn-nuxt": "2.7.4",
