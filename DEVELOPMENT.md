@@ -332,6 +332,8 @@ BDD source files live under `tests/bdd/`: feature files in `tests/bdd/features`,
 
 By default, local app development uses `.wrangler/state` and authenticated BDD uses `.wrangler/state-bdd`. You can override them independently with `LOCAL_DEV_D1_STATE_ROOT` and `LOCAL_BDD_D1_STATE_ROOT`. BDD does not honor a generic `LOCAL_D1_STATE_ROOT` override that points anywhere else, and it fails fast if the BDD root matches the normal local app root.
 
+The local app dev server binds to `0.0.0.0` so `http://127.0.0.1:3000`, `http://localhost:3000`, and LAN device URLs can reach the same server. Override the bind address with `NUXT_DEV_HOST` when you need loopback-only behavior.
+
 By default, the Auth0-backed BDD suite runs the local app on `http://localhost:3100`. Override that origin with `NUXT_AUTH0_BDD_APP_BASE_URL` when you need a different dedicated test port. Make sure Auth0 allows callbacks and logouts for whichever BDD origin you choose.
 
 Examples:
@@ -340,6 +342,7 @@ Examples:
 LOCAL_BDD_D1_STATE_ROOT=.wrangler/state-bdd-alt bun run test:bdd
 NUXT_AUTH0_BDD_APP_BASE_URL=http://localhost:3200 bun run test:bdd
 LOCAL_DEV_D1_STATE_ROOT=.wrangler/state-dev-alt bun run dev
+NUXT_DEV_HOST=127.0.0.1 bun run dev
 LOCAL_BDD_D1_STATE_ROOT=.wrangler/state-bdd-alt bun tests/bdd/bootstrap.ts
 ```
 

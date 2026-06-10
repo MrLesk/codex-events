@@ -20,7 +20,7 @@
     "db:migrate:test": "bun run deploy:ensure-d1:test && bun run deploy:config:test && bun tools/deploy/run-wrangler.ts d1 migrations apply DB --remote --config .wrangler/generated/test.jsonc",
     "db:migrate:production": "bun run deploy:ensure-d1:production && bun run deploy:config:production && bun tools/deploy/run-wrangler.ts d1 migrations apply DB --remote --config .wrangler/generated/production.jsonc",
     "dev": "LOCAL_D1_STATE_ROOT=${LOCAL_D1_STATE_ROOT:-${LOCAL_DEV_D1_STATE_ROOT:-.wrangler/state}} bun run dev:inner",
-    "dev:inner": "bun run db:local:guard && CI=1 wrangler d1 migrations apply DB --local --persist-to ${LOCAL_D1_STATE_ROOT} --config wrangler.jsonc && nuxt dev",
+    "dev:inner": "bun run db:local:guard && CI=1 wrangler d1 migrations apply DB --local --persist-to ${LOCAL_D1_STATE_ROOT} --config wrangler.jsonc && nuxt dev --host ${NUXT_DEV_HOST:-0.0.0.0}",
     "deploy:worker:test": "bun run deploy:ensure-d1:test && bun run deploy:ensure-r2:test && bun run deploy:config:test && bun tools/deploy/run-wrangler.ts deploy --config .wrangler/generated/test.jsonc",
     "deploy:worker:production": "bun run deploy:ensure-d1:production && bun run deploy:ensure-r2:production && bun run deploy:config:production && bun tools/deploy/run-wrangler.ts deploy --config .wrangler/generated/production.jsonc",
     "deploy:test": "bun run deploy:worker:test && bun run deploy:queue-consumers:test",
