@@ -4,7 +4,9 @@ import {
   getAccountRegistrationMissingDocumentsCopy,
   getAccountRegistrationSubmitErrorMessage,
   getAccountRegistrationIntro,
+  getIdentityEmailVerificationResendErrorMessage,
   getUnverifiedIdentityEmailMessage,
+  identityEmailVerificationResentMessage,
   missingIdentityEmailMessage
 } from '../../../../../app/domains/accounts/registration'
 import { buildAuthenticatedIdentitySessionActor } from '../../../../../app/domains/accounts/session-actor'
@@ -81,11 +83,30 @@ describe('account registration helpers', () => {
   test('returns a clear message for an unverified identity email', () => {
     expect(getUnverifiedIdentityEmailMessage('user@example.com'))
       .toBe('Thanks for signing up. Confirm user@example.com from the verification email, then return to this page to finish creating your account.')
+    expect(identityEmailVerificationResentMessage)
+      .toBe('Check your inbox for a new confirmation email, then return to this page to finish creating your account.')
 
     expect(getAccountRegistrationSubmitErrorMessage({
       code: 'identity_email_unverified',
       message: 'Verify your email address with your sign-in provider before creating a platform account.'
     })).toBe('Confirm your email address before creating your account.')
+  })
+
+  test('returns clear messages for resend-confirmation failures', () => {
+    expect(getIdentityEmailVerificationResendErrorMessage({
+      code: 'identity_email_unavailable',
+      message: 'The authenticated identity does not expose an email address required for platform account registration.'
+    })).toBe(missingIdentityEmailMessage)
+
+    expect(getIdentityEmailVerificationResendErrorMessage({
+      code: 'auth0_email_verification_failed',
+      message: 'Confirmation email cannot be sent right now.'
+    })).toBe('Confirmation email cannot be sent right now. Try again later.')
+
+    expect(getIdentityEmailVerificationResendErrorMessage({
+      code: 'unknown_error',
+      message: 'Provider unavailable.'
+    })).toBe('Provider unavailable.')
   })
 
   test('preserves identity email verification state on authenticated session actors', () => {

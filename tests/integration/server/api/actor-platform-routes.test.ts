@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 
 import accountDeleteHandler from '../../../../server/api/account.delete'
+import accountEmailVerificationPostHandler from '../../../../server/api/account/email-verification.post'
 import accountEventsGetHandler from '../../../../server/api/account/events.get'
 import accountPatchHandler from '../../../../server/api/account.patch'
 import accountProfileIconDeleteHandler from '../../../../server/api/account/profile-icon.delete'
@@ -2396,6 +2397,120 @@ describe('TASK-3.5 actor-facing API routes', () => {
       expect(await harness.database.select().from(userPlatformDocumentAcceptances)).toHaveLength(0)
       expect(await harness.database.select().from(auditLogs)).toHaveLength(0)
     }
+  })
+
+  test('POST /api/account/email-verification sends another Auth0 confirmation email for an unverified identity', async () => {
+    const auth0Fetch = vi.fn(async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      const url = String(input)
+
+      if (url === 'https://codex-events-test.eu.auth0.com/oauth/token') {
+        expect(init?.method).toBe('POST')
+        expect(String(init?.body)).toContain('grant_type=client_credentials')
+        expect(String(init?.body)).toContain('client_id=management-client-id')
+
+        return new Response(JSON.stringify({
+          access_token: 'management-access-token',
+          token_type: 'Bearer',
+          expires_in: 86400
+        }), {
+          status: 200,
+          headers: {
+            'content-type': 'application/json'
+          }
+        })
+      }
+
+      expect(url).toBe('https://codex-events-test.eu.auth0.com/api/v2/jobs/verification-email')
+      expect(new Headers(init?.headers).get('authorization')).toBe('Bearer management-access-token')
+      expect(JSON.parse(String(init?.body))).toEqual({
+        user_id: 'auth0|unverified-email-user',
+        client_id: 'application-client-id'
+      })
+
+      return new Response(JSON.stringify({
+        id: 'job_email_verification',
+        type: 'verification_email',
+        status: 'pending'
+      }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json'
+        }
+      })
+    })
+    vi.stubGlobal('fetch', auth0Fetch)
+
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/account/email-verification', handler: accountEmailVerificationPostHandler }
+      ],
+      runtimeConfig: {
+        auth0: {
+          domain: 'codex-events-test.eu.auth0.com',
+          clientId: 'application-client-id',
+          managementClientId: 'management-client-id',
+          managementClientSecret: 'management-client-secret'
+        }
+      },
+      sessionUser: {
+        sub: 'auth0|unverified-email-user',
+        email: 'unverified@example.com',
+        email_verified: false,
+        name: 'Unverified User'
+      }
+    })
+    databases.push(harness)
+
+    const response = await harness.request('/api/account/email-verification', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      data: {
+        sent: true
+      }
+    })
+    expect(auth0Fetch).toHaveBeenCalledTimes(2)
+  })
+
+  test('POST /api/account/email-verification rejects identities that are already verified', async () => {
+    const auth0Fetch = vi.fn()
+    vi.stubGlobal('fetch', auth0Fetch)
+
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/account/email-verification', handler: accountEmailVerificationPostHandler }
+      ],
+      runtimeConfig: {
+        auth0: {
+          domain: 'codex-events-test.eu.auth0.com',
+          clientId: 'application-client-id',
+          managementClientId: 'management-client-id',
+          managementClientSecret: 'management-client-secret'
+        }
+      },
+      sessionUser: {
+        sub: 'auth0|verified-email-user',
+        email: 'verified@example.com',
+        email_verified: true,
+        name: 'Verified User'
+      }
+    })
+    databases.push(harness)
+
+    const response = await harness.request('/api/account/email-verification', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'identity_email_already_verified',
+        message: 'The authenticated identity email address is already confirmed.'
+      }
+    })
+    expect(auth0Fetch).not.toHaveBeenCalled()
   })
 
   test('POST /api/account/registration accepts a stale unverified session after Auth0 userinfo reports the email as verified', async () => {

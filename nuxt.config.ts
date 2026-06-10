@@ -36,6 +36,8 @@ export default defineNuxtConfig({
       domain: '',
       clientId: '',
       clientSecret: '',
+      managementClientId: '',
+      managementClientSecret: '',
       sessionSecret: '',
       appBaseUrl: 'http://localhost:3000',
       databaseConnectionName: '',

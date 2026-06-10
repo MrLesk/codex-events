@@ -6,10 +6,12 @@ import {
   getAccountRegistrationMissingDocumentsCopy,
   getAccountRegistrationSubmitErrorMessage,
   getAccountRegistrationIntro,
+  getIdentityEmailVerificationResendErrorMessage,
   getUnverifiedIdentityEmailMessage,
+  identityEmailVerificationResentMessage,
   missingIdentityEmailMessage
 } from '~/domains/accounts/registration'
-import { accountDashboardHref, buildAuthLoginHref, normalizeAuthReturnTo } from '#shared/domains/accounts/auth-navigation'
+import { accountDashboardHref, normalizeAuthReturnTo } from '#shared/domains/accounts/auth-navigation'
 
 definePageMeta({
   middleware: ['require-auth']
@@ -33,6 +35,11 @@ const termsAccepted = ref(false)
 const submitAttempted = ref(false)
 const submitState = reactive({
   pending: false,
+  error: ''
+})
+const identityEmailVerificationState = reactive({
+  pending: false,
+  sent: false,
   error: ''
 })
 
@@ -99,7 +106,6 @@ const identityEmailVerificationMessage = computed(() =>
     ? getUnverifiedIdentityEmailMessage(actor.value.sessionUser.email.trim())
     : ''
 )
-const identityEmailVerificationCheckHref = computed(() => buildAuthLoginHref(route.fullPath))
 const accountRegistrationBlocked = computed(() =>
   identityEmailUnavailable.value || identityEmailUnverified.value
 )
@@ -153,6 +159,31 @@ async function submitInitialPlatformSetupAccount() {
     submitState.error = getAccountRegistrationSubmitErrorMessage(apiError)
   } finally {
     submitState.pending = false
+  }
+}
+
+async function resendIdentityEmailVerification() {
+  identityEmailVerificationState.pending = true
+  identityEmailVerificationState.sent = false
+  identityEmailVerificationState.error = ''
+
+  try {
+    await $fetch('/api/account/email-verification', {
+      method: 'POST'
+    })
+
+    identityEmailVerificationState.sent = true
+  } catch (error) {
+    const apiError = normalizeApiError(error)
+
+    if (apiError.code === 'identity_email_already_verified') {
+      await refresh()
+      return
+    }
+
+    identityEmailVerificationState.error = getIdentityEmailVerificationResendErrorMessage(apiError)
+  } finally {
+    identityEmailVerificationState.pending = false
   }
 }
 
@@ -260,15 +291,31 @@ useSeoMeta({
           title="Confirm your email to finish registration"
           :description="identityEmailVerificationMessage"
         />
+        <AppAlert
+          v-if="identityEmailVerificationState.sent"
+          color="success"
+          variant="soft"
+          title="Confirmation email sent"
+          :description="identityEmailVerificationResentMessage"
+        />
+        <AppAlert
+          v-if="identityEmailVerificationState.error"
+          color="error"
+          variant="soft"
+          title="Confirmation email could not be sent"
+          :description="identityEmailVerificationState.error"
+        />
         <div class="flex justify-end">
           <AppButton
-            :to="identityEmailVerificationCheckHref"
-            external
+            type="button"
             color="neutral"
             variant="solid"
+            :loading="identityEmailVerificationState.pending"
+            :disabled="identityEmailVerificationState.pending"
             class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+            @click="resendIdentityEmailVerification"
           >
-            I confirmed my email
+            Resend confirmation email
           </AppButton>
         </div>
       </section>

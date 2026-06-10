@@ -11,6 +11,7 @@ interface AccountRegistrationMissingDocumentsOptions {
 }
 
 export const missingIdentityEmailMessage = 'This sign-in method did not share an email address. Codex Events needs an email address to create your account. Sign in with a login method that shares your email address, then try again.'
+export const identityEmailVerificationResentMessage = 'Check your inbox for a new confirmation email, then return to this page to finish creating your account.'
 
 export function getUnverifiedIdentityEmailMessage(email: string) {
   return `Thanks for signing up. Confirm ${email} from the verification email, then return to this page to finish creating your account.`
@@ -85,4 +86,26 @@ export function getAccountRegistrationSubmitErrorMessage(error: AccountRegistrat
   const message = error?.message?.trim()
 
   return message || 'Unable to finish account registration right now.'
+}
+
+export function getIdentityEmailVerificationResendErrorMessage(error: AccountRegistrationErrorLike | null | undefined) {
+  if (error?.code === 'identity_email_unavailable') {
+    return missingIdentityEmailMessage
+  }
+
+  if (error?.code === 'identity_email_already_verified') {
+    return 'Your email address is already confirmed. Continue registration below.'
+  }
+
+  if (
+    error?.code === 'auth0_email_verification_unavailable'
+    || error?.code === 'auth0_email_verification_failed'
+    || error?.code === 'auth0_email_verification_rate_limited'
+  ) {
+    return 'Confirmation email cannot be sent right now. Try again later.'
+  }
+
+  const message = error?.message?.trim()
+
+  return message || 'Unable to resend the confirmation email right now.'
 }

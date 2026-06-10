@@ -72,7 +72,7 @@ The deploy workflow configures the application's callback URLs, logout URLs, web
 
 ### 3.3 Management access
 
-Create a **Machine-to-Machine** application authorized for the Auth0 Management API. The deploy workflow uses it to apply the configuration above; it is never uploaded to the Cloudflare Worker.
+Create a **Machine-to-Machine** application authorized for the Auth0 Management API. The deploy workflow uses it to apply the configuration above and uploads the credentials to the Cloudflare Worker so authenticated users can request another confirmation email during account registration.
 
 Grant these Management API scopes:
 
@@ -103,7 +103,7 @@ In GitHub, create an environment named `production`, then add the variables and 
 Variable names follow a convention worth knowing:
 
 - `NUXT_*` are the application's runtime configuration, copied into the Worker.
-- `AUTH0_*` (without `NUXT_`) are used by the deploy workflow to configure Auth0 and are not copied into the Worker.
+- `AUTH0_*` (without `NUXT_`) are used by the deploy workflow to configure Auth0. `AUTH0_MGMT_CLIENT_ID` and `AUTH0_MGMT_CLIENT_SECRET` are also copied into Worker secrets as runtime Auth0 Management credentials for confirmation-email resend.
 - `CF_*` values cover Cloudflare credentials, resource names, and DNS zone metadata. Deploy tooling and workflows pass Wrangler's supported Cloudflare credential names when Wrangler runs.
 
 ### Required variables

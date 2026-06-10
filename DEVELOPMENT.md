@@ -23,6 +23,8 @@ Required Auth0 runtime variables:
 NUXT_AUTH0_DOMAIN=your-tenant.auth0.com
 NUXT_AUTH0_CLIENT_ID=your-auth0-client-id
 NUXT_AUTH0_CLIENT_SECRET=your-auth0-client-secret
+NUXT_AUTH0_MANAGEMENT_CLIENT_ID=your-management-client-id
+NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET=your-management-client-secret
 NUXT_AUTH0_SESSION_SECRET=replace-with-generated-session-secret
 NUXT_AUTH0_APP_BASE_URL=http://localhost:3000
 NUXT_AUTH0_BDD_APP_BASE_URL=http://localhost:3100
@@ -65,6 +67,7 @@ Local Auth0 dashboard settings:
 Local Auth0 runtime notes:
 
 - `NUXT_AUTH0_DOMAIN` is the Auth0 issuer host, not the app host. For deployed environments, use the Auth0 custom domain or tenant domain for that deployment, not the application hostname.
+- `NUXT_AUTH0_MANAGEMENT_CLIENT_ID` and `NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET` belong to a Machine-to-Machine application authorized for the Auth0 Management API `update:users` scope. The app uses them to send another confirmation email during account registration.
 - When `NUXT_AUTH0_APP_BASE_URL=http://localhost:3000`, the app intentionally uses a non-secure Auth0 session cookie for local development so Safari can persist the login callback session on `localhost`. HTTPS environments continue to use secure cookies.
 - The Auth0-backed BDD suite uses `NUXT_AUTH0_BDD_APP_BASE_URL` when set and otherwise defaults to `http://localhost:3100`, so that `bun run test:bdd` does not have to take over the normal local dev server on port 3000.
 
@@ -93,7 +96,7 @@ The script reads explicit tenant automation variables: `AUTH0_MANAGEMENT_DOMAIN`
 `AUTH0_LOGIN_URI` is mandatory whenever `AUTH0_APP_BASE_URL` is not HTTPS, and must always be an HTTPS URL.
 When `AUTH0_APP_BASE_URL` is HTTPS and explicit branding URLs are omitted, the bootstrap defaults to `${AUTH0_APP_BASE_URL}/auth0/codex-events-wordmark.svg` for the Auth0 wordmark and `${AUTH0_APP_BASE_URL}/favicon.ico` for the favicon.
 
-For app runtime variables, rename legacy `NUXT_PUBLIC_AUTH0_*` keys to the `NUXT_AUTH0_*` keys above. Use `AUTH0_*` only for tenant automation and GitHub environment-level Auth0 settings.
+For app runtime variables, rename legacy `NUXT_PUBLIC_AUTH0_*` keys to the `NUXT_AUTH0_*` keys above. Use `AUTH0_*` for tenant automation and GitHub environment-level Auth0 settings; deployment maps `AUTH0_MGMT_CLIENT_ID` and `AUTH0_MGMT_CLIENT_SECRET` into Worker runtime secrets for confirmation-email resend.
 
 Local first-platform-admin bootstrap command:
 
