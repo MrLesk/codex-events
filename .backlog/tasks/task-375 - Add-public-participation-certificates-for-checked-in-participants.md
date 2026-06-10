@@ -10,6 +10,7 @@ labels:
   - api
   - events
 dependencies: []
+milestone: m-2
 references:
   - >-
     /Users/alex/projects/codex-hackathons/shared/domains/events/certificates.ts
