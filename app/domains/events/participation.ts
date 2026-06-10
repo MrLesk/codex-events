@@ -24,6 +24,7 @@ export interface EventParticipationApplicationSummary {
   reviewedAt: string | null
   checkedInAt: string | null
   isCheckedIn: boolean
+  certificateHiddenAt: string | null
   updatedAt: string
 }
 

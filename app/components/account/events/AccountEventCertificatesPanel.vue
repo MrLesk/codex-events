@@ -220,12 +220,21 @@ await loadApplications()
 
           <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
             <div class="flex flex-col items-end gap-0.5 text-right">
-              <AppBadge
-                :color="getApplicationAttendanceStatusColor(application)"
-                variant="soft"
-              >
-                {{ formatApplicationAttendanceStatus(application) }}
-              </AppBadge>
+              <span class="flex items-center gap-1.5">
+                <AppBadge
+                  v-if="application.certificateHiddenAt"
+                  color="neutral"
+                  variant="outline"
+                >
+                  Hidden by participant
+                </AppBadge>
+                <AppBadge
+                  :color="getApplicationAttendanceStatusColor(application)"
+                  variant="soft"
+                >
+                  {{ formatApplicationAttendanceStatus(application) }}
+                </AppBadge>
+              </span>
               <span class="text-[12px] text-neutral-500 dark:text-[#8C8C8C]">
                 {{ formatApplicationAttendanceSource(application) }}
               </span>
@@ -253,7 +262,7 @@ await loadApplications()
                 Not joined
               </AppButton>
               <AppButton
-                v-if="isApplicationCheckedIn(application)"
+                v-if="isApplicationCheckedIn(application) && !application.certificateHiddenAt"
                 size="sm"
                 color="neutral"
                 variant="ghost"

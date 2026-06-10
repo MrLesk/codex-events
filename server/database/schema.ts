@@ -496,6 +496,7 @@ export const userApplications = sqliteTable(
     checkInOverrideStatus: text('check_in_override_status', { enum: applicationCheckInOverrideStatuses }),
     checkInOverrideAt: text('check_in_override_at'),
     checkInOverrideByUserId: text('check_in_override_by_user_id').references(() => users.id),
+    certificateHiddenAt: text('certificate_hidden_at'),
     reviewedAt: text('reviewed_at'),
     reviewedByUserId: text('reviewed_by_user_id').references(() => users.id),
     applicationTermsDocumentId: text('application_terms_document_id')

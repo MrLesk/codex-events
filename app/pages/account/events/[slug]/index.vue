@@ -300,6 +300,44 @@ const participantCertificatePath = computed(() => {
 
   return buildEventCertificatePath(slug.value, actor.value.platformUser.id)
 })
+const isCertificateHidden = computed(() => Boolean(participationRecord.value?.application?.certificateHiddenAt))
+const isCertificateVisibilityPending = ref(false)
+
+async function toggleCertificateVisibility() {
+  const application = participationRecord.value?.application
+
+  if (!application || isCertificateVisibilityPending.value) {
+    return
+  }
+
+  isCertificateVisibilityPending.value = true
+
+  try {
+    const response = await $fetch<ParticipantApiDataResponse<ParticipantApplicationRecord>>(
+      `/api/events/${workspaceEventId.value}/applications/me/actions/set-certificate-visibility`,
+      {
+        method: 'POST',
+        body: { hidden: !isCertificateHidden.value }
+      }
+    )
+
+    updateParticipationRecordApplication(response.data)
+    toast.add({
+      title: response.data.certificateHiddenAt
+        ? 'Your certificate is now hidden from the public'
+        : 'Your certificate is public again',
+      color: 'success'
+    })
+  } catch (error) {
+    toast.add({
+      title: 'Certificate visibility could not be changed',
+      description: normalizeParticipantApiError(error).message,
+      color: 'error'
+    })
+  } finally {
+    isCertificateVisibilityPending.value = false
+  }
+}
 const canClaimCredits = computed(() => applicationStatus.value === 'approved')
 const hasCreditInventory = computed(() =>
   participantCreditOffers.value.some(offer => offer.totalCount > 0)
@@ -697,6 +735,7 @@ function updateParticipationRecordApplication(nextApplication: ParticipantApplic
             reviewedAt: nextApplication.reviewedAt,
             checkedInAt: nextApplication.checkedInAt,
             isCheckedIn: isApplicationEffectivelyCheckedIn(nextApplication),
+            certificateHiddenAt: nextApplication.certificateHiddenAt,
             updatedAt: nextApplication.updatedAt
           }
         }
@@ -902,19 +941,36 @@ useSeoMeta({
                 Your participation certificate
               </h2>
               <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                You checked in at this event. View, share, or download your certificate.
+                {{ isCertificateHidden
+                  ? 'Your certificate is hidden. Visitors who open your certificate link see nothing until you make it public again.'
+                  : 'You checked in at this event. View, share, or download your certificate.' }}
               </p>
             </div>
 
-            <AppButton
-              :to="participantCertificatePath"
-              color="neutral"
-              variant="solid"
-              trailing-icon="i-lucide-arrow-up-right"
-              class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-            >
-              View certificate
-            </AppButton>
+            <div class="flex flex-wrap items-center gap-2">
+              <AppButton
+                color="neutral"
+                variant="outline"
+                :icon="isCertificateHidden ? 'i-lucide-eye' : 'i-lucide-eye-off'"
+                :loading="isCertificateVisibilityPending"
+                data-testid="certificate-visibility-toggle"
+                class="rounded-lg px-4 py-2"
+                @click="toggleCertificateVisibility"
+              >
+                {{ isCertificateHidden ? 'Make public' : 'Hide from public' }}
+              </AppButton>
+
+              <AppButton
+                v-if="!isCertificateHidden"
+                :to="participantCertificatePath"
+                color="neutral"
+                variant="solid"
+                trailing-icon="i-lucide-arrow-up-right"
+                class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+              >
+                View certificate
+              </AppButton>
+            </div>
           </div>
         </section>
 

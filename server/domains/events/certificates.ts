@@ -80,7 +80,7 @@ export async function getEventCertificateOrThrow(
     )
   })
 
-  if (!application || !isApplicationEffectivelyCheckedIn(application)) {
+  if (!application || !isApplicationEffectivelyCheckedIn(application) || application.certificateHiddenAt) {
     throw buildCertificateNotFoundError(slug, userId)
   }
 

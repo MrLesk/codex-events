@@ -243,6 +243,15 @@ describe('public certificate routes', () => {
     expect(response.status).toBe(200)
   })
 
+  test('returns 404 when the participant hid their certificate', async () => {
+    const harness = createHarness()
+    await seedCertificateContext(harness)
+    await harness.database.update(userApplications).set({ certificateHiddenAt: '2026-06-21T08:00:00.000Z' })
+
+    expect((await harness.request(certificatePath)).status).toBe(404)
+    expect((await harness.request(`${certificatePath}.png`)).status).toBe(404)
+  })
+
   test('an admin not-joined override hides the certificate despite a Luma check-in', async () => {
     const harness = createHarness()
     await seedCertificateContext(harness)

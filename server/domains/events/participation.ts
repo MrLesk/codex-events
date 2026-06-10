@@ -95,6 +95,7 @@ function serializeApplicationSummary(application: ApplicationRecord) {
     reviewedAt: application.reviewedAt,
     checkedInAt: application.checkedInAt,
     isCheckedIn: isApplicationEffectivelyCheckedIn(application),
+    certificateHiddenAt: application.certificateHiddenAt,
     updatedAt: application.updatedAt
   }
 }
