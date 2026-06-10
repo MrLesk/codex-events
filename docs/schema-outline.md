@@ -512,6 +512,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - Applications created while `auto_approve_applications` is true are stored directly as `approved` with `reviewed_at` equal to `submitted_at` and no reviewing user.
 - `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for events that show and require a Luma email and have configured Luma sync.
 - `checked_in_at` is sticky in this version and is not cleared by later Luma uncheck updates.
+- `check_in_override_status` stores an admin attendance decision of `joined` or `not_joined` for an approved application, with `check_in_override_at` and `check_in_override_by_user_id` recording when and by whom it was set. The override wins over `checked_in_at` in both directions and is cleared back to the Luma default by repeating the active decision.
 - `application_terms_document_id` and `application_terms_accepted_at` are null when the event has no current application terms at submission time.
 - Withdrawal retains the application record rather than deleting it so participation history, event-terms acceptance when present, and audit context remain available.
 

@@ -346,6 +346,8 @@ Rules:
 - `not_synced` is used only for events where Luma sync is enabled.
 - A `UserApplication` can record `checkedInAt` when a valid signed Luma guest check-in update confirms the approved participant attended the event.
 - Luma attendance sync is sticky in this version. Once `checkedInAt` is recorded, later Luma uncheck changes do not clear it.
+- An event admin or platform admin can override attendance for an approved application by marking the participant joined or not joined. The override records the acting admin and time, wins over the Luma check-in in both directions, and repeating the active decision clears it back to the Luma default.
+- Effective attendance is the admin override when present, otherwise the recorded Luma check-in.
 
 ### Participation Certificate
 
@@ -353,7 +355,7 @@ A public, shareable record that an approved participant attended an event.
 
 Key characteristics:
 
-- A participation certificate exists for every approved user application with a recorded `checkedInAt` on a publicly visible event whose participant account is active.
+- A participation certificate exists for every approved user application with effective attendance on a publicly visible event whose participant account is active.
 - The certificate is derived state computed from the event, user, application, and Hackathon submission records. It is not stored as a separate entity.
 - The certificate names the participant using the canonical first and family name, with the display name used while canonical name fields are empty.
 - The certificate date is the earliest agenda item start when the event has agenda items, otherwise the submission window start, formatted in UTC.

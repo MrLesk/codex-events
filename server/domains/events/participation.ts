@@ -15,6 +15,7 @@ import {
 import { parseEventAgendaItems } from '#server/domains/events'
 import { getTeamCompetitionOutcome } from '#server/domains/outcomes'
 import { serializeSubmission } from '#server/domains/submissions'
+import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
 
 type EventRecord = typeof events.$inferSelect
 type ApplicationRecord = typeof userApplications.$inferSelect
@@ -93,6 +94,7 @@ function serializeApplicationSummary(application: ApplicationRecord) {
     withdrawnAt: application.withdrawnAt,
     reviewedAt: application.reviewedAt,
     checkedInAt: application.checkedInAt,
+    isCheckedIn: isApplicationEffectivelyCheckedIn(application),
     updatedAt: application.updatedAt
   }
 }

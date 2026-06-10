@@ -15,6 +15,7 @@ import type {
   EventParticipationPayload,
   EventParticipationRecord
 } from '~/domains/events/participation'
+import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
 import { buildEventCertificatePath } from '#shared/domains/events/certificates'
 import type {
   EventCreditApiListResponse,
@@ -293,7 +294,7 @@ const applicationStatus = computed(() =>
 const participantCertificatePath = computed(() => {
   const application = participationRecord.value?.application
 
-  if (actor.value.kind !== 'platform_user' || application?.status !== 'approved' || !application.checkedInAt) {
+  if (actor.value.kind !== 'platform_user' || application?.status !== 'approved' || !application.isCheckedIn) {
     return null
   }
 
@@ -695,6 +696,7 @@ function updateParticipationRecordApplication(nextApplication: ParticipantApplic
             withdrawnAt: nextApplication.withdrawnAt,
             reviewedAt: nextApplication.reviewedAt,
             checkedInAt: nextApplication.checkedInAt,
+            isCheckedIn: isApplicationEffectivelyCheckedIn(nextApplication),
             updatedAt: nextApplication.updatedAt
           }
         }
@@ -1274,6 +1276,20 @@ useSeoMeta({
         <LazyAccountEventParticipantVisibilityPanel
           v-else-if="canViewParticipantsAndTeams"
           :event-id="workspaceEventId"
+        />
+      </section>
+
+      <section
+        v-else-if="activeSection === 'certificates'"
+        id="account-tab-panel-certificates"
+        role="tabpanel"
+        aria-labelledby="account-tab-certificates"
+        class="space-y-8"
+      >
+        <LazyAccountEventCertificatesPanel
+          v-if="canAdmin"
+          :event-id="workspaceEventId"
+          :event-slug="slug"
         />
       </section>
 

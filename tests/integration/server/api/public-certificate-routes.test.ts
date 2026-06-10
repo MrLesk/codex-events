@@ -196,6 +196,26 @@ describe('public certificate routes', () => {
     expect(response.status).toBe(404)
   })
 
+  test('an admin joined override unlocks the certificate without a Luma check-in', async () => {
+    const harness = createHarness()
+    await seedCertificateContext(harness, { checkedInAt: null })
+    await harness.database.update(userApplications).set({ checkInOverrideStatus: 'joined' })
+
+    const response = await harness.request(certificatePath)
+
+    expect(response.status).toBe(200)
+  })
+
+  test('an admin not-joined override hides the certificate despite a Luma check-in', async () => {
+    const harness = createHarness()
+    await seedCertificateContext(harness)
+    await harness.database.update(userApplications).set({ checkInOverrideStatus: 'not_joined' })
+
+    const response = await harness.request(certificatePath)
+
+    expect(response.status).toBe(404)
+  })
+
   test('returns 404 when the application is not approved', async () => {
     const harness = createHarness()
     await seedCertificateContext(harness, { applicationStatus: 'submitted' })

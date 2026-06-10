@@ -715,6 +715,8 @@ export function serializeUserApplication(
     submittedAt: application.submittedAt,
     withdrawnAt: application.withdrawnAt,
     checkedInAt: application.checkedInAt,
+    checkInOverrideStatus: application.checkInOverrideStatus,
+    checkInOverrideAt: application.checkInOverrideAt,
     reviewedAt: application.reviewedAt,
     reviewedByUserId: application.reviewedByUserId,
     applicationTermsDocumentId: application.applicationTermsDocumentId,

@@ -60,6 +60,11 @@ export function getAccountEventSeoContent(
         title: `Participants | ${eventName} | Codex Events`,
         description: `Review participant applications and statuses for ${eventName}.`
       }
+    case 'certificates':
+      return {
+        title: `Certificates | ${eventName} | Codex Events`,
+        description: `Confirm who joined ${eventName} and manage participation certificates.`
+      }
     case 'teams':
       return {
         title: `Teams | ${eventName} | Codex Events`,

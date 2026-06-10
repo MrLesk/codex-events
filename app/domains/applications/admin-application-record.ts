@@ -3,6 +3,11 @@ import type {
   EventRecord,
   TermsDocument
 } from '~/domains/events/records'
+import type { ApplicationCheckInOverrideStatus } from '#shared/domains/applications/check-in'
+import {
+  isApplicationEffectivelyCheckedIn,
+  resolveApplicationAttendanceSource
+} from '#shared/domains/applications/check-in'
 
 export interface AdminApplicationRecord {
   id: string
@@ -12,6 +17,8 @@ export interface AdminApplicationRecord {
   preApprovalStatus?: 'approved' | 'rejected' | null
   lumaSyncStatus?: 'not_synced' | 'approve_synced' | 'reject_synced' | 'approve_failed' | 'reject_failed' | null
   checkedInAt?: string | null
+  checkInOverrideStatus?: ApplicationCheckInOverrideStatus | null
+  checkInOverrideAt?: string | null
   submittedAt: string
   withdrawnAt: string | null
   reviewedAt: string | null
@@ -69,21 +76,42 @@ export function getApplicationStatusColor(status: AdminApplicationRecord['status
 }
 
 export function isApplicationCheckedIn(
-  application: Pick<AdminApplicationRecord, 'checkedInAt'>
+  application: Pick<AdminApplicationRecord, 'checkedInAt' | 'checkInOverrideStatus'>
 ) {
-  return Boolean(application.checkedInAt)
+  return isApplicationEffectivelyCheckedIn({
+    checkedInAt: application.checkedInAt ?? null,
+    checkInOverrideStatus: application.checkInOverrideStatus ?? null
+  })
 }
 
 export function formatApplicationAttendanceStatus(
-  application: Pick<AdminApplicationRecord, 'checkedInAt'>
+  application: Pick<AdminApplicationRecord, 'checkedInAt' | 'checkInOverrideStatus'>
 ) {
   return isApplicationCheckedIn(application) ? 'Checked in' : 'Not checked in'
 }
 
 export function getApplicationAttendanceStatusColor(
-  application: Pick<AdminApplicationRecord, 'checkedInAt'>
+  application: Pick<AdminApplicationRecord, 'checkedInAt' | 'checkInOverrideStatus'>
 ) {
   return isApplicationCheckedIn(application) ? 'success' : 'neutral'
+}
+
+export function formatApplicationAttendanceSource(
+  application: Pick<AdminApplicationRecord, 'checkedInAt' | 'checkInOverrideStatus'>
+) {
+  const source = resolveApplicationAttendanceSource({
+    checkedInAt: application.checkedInAt ?? null,
+    checkInOverrideStatus: application.checkInOverrideStatus ?? null
+  })
+
+  switch (source) {
+    case 'manual':
+      return application.checkInOverrideStatus === 'joined' ? 'Marked joined by event team' : 'Marked not joined by event team'
+    case 'luma':
+      return 'Checked in via Luma'
+    default:
+      return 'No check-in recorded'
+  }
 }
 
 export function shouldShowApprovedParticipantAttendanceSummary(

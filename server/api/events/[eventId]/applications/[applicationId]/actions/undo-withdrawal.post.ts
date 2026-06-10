@@ -49,6 +49,9 @@ export default defineApiHandler(async (h3Event) => {
     lumaSyncStatus,
     withdrawnAt: null,
     checkedInAt: null,
+    checkInOverrideStatus: null,
+    checkInOverrideAt: null,
+    checkInOverrideByUserId: null,
     reviewedAt: null,
     reviewedByUserId: null,
     updatedAt: restoredAt
@@ -62,6 +65,9 @@ export default defineApiHandler(async (h3Event) => {
       lumaSyncStatus: restoredApplication.lumaSyncStatus,
       withdrawnAt: restoredApplication.withdrawnAt,
       checkedInAt: restoredApplication.checkedInAt,
+      checkInOverrideStatus: restoredApplication.checkInOverrideStatus,
+      checkInOverrideAt: restoredApplication.checkInOverrideAt,
+      checkInOverrideByUserId: restoredApplication.checkInOverrideByUserId,
       reviewedAt: restoredApplication.reviewedAt,
       reviewedByUserId: restoredApplication.reviewedByUserId,
       updatedAt: restoredApplication.updatedAt

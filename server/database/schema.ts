@@ -35,6 +35,7 @@ export const eventRoleTypes = ['event_admin', 'judge', 'staff'] as const
 export const platformDocumentTypes = ['privacy_policy', 'platform_terms'] as const
 export const eventTermsDocumentTypes = ['application_terms', 'winner_terms'] as const
 export const userApplicationStatuses = ['submitted', 'approved', 'rejected', 'withdrawn'] as const
+export const applicationCheckInOverrideStatuses = ['joined', 'not_joined'] as const
 export const userApplicationPreApprovalStatuses = ['approved', 'rejected'] as const
 export const userApplicationLumaSyncStatuses = [
   'not_synced',
@@ -492,6 +493,9 @@ export const userApplications = sqliteTable(
     submittedAt: text('submitted_at').notNull().default(currentTimestamp),
     withdrawnAt: text('withdrawn_at'),
     checkedInAt: text('checked_in_at'),
+    checkInOverrideStatus: text('check_in_override_status', { enum: applicationCheckInOverrideStatuses }),
+    checkInOverrideAt: text('check_in_override_at'),
+    checkInOverrideByUserId: text('check_in_override_by_user_id').references(() => users.id),
     reviewedAt: text('reviewed_at'),
     reviewedByUserId: text('reviewed_by_user_id').references(() => users.id),
     applicationTermsDocumentId: text('application_terms_document_id')

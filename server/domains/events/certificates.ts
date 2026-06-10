@@ -19,6 +19,7 @@ import {
   resolveEventDisplayBackgroundImageUrl
 } from '#server/domains/platform/settings'
 import { ApiError } from '#server/http/api-error'
+import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
 import type { EventCertificate } from '#shared/domains/events/certificates'
 import {
   buildEventCertificateId,
@@ -73,7 +74,7 @@ export async function getEventCertificateOrThrow(
     )
   })
 
-  if (!application?.checkedInAt) {
+  if (!application || !isApplicationEffectivelyCheckedIn(application)) {
     throw buildCertificateNotFoundError(slug, userId)
   }
 

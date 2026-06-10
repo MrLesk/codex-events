@@ -105,6 +105,7 @@ This document defines the canonical permissions for the Codex event platform.
 | Restore withdrawn application | No | No | No | Yes, if the application is `withdrawn` and the event is `registration_open`; restoration follows the normal registration outcome and does not restore team side effects | Yes, if the application is `withdrawn` and the event is `registration_open`; restoration follows the normal registration outcome and does not restore team side effects |
 | Approve application | No | No | No | Yes | Yes |
 | Reject application | No | No | No | Yes | Yes |
+| Override participant attendance (joined / not joined) for certificates | No | No | No | Yes, approved applications only; the override wins over the Luma check-in and repeating the active decision clears it | Yes, approved applications only; the override wins over the Luma check-in and repeating the active decision clears it |
 
 For Meetup and Build events, an approved application is the participation record. Team permissions below do not apply.
 

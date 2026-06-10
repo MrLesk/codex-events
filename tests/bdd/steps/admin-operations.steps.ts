@@ -28,7 +28,7 @@ type StoredState = {
   }>
 }
 
-function parsePersonaKey(personaKey: string): StablePersonaKey {
+export function parsePersonaKey(personaKey: string): StablePersonaKey {
   if (stablePersonaKeys.includes(personaKey as StablePersonaKey)) {
     return personaKey as StablePersonaKey
   }
@@ -76,7 +76,7 @@ function resolveEventId(eventSlug: string) {
   }
 }
 
-function resolveEventSlug(eventId: string) {
+export function resolveEventSlug(eventId: string) {
   switch (eventId) {
     case 'event_e2e_fixture':
       return 'e2e-fixture-event'
@@ -164,7 +164,7 @@ async function waitForAdminApplication(page: Page, applicationId: string) {
   return application
 }
 
-async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) {
+export async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) {
   const storageStatePath = storageStatePathForPersona(personaKey)
 
   if (!existsSync(storageStatePath)) {

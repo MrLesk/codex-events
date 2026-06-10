@@ -83,6 +83,7 @@ export interface ParticipantApplicationRecord {
   submittedAt: string
   withdrawnAt: string | null
   checkedInAt: string | null
+  checkInOverrideStatus: 'joined' | 'not_joined' | null
   reviewedAt: string | null
   reviewedByUserId: string | null
   applicationTermsDocumentId: string | null

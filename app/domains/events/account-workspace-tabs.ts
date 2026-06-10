@@ -13,6 +13,7 @@ export const accountEventWorkspaceTabs = [
   'workspace',
   'teams',
   'participants',
+  'certificates',
   'submissions',
   'judging',
   'operations',
@@ -57,6 +58,7 @@ const defaultAccountEventTabLabels: Record<AccountEventWorkspaceTab, string> = {
   staff: 'Staff',
   judging: 'Judging',
   participants: 'Participants',
+  certificates: 'Certificates',
   teams: 'Teams',
   submissions: 'Submissions',
   operations: 'Operations',
@@ -173,6 +175,8 @@ export function getAccountEventTabAccess(
   }
 
   if (canManage) {
+    availableTabs.push('certificates')
+
     if (!hasApprovedParticipantAccess) {
       if (isCompetitionEvent) {
         availableTabs.push('teams')

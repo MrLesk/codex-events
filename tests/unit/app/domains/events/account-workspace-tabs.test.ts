@@ -74,7 +74,7 @@ describe('getAccountEventTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'prizes', 'details', 'gallery', 'judges', 'staff', 'feedback', 'participants', 'teams', 'submissions', 'operations', 'settings'],
+      availableTabs: ['overview', 'credits', 'prizes', 'details', 'gallery', 'judges', 'staff', 'feedback', 'participants', 'certificates', 'teams', 'submissions', 'operations', 'settings'],
       showPrizeConfiguration: true,
       showAgendaConfigurationInDetails: true
     })
@@ -195,7 +195,7 @@ describe('getAccountEventTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'prizes', 'details', 'gallery', 'judges', 'staff', 'feedback', 'workspace', 'teams', 'participants', 'submissions', 'judging', 'operations', 'settings'],
+      availableTabs: ['overview', 'credits', 'prizes', 'details', 'gallery', 'judges', 'staff', 'feedback', 'workspace', 'teams', 'participants', 'certificates', 'submissions', 'judging', 'operations', 'settings'],
       showPrizeConfiguration: true,
       showAgendaConfigurationInDetails: true
     })
@@ -214,7 +214,7 @@ describe('getAccountEventTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'details', 'gallery', 'staff', 'participants', 'operations', 'settings'],
+      availableTabs: ['overview', 'credits', 'details', 'gallery', 'staff', 'participants', 'certificates', 'operations', 'settings'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: true
     })
@@ -367,7 +367,7 @@ describe('getAccountEventTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'prizes', 'details', 'gallery', 'judges', 'staff', 'feedback', 'workspace', 'teams', 'participants', 'submissions', 'judging', 'operations', 'settings'],
+      availableTabs: ['overview', 'credits', 'prizes', 'details', 'gallery', 'judges', 'staff', 'feedback', 'workspace', 'teams', 'participants', 'certificates', 'submissions', 'judging', 'operations', 'settings'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: true
     })
