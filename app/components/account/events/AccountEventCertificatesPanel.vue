@@ -22,7 +22,7 @@ const eventId = computed(() => props.eventId.trim())
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 
 const applications = ref<AdminApplicationRecord[]>([])
-const loadStatus = ref<LoadStatus>('idle')
+const loadStatus = ref<LoadStatus>('pending')
 const loadErrorMessage = ref('')
 const pendingApplicationId = ref('')
 const searchTerm = ref('')
@@ -125,7 +125,7 @@ function certificateHref(application: AdminApplicationRecord) {
   return buildEventCertificatePath(props.eventSlug, application.userId)
 }
 
-await loadApplications()
+onMounted(loadApplications)
 </script>
 
 <template>

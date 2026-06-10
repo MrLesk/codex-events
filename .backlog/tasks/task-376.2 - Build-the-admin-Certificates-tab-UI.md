@@ -33,7 +33,7 @@ Add a Certificates tab to the account event workspace for event admins listing a
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-The tab loads approved applications through the existing paginated admin list endpoint and updates rows in place from action responses, mirroring the staged-decision merge pattern. A BDD scenario covers the joined toggle round-trip; broader visual QA of the tab happens through the Auth0-backed BDD environment because local dev sessions cannot impersonate an event admin.
+The tab loads approved applications through the existing paginated admin list endpoint and updates rows in place from action responses, mirroring the staged-decision merge pattern. A BDD scenario covers the joined toggle round-trip and caught two real integration issues before release: the panel was registered under the wrong auto-generated Lazy component name and initially loaded its roster during SSR instead of in the browser. The full Auth0-backed BDD suite passes with the scenario included; it is also the visual QA path for the tab because local dev sessions cannot impersonate an event admin.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

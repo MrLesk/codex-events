@@ -34,6 +34,7 @@ import type { Ref } from 'vue'
 import {
   LazyAccountEventsAccountEventAdminOperationsPanel as LazyAccountEventAdminOperationsPanel,
   LazyAccountEventsAccountEventAdminSettingsPanel as LazyAccountEventAdminSettingsPanel,
+  LazyAccountEventsAccountEventCertificatesPanel as LazyAccountEventCertificatesPanel,
   LazyAccountEventsAccountEventCreditsPanel as LazyAccountEventCreditsPanel,
   LazyAccountEventsAccountEventFeedbackPanel as LazyAccountEventFeedbackPanel,
   LazyAccountEventsAccountEventGalleryPanel as LazyAccountEventGalleryPanel,
