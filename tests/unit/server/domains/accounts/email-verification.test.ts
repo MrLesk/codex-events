@@ -22,7 +22,7 @@ describe('Auth0 email verification utilities', () => {
   test('resolves the Auth0 Management API configuration from runtime config', () => {
     expect(resolveAuth0EmailVerificationConfig(createRuntimeConfig({
       domain: 'https://codex-events-test.eu.auth0.com'
-    }))).toEqual({
+    }), {})).toEqual({
       baseUrl: 'https://codex-events-test.eu.auth0.com',
       managementClientId: 'management-client-id',
       managementClientSecret: 'management-client-secret',
@@ -30,15 +30,28 @@ describe('Auth0 email verification utilities', () => {
     })
   })
 
+  test('uses local Auth0 Management environment values when runtime config omits them', () => {
+    expect(resolveAuth0EmailVerificationConfig(createRuntimeConfig({
+      managementClientId: '',
+      managementClientSecret: ''
+    }), {
+      AUTH0_MGMT_CLIENT_ID: 'local-management-client-id',
+      AUTH0_MGMT_CLIENT_SECRET: 'local-management-client-secret'
+    })).toMatchObject({
+      managementClientId: 'local-management-client-id',
+      managementClientSecret: 'local-management-client-secret'
+    })
+  })
+
   test('requires Auth0 Management API credentials', () => {
     expect(() => resolveAuth0EmailVerificationConfig(createRuntimeConfig({
       managementClientSecret: ''
-    }))).toThrow(ApiError)
+    }), {})).toThrow(ApiError)
 
     try {
       resolveAuth0EmailVerificationConfig(createRuntimeConfig({
         managementClientSecret: ''
-      }))
+      }), {})
     } catch (error) {
       expect(error).toMatchObject({
         code: 'auth0_email_verification_unavailable',

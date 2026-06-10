@@ -16,6 +16,8 @@ interface Auth0EmailVerificationConfig {
   applicationClientId: string | null
 }
 
+type EnvironmentValues = Record<string, string | undefined>
+
 interface Auth0TokenResponse {
   access_token?: unknown
   token_type?: unknown
@@ -62,12 +64,23 @@ function readRuntimeConfigValue(value: string | null | undefined) {
   return value?.trim() || ''
 }
 
+function readEnvironmentValue(environment: EnvironmentValues, name: string) {
+  return environment[name]?.trim() || ''
+}
+
+function getDefaultEnvironment(): EnvironmentValues {
+  return typeof process === 'undefined' ? {} : process.env
+}
+
 export function resolveAuth0EmailVerificationConfig(
-  runtimeConfig: Auth0EmailVerificationRuntimeConfig
+  runtimeConfig: Auth0EmailVerificationRuntimeConfig,
+  environment: EnvironmentValues = getDefaultEnvironment()
 ): Auth0EmailVerificationConfig {
   const domain = readRuntimeConfigValue(runtimeConfig.auth0?.domain)
   const managementClientId = readRuntimeConfigValue(runtimeConfig.auth0?.managementClientId)
+    || readEnvironmentValue(environment, 'AUTH0_MGMT_CLIENT_ID')
   const managementClientSecret = readRuntimeConfigValue(runtimeConfig.auth0?.managementClientSecret)
+    || readEnvironmentValue(environment, 'AUTH0_MGMT_CLIENT_SECRET')
 
   if (!domain || !managementClientId || !managementClientSecret) {
     throw buildAuth0EmailVerificationUnavailableError()
