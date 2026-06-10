@@ -3,7 +3,8 @@ import type { EventCertificate } from '#shared/domains/events/certificates'
 import {
   buildEventCertificatePath,
   buildEventCertificateSummary,
-  eventCertificateTypeLabels
+  eventCertificateTypeLabels,
+  formatEventCertificatePlacement
 } from '#shared/domains/events/certificates'
 
 import EventCertificateCard from '~/components/public/events/EventCertificateCard.vue'
@@ -45,6 +46,18 @@ const isSignedIn = computed(() => accountActor.value.isAuthenticated)
 const signedInEmail = computed(() => accountActor.value.platformUser?.email ?? accountActor.value.sessionUser?.email ?? '')
 const typeLabel = computed(() => eventCertificateTypeLabels[certificate.value.eventType])
 const locationLabel = computed(() => [certificate.value.city, certificate.value.country].filter(part => part.trim().length > 0).join(', '))
+const placementLine = computed(() => certificate.value.placement
+  ? `${formatEventCertificatePlacement(certificate.value.placement)}${certificate.value.prizes.length > 0 ? ` · ${certificate.value.prizes.join(', ')}` : ''}`
+  : '')
+const projectLine = computed(() => {
+  if (!certificate.value.projectName && !certificate.value.teamName) {
+    return ''
+  }
+
+  return [certificate.value.projectName, certificate.value.teamName ? `Team ${certificate.value.teamName}` : '']
+    .filter(part => part)
+    .join(' · ')
+})
 
 const requestUrl = useRequestURL()
 const certificatePath = computed(() => buildEventCertificatePath(slug.value, userId.value))
@@ -209,10 +222,27 @@ useHead({
           on {{ certificate.eventDateLabel }}
         </p>
         <p
+          v-if="placementLine"
+          class="mt-2 inline-flex items-center gap-1.5 text-[16px] font-semibold text-amber-700 dark:text-amber-300 sm:text-[18px]"
+          data-testid="certificate-placement"
+        >
+          <AppIcon
+            name="i-lucide-trophy"
+            class="size-4.5"
+          />
+          {{ placementLine }}
+        </p>
+        <p
           v-if="certificate.trackName"
           class="mt-1 text-[15px] text-neutral-600 dark:text-white/65 sm:text-[16px]"
         >
           with the track <span class="font-semibold text-violet-700 dark:text-[#b9a5ff]">{{ certificate.trackName }}</span>
+        </p>
+        <p
+          v-if="projectLine"
+          class="mt-1 text-[14px] text-neutral-600 dark:text-white/60 sm:text-[15px]"
+        >
+          {{ certificate.projectName ? 'with the project' : 'with' }} <span class="font-semibold text-highlighted dark:text-white">{{ projectLine }}</span>
         </p>
       </div>
 
@@ -269,6 +299,34 @@ useHead({
             <span class="flex min-w-0 flex-col gap-0.5">
               <span class="certificate-fact__label">Track</span>
               <span class="certificate-fact__value truncate !text-violet-700 dark:!text-[#b9a5ff]">{{ certificate.trackName }}</span>
+            </span>
+          </div>
+
+          <div
+            v-if="certificate.placement"
+            class="certificate-fact sm:border-l sm:border-black/10 sm:pl-5 dark:sm:border-white/12"
+          >
+            <AppIcon
+              name="i-lucide-trophy"
+              class="certificate-fact__icon !text-amber-600 dark:!text-amber-300"
+            />
+            <span class="flex flex-col gap-0.5">
+              <span class="certificate-fact__label">Placement</span>
+              <span class="certificate-fact__value !text-amber-700 dark:!text-amber-300">{{ formatEventCertificatePlacement(certificate.placement) }}</span>
+            </span>
+          </div>
+
+          <div
+            v-if="certificate.prizes.length > 0"
+            class="certificate-fact sm:border-l sm:border-black/10 sm:pl-5 dark:sm:border-white/12"
+          >
+            <AppIcon
+              name="i-lucide-gift"
+              class="certificate-fact__icon"
+            />
+            <span class="flex min-w-0 flex-col gap-0.5">
+              <span class="certificate-fact__label">Prize</span>
+              <span class="certificate-fact__value truncate">{{ certificate.prizes.join(', ') }}</span>
             </span>
           </div>
 

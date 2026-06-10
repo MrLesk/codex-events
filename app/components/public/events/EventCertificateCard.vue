@@ -2,6 +2,10 @@
 import { usePreferredReducedMotion } from '@vueuse/core'
 
 import type { EventCertificate } from '#shared/domains/events/certificates'
+import {
+  formatEventCertificatePlacement,
+  resolveEventCertificatePlacementTier
+} from '#shared/domains/events/certificates'
 
 const props = defineProps<{
   certificate: EventCertificate
@@ -54,6 +58,13 @@ const glareStyle = computed(() => ({
 const sheenStyle = computed(() => ({
   backgroundPosition: `${(50 + tiltX.value * 5).toFixed(1)}% 0%`
 }))
+
+const placementTier = computed(() => props.certificate.placement
+  ? resolveEventCertificatePlacementTier(props.certificate.placement)
+  : null)
+const placementLabel = computed(() => props.certificate.placement
+  ? formatEventCertificatePlacement(props.certificate.placement).toUpperCase()
+  : '')
 
 const participantNameSize = computed(() => {
   const length = props.certificate.participantName.length
@@ -173,6 +184,18 @@ const participantNameSize = computed(() => {
           </p>
 
           <div class="flex flex-1 flex-col items-center justify-center text-center">
+            <p
+              v-if="placementTier"
+              class="certificate-card__placement mb-[1.3cqw]"
+              :class="`certificate-card__placement--${placementTier}`"
+              data-testid="certificate-card-placement"
+            >
+              <AppIcon
+                name="i-lucide-trophy"
+                class="size-[1.5cqw]"
+              />
+              {{ placementLabel }}
+            </p>
             <p class="text-[1.45cqw] font-semibold tracking-[0.4em] text-white/85">
               CERTIFICATE OF PARTICIPATION
             </p>
@@ -355,6 +378,39 @@ const participantNameSize = computed(() => {
   inset: 16%;
   border-radius: 9999px;
   border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.certificate-card__placement {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7cqw;
+  border-radius: 9999px;
+  border: 1px solid;
+  padding: 0.55cqw 1.8cqw;
+  font-size: 1.25cqw;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+}
+
+.certificate-card__placement--gold {
+  color: #ffe9a8;
+  border-color: rgba(255, 214, 110, 0.75);
+  background: rgba(120, 84, 12, 0.4);
+  box-shadow: 0 0 1.8cqw rgba(255, 200, 80, 0.45);
+}
+
+.certificate-card__placement--silver {
+  color: #eef2f8;
+  border-color: rgba(226, 232, 240, 0.72);
+  background: rgba(82, 92, 108, 0.42);
+  box-shadow: 0 0 1.8cqw rgba(214, 224, 238, 0.4);
+}
+
+.certificate-card__placement--bronze {
+  color: #ffd9b8;
+  border-color: rgba(228, 168, 112, 0.72);
+  background: rgba(112, 62, 20, 0.45);
+  box-shadow: 0 0 1.8cqw rgba(238, 162, 90, 0.4);
 }
 
 .certificate-card__sheen {

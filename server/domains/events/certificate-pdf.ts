@@ -7,7 +7,10 @@ import type {
   EventCertificate,
   EventCertificateEventType
 } from '#shared/domains/events/certificates'
-import { eventCertificateTypeLabels } from '#shared/domains/events/certificates'
+import {
+  eventCertificateTypeLabels,
+  formatEventCertificatePlacement
+} from '#shared/domains/events/certificates'
 
 const pageWidth = 841.89
 const pageHeight = 595.28
@@ -163,6 +166,9 @@ export async function renderEventCertificatePdf(certificate: EventCertificate, v
   const locationLine = [certificate.city, certificate.country].filter(part => part.trim().length > 0).join(', ')
   const footerLines = [
     `${certificate.eventDateLabel}${locationLine ? ` · ${locationLine}` : ''}`,
+    ...(certificate.placement
+      ? [`${formatEventCertificatePlacement(certificate.placement)}${certificate.prizes.length > 0 ? ` · ${certificate.prizes.join(', ')}` : ''}`]
+      : []),
     ...(certificate.trackName ? [`Track · ${certificate.trackName}`] : []),
     `Verify at ${verifyUrl}`
   ]

@@ -360,6 +360,8 @@ Key characteristics:
 - The certificate names the participant using the canonical first and family name, with the display name used while canonical name fields are empty.
 - The certificate date is the earliest agenda item start when the event has agenda items, otherwise the submission window start, formatted in UTC.
 - A Hackathon certificate names the track of the participant team's `submitted` or `locked` submission when that submission has a track. Meetup and Build certificates never name a track.
+- A completed Hackathon's certificate also names the participant team, the submitted project, the team's final placement, and the prize names the team won, resolved from the competition outcome model. These outcome details never appear before the event is `completed`, matching public winner visibility.
+- Certificates with a top-three placement present gold, silver, or bronze trophy treatments on the certificate card and the social-preview image.
 - The certificate ID is derived from the event type, city, certificate date, and participant name, with the user application identifier as the fallback for names without usable characters.
 - The certificate page at `/events/:slug/:userId`, its JSON read, and its social-preview image are public. PDF and image downloads are offered on the page only to authenticated sessions, and the PDF read requires one.
 

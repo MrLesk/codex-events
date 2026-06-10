@@ -18,6 +18,7 @@ import {
   getEventDisplayImageOptions,
   resolveEventDisplayBackgroundImageUrl
 } from '#server/domains/platform/settings'
+import { getTeamCompetitionOutcome } from '#server/domains/outcomes'
 import { ApiError } from '#server/http/api-error'
 import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
 import type { EventCertificate } from '#shared/domains/events/certificates'
@@ -41,13 +42,18 @@ function buildCertificateNotFoundError(slug: string, userId: string) {
   })
 }
 
-async function resolveSubmittedTrackName(database: AppDatabase, eventId: string, userId: string) {
+async function resolveParticipantTeamContext(database: AppDatabase, eventId: string, userId: string) {
   const rows = await database
-    .select({ trackName: eventTracks.name })
+    .select({
+      teamId: teams.id,
+      teamName: teams.name,
+      projectName: submissions.projectName,
+      trackName: eventTracks.name
+    })
     .from(teamMembers)
     .innerJoin(teams, eq(teams.id, teamMembers.teamId))
     .innerJoin(submissions, eq(submissions.teamId, teams.id))
-    .innerJoin(eventTracks, eq(eventTracks.id, submissions.trackId))
+    .leftJoin(eventTracks, eq(eventTracks.id, submissions.trackId))
     .where(and(
       eq(teamMembers.userId, userId),
       isNull(teamMembers.leftAt),
@@ -56,7 +62,7 @@ async function resolveSubmittedTrackName(database: AppDatabase, eventId: string,
     ))
     .limit(1)
 
-  return rows[0]?.trackName ?? null
+  return rows[0] ?? null
 }
 
 export async function getEventCertificateOrThrow(
@@ -89,12 +95,17 @@ export async function getEventCertificateOrThrow(
     throw buildCertificateNotFoundError(slug, userId)
   }
 
-  const [trackName, imageOptions] = await Promise.all([
+  const [teamContext, imageOptions] = await Promise.all([
     event.eventType === 'hackathon'
-      ? resolveSubmittedTrackName(database, event.id, userId)
+      ? resolveParticipantTeamContext(database, event.id, userId)
       : Promise.resolve(null),
     getEventDisplayImageOptions(database)
   ])
+
+  const showCompetitionOutcome = event.eventType === 'hackathon' && event.state === 'completed'
+  const outcome = showCompetitionOutcome && teamContext
+    ? await getTeamCompetitionOutcome(database, event.id, teamContext.teamId)
+    : null
 
   const eventDateIso = resolveEventCertificateDateIso(
     parseEventAgendaItems(event.agendaItemsJson),
@@ -111,7 +122,11 @@ export async function getEventCertificateOrThrow(
     eventDateLabel: formatEventCertificateDate(eventDateIso),
     city: event.city,
     country: event.country,
-    trackName,
+    trackName: teamContext?.trackName ?? null,
+    teamName: showCompetitionOutcome ? teamContext?.teamName ?? null : null,
+    projectName: showCompetitionOutcome ? teamContext?.projectName ?? null : null,
+    placement: outcome?.finalRank ?? null,
+    prizes: outcome?.prizes.map(prize => prize.name) ?? [],
     certificateId: buildEventCertificateId({
       eventType: event.eventType,
       city: event.city,

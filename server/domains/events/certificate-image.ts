@@ -8,7 +8,11 @@ import type {
   EventCertificate,
   EventCertificateEventType
 } from '#shared/domains/events/certificates'
-import { eventCertificateTypeLabels } from '#shared/domains/events/certificates'
+import {
+  eventCertificateTypeLabels,
+  formatEventCertificatePlacement,
+  resolveEventCertificatePlacementTier
+} from '#shared/domains/events/certificates'
 
 export const certificateImageWidth = 1200
 export const certificateImageHeight = 630
@@ -133,8 +137,27 @@ function footerCell(label: string, value: string, accent: string, withDivider: b
   ])
 }
 
+const placementPillStyles = {
+  gold: {
+    color: '#ffe9a8',
+    border: '1.5px solid rgba(255, 214, 110, 0.8)',
+    backgroundColor: 'rgba(120, 84, 12, 0.45)'
+  },
+  silver: {
+    color: '#eef2f8',
+    border: '1.5px solid rgba(226, 232, 240, 0.75)',
+    backgroundColor: 'rgba(82, 92, 108, 0.45)'
+  },
+  bronze: {
+    color: '#ffd9b8',
+    border: '1.5px solid rgba(228, 168, 112, 0.75)',
+    backgroundColor: 'rgba(112, 62, 20, 0.5)'
+  }
+} as const
+
 function buildCertificateImageTree(certificate: EventCertificate) {
   const palette = certificatePalettes[certificate.eventType]
+  const placementTier = certificate.placement ? resolveEventCertificatePlacementTier(certificate.placement) : null
   const participantName = clampLine(certificate.participantName, 42).toUpperCase()
   const eventName = clampLine(certificate.eventName, 44).toUpperCase()
 
@@ -209,6 +232,17 @@ function buildCertificateImageTree(certificate: EventCertificate) {
         marginBottom: 'auto',
         width: '100%'
       }, [
+        ...(certificate.placement && placementTier
+          ? [box({
+              marginBottom: 20,
+              borderRadius: 9999,
+              padding: '8px 26px',
+              fontSize: 18,
+              fontWeight: 600,
+              letterSpacing: 5,
+              ...placementPillStyles[placementTier]
+            }, formatEventCertificatePlacement(certificate.placement).toUpperCase())]
+          : []),
         box({ fontSize: 19, fontWeight: 600, letterSpacing: 8, color: 'rgba(255, 255, 255, 0.85)' }, 'CERTIFICATE OF PARTICIPATION'),
         box({
           marginTop: 22,

@@ -5,7 +5,9 @@ import {
   buildEventCertificatePath,
   buildEventCertificateSummary,
   formatEventCertificateDate,
-  resolveEventCertificateDateIso
+  formatEventCertificatePlacement,
+  resolveEventCertificateDateIso,
+  resolveEventCertificatePlacementTier
 } from '../../../../../shared/domains/events/certificates'
 
 describe('event certificate helpers', () => {
@@ -62,16 +64,34 @@ describe('event certificate helpers', () => {
     expect(buildEventCertificatePath('codex-build-vienna', 'user_1')).toBe('/events/codex-build-vienna/user_1')
   })
 
-  test('summarizes participation with and without a track', () => {
+  test('summarizes participation with track, placement, and prizes', () => {
     const base = {
       participantName: 'Maria Novák',
       eventName: 'Codex Community Build - Vienna',
-      eventDateLabel: 'June 20, 2026'
+      eventDateLabel: 'June 20, 2026',
+      placement: null,
+      prizes: [] as string[]
     }
 
     expect(buildEventCertificateSummary({ ...base, trackName: null }))
       .toBe('Maria Novák has participated in Codex Community Build - Vienna on June 20, 2026.')
     expect(buildEventCertificateSummary({ ...base, trackName: 'Agents & Automation' }))
       .toBe('Maria Novák has participated in Codex Community Build - Vienna on June 20, 2026. Track: Agents & Automation.')
+    expect(buildEventCertificateSummary({ ...base, trackName: 'Agents & Automation', placement: 1, prizes: ['OpenAI API Credits'] }))
+      .toBe('Maria Novák has participated in Codex Community Build - Vienna on June 20, 2026. Finished 1st Place and won OpenAI API Credits. Track: Agents & Automation.')
+  })
+
+  test('formats placements with ordinal suffixes and trophy tiers', () => {
+    expect(formatEventCertificatePlacement(1)).toBe('1st Place')
+    expect(formatEventCertificatePlacement(2)).toBe('2nd Place')
+    expect(formatEventCertificatePlacement(3)).toBe('3rd Place')
+    expect(formatEventCertificatePlacement(4)).toBe('4th Place')
+    expect(formatEventCertificatePlacement(11)).toBe('11th Place')
+    expect(formatEventCertificatePlacement(22)).toBe('22nd Place')
+
+    expect(resolveEventCertificatePlacementTier(1)).toBe('gold')
+    expect(resolveEventCertificatePlacementTier(2)).toBe('silver')
+    expect(resolveEventCertificatePlacementTier(3)).toBe('bronze')
+    expect(resolveEventCertificatePlacementTier(4)).toBeNull()
   })
 })

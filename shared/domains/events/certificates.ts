@@ -12,9 +12,15 @@ export interface EventCertificate {
   city: string
   country: string
   trackName: string | null
+  teamName: string | null
+  projectName: string | null
+  placement: number | null
+  prizes: string[]
   certificateId: string
   backgroundImageUrl: string | null
 }
+
+export type EventCertificatePlacementTier = 'gold' | 'silver' | 'bronze'
 
 export const eventCertificateTypeLabels: Record<EventCertificateEventType, string> = {
   hackathon: 'Hackathon',
@@ -90,14 +96,47 @@ export function buildEventCertificateId(input: {
   return `${eventCertificateTypeCodes[input.eventType]}-${citySegment}-${year}-${monthDay}-${nameSegment}`
 }
 
+export function formatEventCertificatePlacement(placement: number) {
+  const remainderTen = placement % 10
+  const remainderHundred = placement % 100
+  const suffix = remainderTen === 1 && remainderHundred !== 11
+    ? 'st'
+    : remainderTen === 2 && remainderHundred !== 12
+      ? 'nd'
+      : remainderTen === 3 && remainderHundred !== 13
+        ? 'rd'
+        : 'th'
+
+  return `${placement}${suffix} Place`
+}
+
+export function resolveEventCertificatePlacementTier(placement: number): EventCertificatePlacementTier | null {
+  switch (placement) {
+    case 1:
+      return 'gold'
+    case 2:
+      return 'silver'
+    case 3:
+      return 'bronze'
+    default:
+      return null
+  }
+}
+
 export function buildEventCertificatePath(eventSlug: string, userId: string) {
   return `/events/${eventSlug}/${userId}`
 }
 
-export function buildEventCertificateSummary(certificate: Pick<EventCertificate, 'participantName' | 'eventName' | 'eventDateLabel' | 'trackName'>) {
-  const statement = `${certificate.participantName} has participated in ${certificate.eventName} on ${certificate.eventDateLabel}.`
+export function buildEventCertificateSummary(certificate: Pick<EventCertificate, 'participantName' | 'eventName' | 'eventDateLabel' | 'trackName' | 'placement' | 'prizes'>) {
+  const parts = [`${certificate.participantName} has participated in ${certificate.eventName} on ${certificate.eventDateLabel}.`]
 
-  return certificate.trackName
-    ? `${statement} Track: ${certificate.trackName}.`
-    : statement
+  if (certificate.placement) {
+    parts.push(`Finished ${formatEventCertificatePlacement(certificate.placement)}${certificate.prizes.length > 0 ? ` and won ${certificate.prizes.join(', ')}` : ''}.`)
+  }
+
+  if (certificate.trackName) {
+    parts.push(`Track: ${certificate.trackName}.`)
+  }
+
+  return parts.join(' ')
 }

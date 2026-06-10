@@ -7,8 +7,12 @@ import certificateGetHandler from '../../../../server/api/public/events/[slug]/p
 import certificatePdfGetHandler from '../../../../server/api/public/events/[slug]/participants/[userId]/certificate.pdf.get'
 import certificatePngGetHandler from '../../../../server/api/public/events/[slug]/participants/[userId]/certificate.png.get'
 import {
+  evaluationCriteria,
   events,
   eventTracks,
+  judgeAssignments,
+  judgeCriterionScores,
+  prizes,
   submissions,
   teamMembers,
   teams,
@@ -133,6 +137,35 @@ async function seedCertificateContext(
   }
 }
 
+async function seedCompletedJudging(harness: ReturnType<typeof createApiRouteTestHarness>) {
+  await harness.database.insert(evaluationCriteria).values({
+    id: 'criterion_1',
+    eventId: 'event_1',
+    name: 'Impact',
+    description: 'Impact of the project',
+    weight: 100,
+    displayOrder: 1
+  })
+
+  await harness.database.insert(judgeAssignments).values({
+    id: 'assignment_1',
+    eventId: 'event_1',
+    submissionId: 'submission_1',
+    judgeUserId: 'viewer_user',
+    reviewStage: 'blind_review',
+    blindReviewSlot: 1,
+    status: 'judge_completed',
+    completedAt: '2026-06-21T10:00:00.000Z'
+  })
+
+  await harness.database.insert(judgeCriterionScores).values({
+    id: 'criterion_score_1',
+    judgeAssignmentId: 'assignment_1',
+    evaluationCriterionId: 'criterion_1',
+    score: 5
+  })
+}
+
 describe('public certificate routes', () => {
   const harnesses: Array<ReturnType<typeof createApiRouteTestHarness>> = []
   const certificatePath = '/api/public/events/codex-build-vienna/participants/participant_user/certificate'
@@ -170,6 +203,10 @@ describe('public certificate routes', () => {
       city: 'Vienna',
       country: 'Austria',
       trackName: null,
+      teamName: null,
+      projectName: null,
+      placement: null,
+      prizes: [],
       certificateId: 'BLD-VIE-2026-0620-MNOVAK',
       backgroundImageUrl: null
     })
@@ -252,6 +289,56 @@ describe('public certificate routes', () => {
     const payload = await response.json() as { data: { trackName: string | null, eventType: string } }
     expect(payload.data.eventType).toBe('hackathon')
     expect(payload.data.trackName).toBe('Agents & Automation')
+  })
+
+  test('includes placement, prizes, team, and project for completed hackathons', async () => {
+    const harness = createHarness()
+    await seedCertificateContext(harness, { eventType: 'hackathon', eventState: 'completed', submissionStatus: 'locked' })
+    await harness.database.update(events).set({ finalRankingSubmissionIdsJson: JSON.stringify(['submission_1']) })
+    await seedCompletedJudging(harness)
+    await harness.database.insert(prizes).values({
+      id: 'prize_1',
+      eventId: 'event_1',
+      name: 'OpenAI API Credits',
+      description: 'API credits for the winning team',
+      rewardType: 'api_credits',
+      rewardValue: '500',
+      awardScope: 'team',
+      rankStart: 1,
+      rankEnd: 1,
+      displayOrder: 1
+    })
+
+    const response = await harness.request(certificatePath)
+
+    expect(response.status).toBe(200)
+    const payload = await response.json() as { data: Record<string, unknown> }
+    expect(payload.data).toMatchObject({
+      eventType: 'hackathon',
+      trackName: 'Agents & Automation',
+      teamName: 'Night Shift',
+      projectName: 'Deploy Pilot',
+      placement: 1,
+      prizes: ['OpenAI API Credits']
+    })
+  })
+
+  test('keeps competition outcome details hidden before the event completes', async () => {
+    const harness = createHarness()
+    await seedCertificateContext(harness, { eventType: 'hackathon', submissionStatus: 'locked' })
+    await harness.database.update(events).set({ finalRankingSubmissionIdsJson: JSON.stringify(['submission_1']) })
+
+    const response = await harness.request(certificatePath)
+
+    expect(response.status).toBe(200)
+    const payload = await response.json() as { data: Record<string, unknown> }
+    expect(payload.data).toMatchObject({
+      trackName: 'Agents & Automation',
+      teamName: null,
+      projectName: null,
+      placement: null,
+      prizes: []
+    })
   })
 
   test('omits the track for hackathon submissions that were never submitted', async () => {
