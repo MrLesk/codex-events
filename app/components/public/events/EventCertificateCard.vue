@@ -9,6 +9,7 @@ import {
 
 const props = defineProps<{
   certificate: EventCertificate
+  celebrate?: boolean
 }>()
 
 const cardElement = ref<HTMLElement | null>(null)
@@ -59,6 +60,34 @@ const sheenStyle = computed(() => ({
   backgroundPosition: `${(50 + tiltX.value * 5).toFixed(1)}% 0%`
 }))
 
+const isCelebrating = ref(false)
+
+watch(() => props.celebrate, (celebrate) => {
+  if (!celebrate) {
+    return
+  }
+
+  isCelebrating.value = true
+  setTimeout(() => {
+    isCelebrating.value = false
+  }, 2400)
+})
+
+const celebrationSparks = [
+  { left: '24%', top: '30%', dx: '-90px', dy: '-110px', delay: '0ms', color: '#ffe9a8' },
+  { left: '50%', top: '18%', dx: '10px', dy: '-130px', delay: '60ms', color: '#ffffff' },
+  { left: '74%', top: '28%', dx: '110px', dy: '-90px', delay: '120ms', color: '#c4b5ff' },
+  { left: '14%', top: '52%', dx: '-130px', dy: '-10px', delay: '90ms', color: '#ffffff' },
+  { left: '86%', top: '50%', dx: '130px', dy: '-20px', delay: '40ms', color: '#ffe9a8' },
+  { left: '30%', top: '74%', dx: '-100px', dy: '90px', delay: '150ms', color: '#c4b5ff' },
+  { left: '52%', top: '82%', dx: '0px', dy: '120px', delay: '110ms', color: '#ffe9a8' },
+  { left: '72%', top: '72%', dx: '110px', dy: '90px', delay: '30ms', color: '#ffffff' },
+  { left: '40%', top: '24%', dx: '-50px', dy: '-120px', delay: '180ms', color: '#ffe9a8' },
+  { left: '62%', top: '22%', dx: '60px', dy: '-115px', delay: '200ms', color: '#ffffff' },
+  { left: '20%', top: '40%', dx: '-120px', dy: '-60px', delay: '230ms', color: '#ffffff' },
+  { left: '80%', top: '38%', dx: '120px', dy: '-60px', delay: '170ms', color: '#c4b5ff' }
+] as const
+
 const placementTier = computed(() => props.certificate.placement
   ? resolveEventCertificatePlacementTier(props.certificate.placement)
   : null)
@@ -87,7 +116,7 @@ const participantNameSize = computed(() => {
 
 <template>
   <div
-    class="certificate-card-stage w-full"
+    class="certificate-card-stage relative w-full"
     :class="`certificate-card-stage--${certificate.eventType}`"
     data-testid="event-certificate-card"
   >
@@ -95,6 +124,7 @@ const participantNameSize = computed(() => {
       <div
         ref="cardElement"
         class="certificate-card text-left"
+        :class="{ 'certificate-card--celebrating': isCelebrating }"
         :style="cardStyle"
         @pointermove="handlePointerMove"
         @pointerleave="resetTilt"
@@ -118,6 +148,7 @@ const participantNameSize = computed(() => {
         />
         <div
           class="certificate-card__sheen"
+          :class="{ 'certificate-card__sheen--celebrating': isCelebrating }"
           :style="sheenStyle"
           aria-hidden="true"
         />
@@ -256,6 +287,19 @@ const participantNameSize = computed(() => {
           </div>
         </div>
       </div>
+    </div>
+
+    <div
+      v-if="isCelebrating"
+      class="pointer-events-none absolute inset-0 z-20"
+      aria-hidden="true"
+    >
+      <span
+        v-for="(spark, index) in celebrationSparks"
+        :key="index"
+        class="certificate-card__celebration-spark"
+        :style="{ left: spark.left, top: spark.top, color: spark.color, animationDelay: spark.delay, '--spark-dx': spark.dx, '--spark-dy': spark.dy }"
+      />
     </div>
 
     <div
@@ -472,6 +516,65 @@ const participantNameSize = computed(() => {
   margin: 0 3cqw;
   background: rgba(255, 255, 255, 0.28);
   flex: none;
+}
+
+.certificate-card--celebrating {
+  animation: certificate-card-pop 900ms ease-out;
+}
+
+@keyframes certificate-card-pop {
+  0% {
+    transform: scale(1);
+  }
+
+  35% {
+    transform: scale(1.02);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.certificate-card__sheen--celebrating {
+  animation: certificate-sheen-sweep 1.7s ease-in-out;
+}
+
+@keyframes certificate-sheen-sweep {
+  0% {
+    background-position: 175% 0%;
+  }
+
+  100% {
+    background-position: -75% 0%;
+  }
+}
+
+.certificate-card__celebration-spark {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: currentColor;
+  box-shadow: 0 0 12px currentColor;
+  opacity: 0;
+  animation: certificate-spark-burst 1.5s ease-out forwards;
+}
+
+@keyframes certificate-spark-burst {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.4);
+  }
+
+  18% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(var(--spark-dx), var(--spark-dy)) scale(1);
+  }
 }
 
 .certificate-card__reflection {

@@ -66,6 +66,26 @@ const certificateApiBasePath = computed(() => `/api/public/events/${slug.value}/
 const certificateImageUrl = computed(() => new URL(`${certificateApiBasePath.value}/certificate.png`, requestUrl.origin).toString())
 const certificateSummary = computed(() => buildEventCertificateSummary(certificate.value))
 const certificateHost = computed(() => requestUrl.host)
+const shouldCelebrate = ref(false)
+const isCertificateOwner = computed(() => accountActor.value.platformUser?.id === userId.value)
+
+onMounted(() => {
+  if (!isCertificateOwner.value || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    return
+  }
+
+  const celebrationStorageKey = `codex-events-certificate-celebrated:${slug.value}:${userId.value}`
+
+  if (localStorage.getItem(celebrationStorageKey)) {
+    return
+  }
+
+  localStorage.setItem(celebrationStorageKey, new Date().toISOString())
+  setTimeout(() => {
+    shouldCelebrate.value = true
+  }, 600)
+})
+
 const stageBackgroundImageStyle = computed(() => certificate.value.backgroundImageUrl
   ? { backgroundImage: `url(${JSON.stringify(certificate.value.backgroundImageUrl)})` }
   : undefined)
@@ -281,7 +301,10 @@ useHead({
       </div>
 
       <div class="mx-auto mt-7 w-full max-w-[64rem] sm:mt-9">
-        <EventCertificateCard :certificate="certificate" />
+        <EventCertificateCard
+          :certificate="certificate"
+          :celebrate="shouldCelebrate"
+        />
       </div>
 
       <div class="mx-auto mt-6 w-full max-w-[64rem]">
