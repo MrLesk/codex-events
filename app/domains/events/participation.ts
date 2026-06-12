@@ -1,4 +1,5 @@
 import type { PublicEventState } from '~/domains/events/presentation'
+import type { ParticipantApplicationLumaSyncStatus } from '~/domains/applications/participant-application'
 import type { TeamSubmissionRecord } from '~/domains/submissions/team-submission'
 
 import { normalizeApiError } from '~/lib/api'
@@ -19,6 +20,7 @@ export interface EventParticipationEventSummary {
 export interface EventParticipationApplicationSummary {
   id: string
   status: 'submitted' | 'approved' | 'rejected' | 'withdrawn'
+  lumaSyncStatus: ParticipantApplicationLumaSyncStatus
   submittedAt: string
   withdrawnAt: string | null
   reviewedAt: string | null

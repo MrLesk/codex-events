@@ -351,6 +351,7 @@ Rules:
 - If visible AI Knowledge is required, the user must choose Beginner, Intermediate, or Advanced.
 - A `UserApplication` can persist a Luma sync outcome of `not_synced`, `approve_synced`, `reject_synced`, `approve_failed`, or `reject_failed`.
 - `not_synced` is used only for events where Luma sync is enabled.
+- An approved participant can verify a Luma email from the account event overview when the event has Luma sync enabled. The platform saves the entered Luma email only after Luma confirms that the email belongs to a guest on the event, then retries the participant's Luma approval sync and reflects the resulting application sync state to the participant.
 - A `UserApplication` can record `checkedInAt` when a valid signed Luma guest check-in update confirms the approved participant attended the event.
 - Luma attendance sync is sticky in this version. Once `checkedInAt` is recorded, later Luma uncheck changes do not clear it.
 - An event admin or platform admin can override attendance for an approved application by marking the participant joined or not joined. The override records the acting admin and time, wins over the Luma check-in in both directions, and repeating the active decision clears it back to the Luma default.

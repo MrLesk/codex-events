@@ -90,6 +90,7 @@ function serializeApplicationSummary(application: ApplicationRecord) {
   return {
     id: application.id,
     status: application.status,
+    lumaSyncStatus: application.lumaSyncStatus,
     submittedAt: application.submittedAt,
     withdrawnAt: application.withdrawnAt,
     reviewedAt: application.reviewedAt,

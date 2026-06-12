@@ -101,6 +101,7 @@ This document defines the canonical permissions for the Codex event platform.
 | --- | --- | --- | --- | --- | --- |
 | Submit `UserApplication` | Yes, if no application exists for the event and the event is `registration_open` | No | No | No | No |
 | View own application | Yes | Yes | No | No | No |
+| Verify own Luma email | No | Yes, when Luma sync is enabled for the event | No | No | No |
 | Withdraw own application | Yes, if the application is still `submitted` and the user has no active team membership in the event | Yes, if the application is `approved` and the user has no active team membership in the event | No | No | No |
 | View event application records | No | No | Yes | Yes | Yes |
 | Withdraw application | No | No | No | Yes, if the application is `submitted` or `approved`; if the participant has an active team, the withdrawal can remove that membership or dissolve the team, but it cannot dissolve a team with an active draft, submitted, or locked submission | Yes, if the application is `submitted` or `approved`; if the participant has an active team, the withdrawal can remove that membership or dissolve the team, but it cannot dissolve a team with an active draft, submitted, or locked submission |

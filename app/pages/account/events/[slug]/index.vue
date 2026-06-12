@@ -136,6 +136,12 @@ interface RefreshableAsyncRequest {
   refresh: () => Promise<unknown>
 }
 
+interface VerifyLumaEmailResponse {
+  application: ParticipantApplicationRecord
+  lumaEmail: string | null
+  verificationStatus: 'synced' | 'not_found' | 'not_synced'
+}
+
 type AccountWorkspaceEvent = Omit<PublicEvent, 'tracks'> & {
   id: string
   hasGallery?: boolean
@@ -170,7 +176,7 @@ function refreshWhenEnabled(request: RefreshableAsyncRequest, enabled: Ref<boole
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
-const { actor } = useAccountLifecycleActor()
+const { actor, refresh: refreshActor } = useAccountLifecycleActor()
 
 if (!slug.value) {
   throw createError({
@@ -233,6 +239,9 @@ const participationData = ref(participationResponse.data)
 const participantCreditOffers = ref(initialParticipantCreditsResponse.data)
 const isWithdrawApplicationPending = ref(false)
 const withdrawApplicationErrorMessage = ref('')
+const lumaEmailForm = ref('')
+const lumaEmailVerificationErrorMessage = ref('')
+const isLumaEmailVerificationPending = ref(false)
 const accessRecord = computed(() => [
   ...accountEventsData.value.current,
   ...accountEventsData.value.past
@@ -292,6 +301,18 @@ const workspaceBackLink = computed(() => getAccountEventWorkspaceBackLink({
 const applicationStatus = computed(() =>
   participationRecord.value?.application?.status ?? accessRecord.value?.applicationStatus ?? null
 )
+const accountLumaEmail = computed(() =>
+  actor.value.kind === 'platform_user'
+    ? actor.value.platformUser.lumaEmail ?? ''
+    : ''
+)
+watch(accountLumaEmail, (nextEmail) => {
+  if (!isLumaEmailVerificationPending.value) {
+    lumaEmailForm.value = nextEmail
+  }
+}, {
+  immediate: true
+})
 const participantCertificatePath = computed(() => {
   const application = participationRecord.value?.application
 
@@ -638,10 +659,29 @@ const showHeaderApplicationStatusSummary = computed(() =>
 const showOverviewApplicationStatusBanner = computed(() =>
   shouldShowParticipantOverviewStatusBanner(applicationStatus.value)
 )
+const participantApplication = computed(() => participationRecord.value?.application ?? null)
+const lumaSyncStatus = computed(() => participantApplication.value?.lumaSyncStatus ?? null)
+const showLumaSyncNotice = computed(() =>
+  participantApplication.value?.status === 'approved'
+  && ['not_synced', 'approve_failed', 'approve_synced'].includes(lumaSyncStatus.value ?? '')
+)
+const isLumaSyncSuccessful = computed(() => lumaSyncStatus.value === 'approve_synced')
+const lumaSyncStatusLabel = computed(() => isLumaSyncSuccessful.value ? 'Luma synced' : 'Luma not synced')
+const lumaSyncNoticeTitle = computed(() =>
+  isLumaSyncSuccessful.value
+    ? 'Your Luma registration is synced'
+    : 'We could not match your Luma registration'
+)
+const lumaSyncNoticeDescription = computed(() =>
+  isLumaSyncSuccessful.value
+    ? 'Your Luma email is registered for this event.'
+    : 'Check that this is the same email you used on Luma for this event. If it matches a guest on the event list, your event access will show as synced.'
+)
 const showOverviewStatusNotices = computed(() =>
   applicationSubmittedNoticeVisible.value
   || showOverviewApplicationStatusBanner.value
   || Boolean(participantOutcomeNotice.value)
+  || showLumaSyncNotice.value
 )
 const showApprovedOverviewActions = computed(() =>
   applicationStatus.value === 'approved' && isCompetitionEvent.value && !hasEventEnteredSubmissionPhase(event.value)
@@ -731,6 +771,7 @@ function updateParticipationRecordApplication(nextApplication: ParticipantApplic
           application: {
             id: nextApplication.id,
             status: nextApplication.status,
+            lumaSyncStatus: nextApplication.lumaSyncStatus,
             submittedAt: nextApplication.submittedAt,
             withdrawnAt: nextApplication.withdrawnAt,
             reviewedAt: nextApplication.reviewedAt,
@@ -745,6 +786,61 @@ function updateParticipationRecordApplication(nextApplication: ParticipantApplic
   participationData.value = {
     current: patchRecords(participationData.value.current),
     past: patchRecords(participationData.value.past)
+  }
+}
+
+async function verifyLumaEmail() {
+  if (isLumaEmailVerificationPending.value) {
+    return
+  }
+
+  const lumaEmail = lumaEmailForm.value.trim()
+
+  if (!lumaEmail) {
+    lumaEmailVerificationErrorMessage.value = 'Enter the email you used for this event on Luma.'
+    return
+  }
+
+  isLumaEmailVerificationPending.value = true
+  lumaEmailVerificationErrorMessage.value = ''
+
+  try {
+    const response = await $fetch<ParticipantApiDataResponse<VerifyLumaEmailResponse>>(
+      `/api/events/${event.value.id}/applications/me/actions/verify-luma-email`,
+      {
+        method: 'POST',
+        body: {
+          lumaEmail
+        }
+      }
+    )
+
+    updateParticipationRecordApplication(response.data.application)
+
+    if (response.data.verificationStatus !== 'not_found' && response.data.lumaEmail) {
+      lumaEmailForm.value = response.data.lumaEmail
+      await refreshActor()
+    }
+
+    if (response.data.verificationStatus === 'synced') {
+      toast.add({
+        title: 'Luma email verified',
+        description: 'Your Luma registration is synced for this event.',
+        color: 'success'
+      })
+      return
+    }
+
+    if (response.data.verificationStatus === 'not_found') {
+      lumaEmailVerificationErrorMessage.value = 'We still could not find this email on the Luma event guest list.'
+      return
+    }
+
+    lumaEmailVerificationErrorMessage.value = 'We found your Luma email, but the event access sync did not finish. Try again in a moment.'
+  } catch (error) {
+    lumaEmailVerificationErrorMessage.value = normalizeParticipantApiError(error).message
+  } finally {
+    isLumaEmailVerificationPending.value = false
   }
 }
 
@@ -915,6 +1011,89 @@ useSeoMeta({
             :title="applicationStatusNoticeTitle"
             :description="applicationStatusSummary"
           />
+
+          <section
+            v-if="showLumaSyncNotice"
+            data-testid="account-event-luma-sync-notice"
+            class="rounded-xl !border px-4 py-4 !shadow-none !backdrop-blur-xl"
+            :class="isLumaSyncSuccessful
+              ? '!border-success/20 !bg-success/10 text-success'
+              : '!border-warning/25 !bg-warning/10 text-warning'"
+          >
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <div
+                class="grid size-9 shrink-0 place-items-center rounded-lg text-white"
+                :class="isLumaSyncSuccessful ? 'bg-success' : 'bg-warning'"
+                aria-hidden="true"
+              >
+                <AppIcon
+                  :name="isLumaSyncSuccessful ? 'i-lucide-check-square' : 'i-lucide-triangle-alert'"
+                  class="size-5"
+                />
+              </div>
+
+              <div class="min-w-0 flex-1 space-y-4">
+                <div class="space-y-2">
+                  <div class="flex flex-wrap items-center gap-3">
+                    <h2 class="text-base font-semibold text-current">
+                      {{ lumaSyncNoticeTitle }}
+                    </h2>
+                    <AppBadge
+                      :color="isLumaSyncSuccessful ? 'success' : 'warning'"
+                      variant="outline"
+                      class="rounded-full bg-white/55 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] dark:bg-black/20"
+                    >
+                      {{ lumaSyncStatusLabel }}
+                    </AppBadge>
+                  </div>
+
+                  <p class="text-sm leading-6 text-current/90">
+                    {{ lumaSyncNoticeDescription }}
+                  </p>
+                </div>
+
+                <form
+                  v-if="!isLumaSyncSuccessful"
+                  class="grid gap-3 lg:grid-cols-[minmax(16rem,1fr)_auto]"
+                  @submit.prevent="verifyLumaEmail"
+                >
+                  <AppFormField
+                    name="account-event-luma-email"
+                    label="Luma email"
+                  >
+                    <AppInput
+                      id="account-event-luma-email"
+                      v-model="lumaEmailForm"
+                      type="email"
+                      placeholder="you@example.com"
+                      :disabled="isLumaEmailVerificationPending"
+                      class="border-warning/25 bg-white/80 text-highlighted focus:border-warning/45 dark:border-warning/30 dark:bg-black/20"
+                    />
+                  </AppFormField>
+
+                  <div class="flex items-end">
+                    <AppButton
+                      type="submit"
+                      color="neutral"
+                      variant="solid"
+                      icon="i-lucide-circle-check"
+                      :loading="isLumaEmailVerificationPending"
+                      class="w-full rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC] lg:w-auto"
+                    >
+                      Verify Luma email
+                    </AppButton>
+                  </div>
+                </form>
+
+                <p
+                  v-if="lumaEmailVerificationErrorMessage"
+                  class="text-sm font-medium text-current"
+                >
+                  {{ lumaEmailVerificationErrorMessage }}
+                </p>
+              </div>
+            </div>
+          </section>
 
           <AppAlert
             v-if="participantOutcomeNotice"

@@ -34,6 +34,7 @@ function buildRecord(
     application: {
       id: 'application-1',
       status: 'submitted',
+      lumaSyncStatus: null,
       submittedAt: '2026-03-09T09:00:00Z',
       withdrawnAt: null,
       reviewedAt: null,
@@ -75,6 +76,7 @@ describe('event participation badge helpers', () => {
       application: {
         id: 'application-1',
         status: 'approved',
+        lumaSyncStatus: null,
         submittedAt: '2026-03-09T09:00:00Z',
         withdrawnAt: null,
         reviewedAt: '2026-03-12T09:00:00Z',
@@ -92,6 +94,7 @@ describe('event participation badge helpers', () => {
       application: {
         id: 'application-1',
         status: 'rejected',
+        lumaSyncStatus: null,
         submittedAt: '2026-03-09T09:00:00Z',
         withdrawnAt: null,
         reviewedAt: '2026-03-12T09:00:00Z',

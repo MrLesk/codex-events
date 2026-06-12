@@ -75,11 +75,20 @@ export interface ParticipantRegistrationDetails {
   aiKnowledgeLevel: ParticipantAiKnowledgeLevelInput
 }
 
+export type ParticipantApplicationLumaSyncStatus
+  = 'not_synced'
+    | 'approve_synced'
+    | 'reject_synced'
+    | 'approve_failed'
+    | 'reject_failed'
+    | null
+
 export interface ParticipantApplicationRecord {
   id: string
   eventId: string
   userId: string
   status: 'submitted' | 'approved' | 'rejected' | 'withdrawn'
+  lumaSyncStatus: ParticipantApplicationLumaSyncStatus
   submittedAt: string
   withdrawnAt: string | null
   checkedInAt: string | null

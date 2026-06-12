@@ -6,6 +6,7 @@ import applicationsListHandler from '../../../../server/api/events/[eventId]/app
 import applicationsPostHandler from '../../../../server/api/events/[eventId]/applications/index.post'
 import ownApplicationHandler from '../../../../server/api/events/[eventId]/applications/me.get'
 import withdrawOwnApplicationHandler from '../../../../server/api/events/[eventId]/applications/me/actions/withdraw.post'
+import verifyOwnApplicationLumaEmailHandler from '../../../../server/api/events/[eventId]/applications/me/actions/verify-luma-email.post'
 import approveApplicationHandler from '../../../../server/api/events/[eventId]/applications/[applicationId]/actions/approve.post'
 import adminWithdrawApplicationHandler from '../../../../server/api/events/[eventId]/applications/[applicationId]/actions/withdraw.post'
 import undoApplicationWithdrawalHandler from '../../../../server/api/events/[eventId]/applications/[applicationId]/actions/undo-withdrawal.post'
@@ -1210,6 +1211,225 @@ describe('TASK-3.6 application routes', () => {
 
     expect(storedApplication?.lumaSyncStatus).toBe('not_synced')
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  test('POST /api/events/:eventId/applications/me/actions/verify-luma-email updates the Luma email and completes approval sync', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/events/:eventId/applications/me/actions/verify-luma-email',
+          handler: verifyOwnApplicationLumaEmailHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      },
+      runtimeConfig: {}
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      requireLumaEmail: true,
+      lumaEventUrl: 'https://luma.com/codex',
+      lumaEventApiId: 'evt-123'
+    })
+
+    await harness.database.insert(userApplications).values({
+      id: 'application_1',
+      eventId: 'event_1',
+      userId: 'regular_user',
+      status: 'approved',
+      lumaSyncStatus: 'approve_failed',
+      submittedAt: '2026-03-22T12:10:00.000Z',
+      reviewedAt: '2026-03-22T12:20:00.000Z',
+      reviewedByUserId: 'event_admin',
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+      createdAt: '2026-03-22T12:10:00.000Z',
+      updatedAt: '2026-03-22T12:20:00.000Z'
+    })
+
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
+
+      if (url.pathname === '/v1/event/get-guest') {
+        expect(url.searchParams.get('event_id')).toBe('evt-123')
+        expect(url.searchParams.get('id')).toBe('correct@luma.example')
+
+        return new Response(JSON.stringify({
+          guest: {
+            id: 'gst-verified',
+            user_email: 'correct@luma.example'
+          }
+        }), {
+          status: 200,
+          headers: {
+            'content-type': 'application/json'
+          }
+        })
+      }
+
+      if (url.pathname === '/v1/event/update-guest-status') {
+        expect(init?.method).toBe('POST')
+        expect(JSON.parse(String(init?.body))).toMatchObject({
+          guest: {
+            type: 'api_id',
+            api_id: 'gst-verified'
+          },
+          event_api_id: 'evt-123',
+          status: 'approved'
+        })
+
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: {
+            'content-type': 'application/json'
+          }
+        })
+      }
+
+      throw new Error(`Unexpected fetch URL: ${url.toString()}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await harness.request('/api/events/event_1/applications/me/actions/verify-luma-email', {
+      method: 'POST',
+      body: JSON.stringify({
+        lumaEmail: 'correct@luma.example'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        lumaEmail: 'correct@luma.example',
+        verificationStatus: 'synced',
+        application: {
+          id: 'application_1',
+          lumaSyncStatus: 'approve_synced'
+        }
+      }
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+
+    const storedUser = await harness.database.query.users.findFirst({
+      where: eq(users.id, 'regular_user')
+    })
+    expect(storedUser?.lumaEmail).toBe('correct@luma.example')
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: eq(userApplications.id, 'application_1')
+    })
+    expect(storedApplication?.lumaSyncStatus).toBe('approve_synced')
+
+    const auditRows = await harness.database.select().from(auditLogs)
+    expect(auditRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        entityType: 'user',
+        entityId: 'regular_user',
+        action: 'account.updated',
+        metadata: expect.objectContaining({
+          source: 'participant_luma_verification'
+        })
+      }),
+      expect.objectContaining({
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.luma_sync_completed',
+        metadata: expect.objectContaining({
+          decision: 'approved',
+          guestId: 'gst-verified',
+          lumaEmail: 'correct@luma.example'
+        })
+      })
+    ]))
+  })
+
+  test('POST /api/events/:eventId/applications/me/actions/verify-luma-email keeps failed sync state when the Luma email is not found', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/events/:eventId/applications/me/actions/verify-luma-email',
+          handler: verifyOwnApplicationLumaEmailHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      },
+      runtimeConfig: {}
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      requireLumaEmail: true,
+      lumaEventUrl: 'https://luma.com/codex',
+      lumaEventApiId: 'evt-123'
+    })
+
+    await harness.database.insert(userApplications).values({
+      id: 'application_1',
+      eventId: 'event_1',
+      userId: 'regular_user',
+      status: 'approved',
+      lumaSyncStatus: 'approve_failed',
+      submittedAt: '2026-03-22T12:10:00.000Z',
+      reviewedAt: '2026-03-22T12:20:00.000Z',
+      reviewedByUserId: 'event_admin',
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+      createdAt: '2026-03-22T12:10:00.000Z',
+      updatedAt: '2026-03-22T12:20:00.000Z'
+    })
+
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
+
+      if (url.pathname === '/v1/event/get-guest') {
+        return new Response(JSON.stringify({
+          guest: null
+        }), {
+          status: 200,
+          headers: {
+            'content-type': 'application/json'
+          }
+        })
+      }
+
+      throw new Error(`Unexpected fetch URL: ${url.toString()}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await harness.request('/api/events/event_1/applications/me/actions/verify-luma-email', {
+      method: 'POST',
+      body: JSON.stringify({
+        lumaEmail: 'missing@luma.example'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        lumaEmail: 'regular@luma.example',
+        verificationStatus: 'not_found',
+        application: {
+          id: 'application_1',
+          lumaSyncStatus: 'approve_failed'
+        }
+      }
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    const storedUser = await harness.database.query.users.findFirst({
+      where: eq(users.id, 'regular_user')
+    })
+    expect(storedUser?.lumaEmail).toBe('regular@luma.example')
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: eq(userApplications.id, 'application_1')
+    })
+    expect(storedApplication?.lumaSyncStatus).toBe('approve_failed')
   })
 
   test('POST /api/events/:eventId/applications allows submission when the Luma lookup temporarily fails', async () => {
