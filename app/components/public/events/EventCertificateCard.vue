@@ -431,10 +431,10 @@ const participantNameSize = computed(() => {
 
 .certificate-card__dots--right {
   right: 2.5%;
-  bottom: 22%;
+  top: 6%;
   width: 26%;
   height: 70%;
-  mask-image: radial-gradient(130% 130% at 100% 50%, #000 30%, rgba(0, 0, 0, 0) 78%);
+  mask-image: radial-gradient(120% 120% at 100% 0%, #000 30%, rgba(0, 0, 0, 0) 75%);
 }
 
 .certificate-card__rings {
