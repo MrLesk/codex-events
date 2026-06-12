@@ -3,6 +3,7 @@ import { usePreferredReducedMotion } from '@vueuse/core'
 
 import type { EventCertificate } from '#shared/domains/events/certificates'
 import {
+  eventCertificateTypeLabels,
   formatEventCertificatePlacement,
   resolveEventCertificatePlacementTier
 } from '#shared/domains/events/certificates'
@@ -128,6 +129,8 @@ const celebrationSparks = [
   { left: '20%', top: '40%', dx: '-120px', dy: '-60px', delay: '230ms', color: '#ffffff' },
   { left: '80%', top: '38%', dx: '120px', dy: '-60px', delay: '170ms', color: '#c4b5ff' }
 ] as const
+
+const typeLabel = computed(() => eventCertificateTypeLabels[props.certificate.eventType])
 
 const placementTier = computed(() => props.certificate.placement
   ? resolveEventCertificatePlacementTier(props.certificate.placement)
@@ -257,7 +260,21 @@ const participantNameSize = computed(() => {
             </p>
           </div>
 
-          <div class="flex items-center">
+          <div class="flex items-center justify-evenly">
+            <div class="flex items-center gap-[1.1cqw]">
+              <span class="certificate-card__icon-tile">
+                <AppIcon
+                  name="i-lucide-box"
+                  class="size-[1.7cqw]"
+                />
+              </span>
+              <span class="flex flex-col gap-[0.4cqw]">
+                <span class="text-[max(7px,1cqw)] font-semibold tracking-[0.28em] text-white/85">EVENT TYPE</span>
+                <span class="text-[max(9px,1.5cqw)] font-semibold text-white">{{ typeLabel }}</span>
+              </span>
+            </div>
+
+            <div class="certificate-card__divider" />
             <div class="flex items-center gap-[1.1cqw]">
               <span class="certificate-card__icon-tile">
                 <AppIcon
@@ -529,7 +546,6 @@ const participantNameSize = computed(() => {
 .certificate-card__divider {
   width: 1px;
   height: 3.6cqw;
-  margin: 0 3cqw;
   background: rgba(255, 255, 255, 0.28);
   flex: none;
 }
