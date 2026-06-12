@@ -13,8 +13,11 @@ import codexMarkWhite from '~/assets/images/codex-mark-white.png'
 const props = defineProps<{
   certificate: EventCertificate
   celebrate?: boolean
+  variant?: 'holo' | 'normal'
 }>()
 
+const isHolo = computed(() => props.variant !== 'normal')
+const markGradientId = useId()
 const stageElement = ref<HTMLElement | null>(null)
 const isPointerActive = ref(false)
 const tiltX = ref(0)
@@ -50,7 +53,7 @@ function runTiltLoop() {
 function handlePointerMove(event: PointerEvent) {
   const element = stageElement.value
 
-  if (!element || reducedMotion.value === 'reduce') {
+  if (!element || !isHolo.value || reducedMotion.value === 'reduce') {
     return
   }
 
@@ -115,20 +118,28 @@ watch(() => props.celebrate, (celebrate) => {
 
 onBeforeUnmount(() => clearTimeout(celebrationTimeout))
 
-const celebrationSparks = [
-  { left: '24%', top: '30%', dx: '-90px', dy: '-110px', delay: '0ms', color: '#ffe9a8' },
-  { left: '50%', top: '18%', dx: '10px', dy: '-130px', delay: '60ms', color: '#ffffff' },
-  { left: '74%', top: '28%', dx: '110px', dy: '-90px', delay: '120ms', color: '#c4b5ff' },
-  { left: '14%', top: '52%', dx: '-130px', dy: '-10px', delay: '90ms', color: '#ffffff' },
-  { left: '86%', top: '50%', dx: '130px', dy: '-20px', delay: '40ms', color: '#ffe9a8' },
-  { left: '30%', top: '74%', dx: '-100px', dy: '90px', delay: '150ms', color: '#c4b5ff' },
-  { left: '52%', top: '82%', dx: '0px', dy: '120px', delay: '110ms', color: '#ffe9a8' },
-  { left: '72%', top: '72%', dx: '110px', dy: '90px', delay: '30ms', color: '#ffffff' },
-  { left: '40%', top: '24%', dx: '-50px', dy: '-120px', delay: '180ms', color: '#ffe9a8' },
-  { left: '62%', top: '22%', dx: '60px', dy: '-115px', delay: '200ms', color: '#ffffff' },
-  { left: '20%', top: '40%', dx: '-120px', dy: '-60px', delay: '230ms', color: '#ffffff' },
-  { left: '80%', top: '38%', dx: '120px', dy: '-60px', delay: '170ms', color: '#c4b5ff' }
+const celebrationSparkSeeds = [
+  { left: '24%', top: '30%', dx: '-90px', dy: '-110px', delay: '0ms', tone: 'gold' },
+  { left: '50%', top: '18%', dx: '10px', dy: '-130px', delay: '60ms', tone: 'plain' },
+  { left: '74%', top: '28%', dx: '110px', dy: '-90px', delay: '120ms', tone: 'accent' },
+  { left: '14%', top: '52%', dx: '-130px', dy: '-10px', delay: '90ms', tone: 'plain' },
+  { left: '86%', top: '50%', dx: '130px', dy: '-20px', delay: '40ms', tone: 'gold' },
+  { left: '30%', top: '74%', dx: '-100px', dy: '90px', delay: '150ms', tone: 'accent' },
+  { left: '52%', top: '82%', dx: '0px', dy: '120px', delay: '110ms', tone: 'gold' },
+  { left: '72%', top: '72%', dx: '110px', dy: '90px', delay: '30ms', tone: 'plain' },
+  { left: '40%', top: '24%', dx: '-50px', dy: '-120px', delay: '180ms', tone: 'gold' },
+  { left: '62%', top: '22%', dx: '60px', dy: '-115px', delay: '200ms', tone: 'plain' },
+  { left: '20%', top: '40%', dx: '-120px', dy: '-60px', delay: '230ms', tone: 'plain' },
+  { left: '80%', top: '38%', dx: '120px', dy: '-60px', delay: '170ms', tone: 'accent' }
 ] as const
+
+const celebrationSparkTones = computed(() => isHolo.value
+  ? { gold: '#ffe9a8', plain: '#ffffff', accent: '#c4b5ff' }
+  : { gold: '#f59e0b', plain: '#6366f1', accent: '#a855f7' })
+const celebrationSparks = computed(() => celebrationSparkSeeds.map(seed => ({
+  ...seed,
+  color: celebrationSparkTones.value[seed.tone]
+})))
 
 const typeLabel = computed(() => eventCertificateTypeLabels[props.certificate.eventType])
 
@@ -161,8 +172,9 @@ const participantNameSize = computed(() => {
 <template>
   <div
     class="certificate-card-stage relative w-full"
-    :class="`certificate-card-stage--${certificate.eventType}`"
+    :class="[`certificate-card-stage--${certificate.eventType}`, { 'certificate-card-stage--normal': !isHolo }]"
     data-testid="event-certificate-card"
+    :data-variant="isHolo ? 'holo' : 'normal'"
   >
     <div
       ref="stageElement"
@@ -178,58 +190,150 @@ const participantNameSize = computed(() => {
         role="img"
         :aria-label="`${certificate.participantName} — Certificate of Participation, ${certificate.eventName}`"
       >
-        <div
-          class="certificate-card__grid"
-          aria-hidden="true"
-        />
-        <div
-          class="certificate-card__dots certificate-card__dots--top"
-          aria-hidden="true"
-        />
-        <div
-          class="certificate-card__dots certificate-card__dots--right"
-          aria-hidden="true"
-        />
-        <div
-          class="certificate-card__rings"
-          aria-hidden="true"
-        />
-        <div
-          class="certificate-card__sheen"
-          :class="{ 'certificate-card__sheen--celebrating': isCelebrating }"
-          :style="sheenStyle"
-          aria-hidden="true"
-        />
-        <div
-          class="certificate-card__glare"
-          :style="glareStyle"
-          aria-hidden="true"
-        />
-        <span
-          class="certificate-card__spark left-[26%] top-[18%] text-[1.7cqw]"
-          aria-hidden="true"
-        >+</span>
-        <span
-          class="certificate-card__spark left-[8%] top-[62%] text-[1.3cqw]"
-          aria-hidden="true"
-        >+</span>
-        <span
-          class="certificate-card__spark left-[58%] top-[12%] text-[1.2cqw]"
-          aria-hidden="true"
-        >+</span>
+        <template v-if="isHolo">
+          <div
+            class="certificate-card__grid"
+            aria-hidden="true"
+          />
+          <div
+            class="certificate-card__dots certificate-card__dots--top"
+            aria-hidden="true"
+          />
+          <div
+            class="certificate-card__dots certificate-card__dots--right"
+            aria-hidden="true"
+          />
+          <div
+            class="certificate-card__rings"
+            aria-hidden="true"
+          />
+          <div
+            class="certificate-card__sheen"
+            :class="{ 'certificate-card__sheen--celebrating': isCelebrating }"
+            :style="sheenStyle"
+            aria-hidden="true"
+          />
+          <div
+            class="certificate-card__glare"
+            :style="glareStyle"
+            aria-hidden="true"
+          />
+          <span
+            class="certificate-card__spark left-[26%] top-[18%] text-[1.7cqw]"
+            aria-hidden="true"
+          >+</span>
+          <span
+            class="certificate-card__spark left-[8%] top-[62%] text-[1.3cqw]"
+            aria-hidden="true"
+          >+</span>
+          <span
+            class="certificate-card__spark left-[58%] top-[12%] text-[1.2cqw]"
+            aria-hidden="true"
+          >+</span>
+        </template>
 
         <img
+          v-if="isHolo"
           :src="codexMarkWhite"
           alt=""
           aria-hidden="true"
           class="certificate-card__mark absolute right-[4.5cqw] top-[9%] z-0 w-[13cqw]"
         >
+        <svg
+          v-else
+          class="certificate-card__mark certificate-card__mark--normal absolute right-[4.5cqw] top-[9%] z-0 w-[13cqw]"
+          viewBox="0 0 120 120"
+          aria-hidden="true"
+        >
+          <defs>
+            <linearGradient
+              :id="`certificate-mark-gradient-${markGradientId}`"
+              x1="38"
+              y1="6"
+              x2="74"
+              y2="116"
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop
+                offset="0"
+                stop-color="var(--certificate-mark-from)"
+              />
+              <stop
+                offset="0.55"
+                stop-color="var(--certificate-mark-via)"
+              />
+              <stop
+                offset="1"
+                stop-color="var(--certificate-mark-to)"
+              />
+            </linearGradient>
+          </defs>
+          <g :fill="`url(#certificate-mark-gradient-${markGradientId})`">
+            <circle
+              cx="44"
+              cy="36"
+              r="25"
+            />
+            <circle
+              cx="78"
+              cy="32"
+              r="21"
+            />
+            <circle
+              cx="97"
+              cy="56"
+              r="19"
+            />
+            <circle
+              cx="90"
+              cy="82"
+              r="20"
+            />
+            <circle
+              cx="62"
+              cy="92"
+              r="21"
+            />
+            <circle
+              cx="34"
+              cy="84"
+              r="20"
+            />
+            <circle
+              cx="22"
+              cy="56"
+              r="19"
+            />
+            <circle
+              cx="60"
+              cy="60"
+              r="32"
+            />
+          </g>
+          <path
+            d="M 45 44 L 60 59 L 45 74"
+            fill="none"
+            stroke="#ffffff"
+            stroke-width="9"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <line
+            x1="68"
+            y1="78"
+            x2="88"
+            y2="78"
+            stroke="#ffffff"
+            stroke-width="9"
+            stroke-linecap="round"
+          />
+        </svg>
 
         <div
           class="relative z-10 flex h-full flex-col px-[4.4cqw] py-[3.4cqw]"
           aria-hidden="true"
         >
-          <p class="absolute left-[4.4cqw] top-[3.4cqw] text-[max(14px,2.34cqw)] font-bold leading-[1.45] tracking-[0.42em] text-white/95">
+          <p class="absolute left-[4.4cqw] top-[3.4cqw] text-[max(14px,2.34cqw)] font-bold leading-[1.45] tracking-[0.42em] text-[var(--certificate-ink-strong)]">
             CODEX<br>EVENTS
           </p>
 
@@ -246,7 +350,7 @@ const participantNameSize = computed(() => {
               />
               {{ placementLabel }}
             </p>
-            <p class="text-[max(8px,1.45cqw)] font-semibold tracking-[0.4em] text-white/90">
+            <p class="text-[max(8px,1.45cqw)] font-semibold tracking-[0.4em] text-[var(--certificate-ink)]">
               CERTIFICATE OF PARTICIPATION
             </p>
             <p
@@ -255,7 +359,7 @@ const participantNameSize = computed(() => {
             >
               {{ certificate.participantName }}
             </p>
-            <p class="mt-[2cqw] rounded-full border border-white/55 px-[2.6cqw] py-[0.85cqw] text-[max(8px,1.4cqw)] font-semibold uppercase tracking-[0.34em] text-white/90">
+            <p class="mt-[2cqw] rounded-full border border-[var(--certificate-pill-border)] px-[2.6cqw] py-[0.85cqw] text-[max(8px,1.4cqw)] font-semibold uppercase tracking-[0.34em] text-[var(--certificate-ink)]">
               {{ certificate.eventName }}
             </p>
           </div>
@@ -269,8 +373,8 @@ const participantNameSize = computed(() => {
                 />
               </span>
               <span class="flex flex-col gap-[0.4cqw]">
-                <span class="text-[max(7px,1cqw)] font-semibold tracking-[0.28em] text-white/85">EVENT TYPE</span>
-                <span class="text-[max(9px,1.5cqw)] font-semibold text-white">{{ typeLabel }}</span>
+                <span class="text-[max(7px,1cqw)] font-semibold tracking-[0.28em] text-[var(--certificate-ink-soft)]">EVENT TYPE</span>
+                <span class="text-[max(9px,1.5cqw)] font-semibold text-[var(--certificate-ink-strong)]">{{ typeLabel }}</span>
               </span>
             </div>
 
@@ -283,8 +387,8 @@ const participantNameSize = computed(() => {
                 />
               </span>
               <span class="flex flex-col gap-[0.4cqw]">
-                <span class="text-[max(7px,1cqw)] font-semibold tracking-[0.28em] text-white/85">EVENT DATE</span>
-                <span class="text-[max(9px,1.5cqw)] font-semibold text-white">{{ certificate.eventDateLabel }}</span>
+                <span class="text-[max(7px,1cqw)] font-semibold tracking-[0.28em] text-[var(--certificate-ink-soft)]">EVENT DATE</span>
+                <span class="text-[max(9px,1.5cqw)] font-semibold text-[var(--certificate-ink-strong)]">{{ certificate.eventDateLabel }}</span>
               </span>
             </div>
 
@@ -298,8 +402,8 @@ const participantNameSize = computed(() => {
                   />
                 </span>
                 <span class="flex min-w-0 flex-col gap-[0.4cqw]">
-                  <span class="text-[max(7px,1cqw)] font-semibold tracking-[0.28em] text-white/85">TRACK</span>
-                  <span class="truncate text-[max(9px,1.5cqw)] font-semibold text-white">{{ certificate.trackName }}</span>
+                  <span class="text-[max(7px,1cqw)] font-semibold tracking-[0.28em] text-[var(--certificate-ink-soft)]">TRACK</span>
+                  <span class="truncate text-[max(9px,1.5cqw)] font-semibold text-[var(--certificate-ink-strong)]">{{ certificate.trackName }}</span>
                 </span>
               </div>
             </template>
@@ -313,8 +417,8 @@ const participantNameSize = computed(() => {
                 />
               </span>
               <span class="flex flex-col gap-[0.4cqw]">
-                <span class="text-[max(7px,1cqw)] font-semibold tracking-[0.28em] text-white/85">CERTIFICATE ID</span>
-                <span class="text-[max(9px,1.5cqw)] font-semibold text-white">{{ certificate.certificateId }}</span>
+                <span class="text-[max(7px,1cqw)] font-semibold tracking-[0.28em] text-[var(--certificate-ink-soft)]">CERTIFICATE ID</span>
+                <span class="text-[max(9px,1.5cqw)] font-semibold text-[var(--certificate-ink-strong)]">{{ certificate.certificateId }}</span>
               </span>
             </div>
           </div>
@@ -345,6 +449,10 @@ const participantNameSize = computed(() => {
 <style scoped>
 .certificate-card-stage {
   container-type: inline-size;
+  --certificate-ink-strong: #ffffff;
+  --certificate-ink: rgba(255, 255, 255, 0.9);
+  --certificate-ink-soft: rgba(255, 255, 255, 0.85);
+  --certificate-pill-border: rgba(255, 255, 255, 0.55);
 }
 
 .certificate-card-perspective {
@@ -401,6 +509,104 @@ const participantNameSize = computed(() => {
   --certificate-frame: rgba(188, 242, 248, 0.65);
   --certificate-edge-glow: rgba(45, 205, 220, 0.5);
   --certificate-dot: rgba(140, 235, 230, 0.55);
+}
+
+.certificate-card-stage--normal {
+  --certificate-ink-strong: #131c3f;
+  --certificate-ink: #313b5e;
+  --certificate-ink-soft: #5b647c;
+  --certificate-pill-border: rgba(19, 28, 63, 0.22);
+}
+
+.certificate-card-stage--normal.certificate-card-stage--build {
+  --certificate-normal-accent: #4753f0;
+  --certificate-normal-accent-deep: #2733c8;
+  --certificate-normal-tint: #eef0fe;
+  --certificate-normal-tint-strong: rgba(79, 93, 240, 0.10);
+  --certificate-normal-glow: rgba(79, 93, 240, 0.28);
+  --certificate-mark-from: #a78bfa;
+  --certificate-mark-via: #5560f5;
+  --certificate-mark-to: #2c3bee;
+}
+
+.certificate-card-stage--normal.certificate-card-stage--hackathon {
+  --certificate-normal-accent: #b423a8;
+  --certificate-normal-accent-deep: #87187d;
+  --certificate-normal-tint: #fdeef8;
+  --certificate-normal-tint-strong: rgba(200, 38, 150, 0.10);
+  --certificate-normal-glow: rgba(200, 38, 150, 0.24);
+  --certificate-mark-from: #d18bf5;
+  --certificate-mark-via: #c43bd8;
+  --certificate-mark-to: #e8447f;
+}
+
+.certificate-card-stage--normal.certificate-card-stage--meetup {
+  --certificate-normal-accent: #0a9b95;
+  --certificate-normal-accent-deep: #077772;
+  --certificate-normal-tint: #e9faf7;
+  --certificate-normal-tint-strong: rgba(13, 148, 136, 0.10);
+  --certificate-normal-glow: rgba(13, 148, 136, 0.24);
+  --certificate-mark-from: #5ad7e8;
+  --certificate-mark-via: #18a7c4;
+  --certificate-mark-to: #0c8f86;
+}
+
+.certificate-card-stage--normal .certificate-card {
+  border: 1px solid rgba(19, 28, 63, 0.14);
+  background:
+    radial-gradient(70% 110% at 100% 0%, var(--certificate-normal-tint-strong) 0%, rgba(255, 255, 255, 0) 55%),
+    linear-gradient(180deg, #ffffff 0%, #fbfbfe 55%, var(--certificate-normal-tint) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 2px rgba(19, 28, 63, 0.06),
+    0 18px 60px -30px var(--certificate-normal-glow),
+    0 28px 56px -28px rgba(19, 28, 63, 0.28);
+}
+
+.certificate-card-stage--normal .certificate-card__name {
+  background-image: linear-gradient(180deg, #1d2750 30%, var(--certificate-normal-accent-deep) 125%);
+  filter: none;
+}
+
+.certificate-card-stage--normal .certificate-card__mark--normal {
+  filter: drop-shadow(0 0.5cqw 1.4cqw var(--certificate-normal-glow));
+  opacity: 1;
+}
+
+.certificate-card-stage--normal .certificate-card__icon-tile {
+  border-color: color-mix(in srgb, var(--certificate-normal-accent) 28%, transparent);
+  background: color-mix(in srgb, var(--certificate-normal-accent) 8%, transparent);
+  color: var(--certificate-normal-accent-deep);
+}
+
+.certificate-card-stage--normal .certificate-card__divider {
+  background: rgba(19, 28, 63, 0.14);
+}
+
+.certificate-card-stage--normal .certificate-card__placement--gold {
+  color: #92400e;
+  border-color: rgba(217, 119, 6, 0.45);
+  background: rgba(251, 191, 36, 0.16);
+  box-shadow: none;
+}
+
+.certificate-card-stage--normal .certificate-card__placement--silver {
+  color: #475569;
+  border-color: rgba(100, 116, 139, 0.42);
+  background: rgba(148, 163, 184, 0.16);
+  box-shadow: none;
+}
+
+.certificate-card-stage--normal .certificate-card__placement--bronze {
+  color: #9a3412;
+  border-color: rgba(194, 93, 32, 0.45);
+  background: rgba(234, 138, 66, 0.16);
+  box-shadow: none;
+}
+
+.certificate-card-stage--normal .certificate-card__reflection {
+  background: radial-gradient(50% 100% at 50% 0%, rgba(19, 28, 63, 0.22) 0%, rgba(0, 0, 0, 0) 75%);
+  opacity: 0.55;
 }
 
 .certificate-card__grid {

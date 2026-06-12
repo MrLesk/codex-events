@@ -37,6 +37,7 @@ const previewSearch = computed(() => {
   const search = params.toString()
   return search ? `?${search}` : ''
 })
+const certificateVariant = computed(() => route.query.variant === 'normal' ? 'normal' : 'holo')
 const { actor: accountActor } = await useAccountLifecycleActor()
 const toast = useToast()
 
@@ -78,6 +79,15 @@ const metaLine = computed(() => [
 const requestUrl = useRequestURL()
 const certificatePath = computed(() => buildEventCertificatePath(slug.value, userId.value))
 const certificateUrl = computed(() => new URL(`${certificatePath.value}${previewSearch.value}`, requestUrl.origin).toString())
+const shareCertificateUrl = computed(() => {
+  if (certificateVariant.value !== 'normal') {
+    return certificateUrl.value
+  }
+
+  const url = new URL(certificateUrl.value)
+  url.searchParams.set('variant', 'normal')
+  return url.toString()
+})
 const certificateApiBasePath = computed(() => `/api/public/events/${slug.value}/participants/${userId.value}`)
 const certificateImageUrl = computed(() => new URL(`${certificateApiBasePath.value}/certificate.png${previewSearch.value}`, requestUrl.origin).toString())
 const certificateSummary = computed(() => buildEventCertificateSummary(certificate.value))
@@ -119,7 +129,7 @@ const stageBackgroundImageStyle = computed(() => certificate.value.backgroundIma
 
 async function copyCertificateLink() {
   try {
-    await navigator.clipboard.writeText(certificateUrl.value)
+    await navigator.clipboard.writeText(shareCertificateUrl.value)
     toast.add({
       title: 'Certificate link copied',
       color: 'success'
@@ -206,15 +216,22 @@ useHead({
     >
       <div class="absolute inset-0 block bg-[radial-gradient(55%_45%_at_50%_58%,rgba(96,60,235,0.10),transparent_70%)] dark:hidden" />
       <div
-        v-if="stageBackgroundImageStyle"
+        v-if="certificateVariant === 'holo' && stageBackgroundImageStyle"
         class="absolute inset-0 hidden scale-110 bg-cover bg-center bg-no-repeat opacity-60 blur-md saturate-125 dark:block"
         :style="stageBackgroundImageStyle"
       />
       <div
-        v-else
+        v-else-if="certificateVariant === 'holo'"
         class="absolute inset-0 hidden bg-[radial-gradient(70%_60%_at_50%_110%,rgba(96,60,235,0.4),transparent_70%),radial-gradient(50%_40%_at_15%_0%,rgba(40,80,220,0.25),transparent_70%)] dark:block"
       />
-      <div class="absolute inset-0 hidden bg-gradient-to-b from-black/72 via-black/62 to-[#05060b] dark:block" />
+      <div
+        v-else
+        class="absolute inset-0 hidden bg-[radial-gradient(60%_50%_at_50%_0%,rgba(71,83,240,0.16),transparent_70%)] dark:block"
+      />
+      <div
+        v-if="certificateVariant === 'holo'"
+        class="absolute inset-0 hidden bg-gradient-to-b from-black/72 via-black/62 to-[#05060b] dark:block"
+      />
     </div>
 
     <AppContainer class="max-w-[80rem] pt-5">
@@ -314,6 +331,7 @@ useHead({
         <EventCertificateCard
           :certificate="certificate"
           :celebrate="shouldCelebrate"
+          :variant="certificateVariant"
         />
       </div>
 
