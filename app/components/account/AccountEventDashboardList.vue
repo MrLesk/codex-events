@@ -16,6 +16,10 @@ export interface AccountEventDashboardListItem {
   actionLabel?: string
   overline?: string
   meta: string[]
+  externalAction?: {
+    label: string
+    to: string
+  }
 }
 
 const props = defineProps<{
@@ -91,14 +95,13 @@ function shouldShowDescriptionToggle(item: AccountEventDashboardListItem) {
       v-else
       class="grid gap-4"
     >
-      <NuxtLink
+      <article
         v-for="item in props.items"
         :key="item.id"
-        :to="item.to"
         class="rounded-xl border border-black/8 bg-white p-5 transition-colors hover:border-black/20 dark:border-white/[0.08] dark:bg-[#111111] dark:hover:border-white/[0.2]"
       >
         <div class="flex flex-wrap items-start justify-between gap-3">
-          <div class="space-y-2">
+          <div class="min-w-0 space-y-2">
             <p
               v-if="item.overline"
               class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted"
@@ -134,21 +137,40 @@ function shouldShowDescriptionToggle(item: AccountEventDashboardListItem) {
               <span
                 v-for="metaItem in item.meta"
                 :key="metaItem"
+                class="min-w-0"
               >
                 {{ metaItem }}
               </span>
             </div>
           </div>
 
-          <div class="inline-flex items-center gap-1 text-[13px] font-medium text-highlighted dark:text-white">
-            <span>{{ item.actionLabel ?? 'Open' }}</span>
-            <AppIcon
-              name="i-lucide-arrow-right"
-              class="size-3.5"
-            />
+          <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <AppButton
+              :to="item.to"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              trailing-icon="i-lucide-arrow-right"
+            >
+              {{ item.actionLabel ?? 'Open' }}
+            </AppButton>
+
+            <AppButton
+              v-if="item.externalAction"
+              :to="item.externalAction.to"
+              color="neutral"
+              variant="soft"
+              size="sm"
+              external
+              target="_blank"
+              rel="noopener noreferrer"
+              trailing-icon="i-lucide-external-link"
+            >
+              {{ item.externalAction.label }}
+            </AppButton>
           </div>
         </div>
-      </NuxtLink>
+      </article>
     </div>
   </section>
 </template>

@@ -198,6 +198,12 @@ const stateLabels: Record<PublicEventState, string> = {
   completed: 'Completed'
 }
 
+const eventTypeLabels: Record<PublicEventType, string> = {
+  hackathon: 'Hackathon',
+  meetup: 'Meetup',
+  build: 'Build'
+}
+
 const stateColors: Record<PublicEventState, 'neutral' | 'info' | 'warning' | 'primary' | 'success'> = {
   draft: 'neutral',
   registration_open: 'info',
@@ -319,6 +325,10 @@ function getAgendaTimeLines(startsAt: Date, endsAt: Date | null) {
 
 export function formatEventStateLabel(state: PublicEventState) {
   return stateLabels[state]
+}
+
+export function formatEventTypeLabel(eventType: PublicEventType) {
+  return eventTypeLabels[eventType]
 }
 
 export function resolveEventStateColor(state: PublicEventState) {

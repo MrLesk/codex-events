@@ -24,6 +24,7 @@ import {
   getTermsVersionPublishErrorMessage,
   toEventAgendaPayload
 } from '~/domains/events/admin-event'
+import { formatEventTypeLabel } from '~/domains/events/presentation'
 import {
   isEventRoleJudgingEnabled,
   isEventRoleStaffEnabled
@@ -124,8 +125,11 @@ const currentEvent = computed(() => workspace.currentEvent.value)
 const isCompetitionEvent = computed(() => currentEvent.value?.eventType === 'hackathon')
 const settingsOverviewGridClass = computed(() =>
   isCompetitionEvent.value
-    ? 'md:grid-cols-[minmax(0,1.45fr)_repeat(2,minmax(0,1fr))] xl:grid-cols-[minmax(0,1.45fr)_repeat(3,minmax(0,1fr))]'
-    : 'md:grid-cols-[minmax(0,1.45fr)_repeat(2,minmax(0,1fr))]'
+    ? 'md:grid-cols-2 xl:grid-cols-[minmax(0,1.35fr)_repeat(4,minmax(0,1fr))]'
+    : 'md:grid-cols-2 lg:grid-cols-[minmax(0,1.45fr)_repeat(3,minmax(0,1fr))]'
+)
+const eventTypeLabel = computed(() =>
+  currentEvent.value ? formatEventTypeLabel(currentEvent.value.eventType) : ''
 )
 const actor = computed(() => workspace.actor.value)
 const canManage = computed(() => workspace.canManageCurrentEvent.value)
@@ -1120,6 +1124,15 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
             :title="creatorMeta"
           >
             {{ creatorMeta }}
+          </p>
+        </div>
+
+        <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+            Event type
+          </p>
+          <p class="mt-2 text-xl font-semibold text-highlighted">
+            {{ eventTypeLabel }}
           </p>
         </div>
 

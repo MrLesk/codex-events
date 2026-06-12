@@ -8,6 +8,7 @@ import {
   formatEventLocation,
   formatEventStateLabel,
   formatEventDateWithWeekday,
+  formatEventTypeLabel,
   formatPrizeReward,
   getEventDashboardTeamSizeMetaItems,
   getEventRegistrationTeamSizeMetaItems,
@@ -37,6 +38,12 @@ describe('public event agenda presentation helpers', () => {
       city: 'Vienna',
       country: 'Austria'
     })).toBe('Vienna, Austria')
+  })
+
+  test('formats event type labels for visible dashboards', () => {
+    expect(formatEventTypeLabel('hackathon')).toBe('Hackathon')
+    expect(formatEventTypeLabel('meetup')).toBe('Meetup')
+    expect(formatEventTypeLabel('build')).toBe('Build')
   })
 
   test('limits dashboard team size metadata to hackathon events', () => {

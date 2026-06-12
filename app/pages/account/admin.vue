@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import AccountEventDashboardList from '~/components/account/AccountEventDashboardList.vue'
-import { formatEventLocation, getEventDashboardTeamSizeMetaItems } from '~/domains/events/presentation'
+import {
+  formatEventDateWithWeekday,
+  formatEventLocation,
+  formatEventTypeLabel,
+  getEventDashboardTeamSizeMetaItems,
+  getEventEarliestStartAt
+} from '~/domains/events/presentation'
 import {
   adminOverviewTabs,
   countAdminOverviewEventsByTab,
@@ -57,11 +63,16 @@ const listItems = computed(() =>
     registrationClosesAt: event.registrationClosesAt,
     to: `/account/events/${event.slug}?tab=operations`,
     actionLabel: 'Open operations',
+    externalAction: {
+      label: 'Public page',
+      to: `/events/${event.slug}`
+    },
     overline: 'Admin',
     meta: [
+      `Type: ${formatEventTypeLabel(event.eventType)}`,
+      `Date: ${formatEventDateWithWeekday(getEventEarliestStartAt(event))}`,
       formatEventLocation(event),
-      ...getEventDashboardTeamSizeMetaItems(event),
-      event.slug
+      ...getEventDashboardTeamSizeMetaItems(event)
     ]
   }))
 )
