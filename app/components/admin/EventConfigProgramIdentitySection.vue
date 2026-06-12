@@ -158,7 +158,7 @@ function promptBannerImageUpload() {
           </p>
         </div>
 
-        <div class="overflow-hidden rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111]">
+        <div class="group relative overflow-hidden rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111]">
           <img
             v-if="managedBackgroundImageUrl"
             :src="managedBackgroundImagePreviewUrl"
@@ -171,12 +171,41 @@ function promptBannerImageUpload() {
           >
             No background image uploaded yet.
           </div>
+          <div
+            v-if="props.canUploadManagedImages"
+            class="absolute inset-0 flex items-center justify-center gap-2 bg-black/45 transition-opacity"
+            :class="props.backgroundImageUploadPending ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'"
+          >
+            <button
+              type="button"
+              class="inline-flex size-9 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="props.backgroundImageUploadPending"
+              :aria-label="managedBackgroundImageUrl ? 'Replace background image' : 'Upload background image'"
+              @click="promptBackgroundImageUpload"
+            >
+              <AppIcon
+                :name="props.backgroundImageUploadPending ? 'i-lucide-loader-circle' : 'i-lucide-pencil'"
+                class="size-4"
+                :class="props.backgroundImageUploadPending ? 'animate-spin' : ''"
+              />
+            </button>
+            <button
+              v-if="managedBackgroundImageUrl"
+              type="button"
+              class="inline-flex size-9 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-error/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="props.backgroundImageUploadPending"
+              aria-label="Remove uploaded background"
+              @click="emit('removeBackgroundImage')"
+            >
+              <AppIcon
+                name="i-lucide-trash-2"
+                class="size-4"
+              />
+            </button>
+          </div>
         </div>
 
-        <div
-          v-if="props.canUploadManagedImages"
-          class="flex flex-wrap items-center gap-2"
-        >
+        <template v-if="props.canUploadManagedImages">
           <input
             ref="backgroundImageInput"
             type="file"
@@ -185,37 +214,15 @@ function promptBannerImageUpload() {
             :disabled="props.backgroundImageUploadPending"
             @change="uploadBackgroundImage"
           >
-          <AppButton
-            type="button"
-            color="neutral"
-            variant="soft"
-            size="sm"
-            :loading="props.backgroundImageUploadPending"
-            :disabled="props.backgroundImageUploadPending"
-            @click="promptBackgroundImageUpload"
-          >
-            {{ managedBackgroundImageUrl ? 'Replace background image' : 'Upload background image' }}
-          </AppButton>
-          <AppButton
-            v-if="managedBackgroundImageUrl"
-            type="button"
-            color="neutral"
-            variant="soft"
-            size="sm"
-            :disabled="props.backgroundImageUploadPending"
-            @click="emit('removeBackgroundImage')"
-          >
-            Remove uploaded background
-          </AppButton>
           <p
             v-if="props.backgroundImageUploadPending"
             class="text-xs text-muted"
             role="status"
             aria-live="polite"
           >
-            Uploading background image...
+            Updating background image...
           </p>
-        </div>
+        </template>
         <p
           v-else
           class="text-xs text-muted"
@@ -244,7 +251,7 @@ function promptBannerImageUpload() {
           </p>
         </div>
 
-        <div class="overflow-hidden rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111]">
+        <div class="group relative overflow-hidden rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111]">
           <img
             v-if="managedBannerImageUrl"
             :src="managedBannerImagePreviewUrl"
@@ -257,12 +264,41 @@ function promptBannerImageUpload() {
           >
             No banner image uploaded yet.
           </div>
+          <div
+            v-if="props.canUploadManagedImages"
+            class="absolute inset-0 flex items-center justify-center gap-2 bg-black/45 transition-opacity"
+            :class="props.bannerImageUploadPending ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'"
+          >
+            <button
+              type="button"
+              class="inline-flex size-9 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="props.bannerImageUploadPending"
+              :aria-label="managedBannerImageUrl ? 'Replace banner image' : 'Upload banner image'"
+              @click="promptBannerImageUpload"
+            >
+              <AppIcon
+                :name="props.bannerImageUploadPending ? 'i-lucide-loader-circle' : 'i-lucide-pencil'"
+                class="size-4"
+                :class="props.bannerImageUploadPending ? 'animate-spin' : ''"
+              />
+            </button>
+            <button
+              v-if="managedBannerImageUrl"
+              type="button"
+              class="inline-flex size-9 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-error/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="props.bannerImageUploadPending"
+              aria-label="Remove uploaded banner"
+              @click="emit('removeBannerImage')"
+            >
+              <AppIcon
+                name="i-lucide-trash-2"
+                class="size-4"
+              />
+            </button>
+          </div>
         </div>
 
-        <div
-          v-if="props.canUploadManagedImages"
-          class="flex flex-wrap items-center gap-2"
-        >
+        <template v-if="props.canUploadManagedImages">
           <input
             ref="bannerImageInput"
             type="file"
@@ -271,37 +307,15 @@ function promptBannerImageUpload() {
             :disabled="props.bannerImageUploadPending"
             @change="uploadBannerImage"
           >
-          <AppButton
-            type="button"
-            color="neutral"
-            variant="soft"
-            size="sm"
-            :loading="props.bannerImageUploadPending"
-            :disabled="props.bannerImageUploadPending"
-            @click="promptBannerImageUpload"
-          >
-            {{ managedBannerImageUrl ? 'Replace banner image' : 'Upload banner image' }}
-          </AppButton>
-          <AppButton
-            v-if="managedBannerImageUrl"
-            type="button"
-            color="neutral"
-            variant="soft"
-            size="sm"
-            :disabled="props.bannerImageUploadPending"
-            @click="emit('removeBannerImage')"
-          >
-            Remove uploaded banner
-          </AppButton>
           <p
             v-if="props.bannerImageUploadPending"
             class="text-xs text-muted"
             role="status"
             aria-live="polite"
           >
-            Uploading banner image...
+            Updating banner image...
           </p>
-        </div>
+        </template>
         <p
           v-else
           class="text-xs text-muted"
