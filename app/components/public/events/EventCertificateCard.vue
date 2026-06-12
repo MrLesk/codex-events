@@ -227,7 +227,7 @@ const participantNameSize = computed(() => {
               />
               {{ placementLabel }}
             </p>
-            <p class="text-[1.45cqw] font-semibold tracking-[0.4em] text-white/85">
+            <p class="text-[1.45cqw] font-semibold tracking-[0.4em] text-white/90">
               CERTIFICATE OF PARTICIPATION
             </p>
             <p
@@ -250,7 +250,7 @@ const participantNameSize = computed(() => {
                 />
               </span>
               <span class="flex flex-col gap-[0.4cqw]">
-                <span class="text-[1cqw] font-semibold tracking-[0.28em] text-white/60">EVENT DATE</span>
+                <span class="text-[1cqw] font-semibold tracking-[0.28em] text-white/85">EVENT DATE</span>
                 <span class="text-[1.5cqw] font-semibold text-white">{{ certificate.eventDateLabel }}</span>
               </span>
             </div>
@@ -265,7 +265,7 @@ const participantNameSize = computed(() => {
                   />
                 </span>
                 <span class="flex min-w-0 flex-col gap-[0.4cqw]">
-                  <span class="text-[1cqw] font-semibold tracking-[0.28em] text-white/60">TRACK</span>
+                  <span class="text-[1cqw] font-semibold tracking-[0.28em] text-white/85">TRACK</span>
                   <span class="truncate text-[1.5cqw] font-semibold text-white">{{ certificate.trackName }}</span>
                 </span>
               </div>
@@ -280,7 +280,7 @@ const participantNameSize = computed(() => {
                 />
               </span>
               <span class="flex flex-col gap-[0.4cqw]">
-                <span class="text-[1cqw] font-semibold tracking-[0.28em] text-white/60">CERTIFICATE ID</span>
+                <span class="text-[1cqw] font-semibold tracking-[0.28em] text-white/85">CERTIFICATE ID</span>
                 <span class="text-[1.5cqw] font-semibold text-white">{{ certificate.certificateId }}</span>
               </span>
             </div>

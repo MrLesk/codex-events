@@ -21,6 +21,7 @@ function getUsageMessage() {
 Environment variables:
 - NUXT_AUTH0_CLIENT_ID
 - NUXT_AUTH0_CLIENT_SECRET
+- AUTH0_MANAGEMENT_DOMAIN or NUXT_AUTH0_MANAGEMENT_DOMAIN
 - AUTH0_MGMT_CLIENT_ID or NUXT_AUTH0_MANAGEMENT_CLIENT_ID
 - AUTH0_MGMT_CLIENT_SECRET or NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET
 - NUXT_AUTH0_SESSION_SECRET (optional; derived from NUXT_AUTH0_CLIENT_SECRET)
@@ -104,6 +105,11 @@ export function buildWorkerSecrets(environment: EnvironmentValues, extraSecrets:
   return {
     NUXT_AUTH0_CLIENT_ID: readRequiredValue(environment, 'NUXT_AUTH0_CLIENT_ID'),
     NUXT_AUTH0_CLIENT_SECRET: readRequiredValue(environment, 'NUXT_AUTH0_CLIENT_SECRET'),
+    NUXT_AUTH0_MANAGEMENT_DOMAIN: readRequiredAliasValue(
+      environment,
+      'NUXT_AUTH0_MANAGEMENT_DOMAIN',
+      'AUTH0_MANAGEMENT_DOMAIN'
+    ),
     NUXT_AUTH0_MANAGEMENT_CLIENT_ID: readRequiredAliasValue(
       environment,
       'NUXT_AUTH0_MANAGEMENT_CLIENT_ID',

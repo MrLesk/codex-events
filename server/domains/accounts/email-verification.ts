@@ -4,6 +4,7 @@ interface Auth0EmailVerificationRuntimeConfig {
   auth0?: {
     domain?: string | null
     clientId?: string | null
+    managementDomain?: string | null
     managementClientId?: string | null
     managementClientSecret?: string | null
   } | null
@@ -76,18 +77,22 @@ export function resolveAuth0EmailVerificationConfig(
   runtimeConfig: Auth0EmailVerificationRuntimeConfig,
   environment: EnvironmentValues = getDefaultEnvironment()
 ): Auth0EmailVerificationConfig {
-  const domain = readRuntimeConfigValue(runtimeConfig.auth0?.domain)
+  // The Management API only answers on the canonical tenant domain; the issuer
+  // domain is just the last-resort fallback for tenants without a custom domain.
+  const managementDomain = readRuntimeConfigValue(runtimeConfig.auth0?.managementDomain)
+    || readEnvironmentValue(environment, 'AUTH0_MANAGEMENT_DOMAIN')
+    || readRuntimeConfigValue(runtimeConfig.auth0?.domain)
   const managementClientId = readRuntimeConfigValue(runtimeConfig.auth0?.managementClientId)
     || readEnvironmentValue(environment, 'AUTH0_MGMT_CLIENT_ID')
   const managementClientSecret = readRuntimeConfigValue(runtimeConfig.auth0?.managementClientSecret)
     || readEnvironmentValue(environment, 'AUTH0_MGMT_CLIENT_SECRET')
 
-  if (!domain || !managementClientId || !managementClientSecret) {
+  if (!managementDomain || !managementClientId || !managementClientSecret) {
     throw buildAuth0EmailVerificationUnavailableError()
   }
 
   return {
-    baseUrl: normalizeAuth0BaseUrl(domain),
+    baseUrl: normalizeAuth0BaseUrl(managementDomain),
     managementClientId,
     managementClientSecret,
     applicationClientId: readRuntimeConfigValue(runtimeConfig.auth0?.clientId) || null

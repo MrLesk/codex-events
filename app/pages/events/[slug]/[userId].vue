@@ -205,7 +205,7 @@ useHead({
             v-if="isSignedIn && signedInEmail"
             class="hidden flex-col items-end pr-1 text-right sm:flex"
           >
-            <span class="text-[12px] text-neutral-500 dark:text-white/55">Signed in as</span>
+            <span class="text-[12px] text-neutral-500 dark:text-white/65">Signed in as</span>
             <span class="inline-flex items-center gap-1.5 text-[13px] text-neutral-800 dark:text-white/90">
               {{ signedInEmail }}
               <AppIcon
@@ -418,7 +418,7 @@ useHead({
         </p>
         <p
           v-if="!isSignedIn"
-          class="mt-2 text-[13px] text-neutral-500 dark:text-white/45"
+          class="mt-2 text-[13px] text-neutral-500 dark:text-white/60"
         >
           Sign in to download this certificate as an image or PDF.
         </p>
@@ -427,7 +427,7 @@ useHead({
   </div>
 </template>
 
-<style scoped>
+<style>
 .certificate-action-button {
   display: inline-flex;
   align-items: center;
@@ -448,13 +448,13 @@ useHead({
   border-color: rgba(0, 0, 0, 0.3);
 }
 
-:global(.dark) .certificate-action-button {
+.dark .certificate-action-button {
   border-color: rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.08);
   color: #ffffff;
 }
 
-:global(.dark) .certificate-action-button:hover {
+.dark .certificate-action-button:hover {
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 255, 255, 0.28);
 }
@@ -472,7 +472,7 @@ useHead({
   box-shadow: 0 0 18px -6px rgba(99, 102, 241, 0.5);
 }
 
-:global(.dark) .certificate-type-chip {
+.dark .certificate-type-chip {
   border-color: rgba(139, 155, 255, 0.55);
   color: #aab7ff;
   box-shadow: 0 0 18px -4px rgba(110, 120, 255, 0.55);
@@ -492,7 +492,7 @@ useHead({
   flex: none;
 }
 
-:global(.dark) .certificate-fact__icon {
+.dark .certificate-fact__icon {
   color: #aab7ff;
 }
 
@@ -504,7 +504,7 @@ useHead({
   color: #525252;
 }
 
-:global(.dark) .certificate-fact__label {
+.dark .certificate-fact__label {
   color: rgba(255, 255, 255, 0.5);
 }
 
@@ -514,7 +514,7 @@ useHead({
   color: #171717;
 }
 
-:global(.dark) .certificate-fact__value {
+.dark .certificate-fact__value {
   color: #ffffff;
 }
 </style>
