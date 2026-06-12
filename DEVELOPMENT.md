@@ -67,7 +67,7 @@ Local Auth0 dashboard settings:
 Local Auth0 runtime notes:
 
 - `NUXT_AUTH0_DOMAIN` is the Auth0 issuer host, not the app host. For deployed environments, use the Auth0 custom domain or tenant domain for that deployment, not the application hostname.
-- `AUTH0_MGMT_CLIENT_ID` and `AUTH0_MGMT_CLIENT_SECRET` belong to a Machine-to-Machine application authorized for the Auth0 Management API `update:users` scope. The local app uses them together with `AUTH0_MANAGEMENT_DOMAIN` to send another confirmation email during account registration. The Management API only answers on the canonical tenant domain, so keep `AUTH0_MANAGEMENT_DOMAIN` set to `your-tenant.eu.auth0.com` even when `NUXT_AUTH0_DOMAIN` is an Auth0 custom domain.
+- `AUTH0_MGMT_CLIENT_ID` and `AUTH0_MGMT_CLIENT_SECRET` belong to a Machine-to-Machine application authorized for the Auth0 Management API `update:users` scope. The local app uses them to send another confirmation email during account registration.
 - When `NUXT_AUTH0_APP_BASE_URL=http://localhost:3000`, the app intentionally uses a non-secure Auth0 session cookie for local development so Safari can persist the login callback session on `localhost`. HTTPS environments continue to use secure cookies.
 - The Auth0-backed BDD suite uses `NUXT_AUTH0_BDD_APP_BASE_URL` when set and otherwise defaults to `http://localhost:3100`, so that `bun run test:bdd` does not have to take over the normal local dev server on port 3000.
 

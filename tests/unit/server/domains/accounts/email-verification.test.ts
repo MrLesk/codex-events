@@ -30,26 +30,14 @@ describe('Auth0 email verification utilities', () => {
     })
   })
 
-  test('prefers the management domain over the issuer domain for Management API calls', () => {
-    expect(resolveAuth0EmailVerificationConfig(createRuntimeConfig({
-      domain: 'auth.codex-events.example',
-      managementDomain: 'codex-events-test.eu.auth0.com'
-    }), {})).toMatchObject({
-      baseUrl: 'https://codex-events-test.eu.auth0.com'
-    })
-  })
-
   test('uses local Auth0 Management environment values when runtime config omits them', () => {
     expect(resolveAuth0EmailVerificationConfig(createRuntimeConfig({
-      domain: 'auth.codex-events.example',
       managementClientId: '',
       managementClientSecret: ''
     }), {
-      AUTH0_MANAGEMENT_DOMAIN: 'codex-events-test.eu.auth0.com',
       AUTH0_MGMT_CLIENT_ID: 'local-management-client-id',
       AUTH0_MGMT_CLIENT_SECRET: 'local-management-client-secret'
     })).toMatchObject({
-      baseUrl: 'https://codex-events-test.eu.auth0.com',
       managementClientId: 'local-management-client-id',
       managementClientSecret: 'local-management-client-secret'
     })

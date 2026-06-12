@@ -15,7 +15,6 @@ function createEnvironment(overrides: Record<string, string | undefined> = {}) {
   return {
     NUXT_AUTH0_CLIENT_ID: 'app-client-id',
     NUXT_AUTH0_CLIENT_SECRET: 'app-client-secret',
-    AUTH0_MANAGEMENT_DOMAIN: 'codex-events-test.eu.auth0.com',
     AUTH0_MGMT_CLIENT_ID: 'management-client-id',
     AUTH0_MGMT_CLIENT_SECRET: 'management-client-secret',
     ...overrides
@@ -30,7 +29,6 @@ describe('Worker secret writer', () => {
     expect(secrets).toMatchObject({
       NUXT_AUTH0_CLIENT_ID: 'app-client-id',
       NUXT_AUTH0_CLIENT_SECRET: 'app-client-secret',
-      NUXT_AUTH0_MANAGEMENT_DOMAIN: 'codex-events-test.eu.auth0.com',
       NUXT_AUTH0_MANAGEMENT_CLIENT_ID: 'management-client-id',
       NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET: 'management-client-secret',
       NUXT_AUTH0_SESSION_SECRET: generatedSecrets.sessionSecret,
@@ -40,7 +38,6 @@ describe('Worker secret writer', () => {
 
   test('honors explicit Auth0 secret overrides and extra merged secrets', () => {
     expect(buildWorkerSecrets(createEnvironment({
-      NUXT_AUTH0_MANAGEMENT_DOMAIN: 'explicit.eu.auth0.com',
       NUXT_AUTH0_MANAGEMENT_CLIENT_ID: 'explicit-management-client-id',
       NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET: 'explicit-management-client-secret',
       NUXT_AUTH0_SESSION_SECRET: 'explicit-session-secret',
@@ -48,7 +45,6 @@ describe('Worker secret writer', () => {
     }), {
       EXTRA_SECRET: 'extra-secret'
     })).toMatchObject({
-      NUXT_AUTH0_MANAGEMENT_DOMAIN: 'explicit.eu.auth0.com',
       NUXT_AUTH0_MANAGEMENT_CLIENT_ID: 'explicit-management-client-id',
       NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET: 'explicit-management-client-secret',
       EXTRA_SECRET: 'extra-secret'

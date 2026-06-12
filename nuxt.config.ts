@@ -36,7 +36,6 @@ export default defineNuxtConfig({
       domain: '',
       clientId: '',
       clientSecret: '',
-      managementDomain: '',
       managementClientId: '',
       managementClientSecret: '',
       sessionSecret: '',
