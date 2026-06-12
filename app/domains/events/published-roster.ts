@@ -11,6 +11,17 @@ export interface PublishedEventRosterMember {
   linkedinProfileUrl: string | null
   githubProfileUrl: string | null
   profileIconUpdatedAt: string | null
+  staffTrack?: {
+    name: string
+    description: string
+    resources: Array<{
+      title: string
+      url: string
+      description: string | null
+      displayOrder: number
+    }>
+    displayOrder: number
+  } | null
 }
 
 export interface PublishedEventRosterLink {

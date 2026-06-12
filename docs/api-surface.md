@@ -331,6 +331,7 @@ Notes:
 - Hackathon `pitchReviewEnabled` can be true with or without blind review.
 - When blind review and pitch review are both enabled, `blindScoreWeightPercent` and `pitchScoreWeightPercent` default to `70` and `30` and must sum to `100`.
 - Track configuration is managed as part of Hackathon and Build create and update operations rather than through a separate admin domain in this version.
+- Removing a track clears participant-facing staff track display for affected staff assignments.
 - Public event discovery and detail responses expose only public-safe fields. They do not expose internal record identifiers, creator identifiers, or audit timestamps.
 - Public current-terms references expose document type, version, title, and published time only.
 - Event lifecycle API actions remain successful even when shortlist or winner email queue enqueue fails.
@@ -351,10 +352,10 @@ Operations:
 | --- | --- | --- | --- |
 | List role assignments | `GET /api/events/:eventId/roles` | event admin or platform admin | Returns explicit assignments for the event. |
 | List published judges | `GET /api/events/:eventId/judges` | authenticated workspace user | Hackathon only. Returns the published judge roster for the account-scoped event workspace. The roster includes explicit judges plus admin assignments with judging enabled, and exposes only avatar-support data plus public profile-card fields. |
-| List published staff | `GET /api/events/:eventId/staff` | authenticated workspace user | Returns the published staff roster for the account-scoped event workspace. The roster includes explicit staff plus admin assignments with staff visibility enabled, and exposes only avatar-support data plus public profile-card fields. |
-| Create or replace role assignment | `PUT /api/events/:eventId/roles/:userId` | event admin or platform admin | Supports `event_admin`, `staff`, and, for Hackathon events only, `judge` roles plus the `is_in_judge_pool` and `is_staff` capability flags. |
+| List published staff | `GET /api/events/:eventId/staff` | authenticated workspace user | Returns the published staff roster for the account-scoped event workspace. The roster includes explicit staff plus admin assignments with staff visibility enabled, exposes only avatar-support data plus public profile-card fields, and includes each staff member's whole-event or track-specific display context. |
+| Create or replace role assignment | `PUT /api/events/:eventId/roles/:userId` | event admin or platform admin | Supports `event_admin`, `staff`, and, for Hackathon events only, `judge` roles plus the `is_in_judge_pool`, `is_staff`, and nullable `staffTrackId` fields. `staffTrackId` is valid only when staff visibility is enabled and must reference a track from the same Hackathon or Build event. |
 | Remove explicit role assignment | `DELETE /api/events/:eventId/roles/:userId` | event admin or platform admin | Removes the explicit assignment. Platform-admin inheritance remains implicit. |
-| Update role-assignment capability flags | `PATCH /api/events/:eventId/roles/:userId` | event admin or platform admin | Updates admin-only `is_in_judge_pool` and `is_staff` flags without replacing the explicit role. `is_in_judge_pool` and `judge` are Hackathon-only. `judge` must remain in the automatic judge pool, `staff` must remain marked as staff, and non-admin staff and judges remain distinct. |
+| Update role-assignment capability flags | `PATCH /api/events/:eventId/roles/:userId` | event admin or platform admin | Updates admin-only `is_in_judge_pool`, `is_staff`, and nullable `staffTrackId` fields without replacing the explicit role. `is_in_judge_pool` and `judge` are Hackathon-only. `staffTrackId` is display-only, is valid only when staff visibility is enabled, and must reference a track from the same Hackathon or Build event. `judge` must remain in the automatic judge pool, `staff` must remain marked as staff, and non-admin staff and judges remain distinct. |
 
 Testing:
 - Unit: role invariants plus judge-pool and staff-flag rules.

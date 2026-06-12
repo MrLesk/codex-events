@@ -23,6 +23,7 @@ import {
   evaluationCriteria,
   eventRoleAssignments,
   eventTermsDocuments,
+  eventTracks,
   events,
   prizes,
   users
@@ -130,6 +131,14 @@ describe('TASK-3.5 event admin route groups', () => {
     })
     harnesses.push(harness)
     await seedEventContext(harness)
+    await harness.database.insert(eventTracks).values({
+      id: 'track_ai',
+      eventId: 'event_1',
+      name: 'AI Track',
+      description: 'AI projects',
+      displayOrder: 1,
+      createdAt: '2026-03-22T12:00:00.000Z'
+    })
 
     const listResponse = await harness.request('/api/events/event_1/roles')
     expect(listResponse.status).toBe(200)
@@ -221,7 +230,8 @@ describe('TASK-3.5 event admin route groups', () => {
       body: JSON.stringify({
         role: 'staff',
         isInJudgePool: false,
-        isStaff: true
+        isStaff: true,
+        staffTrackId: 'track_ai'
       })
     })
     expect(createStaffResponse.status).toBe(200)
@@ -230,7 +240,8 @@ describe('TASK-3.5 event admin route groups', () => {
         userId: 'staff_user',
         role: 'staff',
         isInJudgePool: false,
-        isStaff: true
+        isStaff: true,
+        staffTrackId: 'track_ai'
       }
     })
 
@@ -269,7 +280,8 @@ describe('TASK-3.5 event admin route groups', () => {
       method: 'PATCH',
       body: JSON.stringify({
         isInJudgePool: true,
-        isStaff: true
+        isStaff: true,
+        staffTrackId: 'track_ai'
       })
     })
     expect(adminCapabilityPatchResponse.status).toBe(200)
@@ -278,7 +290,21 @@ describe('TASK-3.5 event admin route groups', () => {
         userId: 'event_admin',
         role: 'event_admin',
         isInJudgePool: true,
-        isStaff: true
+        isStaff: true,
+        staffTrackId: 'track_ai'
+      }
+    })
+
+    const invalidStaffTrackResponse = await harness.request('/api/events/event_1/roles/staff_user', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        staffTrackId: 'missing_track'
+      })
+    })
+    expect(invalidStaffTrackResponse.status).toBe(400)
+    expect(await invalidStaffTrackResponse.json()).toMatchObject({
+      error: {
+        code: 'staff_track_not_found'
       }
     })
 

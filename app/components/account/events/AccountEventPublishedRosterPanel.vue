@@ -34,6 +34,12 @@ const props = defineProps<{
   roster: PublishedEventRosterLoadState
   title: string
   description: string
+  tracks?: Array<{
+    id: string
+    name: string
+    description: string
+    displayOrder: number
+  }>
   managementEventId?: string | null
 }>()
 
@@ -100,6 +106,14 @@ const roleAssignments = computed(() => roleAssignmentsResponse.data.value?.data 
 const assignedRosterRows = computed(() =>
   canManageRoster.value ? buildAssignedRoleRosterRows(roleAssignments.value, props.role) : []
 )
+const sortedTracks = computed(() =>
+  [...(props.tracks ?? [])].sort((left, right) =>
+    left.displayOrder - right.displayOrder || left.name.localeCompare(right.name) || left.id.localeCompare(right.id)
+  )
+)
+const canSetStaffTrackScope = computed(() =>
+  props.role === 'staff' && canManageRoster.value && sortedTracks.value.length > 0
+)
 const candidateRows = computed(() =>
   canManageRoster.value
     ? buildRoleRosterRows(
@@ -159,6 +173,14 @@ function findCandidateUser(userId: string) {
 
 function findAssignedRosterRow(userId: string) {
   return assignedRosterRows.value.find(row => row.id === userId) ?? null
+}
+
+function getAssignedRosterAssignment(userId: string) {
+  return findAssignedRosterRow(userId)?.assignment ?? null
+}
+
+function getStaffTrackScopeLabel(member: PublishedEventRosterMember) {
+  return member.staffTrack?.name ?? 'Whole event'
 }
 
 function getRoleBadges(row: EventRoleRosterRow) {
@@ -386,6 +408,7 @@ async function putRoleAssignment(
   role: EventRoleAssignment['role'],
   isInJudgePool: boolean,
   isStaff: boolean,
+  staffTrackId: string | null,
   successTitle: string,
   successDescription: string
 ) {
@@ -397,7 +420,8 @@ async function putRoleAssignment(
         body: {
           role,
           isInJudgePool,
-          isStaff
+          isStaff,
+          staffTrackId
         }
       })
     },
@@ -411,6 +435,7 @@ async function patchRoleCapabilities(
   updates: {
     isInJudgePool?: boolean
     isStaff?: boolean
+    staffTrackId?: string | null
   },
   successTitle: string,
   successDescription: string
@@ -453,14 +478,43 @@ async function normalizeAdminCapableAssignment(
 ) {
   const assignment = findRoleAssignment(userId)
   const nextFlags = deriveAdminCapableRoleFlags(assignment, overrides)
+  const staffTrackId = nextFlags.isStaff ? assignment?.staffTrackId ?? null : null
 
   await putRoleAssignment(
     userId,
     'event_admin',
     nextFlags.isInJudgePool,
     nextFlags.isStaff,
+    staffTrackId,
     successTitle,
     successDescription
+  )
+}
+
+async function updateMemberStaffTrackScope(userId: string, value: unknown) {
+  const assignment = getAssignedRosterAssignment(userId)
+
+  if (!assignment) {
+    return
+  }
+
+  const staffTrackId = typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : null
+
+  if (staffTrackId === assignment.staffTrackId) {
+    return
+  }
+
+  await patchRoleCapabilities(
+    userId,
+    {
+      staffTrackId
+    },
+    'Staff display updated',
+    staffTrackId
+      ? 'Participants will see this staff member with the selected track.'
+      : 'Participants will see this staff member for the whole event.'
   )
 }
 
@@ -537,6 +591,7 @@ async function assignRosterAccess(userId: string) {
       'judge',
       true,
       false,
+      null,
       'Judge added',
       existingAssignment?.role === 'staff'
         ? 'Staff access was replaced with judge access.'
@@ -576,6 +631,7 @@ async function assignRosterAccess(userId: string) {
     'staff',
     false,
     true,
+    null,
     existingAssignment?.role === 'judge' ? 'Staff access granted' : 'Staff member added',
     existingAssignment?.role === 'judge'
       ? 'Judge access was replaced with staff access.'
@@ -736,6 +792,13 @@ async function removePublishedRosterMember(userId: string) {
                     >
                       You
                     </AppBadge>
+                    <AppBadge
+                      v-if="props.role === 'staff'"
+                      color="neutral"
+                      variant="soft"
+                    >
+                      {{ getStaffTrackScopeLabel(member) }}
+                    </AppBadge>
                   </div>
 
                   <p
@@ -744,6 +807,31 @@ async function removePublishedRosterMember(userId: string) {
                   >
                     {{ member.company }}
                   </p>
+
+                  <label
+                    v-if="canSetStaffTrackScope && getAssignedRosterAssignment(member.id)"
+                    class="mt-3 grid max-w-xs gap-1"
+                  >
+                    <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">
+                      Shown to participants
+                    </span>
+                    <AppSelect
+                      :model-value="getAssignedRosterAssignment(member.id)?.staffTrackId ?? ''"
+                      :disabled="isPendingAction(member.id)"
+                      @update:model-value="updateMemberStaffTrackScope(member.id, $event)"
+                    >
+                      <option value="">
+                        Whole event
+                      </option>
+                      <option
+                        v-for="track in sortedTracks"
+                        :key="track.id"
+                        :value="track.id"
+                      >
+                        {{ track.name }}
+                      </option>
+                    </AppSelect>
+                  </label>
                 </div>
 
                 <AppButton

@@ -245,6 +245,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - Hackathon tracks are submission choices. Build tracks are participant-visible resource groups.
 - Tracks do not control judge assignment in this version.
 - Track deletion is blocked once submissions reference it.
+- Track deletion clears staff display scopes that reference the removed track.
 
 ## EventPhoto
 
@@ -284,6 +285,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `role`
 - `is_in_judge_pool`
 - `is_staff`
+- `staff_track_id`
 - `created_at`
 
 ### Enums
@@ -298,6 +300,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `unique (event_id, user_id)`
 - `role = judge` requires `is_in_judge_pool = true and is_staff = false`
 - `role = staff` requires `is_staff = true and is_in_judge_pool = false`
+- `staff_track_id` must be null unless `is_staff = true`
+- `staff_track_id` references an `EventTrack` belonging to the same event
 
 ### Notes
 
@@ -307,9 +311,13 @@ It describes the intended persistent model at the level of entities, key fields,
 - Event-admin access is scoped to the assignment's `event_id`; event organizers and event admins can still hold participant records in other events.
 - `is_in_judge_pool` controls automatic blind-review distribution and pitch-panel membership.
 - `is_staff` records staff designation for the assignment.
+- `staff_track_id` records participant-facing staff display context only.
+- A null `staff_track_id` means the staff member is shown as whole-event staff.
 - `event_admin` can set `is_in_judge_pool` and `is_staff` independently.
+- `event_admin` assignments with `is_staff = true` can also set `staff_track_id`.
 - Non-admin `staff` and `judge` assignments remain distinct.
 - `judge` assignments and `is_in_judge_pool = true` are valid only for Hackathon events.
+- `staff_track_id` is valid only for Hackathon and Build events with a matching track.
 
 ## EventFeedback
 

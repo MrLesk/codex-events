@@ -1278,6 +1278,7 @@ useSeoMeta({
           role="staff"
           title="Staff"
           description="Meet the people supporting this event behind the scenes."
+          :tracks="event.tracks ?? []"
           :management-event-id="canAdmin ? workspaceEventId : null"
         />
 

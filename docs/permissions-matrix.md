@@ -26,6 +26,7 @@ This document defines the canonical permissions for the Codex event platform.
 - `event_admin` can use judge permissions only when that admin also participates in judging through a `JudgeAssignment`.
 - The automatic judge distribution pool is controlled by `EventRoleAssignment.is_in_judge_pool` for Hackathon events.
 - Staff designation is controlled by `EventRoleAssignment.is_staff`.
+- Staff track display is controlled by `EventRoleAssignment.staff_track_id` and does not limit staff permissions.
 - Non-admin `judge` and `staff` assignments are mutually exclusive.
 - A `judge` role must be in the automatic judge distribution pool and must not be marked as staff.
 - A `staff` role must be marked as staff and must not be in the automatic judge distribution pool.
@@ -85,6 +86,7 @@ This document defines the canonical permissions for the Codex event platform.
 | Remove `event_admin` role assignments | Yes | Yes |
 | Update explicit judging participation for an admin assignment | Yes, Hackathon only | Yes, Hackathon only |
 | Update explicit staff designation for an admin assignment | Yes | Yes |
+| Update participant-facing staff track display | Yes | Yes |
 
 ## Published Roster Permissions
 
@@ -239,6 +241,7 @@ Event credit permissions apply to every event type.
 - Staff can view event-wide participant and team data.
 - Workspace users can view the published judge and staff rosters for events they can access in `/account/events/:slug`.
 - Published judge and staff rosters expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
+- Published staff rosters also show whether each staff member supports the whole event or a specific event track.
 - Approved participants can view event photo galleries for events where they are approved.
 - Judges, staff, event admins, and platform admins can manage event photo galleries for events where they hold that access.
 - Public event detail pages expose a Gallery tab only when the event has one or more gallery photos marked public.

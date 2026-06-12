@@ -491,15 +491,17 @@ export const roleAssignmentParamsSchema = routeIdParamsSchema.extend({
 export const roleAssignmentUpsertBodySchema = z.object({
   role: roleEnumSchema,
   isInJudgePool: z.coerce.boolean().default(false),
-  isStaff: z.coerce.boolean().default(false)
+  isStaff: z.coerce.boolean().default(false),
+  staffTrackId: z.string().trim().min(1).nullable().optional().default(null)
 })
 
 export const roleAssignmentPatchBodySchema = z.object({
   isInJudgePool: z.coerce.boolean().optional(),
-  isStaff: z.coerce.boolean().optional()
+  isStaff: z.coerce.boolean().optional(),
+  staffTrackId: z.string().trim().min(1).nullable().optional()
 }).refine(
-  input => input.isInJudgePool !== undefined || input.isStaff !== undefined,
-  'At least one role capability flag must be provided.'
+  input => input.isInJudgePool !== undefined || input.isStaff !== undefined || input.staffTrackId !== undefined,
+  'At least one role capability field must be provided.'
 )
 
 export const termsDocumentParamsSchema = routeIdParamsSchema.extend({
@@ -969,6 +971,61 @@ export function assertRoleCapabilityInvariant(
       }
     })
   }
+}
+
+export async function resolveRoleAssignmentStaffTrackId(
+  database: AppDatabase,
+  event: Pick<EventRecord, 'id' | 'eventType'>,
+  input: {
+    isStaff: boolean
+    staffTrackId: string | null | undefined
+  }
+) {
+  const staffTrackId = input.staffTrackId?.trim() || null
+
+  if (!staffTrackId) {
+    return null
+  }
+
+  assertGuard(input.isStaff, {
+    statusCode: 400,
+    code: 'staff_track_scope_invalid',
+    message: 'A staff track can only be set when staff visibility is enabled.',
+    details: {
+      eventId: event.id,
+      staffTrackId
+    }
+  })
+
+  assertGuard(eventTypeSupportsTracks(event.eventType), {
+    statusCode: 400,
+    code: 'staff_track_scope_invalid',
+    message: 'Staff track scope is available only for events with tracks.',
+    details: {
+      eventId: event.id,
+      eventType: event.eventType,
+      staffTrackId
+    }
+  })
+
+  const track = await database.query.eventTracks.findFirst({
+    where: and(
+      eq(eventTracks.id, staffTrackId),
+      eq(eventTracks.eventId, event.id)
+    )
+  })
+
+  assertGuard(Boolean(track), {
+    statusCode: 400,
+    code: 'staff_track_not_found',
+    message: 'Staff track scope must reference a track from this event.',
+    details: {
+      eventId: event.id,
+      staffTrackId
+    }
+  })
+
+  return staffTrackId
 }
 
 export function assertEventSchedule(input: {
@@ -1540,10 +1597,29 @@ export async function listPublishedEventRosterMembers(
     ))
     .orderBy(asc(eventRoleAssignments.createdAt))
 
-  return assignmentUserRows
+  const rosterRows = assignmentUserRows
     .filter(row => isEventRolePublishedInRoster(row.assignment, role))
-    .map(row => row.user as UserRecord)
-    .map(serializePublishedEventRosterMember)
+
+  const staffTrackIds = role === 'staff'
+    ? [...new Set(rosterRows
+        .map(row => row.assignment.staffTrackId)
+        .filter((trackId): trackId is string => Boolean(trackId)))]
+    : []
+  const staffTrackRows = staffTrackIds.length > 0
+    ? await database.query.eventTracks.findMany({
+        where: and(
+          eq(eventTracks.eventId, eventId),
+          inArray(eventTracks.id, staffTrackIds)
+        )
+      })
+    : []
+  const staffTracksById = new Map(staffTrackRows.map(track => [track.id, track]))
+
+  return rosterRows
+    .map(row => serializePublishedEventRosterMember(
+      row.user as UserRecord,
+      role === 'staff' ? staffTracksById.get(row.assignment.staffTrackId ?? '') ?? null : undefined
+    ))
     .sort(comparePublishedEventRosterMembers)
 }
 
@@ -1801,6 +1877,7 @@ export function serializeEventRoleAssignment(
     role: assignment.role,
     isInJudgePool: assignment.isInJudgePool,
     isStaff: assignment.isStaff,
+    staffTrackId: assignment.staffTrackId,
     createdAt: assignment.createdAt,
     ...(user
       ? {
@@ -1820,7 +1897,10 @@ export function serializeEventRoleUserSummary(user: typeof users.$inferSelect) {
   }
 }
 
-export function serializePublishedEventRosterMember(user: UserRecord) {
+export function serializePublishedEventRosterMember(
+  user: UserRecord,
+  staffTrack?: EventTrackRecord | null
+) {
   return {
     id: user.id,
     fullName: buildPublishedEventRosterFullName(user),
@@ -1829,7 +1909,12 @@ export function serializePublishedEventRosterMember(user: UserRecord) {
     xProfileUrl: user.xProfileUrl,
     linkedinProfileUrl: user.linkedinProfileUrl,
     githubProfileUrl: user.githubProfileUrl,
-    profileIconUpdatedAt: user.profileIconUpdatedAt
+    profileIconUpdatedAt: user.profileIconUpdatedAt,
+    ...(staffTrack !== undefined
+      ? {
+          staffTrack: staffTrack ? serializePublicEventTrack(staffTrack) : null
+        }
+      : {})
   }
 }
 

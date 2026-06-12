@@ -143,6 +143,9 @@ Rules:
 - Hackathon tracks are available as submission choices.
 - Build tracks are resource groups for participants.
 - Tracks do not change judging assignment, scoring criteria, or blind-review behavior in this version.
+- Staff assignments can reference one track as participant-facing support context.
+- Staff track context does not restrict staff permissions or participant and team visibility.
+- Removing a track clears that track from staff roster display for affected assignments.
 - A track cannot be deleted once one or more submissions reference it.
 
 ### EventPhoto
@@ -280,14 +283,18 @@ Rules:
 - Event-admin access is scoped to the event named by the assignment. Being an event admin for one event does not grant admin visibility or admin operations for other events.
 - Event organizers and event admins can still apply to and participate in other events where they do not hold event-admin access.
 - `EventRoleAssignment` includes `is_in_judge_pool` to control automatic blind-review distribution and pitch-panel membership and `is_staff` to record staff designation.
+- `EventRoleAssignment` can include one staff track when staff designation is enabled for a Hackathon or Build event with tracks.
 - Judge assignments and `is_in_judge_pool` are available only for Hackathon events.
 - A user with role `judge` must be in the automatic judge distribution pool and must not be marked as staff.
 - A user with role `staff` must be marked as staff and must not be in the automatic judge distribution pool.
 - A user with role `event_admin` can be in or out of the automatic judge distribution pool and can be in or out of staff designation.
 - Only a user with role `event_admin` can combine admin access with judging participation and/or staff designation.
+- A staff track is display-only. It tells participants whether a staff member supports the whole event or a specific track, and it does not change authorization.
+- A staff assignment without a staff track is shown as whole-event staff.
 - The account-scoped event workspace publishes a judge roster and a staff roster derived from `EventRoleAssignment`.
 - The published judge roster includes explicit `judge` assignments plus `event_admin` assignments with `is_in_judge_pool = true`.
 - The published staff roster includes explicit `staff` assignments plus `event_admin` assignments with `is_staff = true`.
+- The published staff roster includes each staff member's whole-event or track-specific display context.
 - Published judge and staff rosters are visible to any platform user who can access that event in the account-scoped workspace.
 - Published roster cards expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
 - Any actor performing a blind judge review sees the blind judging view rather than the admin view.

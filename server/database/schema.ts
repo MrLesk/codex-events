@@ -373,6 +373,7 @@ export const eventRoleAssignments = sqliteTable(
     role: text('role', { enum: eventRoleTypes }).notNull(),
     isInJudgePool: integer('is_in_judge_pool', { mode: 'boolean' }).notNull().default(false),
     isStaff: integer('is_staff', { mode: 'boolean' }).notNull().default(false),
+    staffTrackId: text('staff_track_id').references(() => eventTracks.id, { onDelete: 'set null' }),
     createdAt: createdAtColumn()
   },
   table => [
@@ -390,6 +391,10 @@ export const eventRoleAssignments = sqliteTable(
     check(
       'event_role_assignments_staff_flag_check',
       sql`(${table.role} != 'staff') or ((${table.isStaff} = 1) and (${table.isInJudgePool} = 0))`
+    ),
+    check(
+      'event_role_assignments_staff_track_check',
+      sql`(${table.staffTrackId} is null) or (${table.isStaff} = 1)`
     )
   ]
 )

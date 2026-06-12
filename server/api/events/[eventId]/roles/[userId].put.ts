@@ -11,6 +11,7 @@ import {
   assertRoleCapabilityInvariant,
   getActiveUserOrThrow,
   requireEventAdmin,
+  resolveRoleAssignmentStaffTrackId,
   roleAssignmentParamsSchema,
   roleAssignmentUpsertBodySchema,
   serializeEventRoleAssignment
@@ -35,6 +36,11 @@ export default defineApiHandler(async (h3Event) => {
     assertCompetitionEvent(event)
   }
 
+  const staffTrackId = await resolveRoleAssignmentStaffTrackId(database, event, {
+    isStaff: body.isStaff,
+    staffTrackId: body.staffTrackId
+  })
+
   const existingAssignment = await database.query.eventRoleAssignments.findFirst({
     where: and(
       eq(eventRoleAssignments.eventId, eventId),
@@ -50,7 +56,8 @@ export default defineApiHandler(async (h3Event) => {
       .set({
         role: body.role,
         isInJudgePool: body.isInJudgePool,
-        isStaff: body.isStaff
+        isStaff: body.isStaff,
+        staffTrackId
       })
       .where(eq(eventRoleAssignments.id, existingAssignment.id))
   } else {
@@ -61,6 +68,7 @@ export default defineApiHandler(async (h3Event) => {
       role: body.role,
       isInJudgePool: body.isInJudgePool,
       isStaff: body.isStaff,
+      staffTrackId,
       createdAt
     })
   }
@@ -82,7 +90,8 @@ export default defineApiHandler(async (h3Event) => {
       userId,
       role: body.role,
       isInJudgePool: body.isInJudgePool,
-      isStaff: body.isStaff
+      isStaff: body.isStaff,
+      staffTrackId
     }
   })
 

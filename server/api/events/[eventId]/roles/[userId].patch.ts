@@ -10,6 +10,7 @@ import {
   getActiveUserOrThrow,
   requireEventAdmin,
   getRoleAssignmentOrThrow,
+  resolveRoleAssignmentStaffTrackId,
   roleAssignmentParamsSchema,
   roleAssignmentPatchBodySchema,
   serializeEventRoleAssignment
@@ -29,6 +30,15 @@ export default defineApiHandler(async (h3Event) => {
   const user = await getActiveUserOrThrow(database, userId)
   const nextIsInJudgePool = body.isInJudgePool ?? assignment.isInJudgePool
   const nextIsStaff = body.isStaff ?? assignment.isStaff
+  let nextRequestedStaffTrackId: string | null | undefined = null
+
+  if (nextIsStaff) {
+    nextRequestedStaffTrackId = body.staffTrackId !== undefined
+      ? body.staffTrackId
+      : assignment.staffTrackId
+  } else if (body.staffTrackId !== undefined) {
+    nextRequestedStaffTrackId = body.staffTrackId
+  }
 
   assertRoleCapabilityInvariant(assignment.role, {
     isInJudgePool: nextIsInJudgePool,
@@ -39,11 +49,17 @@ export default defineApiHandler(async (h3Event) => {
     assertCompetitionEvent(event)
   }
 
+  const staffTrackId = await resolveRoleAssignmentStaffTrackId(database, event, {
+    isStaff: nextIsStaff,
+    staffTrackId: nextRequestedStaffTrackId
+  })
+
   await database
     .update(eventRoleAssignments)
     .set({
       isInJudgePool: nextIsInJudgePool,
-      isStaff: nextIsStaff
+      isStaff: nextIsStaff,
+      staffTrackId
     })
     .where(eq(eventRoleAssignments.id, assignment.id))
 
@@ -59,7 +75,8 @@ export default defineApiHandler(async (h3Event) => {
       userId,
       role: assignment.role,
       isInJudgePool: nextIsInJudgePool,
-      isStaff: nextIsStaff
+      isStaff: nextIsStaff,
+      staffTrackId
     }
   })
 

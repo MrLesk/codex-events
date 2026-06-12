@@ -1254,6 +1254,14 @@ describe('TASK-3.5 event CRUD routes', () => {
       content: 'Terms',
       publishedAt: '2026-03-03T00:00:00.000Z'
     })
+    await harness.database.insert(eventTracks).values({
+      id: 'track_ai',
+      eventId: 'event_1',
+      name: 'AI Track',
+      description: 'AI projects',
+      displayOrder: 1,
+      createdAt: '2026-03-10T08:00:00.000Z'
+    })
     await harness.database.insert(userApplications).values({
       id: 'application_viewer',
       eventId: 'event_1',
@@ -1279,6 +1287,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         role: 'staff',
         isInJudgePool: false,
         isStaff: true,
+        staffTrackId: 'track_ai',
         createdAt: '2026-03-10T09:05:00.000Z'
       },
       {
@@ -1340,6 +1349,10 @@ describe('TASK-3.5 event CRUD routes', () => {
         {
           id: 'staff_user',
           fullName: 'Staff User',
+          staffTrack: {
+            name: 'AI Track',
+            description: 'AI projects'
+          },
           linkedinProfileUrl: 'https://linkedin.com/in/staff-user'
         }
       ],

@@ -154,12 +154,14 @@ async function normalizeAdminCapableAssignment(
 ) {
   const assignment = findRoleAssignment(userId)
   const nextFlags = deriveAdminCapableRoleFlags(assignment, overrides)
+  const staffTrackId = nextFlags.isStaff ? assignment?.staffTrackId ?? null : null
 
   await putRoleAssignment(
     userId,
     'event_admin',
     nextFlags.isInJudgePool,
     nextFlags.isStaff,
+    staffTrackId,
     successTitle,
     successDescription
   )
@@ -420,6 +422,7 @@ async function putRoleAssignment(
   role: EventRoleAssignment['role'],
   isInJudgePool: boolean,
   isStaff: boolean,
+  staffTrackId: string | null,
   successTitle: string,
   successDescription: string
 ) {
@@ -431,7 +434,8 @@ async function putRoleAssignment(
         body: {
           role,
           isInJudgePool,
-          isStaff
+          isStaff,
+          staffTrackId
         }
       })
     },
@@ -445,6 +449,7 @@ async function patchRoleCapabilities(
   updates: {
     isInJudgePool?: boolean
     isStaff?: boolean
+    staffTrackId?: string | null
   },
   successTitle: string,
   successDescription: string
@@ -498,6 +503,7 @@ async function assignRole(userId: string) {
       'event_admin',
       nextFlags.isInJudgePool,
       nextFlags.isStaff,
+      nextFlags.isStaff ? existingAssignment?.staffTrackId ?? null : null,
       existingAssignment ? 'Admin access granted' : 'Admin added',
       existingAssignment?.role === 'judge'
         ? 'Judging stayed enabled on the new admin assignment.'
@@ -540,6 +546,7 @@ async function assignRole(userId: string) {
       'staff',
       false,
       true,
+      null,
       existingAssignment?.role === 'judge' ? 'Staff access granted' : 'Staff member added',
       existingAssignment?.role === 'judge'
         ? 'Judge access was replaced with staff access.'
@@ -579,6 +586,7 @@ async function assignRole(userId: string) {
     'judge',
     true,
     false,
+    null,
     'Judge added',
     existingAssignment?.role === 'staff'
       ? 'Staff access was replaced with judge access.'

@@ -317,6 +317,7 @@ function createRoleAssignment(overrides: Partial<EventRoleAssignment> = {}): Eve
     role: 'judge',
     isInJudgePool: true,
     isStaff: false,
+    staffTrackId: null,
     createdAt: '2026-03-24T12:00:00.000Z',
     user: {
       id: 'judge-1',
