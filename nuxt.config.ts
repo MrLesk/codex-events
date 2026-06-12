@@ -19,7 +19,11 @@ export default defineNuxtConfig({
 
   modules: [
     '@nuxt/eslint',
-    '@auth0/auth0-nuxt',
+    ['@auth0/auth0-nuxt', {
+      routes: {
+        logout: '/auth/sdk/logout'
+      }
+    }],
     '@nuxt/icon',
     'shadcn-nuxt'
   ],
