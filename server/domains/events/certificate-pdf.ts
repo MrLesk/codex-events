@@ -3,6 +3,7 @@ import type { PDFFont, PDFImage, PDFPage } from 'pdf-lib'
 import { PDFDocument, rgb } from 'pdf-lib'
 import qrcode from 'qrcode-generator'
 
+import { loadCertificateBadge } from '#server/domains/events/certificate-badge'
 import { loadCertificateFonts } from '#server/domains/events/certificate-fonts'
 import type {
   EventCertificate,
@@ -73,23 +74,6 @@ const goldBorder = rgb(1, 0.84, 0.43)
 const goldFill = rgb(0.47, 0.33, 0.05)
 const whiteText = rgb(0.99, 0.99, 1)
 const mutedText = rgb(0.92, 0.92, 0.98)
-
-let badgePromise: Promise<ArrayBuffer> | null = null
-
-function loadCertificateBadge() {
-  badgePromise ??= (async () => {
-    const data = await useStorage('assets:server').getItemRaw<Uint8Array>('images/codex-mark-white.png')
-
-    if (!data) {
-      throw new Error('Certificate badge asset images/codex-mark-white.png is missing from the server bundle.')
-    }
-
-    const bytes = new Uint8Array(data)
-    return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
-  })()
-
-  return badgePromise
-}
 
 function lerpColor(from: RgbColor, to: RgbColor, ratio: number) {
   return rgb(
@@ -366,7 +350,8 @@ export async function renderEventCertificatePdf(certificate: EventCertificate, v
     borderWidth: 1.4
   })
 
-  page.drawText(spacedLabel('Codex Events'), {
+  const wordmarkLabel = spacedLabel('Codex Events')
+  page.drawText(wordmarkLabel, {
     x: pageMargin,
     y: pageHeight - 92,
     font: semiBold,
@@ -390,8 +375,8 @@ export async function renderEventCertificatePdf(certificate: EventCertificate, v
 
   const badgeSize = 96
   page.drawImage(badge, {
-    x: pageWidth - pageMargin - badgeSize - 12,
-    y: 318,
+    x: pageMargin + (semiBold.widthOfTextAtSize(wordmarkLabel, 17) - badgeSize) / 2,
+    y: pageHeight - 198,
     width: badgeSize,
     height: badgeSize,
     opacity: 0.95

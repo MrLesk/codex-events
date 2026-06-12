@@ -3,6 +3,7 @@ import qrcode from 'qrcode-generator'
 import satori, { init as initSatori } from 'satori/wasm'
 import initYoga from 'yoga-wasm-web'
 
+import { loadCertificateBadge } from '#server/domains/events/certificate-badge'
 import { loadCertificateFonts } from '#server/domains/events/certificate-fonts'
 import { resvgWasmModule, yogaWasmModule } from '#server/domains/events/certificate-wasm.mjs'
 import type {
@@ -81,6 +82,29 @@ function box(style: Record<string, string | number>, children?: CertificateImage
       children
     }
   }
+}
+
+function toBase64(data: ArrayBuffer) {
+  const bytes = new Uint8Array(data)
+  let binary = ''
+
+  for (let index = 0; index < bytes.length; index += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000))
+  }
+
+  return btoa(binary)
+}
+
+function ringLayer(centerX: number, centerY: number, radius: number, opacity: number) {
+  return box({
+    position: 'absolute',
+    left: centerX - radius,
+    top: centerY - radius,
+    width: radius * 2,
+    height: radius * 2,
+    borderRadius: 9999,
+    border: `1px solid rgba(255, 255, 255, ${opacity})`
+  })
 }
 
 function buildVerificationQrCodeDataUrl(verifyUrl: string) {
@@ -202,7 +226,7 @@ const placementPillStyles = {
   }
 } as const
 
-function buildCertificateImageTree(certificate: EventCertificate, verifyUrl: string) {
+function buildCertificateImageTree(certificate: EventCertificate, verifyUrl: string, badgeDataUrl: string) {
   const palette = certificatePalettes[certificate.eventType]
   const placementTier = certificate.placement ? resolveEventCertificatePlacementTier(certificate.placement) : null
   const participantName = clampLine(certificate.participantName, 42).toUpperCase()
@@ -245,6 +269,24 @@ function buildCertificateImageTree(certificate: EventCertificate, verifyUrl: str
     }),
     dotsLayer({ top: 44, left: 44, width: 270, height: 180, opacity: 0.85 }, palette.dot),
     dotsLayer({ bottom: 44, right: 44, width: 300, height: 200, opacity: 0.7 }, palette.dot),
+    ringLayer(certificateImageWidth / 2, 270, 159, 0.07),
+    ringLayer(certificateImageWidth / 2, 270, 222, 0.05),
+    {
+      type: 'img',
+      props: {
+        src: badgeDataUrl,
+        width: 108,
+        height: 108,
+        style: {
+          position: 'absolute',
+          top: 96,
+          left: 142,
+          width: 108,
+          height: 108,
+          opacity: 0.95
+        }
+      }
+    } satisfies CertificateImageNode,
     box({
       position: 'absolute',
       top: 22,
@@ -326,9 +368,10 @@ function buildCertificateImageTree(certificate: EventCertificate, verifyUrl: str
 
 export async function renderEventCertificatePng(certificate: EventCertificate, verifyUrl: string) {
   await ensureCertificateRendererReady()
-  const fonts = await loadCertificateFonts()
+  const [fonts, badgeBytes] = await Promise.all([loadCertificateFonts(), loadCertificateBadge()])
+  const badgeDataUrl = `data:image/png;base64,${toBase64(badgeBytes)}`
 
-  const svg = await satori(buildCertificateImageTree(certificate, verifyUrl), {
+  const svg = await satori(buildCertificateImageTree(certificate, verifyUrl, badgeDataUrl), {
     width: certificateImageWidth,
     height: certificateImageHeight,
     fonts: [
