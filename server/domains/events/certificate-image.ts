@@ -31,33 +31,33 @@ interface CertificatePalette {
 const certificatePalettes: Record<EventCertificateEventType, CertificatePalette> = {
   build: {
     backgroundFrom: '#0a1186',
-    backgroundVia: '#4a22c9',
-    backgroundTo: '#a23ee6',
-    glowLeft: 'rgba(48, 92, 255, 0.5)',
-    glowRight: 'rgba(214, 80, 244, 0.5)',
+    backgroundVia: '#2f33d8',
+    backgroundTo: '#7a5cf0',
+    glowLeft: 'rgba(48, 92, 255, 0.55)',
+    glowRight: 'rgba(151, 120, 255, 0.5)',
     accent: '#cfd6ff',
     frame: 'rgba(196, 208, 255, 0.65)',
     dot: 'rgba(150, 190, 255, 0.55)'
   },
   hackathon: {
-    backgroundFrom: '#470c8f',
-    backgroundVia: '#7c1fc2',
-    backgroundTo: '#cc3680',
-    glowLeft: 'rgba(157, 78, 255, 0.55)',
-    glowRight: 'rgba(255, 94, 161, 0.5)',
-    accent: '#f0d4ff',
-    frame: 'rgba(238, 204, 255, 0.6)',
-    dot: 'rgba(255, 170, 220, 0.5)'
+    backgroundFrom: '#560a9b',
+    backgroundVia: '#a519c2',
+    backgroundTo: '#ea4581',
+    glowLeft: 'rgba(190, 70, 255, 0.55)',
+    glowRight: 'rgba(255, 92, 150, 0.55)',
+    accent: '#ffd9ee',
+    frame: 'rgba(255, 214, 240, 0.6)',
+    dot: 'rgba(255, 160, 210, 0.55)'
   },
   meetup: {
-    backgroundFrom: '#024a87',
-    backgroundVia: '#0b6dbd',
-    backgroundTo: '#2fadd6',
-    glowLeft: 'rgba(40, 150, 255, 0.55)',
-    glowRight: 'rgba(94, 224, 255, 0.5)',
-    accent: '#d2f1ff',
-    frame: 'rgba(196, 235, 255, 0.6)',
-    dot: 'rgba(150, 220, 255, 0.55)'
+    backgroundFrom: '#013f70',
+    backgroundVia: '#0782c3',
+    backgroundTo: '#2cd4c4',
+    glowLeft: 'rgba(36, 158, 255, 0.55)',
+    glowRight: 'rgba(80, 240, 220, 0.5)',
+    accent: '#c9f5f2',
+    frame: 'rgba(188, 242, 248, 0.6)',
+    dot: 'rgba(140, 235, 230, 0.55)'
   }
 }
 

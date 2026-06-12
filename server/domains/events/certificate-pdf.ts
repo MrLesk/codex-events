@@ -44,27 +44,27 @@ function hexColor(hex: string): RgbColor {
 const certificatePdfPalettes: Record<EventCertificateEventType, CertificatePdfPalette> = {
   build: {
     gradientFrom: hexColor('#0a1186'),
-    gradientVia: hexColor('#4a22c9'),
-    gradientTo: hexColor('#a23ee6'),
+    gradientVia: hexColor('#2f33d8'),
+    gradientTo: hexColor('#7a5cf0'),
     accent: rgb(0.81, 0.84, 1),
     accentSoft: rgb(0.77, 0.82, 1),
     dot: rgb(0.59, 0.75, 1)
   },
   hackathon: {
-    gradientFrom: hexColor('#470c8f'),
-    gradientVia: hexColor('#7c1fc2'),
-    gradientTo: hexColor('#cc3680'),
-    accent: rgb(0.94, 0.83, 1),
-    accentSoft: rgb(0.93, 0.8, 1),
-    dot: rgb(1, 0.67, 0.86)
+    gradientFrom: hexColor('#560a9b'),
+    gradientVia: hexColor('#a519c2'),
+    gradientTo: hexColor('#ea4581'),
+    accent: rgb(1, 0.85, 0.93),
+    accentSoft: rgb(1, 0.81, 0.91),
+    dot: rgb(1, 0.63, 0.82)
   },
   meetup: {
-    gradientFrom: hexColor('#024a87'),
-    gradientVia: hexColor('#0b6dbd'),
-    gradientTo: hexColor('#2fadd6'),
-    accent: rgb(0.82, 0.95, 1),
-    accentSoft: rgb(0.77, 0.92, 1),
-    dot: rgb(0.59, 0.86, 1)
+    gradientFrom: hexColor('#013f70'),
+    gradientVia: hexColor('#0782c3'),
+    gradientTo: hexColor('#2cd4c4'),
+    accent: rgb(0.79, 0.96, 0.95),
+    accentSoft: rgb(0.74, 0.93, 0.92),
+    dot: rgb(0.55, 0.92, 0.9)
   }
 }
 

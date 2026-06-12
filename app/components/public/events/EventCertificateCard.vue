@@ -372,35 +372,35 @@ const participantNameSize = computed(() => {
 
 .certificate-card-stage--build {
   --certificate-from: #0a1186;
-  --certificate-via: #4a22c9;
-  --certificate-to: #a23ee6;
-  --certificate-glow-left: rgba(48, 92, 255, 0.5);
-  --certificate-glow-right: rgba(214, 80, 244, 0.5);
+  --certificate-via: #2f33d8;
+  --certificate-to: #7a5cf0;
+  --certificate-glow-left: rgba(48, 92, 255, 0.55);
+  --certificate-glow-right: rgba(151, 120, 255, 0.5);
   --certificate-frame: rgba(196, 208, 255, 0.7);
-  --certificate-edge-glow: rgba(124, 92, 255, 0.55);
+  --certificate-edge-glow: rgba(91, 105, 255, 0.55);
   --certificate-dot: rgba(150, 190, 255, 0.55);
 }
 
 .certificate-card-stage--hackathon {
-  --certificate-from: #470c8f;
-  --certificate-via: #7c1fc2;
-  --certificate-to: #cc3680;
-  --certificate-glow-left: rgba(157, 78, 255, 0.6);
-  --certificate-glow-right: rgba(255, 94, 161, 0.5);
-  --certificate-frame: rgba(238, 204, 255, 0.65);
-  --certificate-edge-glow: rgba(199, 78, 255, 0.5);
-  --certificate-dot: rgba(255, 170, 220, 0.5);
+  --certificate-from: #560a9b;
+  --certificate-via: #a519c2;
+  --certificate-to: #ea4581;
+  --certificate-glow-left: rgba(190, 70, 255, 0.55);
+  --certificate-glow-right: rgba(255, 92, 150, 0.55);
+  --certificate-frame: rgba(255, 214, 240, 0.65);
+  --certificate-edge-glow: rgba(232, 86, 180, 0.5);
+  --certificate-dot: rgba(255, 160, 210, 0.55);
 }
 
 .certificate-card-stage--meetup {
-  --certificate-from: #024a87;
-  --certificate-via: #0b6dbd;
-  --certificate-to: #2fadd6;
-  --certificate-glow-left: rgba(40, 150, 255, 0.6);
-  --certificate-glow-right: rgba(94, 224, 255, 0.5);
-  --certificate-frame: rgba(196, 235, 255, 0.65);
-  --certificate-edge-glow: rgba(56, 170, 255, 0.5);
-  --certificate-dot: rgba(150, 220, 255, 0.55);
+  --certificate-from: #013f70;
+  --certificate-via: #0782c3;
+  --certificate-to: #2cd4c4;
+  --certificate-glow-left: rgba(36, 158, 255, 0.55);
+  --certificate-glow-right: rgba(80, 240, 220, 0.5);
+  --certificate-frame: rgba(188, 242, 248, 0.65);
+  --certificate-edge-glow: rgba(45, 205, 220, 0.5);
+  --certificate-dot: rgba(140, 235, 230, 0.55);
 }
 
 .certificate-card__grid {
