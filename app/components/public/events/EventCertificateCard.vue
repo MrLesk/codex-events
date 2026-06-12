@@ -222,7 +222,7 @@ const participantNameSize = computed(() => {
           :src="codexMarkWhite"
           alt=""
           aria-hidden="true"
-          class="certificate-card__mark absolute right-[4.5cqw] top-[22%] z-0 w-[13cqw]"
+          class="certificate-card__mark absolute right-[4.5cqw] top-[9%] z-0 w-[13cqw]"
         >
 
         <div
@@ -431,10 +431,10 @@ const participantNameSize = computed(() => {
 
 .certificate-card__dots--right {
   right: 2.5%;
-  bottom: 8%;
+  bottom: 22%;
   width: 26%;
   height: 70%;
-  mask-image: radial-gradient(130% 130% at 100% 60%, #000 30%, rgba(0, 0, 0, 0) 78%);
+  mask-image: radial-gradient(130% 130% at 100% 50%, #000 30%, rgba(0, 0, 0, 0) 78%);
 }
 
 .certificate-card__rings {
