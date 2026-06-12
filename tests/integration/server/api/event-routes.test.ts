@@ -1897,8 +1897,6 @@ describe('TASK-3.5 event CRUD routes', () => {
         address: 'Address',
         registrationOpensAt: '2026-03-20T12:00:00.000Z',
         registrationClosesAt: '2026-03-23T12:00:00.000Z',
-        submissionOpensAt: '2026-03-23T12:00:00.000Z',
-        submissionClosesAt: '2026-03-25T12:00:00.000Z',
         state: 'registration_open',
         maxTeamMembers: 5,
         createdByUserId: 'creator_1',
@@ -2422,8 +2420,6 @@ describe('TASK-3.5 event CRUD routes', () => {
       address: 'Address',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      submissionOpensAt: '2026-03-23T12:00:00.000Z',
-      submissionClosesAt: '2026-03-25T12:00:00.000Z',
       state: 'completed',
       maxTeamMembers: 1,
       createdByUserId: 'creator_1'
@@ -3621,9 +3617,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         country: 'Austria',
         address: 'Address',
         registrationOpensAt: '2026-03-20T12:00:00.000Z',
-        registrationClosesAt: '2026-03-23T12:00:00.000Z',
-        submissionOpensAt: '2026-03-23T12:00:00.000Z',
-        submissionClosesAt: '2026-03-25T12:00:00.000Z'
+        registrationClosesAt: '2026-03-23T12:00:00.000Z'
       })
     })
 
@@ -3651,6 +3645,8 @@ describe('TASK-3.5 event CRUD routes', () => {
     })
     expect(createdEvent).toMatchObject({
       eventType: 'build',
+      submissionOpensAt: null,
+      submissionClosesAt: null,
       createdByUserId: 'event_organizer'
     })
     const createdTrack = await harness.database.query.eventTracks.findFirst({
@@ -3772,7 +3768,8 @@ describe('TASK-3.5 event CRUD routes', () => {
 
     expect(createdEvent).toMatchObject({
       eventType: 'meetup',
-      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: null,
+      submissionClosesAt: null,
       maxTeamMembers: 1,
       autoApproveApplications: true,
       inPersonEvent: true,
@@ -4055,8 +4052,6 @@ describe('TASK-3.5 event CRUD routes', () => {
       address: 'Old Address',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      submissionOpensAt: '2026-03-23T12:00:00.000Z',
-      submissionClosesAt: '2026-03-23T12:00:01.000Z',
       state: 'registration_open',
       maxTeamMembers: 5,
       participantsLimit: null,
@@ -4124,6 +4119,8 @@ describe('TASK-3.5 event CRUD routes', () => {
 
     expect(updatedEvent).toMatchObject({
       participantsLimit: 80,
+      submissionOpensAt: null,
+      submissionClosesAt: null,
       maxTeamMembers: 5,
       blindScoreWeightPercent: 70,
       pitchScoreWeightPercent: 30,
@@ -4156,6 +4153,27 @@ describe('TASK-3.5 event CRUD routes', () => {
       inPersonEvent: false,
       requireChatgptEmail: false,
       address: 'Updated Address'
+    })
+
+    const scheduleResponse = await harness.request('/api/events/event_meetup_patch', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        registrationOpensAt: '2026-06-27T16:05:00.000Z',
+        registrationClosesAt: '2026-06-28T16:05:00.000Z'
+      })
+    })
+
+    expect(scheduleResponse.status).toBe(200)
+
+    const scheduleUpdatedEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_meetup_patch')
+    })
+
+    expect(scheduleUpdatedEvent).toMatchObject({
+      registrationOpensAt: '2026-06-27T16:05:00.000Z',
+      registrationClosesAt: '2026-06-28T16:05:00.000Z',
+      submissionOpensAt: null,
+      submissionClosesAt: null
     })
 
     const refreshedResponse = await harness.request('/api/events/slug/patch-meetup')
@@ -4452,8 +4470,6 @@ describe('TASK-3.5 event CRUD routes', () => {
       address: 'Address',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      submissionOpensAt: '2026-03-23T12:00:00.000Z',
-      submissionClosesAt: '2026-03-25T12:00:00.000Z',
       state: 'draft',
       maxTeamMembers: 1,
       bannerImageUrl: 'http://localhost/api/public/events/draft-banner-event/images/banner',

@@ -1056,8 +1056,8 @@ export function assertEventSchedule(input: {
   eventType?: EventType
   registrationOpensAt: string
   registrationClosesAt: string
-  submissionOpensAt?: string
-  submissionClosesAt?: string
+  submissionOpensAt?: string | null
+  submissionClosesAt?: string | null
 }) {
   const registrationOpensAt = Date.parse(input.registrationOpensAt)
   const registrationClosesAt = Date.parse(input.registrationClosesAt)
@@ -2349,8 +2349,8 @@ export function assertOpenSubmissionAllowed(event: EventRecord, now = new Date()
 
   const nowTimestamp = now.getTime()
   const registrationClosesAt = Date.parse(event.registrationClosesAt)
-  const submissionOpensAt = Date.parse(event.submissionOpensAt)
-  const submissionClosesAt = Date.parse(event.submissionClosesAt)
+  const submissionOpensAt = Date.parse(event.submissionOpensAt!)
+  const submissionClosesAt = Date.parse(event.submissionClosesAt!)
 
   assertGuard(nowTimestamp >= registrationClosesAt, {
     code: 'registration_window_still_open',

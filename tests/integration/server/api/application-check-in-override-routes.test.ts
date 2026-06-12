@@ -60,8 +60,8 @@ async function seedOverrideContext(
     address: 'Fixture Address',
     registrationOpensAt: '2026-05-20T10:00:00.000Z',
     registrationClosesAt: '2026-06-18T22:00:00.000Z',
-    submissionOpensAt: '2026-06-20T07:00:00.000Z',
-    submissionClosesAt: '2026-06-20T19:00:00.000Z',
+    submissionOpensAt: null,
+    submissionClosesAt: null,
     state: 'registration_open',
     maxTeamMembers: 1,
     createdByUserId: 'platform_admin'

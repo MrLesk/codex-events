@@ -37,10 +37,6 @@ export default defineApiHandler(async (h3Event) => {
   const createdAt = new Date().toISOString()
   const isHackathon = body.eventType === 'hackathon'
   const supportsTracks = isHackathon || body.eventType === 'build'
-  const submissionOpensAt = isHackathon ? body.submissionOpensAt! : body.registrationClosesAt
-  const submissionClosesAt = isHackathon
-    ? body.submissionClosesAt!
-    : new Date(Date.parse(body.registrationClosesAt) + 1000).toISOString()
 
   await database.insert(events).values({
     id: eventId,
@@ -60,8 +56,8 @@ export default defineApiHandler(async (h3Event) => {
     address: body.address,
     registrationOpensAt: body.registrationOpensAt,
     registrationClosesAt: body.registrationClosesAt,
-    submissionOpensAt,
-    submissionClosesAt,
+    submissionOpensAt: isHackathon ? body.submissionOpensAt! : null,
+    submissionClosesAt: isHackathon ? body.submissionClosesAt! : null,
     maxTeamMembers: isHackathon ? body.maxTeamMembers : 1,
     participantsLimit: body.participantsLimit,
     autoApproveApplications: body.autoApproveApplications,

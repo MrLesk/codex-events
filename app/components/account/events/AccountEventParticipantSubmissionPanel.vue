@@ -224,9 +224,10 @@ const isWorkspaceLoading = computed(() => {
 const showClosedSubmissionCard = computed(() =>
   props.event.state === 'registration_open'
 )
+const submissionOpensAt = computed(() => props.event.submissionOpensAt!)
 const submissionUnavailableDescription = computed(() => {
   if (props.event.state === 'registration_open') {
-    return `Project submissions open on ${formatTimestamp(props.event.submissionOpensAt, 'the scheduled submission date')}.`
+    return `Project submissions open on ${formatTimestamp(submissionOpensAt.value, 'the scheduled submission date')}.`
   }
 
   if (!displayedTeam.value) {
@@ -403,7 +404,7 @@ async function withdrawSubmission() {
           v-if="showClosedSubmissionCard"
           title="Submission window not open yet"
           description="You can prepare your team during registration. Submission details open once the event enters the submission phase."
-          :target-at="props.event.submissionOpensAt"
+          :target-at="submissionOpensAt"
           target-label="Submission opens at"
           countdown-label="Submission opens in"
           waiting-title="Scheduled opening time reached"

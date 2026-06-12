@@ -82,6 +82,8 @@ describe('TASK-220 event credit routes', () => {
       includeSubmittedApplicationFor?: string[]
     }
   ) {
+    const eventType = options?.eventType ?? 'hackathon'
+
     await harness.database.insert(users).values([
       {
         id: 'platform_admin',
@@ -116,7 +118,7 @@ describe('TASK-220 event credit routes', () => {
 
     await harness.database.insert(events).values({
       id: 'event_1',
-      eventType: options?.eventType ?? 'hackathon',
+      eventType,
       name: 'Fixture Event',
       slug: 'fixture-event',
       description: 'Fixture event',
@@ -125,8 +127,8 @@ describe('TASK-220 event credit routes', () => {
       address: 'Fixture Address',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      submissionOpensAt: '2026-03-23T12:00:00.000Z',
-      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      submissionOpensAt: eventType === 'hackathon' ? '2026-03-23T12:00:00.000Z' : null,
+      submissionClosesAt: eventType === 'hackathon' ? '2026-03-25T12:00:00.000Z' : null,
       state: 'registration_open',
       maxTeamMembers: 5,
       currentApplicationTermsDocumentId: null,

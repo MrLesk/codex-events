@@ -1310,7 +1310,7 @@ function applyLocalD1Migrations(environment: NodeJS.ProcessEnv) {
         ...environment,
         CI: '1'
       },
-      stdio: 'pipe'
+      stdio: 'ignore'
     }
   )
 }

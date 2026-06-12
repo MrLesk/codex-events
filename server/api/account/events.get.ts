@@ -35,9 +35,12 @@ function dedupe<T>(values: T[]) {
 }
 
 function sortEventsByFreshness(items: EventRecord[]) {
-  return [...items].sort((left, right) =>
-    new Date(right.submissionClosesAt).getTime() - new Date(left.submissionClosesAt).getTime()
-  )
+  return [...items].sort((left, right) => {
+    const leftClosesAt = left.submissionClosesAt ?? left.registrationClosesAt
+    const rightClosesAt = right.submissionClosesAt ?? right.registrationClosesAt
+
+    return new Date(rightClosesAt).getTime() - new Date(leftClosesAt).getTime()
+  })
 }
 
 function isActiveSubmission(record: SubmissionRecord) {

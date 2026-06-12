@@ -59,7 +59,7 @@ const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
   : undefined)
 const detailSummary = computed(() => [
-  formatEventWindow(event.value.registrationOpensAt, event.value.submissionClosesAt),
+  formatEventWindow(event.value.registrationOpensAt, event.value.submissionClosesAt ?? event.value.registrationClosesAt),
   formatEventLocation(event.value),
   ...getEventRegistrationTeamSizeMetaItems(event.value)
 ].join(' • '))

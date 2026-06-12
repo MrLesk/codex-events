@@ -183,7 +183,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `max_team_members` is greater than or equal to 1.
 - `participants_limit` is null or greater than or equal to 1.
 - For Hackathon events, `registration_opens_at < registration_closes_at <= submission_opens_at < submission_closes_at`.
-- For Meetup and Build events, `registration_opens_at < registration_closes_at`.
+- For Meetup and Build events, `registration_opens_at < registration_closes_at`, and `submission_opens_at` and `submission_closes_at` are null.
 
 ### Notes
 

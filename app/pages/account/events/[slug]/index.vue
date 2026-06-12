@@ -112,8 +112,8 @@ interface AccountEventAccessRecord {
   displayBackgroundImageUrl: string | null
   registrationOpensAt: string
   registrationClosesAt: string
-  submissionOpensAt: string
-  submissionClosesAt: string
+  submissionOpensAt: string | null
+  submissionClosesAt: string | null
   applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null
   team: {
     id: string

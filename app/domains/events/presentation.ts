@@ -71,8 +71,8 @@ export interface PublicEvent {
   address: string
   registrationOpensAt: string
   registrationClosesAt: string
-  submissionOpensAt: string
-  submissionClosesAt: string
+  submissionOpensAt: string | null
+  submissionClosesAt: string | null
   state: PublicEventState
   maxTeamMembers: number
   autoApproveApplications: boolean
@@ -478,9 +478,9 @@ export function describeEventWindowNote(start: string, end: string, now = new Da
 }
 
 export function getEventEarliestStartAt(
-  event: Pick<PublicEvent, 'agendaItems' | 'submissionOpensAt'>
+  event: Pick<PublicEvent, 'agendaItems' | 'registrationClosesAt' | 'submissionOpensAt'>
 ) {
-  return resolveEventCertificateDateIso(event.agendaItems, event.submissionOpensAt)
+  return resolveEventCertificateDateIso(event.agendaItems, event.submissionOpensAt ?? event.registrationClosesAt)
 }
 
 export function shouldShowAgendaDayContext(
@@ -634,7 +634,7 @@ export function getEventDashboardTeamSizeMetaItems(event: Pick<PublicEvent, 'eve
 }
 
 export function formatAccountEventHeaderSummary(
-  event: Pick<PublicEvent, 'agendaItems' | 'city' | 'country' | 'eventType' | 'maxTeamMembers' | 'submissionOpensAt'>
+  event: Pick<PublicEvent, 'agendaItems' | 'city' | 'country' | 'eventType' | 'maxTeamMembers' | 'registrationClosesAt' | 'submissionOpensAt'>
 ) {
   return [
     formatEventDateWithWeekday(getEventEarliestStartAt(event)),

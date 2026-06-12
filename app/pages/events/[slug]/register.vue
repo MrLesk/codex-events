@@ -86,7 +86,7 @@ const profileFields = computed(() => listEventProfileFields(event.value))
 const visibleProfileFields = computed(() => profileFields.value.filter(field => field.visible))
 const visibleProfileFieldKeys = computed(() => new Set(visibleProfileFields.value.map(field => field.key)))
 const detailSummary = computed(() => [
-  formatEventWindow(event.value.registrationOpensAt, event.value.submissionClosesAt),
+  formatEventWindow(event.value.registrationOpensAt, event.value.submissionClosesAt ?? event.value.registrationClosesAt),
   formatEventLocation(event.value),
   ...getEventRegistrationTeamSizeMetaItems(event.value)
 ].join(' • '))

@@ -888,7 +888,7 @@ const lifecycleSummaryItems = computed<LifecycleSummaryItem[]>(() => {
         },
         {
           label: 'Time frame',
-          value: formatLifecycleTimeframe(event.submissionOpensAt, event.submissionClosesAt),
+          value: formatLifecycleTimeframe(event.submissionOpensAt!, event.submissionClosesAt!),
           description: 'Configured submission window.'
         }
       ]
@@ -1006,7 +1006,7 @@ const lifecycleSummaryItems = computed<LifecycleSummaryItem[]>(() => {
           },
           {
             label: 'Time frame',
-            value: `After ${formatTimestamp(event.submissionClosesAt, 'submission close')}`,
+            value: `After ${formatTimestamp(event.submissionClosesAt!, 'submission close')}`,
             description: 'Outcome and prize workflows stay available until the event is completed.'
           }
         ]
@@ -1020,7 +1020,7 @@ const lifecycleSummaryItems = computed<LifecycleSummaryItem[]>(() => {
         },
         {
           label: 'Time frame',
-          value: `After ${formatTimestamp(event.submissionClosesAt, 'submission close')}`,
+          value: `After ${formatTimestamp(event.submissionClosesAt!, 'submission close')}`,
           description: 'Judging starts once the submission window has closed and continues until lifecycle completion.'
         }
       ]
@@ -1034,7 +1034,7 @@ const lifecycleSummaryItems = computed<LifecycleSummaryItem[]>(() => {
         {
           label: 'Time frame',
           value: isCompetitionEvent.value
-            ? formatLifecycleTimeframe(event.registrationOpensAt, event.submissionClosesAt)
+            ? formatLifecycleTimeframe(event.registrationOpensAt, event.submissionClosesAt!)
             : formatLifecycleTimeframe(event.registrationOpensAt, event.registrationClosesAt),
           description: isCompetitionEvent.value
             ? 'Lifecycle window from registration opening through the submission deadline.'
@@ -1051,7 +1051,7 @@ const lifecycleSummaryItems = computed<LifecycleSummaryItem[]>(() => {
         {
           label: 'Time frame',
           value: isCompetitionEvent.value
-            ? formatLifecycleTimeframe(event.registrationOpensAt, event.submissionClosesAt)
+            ? formatLifecycleTimeframe(event.registrationOpensAt, event.submissionClosesAt!)
             : formatLifecycleTimeframe(event.registrationOpensAt, event.registrationClosesAt),
           description: isCompetitionEvent.value
             ? 'Configured registration and submission window.'
@@ -1131,14 +1131,14 @@ const lifecycleActionAvailability = computed(() => {
 
       return {
         label: 'Available when',
-        message: `The submission window is active from ${formatTimestamp(event.submissionOpensAt, 'the scheduled opening time')} to ${formatTimestamp(event.submissionClosesAt, 'the scheduled closing time')}.`,
+        message: `The submission window is active from ${formatTimestamp(event.submissionOpensAt!, 'the scheduled opening time')} to ${formatTimestamp(event.submissionClosesAt!, 'the scheduled closing time')}.`,
         className: 'text-warning'
       }
     case 'start_judging_preparation':
       if (control.code === 'submission_window_still_open') {
         return {
           label: 'Available when',
-          message: `The submission window closes on ${formatTimestamp(event.submissionClosesAt, 'the submission deadline')}. Submissions can be stopped after that.`,
+          message: `The submission window closes on ${formatTimestamp(event.submissionClosesAt!, 'the submission deadline')}. Submissions can be stopped after that.`,
           className: 'text-warning'
         }
       }

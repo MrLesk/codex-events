@@ -54,7 +54,7 @@ function sortByRecentTimestampDesc(left: string | null | undefined, right: strin
 
 function getEventStartsAt(event: EventRecord) {
   const agendaItems = parseEventAgendaItems(event.agendaItemsJson)
-  let earliestStartAt = event.submissionOpensAt
+  let earliestStartAt = event.submissionOpensAt ?? event.registrationClosesAt
   let earliestStartAtTimestamp = Date.parse(earliestStartAt)
 
   for (const item of agendaItems) {

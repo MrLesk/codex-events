@@ -19,8 +19,8 @@ export interface UserEventEntry {
   displayBackgroundImageUrl: string | null
   registrationOpensAt: string
   registrationClosesAt: string
-  submissionOpensAt: string
-  submissionClosesAt: string
+  submissionOpensAt: string | null
+  submissionClosesAt: string | null
   applicationStatus: UserApplicationStatus | null
   team: {
     id: string

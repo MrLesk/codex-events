@@ -355,7 +355,7 @@ export function assertStartJudgingPreparationAllowed(
     }
   })
 
-  assertGuard(Date.parse(event.submissionClosesAt) <= now.getTime(), {
+  assertGuard(Date.parse(event.submissionClosesAt!) <= now.getTime(), {
     code: 'submission_window_still_open',
     message: 'Submissions can only be stopped after the submission window closes.',
     details: {

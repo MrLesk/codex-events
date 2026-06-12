@@ -14,7 +14,7 @@ export interface EventParticipationEventSummary {
   startsAt: string
   registrationOpensAt: string
   registrationClosesAt: string
-  submissionClosesAt: string
+  submissionClosesAt: string | null
 }
 
 export interface EventParticipationApplicationSummary {

@@ -67,8 +67,8 @@ export interface EventRecord {
   address: string
   registrationOpensAt: string
   registrationClosesAt: string
-  submissionOpensAt: string
-  submissionClosesAt: string
+  submissionOpensAt: string | null
+  submissionClosesAt: string | null
   state: EventState
   hiddenAt?: string | null
   hiddenByUserId?: string | null

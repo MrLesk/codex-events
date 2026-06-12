@@ -48,6 +48,8 @@ async function seedCertificateContext(
     buildTrackCount?: number
   }
 ) {
+  const eventType = options?.eventType ?? 'build'
+
   await harness.database.insert(users).values([
     {
       id: 'admin_user',
@@ -74,7 +76,7 @@ async function seedCertificateContext(
 
   await harness.database.insert(events).values({
     id: 'event_1',
-    eventType: options?.eventType ?? 'build',
+    eventType,
     name: 'Codex Community Build - Vienna',
     slug: 'codex-build-vienna',
     description: 'Build day',
@@ -83,8 +85,8 @@ async function seedCertificateContext(
     address: 'Museumsplatz 1',
     registrationOpensAt: '2026-05-20T10:00:00.000Z',
     registrationClosesAt: '2026-06-18T22:00:00.000Z',
-    submissionOpensAt: '2026-06-20T07:00:00.000Z',
-    submissionClosesAt: '2026-06-20T19:00:00.000Z',
+    submissionOpensAt: eventType === 'hackathon' ? '2026-06-20T07:00:00.000Z' : null,
+    submissionClosesAt: eventType === 'hackathon' ? '2026-06-20T19:00:00.000Z' : null,
     agendaItemsJson: JSON.stringify([
       { id: 'agenda_1', title: 'Doors open', startsAt: '2026-06-20T08:30:00.000Z', endsAt: '2026-06-20T09:00:00.000Z', displayOrder: 1 }
     ]),
@@ -101,7 +103,7 @@ async function seedCertificateContext(
     checkedInAt: options?.checkedInAt === undefined ? '2026-06-20T08:05:00.000Z' : options.checkedInAt
   })
 
-  if ((options?.eventType ?? 'build') === 'build' && options?.buildTrackCount) {
+  if (eventType === 'build' && options?.buildTrackCount) {
     await harness.database.insert(eventTracks).values(
       Array.from({ length: options.buildTrackCount }, (_, index) => ({
         id: `build_track_${index + 1}`,

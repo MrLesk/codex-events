@@ -10,12 +10,13 @@ export type AdminOverviewTab = typeof adminOverviewTabs[number]
 
 interface AdminOverviewEventTiming {
   agendaItems: Pick<EventAgendaItem, 'startsAt'>[]
+  registrationClosesAt: string
   state: EventState
-  submissionOpensAt: string
+  submissionOpensAt: string | null
 }
 
 export function getAdminOverviewEventStartsAt(event: AdminOverviewEventTiming) {
-  let earliestStartAt = event.submissionOpensAt
+  let earliestStartAt = event.submissionOpensAt ?? event.registrationClosesAt
   let earliestStartAtTimestamp = Date.parse(earliestStartAt)
 
   for (const item of event.agendaItems) {
@@ -61,7 +62,7 @@ export function getAdminOverviewTabForEvent(
 }
 
 export function countAdminOverviewEventsByTab(
-  events: Pick<EventRecord, 'agendaItems' | 'state' | 'submissionOpensAt'>[],
+  events: Pick<EventRecord, 'agendaItems' | 'registrationClosesAt' | 'state' | 'submissionOpensAt'>[],
   nowTimestamp: number = Date.now()
 ) {
   return events.reduce<Record<AdminOverviewTab, number>>((counts, event) => {

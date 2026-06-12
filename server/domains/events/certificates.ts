@@ -132,7 +132,7 @@ export async function getEventCertificateOrThrow(
 
   const eventDateIso = resolveEventCertificateDateIso(
     parseEventAgendaItems(event.agendaItemsJson),
-    event.submissionOpensAt
+    event.submissionOpensAt ?? event.registrationClosesAt
   )
   const participantName = `${participant.firstName} ${participant.familyName}`.trim() || participant.displayName
 
@@ -171,7 +171,7 @@ export async function getEventCertificatePreview(
   const eventType = query.type ?? event.eventType
   const eventDateIso = resolveEventCertificateDateIso(
     parseEventAgendaItems(event.agendaItemsJson),
-    event.submissionOpensAt
+    event.submissionOpensAt ?? event.registrationClosesAt
   )
 
   return {

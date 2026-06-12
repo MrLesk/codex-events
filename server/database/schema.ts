@@ -131,8 +131,8 @@ export const events = sqliteTable(
     address: text('address').notNull(),
     registrationOpensAt: text('registration_opens_at').notNull(),
     registrationClosesAt: text('registration_closes_at').notNull(),
-    submissionOpensAt: text('submission_opens_at').notNull(),
-    submissionClosesAt: text('submission_closes_at').notNull(),
+    submissionOpensAt: text('submission_opens_at'),
+    submissionClosesAt: text('submission_closes_at'),
     state: text('state', { enum: eventStates }).notNull().default('draft'),
     hiddenAt: text('hidden_at'),
     hiddenByUserId: text('hidden_by_user_id').references(() => users.id),
@@ -214,9 +214,19 @@ export const events = sqliteTable(
     ),
     check(
       'events_schedule_order_check',
-      sql`${table.registrationOpensAt} < ${table.registrationClosesAt}
+      sql`(
+        ${table.eventType} = 'hackathon'
+        and ${table.registrationOpensAt} < ${table.registrationClosesAt}
+        and ${table.submissionOpensAt} is not null
+        and ${table.submissionClosesAt} is not null
         and ${table.registrationClosesAt} <= ${table.submissionOpensAt}
-        and ${table.submissionOpensAt} < ${table.submissionClosesAt}`
+        and ${table.submissionOpensAt} < ${table.submissionClosesAt}
+      ) or (
+        ${table.eventType} in ('meetup', 'build')
+        and ${table.registrationOpensAt} < ${table.registrationClosesAt}
+        and ${table.submissionOpensAt} is null
+        and ${table.submissionClosesAt} is null
+      )`
     ),
     check(
       'events_type_check',

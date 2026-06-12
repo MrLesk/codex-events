@@ -419,8 +419,8 @@ describe('TASK-3.6 application routes', () => {
       address: 'Managed Address',
       registrationOpensAt: fixtureRegistrationOpensAt,
       registrationClosesAt: fixtureRegistrationClosesAt,
-      submissionOpensAt: fixtureRegistrationClosesAt,
-      submissionClosesAt: fixtureSubmissionClosesAt,
+      submissionOpensAt: null,
+      submissionClosesAt: null,
       state: 'draft',
       maxTeamMembers: 1,
       createdByUserId: 'event_organizer'

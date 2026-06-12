@@ -176,6 +176,82 @@ describe('shared database migration', () => {
     }])
   })
 
+  test('allows registration-only events without submission windows', async () => {
+    const now = isoTimestamp(0)
+    await seedUser(database, 'creator_1', now)
+
+    await database.prepare(`
+      insert into events (
+        id, event_type, name, slug, description, city, country, address,
+        registration_opens_at, registration_closes_at, submission_opens_at, submission_closes_at,
+        state, max_team_members, created_by_user_id, created_at, updated_at
+      )
+      values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      'event_build',
+      'build',
+      'Build Event',
+      'build-event',
+      'Registration-only event',
+      'City',
+      'Country',
+      'Address',
+      now,
+      isoTimestamp(1),
+      null,
+      null,
+      'draft',
+      1,
+      'creator_1',
+      now,
+      now
+    )
+
+    const rows = await database.prepare(`
+      select submission_opens_at, submission_closes_at
+      from events
+      where id = ?
+    `).all<{ submission_opens_at: string | null, submission_closes_at: string | null }>('event_build')
+
+    expect(rows.results).toEqual([{
+      submission_opens_at: null,
+      submission_closes_at: null
+    }])
+
+    await expect(database.prepare(`
+      update events
+      set registration_closes_at = ?, submission_opens_at = ?, submission_closes_at = ?
+      where id = ?
+    `).run(isoTimestamp(2), isoTimestamp(2), isoTimestamp(3), 'event_build')).rejects.toThrow()
+
+    await expect(database.prepare(`
+      insert into events (
+        id, event_type, name, slug, description, city, country, address,
+        registration_opens_at, registration_closes_at, submission_opens_at, submission_closes_at,
+        state, max_team_members, created_by_user_id, created_at, updated_at
+      )
+      values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      'event_hackathon_without_submission',
+      'hackathon',
+      'Hackathon Without Submission',
+      'hackathon-without-submission',
+      'Invalid hackathon event',
+      'City',
+      'Country',
+      'Address',
+      now,
+      isoTimestamp(1),
+      null,
+      null,
+      'draft',
+      1,
+      'creator_1',
+      now,
+      now
+    )).rejects.toThrow()
+  })
+
   test('creates and removes primary linked-auth-identity rows with user inserts and soft deletion', async () => {
     const now = isoTimestamp(0)
 

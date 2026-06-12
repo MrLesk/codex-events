@@ -145,6 +145,7 @@ const showSubmissionSection = computed(() => Boolean(displayedTeam.value))
 const showClosedSubmissionCountdown = computed(() =>
   showSubmissionSection.value && props.event.state === 'registration_open'
 )
+const submissionOpensAt = computed(() => props.event.submissionOpensAt!)
 const canViewSubmission = computed(() =>
   shouldShowParticipantSubmissionWorkspace(props.event, Boolean(displayedTeam.value))
 )
@@ -839,7 +840,7 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
             v-if="showClosedSubmissionCountdown"
             title="Submission window not open yet"
             description="You can prepare your team during registration. Submission details open once the event enters the submission phase."
-            :target-at="props.event.submissionOpensAt"
+            :target-at="submissionOpensAt"
             target-label="Submission opens at"
             countdown-label="Submission opens in"
             waiting-title="Scheduled opening time reached"
