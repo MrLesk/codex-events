@@ -229,7 +229,7 @@ const participantNameSize = computed(() => {
           class="relative z-10 flex h-full flex-col px-[4.4cqw] py-[3.4cqw]"
           aria-hidden="true"
         >
-          <p class="text-[max(9px,1.45cqw)] font-semibold leading-[1.5] tracking-[0.42em] text-white/90">
+          <p class="absolute left-[4.4cqw] top-[3.4cqw] text-[max(14px,2.34cqw)] font-bold leading-[1.45] tracking-[0.42em] text-white/95">
             CODEX<br>EVENTS
           </p>
 
