@@ -63,23 +63,17 @@ if (certificateError.value || !certificateData.value) {
 }
 
 const certificate = computed(() => certificateData.value!)
-const isSignedIn = computed(() => accountActor.value.isAuthenticated)
-const showExportActions = computed(() => isSignedIn.value || isPreview.value)
-const signedInEmail = computed(() => accountActor.value.platformUser?.email ?? accountActor.value.sessionUser?.email ?? '')
 const typeLabel = computed(() => eventCertificateTypeLabels[certificate.value.eventType])
 const locationLabel = computed(() => [certificate.value.city, certificate.value.country].filter(part => part.trim().length > 0).join(', '))
+const dateLine = computed(() => `${certificate.value.eventDateLabel}${locationLabel.value ? ` · ${locationLabel.value}` : ''}`)
 const placementLine = computed(() => certificate.value.placement
-  ? `${formatEventCertificatePlacement(certificate.value.placement)}${certificate.value.prizes.length > 0 ? ` · ${certificate.value.prizes.join(', ')}` : ''}`
+  ? [formatEventCertificatePlacement(certificate.value.placement), ...certificate.value.prizes].join(' · ')
   : '')
-const projectLine = computed(() => {
-  if (!certificate.value.projectName && !certificate.value.teamName) {
-    return ''
-  }
-
-  return [certificate.value.projectName, certificate.value.teamName ? `Team ${certificate.value.teamName}` : '']
-    .filter(part => part)
-    .join(' · ')
-})
+const metaLine = computed(() => [
+  certificate.value.trackName ? `${certificate.value.trackName} track` : '',
+  certificate.value.projectName,
+  certificate.value.teamName ? `Team ${certificate.value.teamName}` : ''
+].filter(part => part).join(' · '))
 
 const requestUrl = useRequestURL()
 const certificatePath = computed(() => buildEventCertificatePath(slug.value, userId.value))
@@ -237,20 +231,6 @@ useHead({
         </NuxtLink>
 
         <div class="flex items-center gap-3">
-          <div
-            v-if="isSignedIn && signedInEmail"
-            class="hidden flex-col items-end pr-1 text-right sm:flex"
-          >
-            <span class="text-[12px] text-neutral-500 dark:text-white/65">Signed in as</span>
-            <span class="inline-flex items-center gap-1.5 text-[13px] text-neutral-800 dark:text-white/90">
-              {{ signedInEmail }}
-              <AppIcon
-                name="i-lucide-circle-check"
-                class="size-4 text-emerald-600 dark:text-emerald-400"
-              />
-            </span>
-          </div>
-
           <button
             type="button"
             class="certificate-action-button"
@@ -261,33 +241,32 @@ useHead({
               name="i-lucide-link"
               class="size-4"
             />
-            Link
+            Copy link
           </button>
 
-          <template v-if="showExportActions">
-            <a
-              :href="`${certificateApiBasePath}/certificate.pdf${previewSearch}`"
-              class="certificate-action-button"
-              data-testid="certificate-download-pdf"
-            >
-              <AppIcon
-                name="i-lucide-file-text"
-                class="size-4"
-              />
-              PDF
-            </a>
-            <a
-              :href="`${certificateApiBasePath}/certificate.png${previewSearch ? `${previewSearch}&download=1` : '?download=1'}`"
-              class="certificate-action-button"
-              data-testid="certificate-download-image"
-            >
-              <AppIcon
-                name="i-lucide-image"
-                class="size-4"
-              />
-              Image
-            </a>
-          </template>
+          <a
+            :href="`${certificateApiBasePath}/certificate.pdf${previewSearch}`"
+            class="certificate-action-button"
+            data-testid="certificate-download-pdf"
+          >
+            <AppIcon
+              name="i-lucide-file-text"
+              class="size-4"
+            />
+            PDF
+          </a>
+
+          <a
+            :href="`${certificateApiBasePath}/certificate.png${previewSearch ? `${previewSearch}&download=1` : '?download=1'}`"
+            class="certificate-action-button"
+            data-testid="certificate-download-image"
+          >
+            <AppIcon
+              name="i-lucide-image"
+              class="size-4"
+            />
+            Image
+          </a>
         </div>
       </div>
 
@@ -309,7 +288,7 @@ useHead({
           {{ certificate.eventName }}
         </p>
         <p class="mt-1.5 text-[17px] font-medium text-indigo-600 dark:text-[#8b9bff] sm:text-[19px]">
-          on {{ certificate.eventDateLabel }}
+          on {{ dateLine }}
         </p>
         <p
           v-if="placementLine"
@@ -323,16 +302,11 @@ useHead({
           {{ placementLine }}
         </p>
         <p
-          v-if="certificate.trackName"
-          class="mt-1 text-[15px] text-neutral-600 dark:text-white/65 sm:text-[16px]"
+          v-if="metaLine"
+          class="mt-1.5 text-[15px] text-neutral-600 dark:text-white/65 sm:text-[16px]"
+          data-testid="certificate-meta-line"
         >
-          with the track <span class="font-semibold text-violet-700 dark:text-[#b9a5ff]">{{ certificate.trackName }}</span>
-        </p>
-        <p
-          v-if="projectLine"
-          class="mt-1 text-[14px] text-neutral-600 dark:text-white/60 sm:text-[15px]"
-        >
-          {{ certificate.projectName ? 'with the project' : 'with' }} <span class="font-semibold text-highlighted dark:text-white">{{ projectLine }}</span>
+          {{ metaLine }}
         </p>
       </div>
 
@@ -341,99 +315,6 @@ useHead({
           :certificate="certificate"
           :celebrate="shouldCelebrate"
         />
-      </div>
-
-      <div class="mx-auto mt-6 w-full max-w-[64rem]">
-        <div class="flex flex-col gap-5 rounded-2xl border border-black/10 bg-white px-6 py-5 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.35)] dark:border-white/12 dark:bg-black/45 dark:shadow-none dark:backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <div class="certificate-fact">
-            <AppIcon
-              name="i-lucide-box"
-              class="certificate-fact__icon"
-            />
-            <span class="flex flex-col gap-0.5">
-              <span class="certificate-fact__label">Event type</span>
-              <span class="certificate-fact__value">{{ typeLabel }}</span>
-            </span>
-          </div>
-
-          <div class="certificate-fact sm:border-l sm:border-black/10 sm:pl-5 dark:sm:border-white/12">
-            <AppIcon
-              name="i-lucide-calendar-days"
-              class="certificate-fact__icon"
-            />
-            <span class="flex flex-col gap-0.5">
-              <span class="certificate-fact__label">Date</span>
-              <span class="certificate-fact__value">{{ certificate.eventDateLabel }}</span>
-            </span>
-          </div>
-
-          <div
-            v-if="locationLabel"
-            class="certificate-fact sm:border-l sm:border-black/10 sm:pl-5 dark:sm:border-white/12"
-          >
-            <AppIcon
-              name="i-lucide-map-pin"
-              class="certificate-fact__icon"
-            />
-            <span class="flex flex-col gap-0.5">
-              <span class="certificate-fact__label">Location</span>
-              <span class="certificate-fact__value">{{ locationLabel }}</span>
-            </span>
-          </div>
-
-          <div
-            v-if="certificate.trackName"
-            class="certificate-fact sm:border-l sm:border-black/10 sm:pl-5 dark:sm:border-white/12"
-          >
-            <AppIcon
-              name="i-lucide-wrench"
-              class="certificate-fact__icon"
-            />
-            <span class="flex min-w-0 flex-col gap-0.5">
-              <span class="certificate-fact__label">Track</span>
-              <span class="certificate-fact__value truncate !text-violet-700 dark:!text-[#b9a5ff]">{{ certificate.trackName }}</span>
-            </span>
-          </div>
-
-          <div
-            v-if="certificate.placement"
-            class="certificate-fact sm:border-l sm:border-black/10 sm:pl-5 dark:sm:border-white/12"
-          >
-            <AppIcon
-              name="i-lucide-trophy"
-              class="certificate-fact__icon !text-amber-600 dark:!text-amber-300"
-            />
-            <span class="flex flex-col gap-0.5">
-              <span class="certificate-fact__label">Placement</span>
-              <span class="certificate-fact__value !text-amber-700 dark:!text-amber-300">{{ formatEventCertificatePlacement(certificate.placement) }}</span>
-            </span>
-          </div>
-
-          <div
-            v-if="certificate.prizes.length > 0"
-            class="certificate-fact sm:border-l sm:border-black/10 sm:pl-5 dark:sm:border-white/12"
-          >
-            <AppIcon
-              name="i-lucide-gift"
-              class="certificate-fact__icon"
-            />
-            <span class="flex min-w-0 flex-col gap-0.5">
-              <span class="certificate-fact__label">Prize</span>
-              <span class="certificate-fact__value truncate">{{ certificate.prizes.join(', ') }}</span>
-            </span>
-          </div>
-
-          <div class="certificate-fact sm:border-l sm:border-black/10 sm:pl-5 dark:sm:border-white/12">
-            <AppIcon
-              name="i-lucide-shield-check"
-              class="certificate-fact__icon"
-            />
-            <span class="flex flex-col gap-0.5">
-              <span class="certificate-fact__label">Certificate ID</span>
-              <span class="certificate-fact__value">{{ certificate.certificateId }}</span>
-            </span>
-          </div>
-        </div>
       </div>
 
       <div class="mx-auto mt-7 flex max-w-[46rem] flex-col items-center gap-1 text-center">
@@ -465,12 +346,6 @@ useHead({
             is the live verification record for certificate {{ certificate.certificateId }}.
           </p>
         </template>
-        <p
-          v-if="!showExportActions"
-          class="mt-2 text-[13px] text-neutral-500 dark:text-white/60"
-        >
-          Sign in to download this certificate as an image or PDF.
-        </p>
       </div>
     </AppContainer>
   </div>
@@ -525,45 +400,5 @@ useHead({
   border-color: rgba(139, 155, 255, 0.55);
   color: #aab7ff;
   box-shadow: 0 0 18px -4px rgba(110, 120, 255, 0.55);
-}
-
-.certificate-fact {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.certificate-fact__icon {
-  width: 21px;
-  height: 21px;
-  color: #4f46e5;
-  flex: none;
-}
-
-.dark .certificate-fact__icon {
-  color: #aab7ff;
-}
-
-.certificate-fact__label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #525252;
-}
-
-.dark .certificate-fact__label {
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.certificate-fact__value {
-  font-size: 14px;
-  font-weight: 600;
-  color: #171717;
-}
-
-.dark .certificate-fact__value {
-  color: #ffffff;
 }
 </style>

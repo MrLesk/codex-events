@@ -370,10 +370,10 @@ Key characteristics:
 - A completed Hackathon's certificate also names the participant team, the submitted project, the team's final placement, and the prize names the team won, resolved from the competition outcome model. These outcome details never appear before the event is `completed`, matching public winner visibility.
 - Certificates with a top-three placement present gold, silver, or bronze trophy treatments on the certificate card and the social-preview image.
 - The certificate ID is derived from the event type, city, certificate date, and participant name, with the user application identifier as the fallback for names without usable characters.
-- The certificate page at `/events/:slug/:userId`, its JSON read, and its social-preview image are public. PDF and image downloads are offered on the page only to authenticated sessions, and the PDF read requires one.
+- The certificate page at `/events/:slug/:userId` and all of its reads — JSON, social-preview image, and PDF — are public, matching the shareable nature of the certificate link.
 - The certificate page is the live verification record for the certificate. The PDF embeds a QR code that resolves back to that page, and the page exposes schema.org structured data describing the credential.
 - A participant can hide their own certificate from their account event workspace and make it public again. Hidden certificates respond not found on every public certificate read, and the admin Certificates tab marks them as hidden by the participant.
-- A certificate preview at `/events/:slug/preview` renders a synthetic certificate from query parameters for design review. Previews state that they are samples, are excluded from search indexing, allow image and PDF export without a session, and never represent issued certificates.
+- A certificate preview at `/events/:slug/preview` renders a synthetic certificate from query parameters for design review. Previews state that they are samples, are excluded from search indexing, and never represent issued certificates.
 
 ### Team
 

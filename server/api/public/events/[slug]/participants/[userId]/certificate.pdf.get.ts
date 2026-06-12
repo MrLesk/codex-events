@@ -1,6 +1,5 @@
 import { getRequestURL } from 'h3'
 
-import { requireAuthenticatedActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
 import {
   certificatePreviewQuerySchema,
@@ -19,11 +18,6 @@ import {
 export default defineApiHandler(async (h3Event) => {
   const { slug, userId } = parseValidatedParams(h3Event, certificateRouteParamsSchema)
   const isPreview = userId === eventCertificatePreviewUserId
-
-  if (!isPreview) {
-    await requireAuthenticatedActor(h3Event)
-  }
-
   const database = getDatabase(h3Event)
   const certificate = isPreview
     ? await getEventCertificatePreview(database, slug, parseValidatedQuery(h3Event, certificatePreviewQuerySchema))

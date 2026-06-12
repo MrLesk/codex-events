@@ -468,17 +468,8 @@ describe('public certificate routes', () => {
     expect(response.status).toBe(404)
   })
 
-  test('requires an authenticated session for the certificate PDF', async () => {
+  test('renders the certificate PDF publicly', async () => {
     const harness = createHarness()
-    await seedCertificateContext(harness)
-
-    const response = await harness.request(`${certificatePath}.pdf`)
-
-    expect(response.status).toBe(401)
-  })
-
-  test('renders the certificate PDF for an authenticated session', async () => {
-    const harness = createHarness({ sub: 'auth0|viewer_user', email: 'viewer@example.com' })
     await seedCertificateContext(harness)
 
     const response = await harness.request(`${certificatePath}.pdf`)

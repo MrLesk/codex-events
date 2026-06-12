@@ -12,7 +12,7 @@ const props = defineProps<{
   celebrate?: boolean
 }>()
 
-const cardElement = ref<HTMLElement | null>(null)
+const stageElement = ref<HTMLElement | null>(null)
 const isPointerActive = ref(false)
 const tiltX = ref(0)
 const tiltY = ref(0)
@@ -20,35 +20,70 @@ const glareX = ref(50)
 const glareY = ref(30)
 const reducedMotion = usePreferredReducedMotion()
 
+const tiltTarget = { x: 0, y: 0, glareX: 50, glareY: 30 }
+let tiltFrame = 0
+
+function stopTiltLoop() {
+  if (tiltFrame) {
+    cancelAnimationFrame(tiltFrame)
+    tiltFrame = 0
+  }
+}
+
+function runTiltLoop() {
+  tiltFrame = 0
+  tiltX.value += (tiltTarget.x - tiltX.value) * 0.18
+  tiltY.value += (tiltTarget.y - tiltY.value) * 0.18
+  glareX.value += (tiltTarget.glareX - glareX.value) * 0.18
+  glareY.value += (tiltTarget.glareY - glareY.value) * 0.18
+
+  const settled = Math.abs(tiltTarget.x - tiltX.value) < 0.01 && Math.abs(tiltTarget.y - tiltY.value) < 0.01
+
+  if (!settled && isPointerActive.value) {
+    tiltFrame = requestAnimationFrame(runTiltLoop)
+  }
+}
+
 function handlePointerMove(event: PointerEvent) {
-  const element = cardElement.value
+  const element = stageElement.value
 
   if (!element || reducedMotion.value === 'reduce') {
     return
   }
 
   const rect = element.getBoundingClientRect()
-  const pointerX = (event.clientX - rect.left) / rect.width
-  const pointerY = (event.clientY - rect.top) / rect.height
+  const pointerX = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
+  const pointerY = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height))
 
   isPointerActive.value = true
-  tiltX.value = (pointerX - 0.5) * 12
-  tiltY.value = (0.5 - pointerY) * 10
-  glareX.value = pointerX * 100
-  glareY.value = pointerY * 100
+  tiltTarget.x = (pointerX - 0.5) * 12
+  tiltTarget.y = (0.5 - pointerY) * 10
+  tiltTarget.glareX = pointerX * 100
+  tiltTarget.glareY = pointerY * 100
+
+  if (!tiltFrame) {
+    tiltFrame = requestAnimationFrame(runTiltLoop)
+  }
 }
 
 function resetTilt() {
+  stopTiltLoop()
   isPointerActive.value = false
+  tiltTarget.x = 0
+  tiltTarget.y = 0
+  tiltTarget.glareX = 50
+  tiltTarget.glareY = 30
   tiltX.value = 0
   tiltY.value = 0
   glareX.value = 50
   glareY.value = 30
 }
 
+onBeforeUnmount(stopTiltLoop)
+
 const cardStyle = computed(() => ({
   transform: `rotateX(${tiltY.value.toFixed(2)}deg) rotateY(${tiltX.value.toFixed(2)}deg)`,
-  transition: isPointerActive.value ? 'transform 90ms linear' : 'transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1)'
+  transition: isPointerActive.value ? 'none' : 'transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1)'
 }))
 
 const glareStyle = computed(() => ({
@@ -61,6 +96,7 @@ const sheenStyle = computed(() => ({
 }))
 
 const isCelebrating = ref(false)
+let celebrationTimeout: ReturnType<typeof setTimeout> | undefined
 
 watch(() => props.celebrate, (celebrate) => {
   if (!celebrate) {
@@ -68,10 +104,13 @@ watch(() => props.celebrate, (celebrate) => {
   }
 
   isCelebrating.value = true
-  setTimeout(() => {
+  clearTimeout(celebrationTimeout)
+  celebrationTimeout = setTimeout(() => {
     isCelebrating.value = false
   }, 2400)
 })
+
+onBeforeUnmount(() => clearTimeout(celebrationTimeout))
 
 const celebrationSparks = [
   { left: '24%', top: '30%', dx: '-90px', dy: '-110px', delay: '0ms', color: '#ffe9a8' },
@@ -120,15 +159,19 @@ const participantNameSize = computed(() => {
     :class="`certificate-card-stage--${certificate.eventType}`"
     data-testid="event-certificate-card"
   >
-    <div class="certificate-card-perspective">
+    <div
+      ref="stageElement"
+      class="certificate-card-perspective"
+      @pointermove="handlePointerMove"
+      @pointerleave="resetTilt"
+      @pointercancel="resetTilt"
+    >
       <div
-        ref="cardElement"
         class="certificate-card text-left"
         :class="{ 'certificate-card--celebrating': isCelebrating }"
         :style="cardStyle"
-        @pointermove="handlePointerMove"
-        @pointerleave="resetTilt"
-        @pointercancel="resetTilt"
+        role="img"
+        :aria-label="`${certificate.participantName} — Certificate of Participation, ${certificate.eventName}`"
       >
         <div
           class="certificate-card__grid"
@@ -209,8 +252,11 @@ const participantNameSize = computed(() => {
           />
         </svg>
 
-        <div class="relative z-10 flex h-full flex-col px-[4.4cqw] py-[3.4cqw]">
-          <p class="text-[1.45cqw] font-semibold leading-[1.5] tracking-[0.42em] text-white/90">
+        <div
+          class="relative z-10 flex h-full flex-col px-[4.4cqw] py-[3.4cqw]"
+          aria-hidden="true"
+        >
+          <p class="text-[max(9px,1.45cqw)] font-semibold leading-[1.5] tracking-[0.42em] text-white/90">
             CODEX<br>EVENTS
           </p>
 
@@ -227,7 +273,7 @@ const participantNameSize = computed(() => {
               />
               {{ placementLabel }}
             </p>
-            <p class="text-[1.45cqw] font-semibold tracking-[0.4em] text-white/90">
+            <p class="text-[max(8px,1.45cqw)] font-semibold tracking-[0.4em] text-white/90">
               CERTIFICATE OF PARTICIPATION
             </p>
             <p
@@ -236,7 +282,7 @@ const participantNameSize = computed(() => {
             >
               {{ certificate.participantName }}
             </p>
-            <p class="mt-[2cqw] rounded-full border border-white/55 px-[2.6cqw] py-[0.85cqw] text-[1.4cqw] font-semibold uppercase tracking-[0.34em] text-white/90">
+            <p class="mt-[2cqw] rounded-full border border-white/55 px-[2.6cqw] py-[0.85cqw] text-[max(8px,1.4cqw)] font-semibold uppercase tracking-[0.34em] text-white/90">
               {{ certificate.eventName }}
             </p>
           </div>
@@ -250,8 +296,8 @@ const participantNameSize = computed(() => {
                 />
               </span>
               <span class="flex flex-col gap-[0.4cqw]">
-                <span class="text-[1cqw] font-semibold tracking-[0.28em] text-white/85">EVENT DATE</span>
-                <span class="text-[1.5cqw] font-semibold text-white">{{ certificate.eventDateLabel }}</span>
+                <span class="text-[max(7px,1cqw)] font-semibold tracking-[0.28em] text-white/85">EVENT DATE</span>
+                <span class="text-[max(9px,1.5cqw)] font-semibold text-white">{{ certificate.eventDateLabel }}</span>
               </span>
             </div>
 
@@ -265,8 +311,8 @@ const participantNameSize = computed(() => {
                   />
                 </span>
                 <span class="flex min-w-0 flex-col gap-[0.4cqw]">
-                  <span class="text-[1cqw] font-semibold tracking-[0.28em] text-white/85">TRACK</span>
-                  <span class="truncate text-[1.5cqw] font-semibold text-white">{{ certificate.trackName }}</span>
+                  <span class="text-[max(7px,1cqw)] font-semibold tracking-[0.28em] text-white/85">TRACK</span>
+                  <span class="truncate text-[max(9px,1.5cqw)] font-semibold text-white">{{ certificate.trackName }}</span>
                 </span>
               </div>
             </template>
@@ -280,8 +326,8 @@ const participantNameSize = computed(() => {
                 />
               </span>
               <span class="flex flex-col gap-[0.4cqw]">
-                <span class="text-[1cqw] font-semibold tracking-[0.28em] text-white/85">CERTIFICATE ID</span>
-                <span class="text-[1.5cqw] font-semibold text-white">{{ certificate.certificateId }}</span>
+                <span class="text-[max(7px,1cqw)] font-semibold tracking-[0.28em] text-white/85">CERTIFICATE ID</span>
+                <span class="text-[max(9px,1.5cqw)] font-semibold text-white">{{ certificate.certificateId }}</span>
               </span>
             </div>
           </div>
@@ -316,6 +362,7 @@ const participantNameSize = computed(() => {
 
 .certificate-card-perspective {
   perspective: 1400px;
+  touch-action: pan-y;
 }
 
 .certificate-card {
@@ -324,8 +371,7 @@ const participantNameSize = computed(() => {
   border-radius: clamp(14px, 2.6cqw, 30px);
   border: 1.5px solid var(--certificate-frame);
   overflow: hidden;
-  transform-style: preserve-3d;
-  touch-action: pan-y;
+  will-change: transform;
   background:
     radial-gradient(90% 160% at 0% 0%, var(--certificate-glow-left) 0%, rgba(0, 0, 0, 0) 55%),
     radial-gradient(95% 170% at 100% 100%, var(--certificate-glow-right) 0%, rgba(0, 0, 0, 0) 58%),
@@ -524,15 +570,23 @@ const participantNameSize = computed(() => {
 
 @keyframes certificate-card-pop {
   0% {
-    transform: scale(1);
+    scale: 1;
   }
 
   35% {
-    transform: scale(1.02);
+    scale: 1.02;
   }
 
   100% {
-    transform: scale(1);
+    scale: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .certificate-card--celebrating,
+  .certificate-card__sheen--celebrating,
+  .certificate-card__celebration-spark {
+    animation: none;
   }
 }
 
