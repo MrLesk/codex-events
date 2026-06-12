@@ -247,42 +247,48 @@ useHead({
           Back to event
         </NuxtLink>
 
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 sm:gap-3">
           <button
             type="button"
             class="certificate-action-button"
             data-testid="certificate-copy-link"
+            aria-label="Copy certificate link"
+            title="Copy link"
             @click="copyCertificateLink"
           >
             <AppIcon
               name="i-lucide-link"
               class="size-4"
             />
-            Copy link
+            <span class="hidden sm:inline">Copy link</span>
           </button>
 
           <a
             :href="`${certificateApiBasePath}/certificate.pdf${previewSearch}`"
             class="certificate-action-button"
             data-testid="certificate-download-pdf"
+            aria-label="Download certificate PDF"
+            title="PDF"
           >
             <AppIcon
               name="i-lucide-file-text"
               class="size-4"
             />
-            PDF
+            <span class="hidden sm:inline">PDF</span>
           </a>
 
           <a
             :href="`${certificateApiBasePath}/certificate.png${previewSearch ? `${previewSearch}&download=1` : '?download=1'}`"
             class="certificate-action-button"
             data-testid="certificate-download-image"
+            aria-label="Download certificate image"
+            title="Image"
           >
             <AppIcon
               name="i-lucide-image"
               class="size-4"
             />
-            Image
+            <span class="hidden sm:inline">Image</span>
           </a>
         </div>
       </div>
@@ -383,6 +389,14 @@ useHead({
   color: #171717;
   transition: background-color 150ms ease, border-color 150ms ease;
   backdrop-filter: blur(8px);
+}
+
+@media (max-width: 639px) {
+  .certificate-action-button {
+    gap: 0;
+    border-radius: 10px;
+    padding: 8px;
+  }
 }
 
 .certificate-action-button:hover {

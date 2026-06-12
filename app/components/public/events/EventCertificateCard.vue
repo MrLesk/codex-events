@@ -237,11 +237,11 @@ const participantNameSize = computed(() => {
           :src="codexMarkWhite"
           alt=""
           aria-hidden="true"
-          class="certificate-card__mark absolute right-[4.5cqw] top-[9%] z-0 w-[13cqw]"
+          class="certificate-card__mark absolute right-[4.5cqw] top-[9%] z-0 w-[max(44px,13cqw)]"
         >
         <svg
           v-else
-          class="certificate-card__mark certificate-card__mark--normal absolute right-[4.5cqw] top-[9%] z-0 w-[13cqw]"
+          class="certificate-card__mark certificate-card__mark--normal absolute right-[4.5cqw] top-[9%] z-0 w-[max(44px,13cqw)]"
           viewBox="0 0 120 120"
           aria-hidden="true"
         >
@@ -333,92 +333,92 @@ const participantNameSize = computed(() => {
           class="relative z-10 flex h-full flex-col px-[4.4cqw] py-[3.4cqw]"
           aria-hidden="true"
         >
-          <p class="absolute left-[4.4cqw] top-[3.4cqw] text-[max(14px,2.34cqw)] font-bold leading-[1.45] tracking-[0.42em] text-[var(--certificate-ink-strong)]">
+          <p class="absolute left-[4.4cqw] top-[3.4cqw] text-[length:var(--certificate-wordmark-size)] font-bold leading-[1.45] tracking-[var(--certificate-wordmark-tracking)] text-[var(--certificate-ink-strong)]">
             CODEX<br>EVENTS
           </p>
 
           <div class="flex flex-1 flex-col items-center justify-center text-center">
             <p
               v-if="placementTier"
-              class="certificate-card__placement mb-[1.3cqw]"
+              class="certificate-card__placement mb-[max(5px,1.3cqw)]"
               :class="`certificate-card__placement--${placementTier}`"
               data-testid="certificate-card-placement"
             >
               <AppIcon
                 name="i-lucide-trophy"
-                class="size-[1.5cqw]"
+                class="size-[max(9px,1.5cqw)]"
               />
               {{ placementLabel }}
             </p>
-            <p class="text-[max(8px,1.45cqw)] font-semibold tracking-[0.4em] text-[var(--certificate-ink)]">
+            <p class="text-[max(8px,1.45cqw)] font-semibold tracking-[var(--certificate-title-tracking)] text-[var(--certificate-ink)]">
               CERTIFICATE OF PARTICIPATION
             </p>
             <p
-              class="certificate-card__name mt-[1.6cqw] max-w-[68cqw] font-semibold uppercase leading-[1.08] tracking-[0.05em]"
+              class="certificate-card__name mt-[max(6px,1.6cqw)] max-w-[68cqw] font-semibold uppercase leading-[1.08] tracking-[0.05em]"
               :style="{ fontSize: participantNameSize }"
             >
               {{ certificate.participantName }}
             </p>
-            <p class="mt-[2cqw] rounded-full border border-[var(--certificate-pill-border)] px-[2.6cqw] py-[0.85cqw] text-[max(8px,1.4cqw)] font-semibold uppercase tracking-[0.34em] text-[var(--certificate-ink)]">
+            <p class="mt-[max(8px,2cqw)] rounded-full border border-[var(--certificate-pill-border)] px-[max(10px,2.6cqw)] py-[max(3px,0.85cqw)] text-[max(8px,1.4cqw)] font-semibold uppercase tracking-[var(--certificate-pill-tracking)] text-[var(--certificate-ink)]">
               {{ certificate.eventName }}
             </p>
           </div>
 
-          <div class="flex items-center justify-evenly">
-            <div class="flex items-center gap-[1.1cqw]">
+          <div class="certificate-card__footer">
+            <div class="flex items-center gap-[max(7px,1.1cqw)]">
               <span class="certificate-card__icon-tile">
                 <AppIcon
                   name="i-lucide-box"
-                  class="size-[1.7cqw]"
+                  class="size-[max(11px,1.7cqw)]"
                 />
               </span>
-              <span class="flex flex-col gap-[0.4cqw]">
+              <span class="flex flex-col gap-[max(2px,0.4cqw)]">
                 <span class="text-[max(7px,1cqw)] font-semibold tracking-[0.28em] text-[var(--certificate-ink-soft)]">EVENT TYPE</span>
-                <span class="text-[max(9px,1.5cqw)] font-semibold text-[var(--certificate-ink-strong)]">{{ typeLabel }}</span>
+                <span class="whitespace-nowrap text-[max(9px,1.5cqw)] font-semibold text-[var(--certificate-ink-strong)]">{{ typeLabel }}</span>
               </span>
             </div>
 
             <div class="certificate-card__divider" />
-            <div class="flex items-center gap-[1.1cqw]">
+            <div class="flex items-center gap-[max(7px,1.1cqw)]">
               <span class="certificate-card__icon-tile">
                 <AppIcon
                   name="i-lucide-calendar-days"
-                  class="size-[1.7cqw]"
+                  class="size-[max(11px,1.7cqw)]"
                 />
               </span>
-              <span class="flex flex-col gap-[0.4cqw]">
+              <span class="flex flex-col gap-[max(2px,0.4cqw)]">
                 <span class="text-[max(7px,1cqw)] font-semibold tracking-[0.28em] text-[var(--certificate-ink-soft)]">EVENT DATE</span>
-                <span class="text-[max(9px,1.5cqw)] font-semibold text-[var(--certificate-ink-strong)]">{{ certificate.eventDateLabel }}</span>
+                <span class="whitespace-nowrap text-[max(9px,1.5cqw)] font-semibold text-[var(--certificate-ink-strong)]">{{ certificate.eventDateLabel }}</span>
               </span>
             </div>
 
             <template v-if="certificate.trackName">
               <div class="certificate-card__divider" />
-              <div class="flex min-w-0 items-center gap-[1.1cqw]">
+              <div class="flex min-w-0 items-center gap-[max(7px,1.1cqw)]">
                 <span class="certificate-card__icon-tile">
                   <AppIcon
                     name="i-lucide-wrench"
-                    class="size-[1.7cqw]"
+                    class="size-[max(11px,1.7cqw)]"
                   />
                 </span>
-                <span class="flex min-w-0 flex-col gap-[0.4cqw]">
+                <span class="flex min-w-0 flex-col gap-[max(2px,0.4cqw)]">
                   <span class="text-[max(7px,1cqw)] font-semibold tracking-[0.28em] text-[var(--certificate-ink-soft)]">TRACK</span>
-                  <span class="truncate text-[max(9px,1.5cqw)] font-semibold text-[var(--certificate-ink-strong)]">{{ certificate.trackName }}</span>
+                  <span class="truncate whitespace-nowrap text-[max(9px,1.5cqw)] font-semibold text-[var(--certificate-ink-strong)]">{{ certificate.trackName }}</span>
                 </span>
               </div>
             </template>
 
             <div class="certificate-card__divider" />
-            <div class="flex items-center gap-[1.1cqw]">
+            <div class="flex items-center gap-[max(7px,1.1cqw)]">
               <span class="certificate-card__icon-tile">
                 <AppIcon
                   name="i-lucide-shield-check"
-                  class="size-[1.7cqw]"
+                  class="size-[max(11px,1.7cqw)]"
                 />
               </span>
-              <span class="flex flex-col gap-[0.4cqw]">
+              <span class="flex flex-col gap-[max(2px,0.4cqw)]">
                 <span class="text-[max(7px,1cqw)] font-semibold tracking-[0.28em] text-[var(--certificate-ink-soft)]">CERTIFICATE ID</span>
-                <span class="text-[max(9px,1.5cqw)] font-semibold text-[var(--certificate-ink-strong)]">{{ certificate.certificateId }}</span>
+                <span class="whitespace-nowrap text-[max(9px,1.5cqw)] font-semibold text-[var(--certificate-ink-strong)]">{{ certificate.certificateId }}</span>
               </span>
             </div>
           </div>
@@ -453,6 +453,10 @@ const participantNameSize = computed(() => {
   --certificate-ink: rgba(255, 255, 255, 0.9);
   --certificate-ink-soft: rgba(255, 255, 255, 0.85);
   --certificate-pill-border: rgba(255, 255, 255, 0.55);
+  --certificate-wordmark-size: max(14px, 2.34cqw);
+  --certificate-wordmark-tracking: 0.42em;
+  --certificate-title-tracking: 0.4em;
+  --certificate-pill-tracking: 0.34em;
 }
 
 .certificate-card-perspective {
@@ -666,11 +670,11 @@ const participantNameSize = computed(() => {
 .certificate-card__placement {
   display: inline-flex;
   align-items: center;
-  gap: 0.7cqw;
+  gap: max(4px, 0.7cqw);
   border-radius: 9999px;
   border: 1px solid;
-  padding: 0.55cqw 1.8cqw;
-  font-size: 1.25cqw;
+  padding: max(3px, 0.55cqw) max(10px, 1.8cqw);
+  font-size: max(8px, 1.25cqw);
   font-weight: 600;
   letter-spacing: 0.3em;
 }
@@ -740,20 +744,52 @@ const participantNameSize = computed(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 3.4cqw;
-  height: 3.4cqw;
-  border-radius: 0.8cqw;
+  width: max(22px, 3.4cqw);
+  height: max(22px, 3.4cqw);
+  border-radius: max(6px, 0.8cqw);
   border: 1px solid rgba(255, 255, 255, 0.35);
   background: rgba(255, 255, 255, 0.10);
   color: #ffffff;
   flex: none;
 }
 
+.certificate-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+}
+
 .certificate-card__divider {
   width: 1px;
-  height: 3.6cqw;
+  height: max(20px, 3.6cqw);
   background: rgba(255, 255, 255, 0.28);
   flex: none;
+}
+
+@container (max-width: 480px) {
+  .certificate-card {
+    aspect-ratio: 1.6 / 1;
+    --certificate-wordmark-size: 11px;
+    --certificate-wordmark-tracking: 0.3em;
+    --certificate-title-tracking: 0.24em;
+    --certificate-pill-tracking: 0.2em;
+  }
+
+  .certificate-card__footer {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px 22px;
+  }
+
+  .certificate-card__divider {
+    display: none;
+  }
+
+  .certificate-card__rings {
+    top: 50%;
+    width: 70cqw;
+    height: 70cqw;
+  }
 }
 
 .certificate-card--celebrating {
