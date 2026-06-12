@@ -113,6 +113,16 @@ const isSubmitting = ref(false)
 const submissionTransition = ref<ParticipantApplicationSubmittedTransition | null>(null)
 const visibleEventId = ref<string | null>(null)
 
+function createDefaultRegistrationRouteState() {
+  return {
+    visibleEventId: null,
+    hasExistingApplication: false,
+    currentApplicationTerms: null,
+    workspaceErrorMessage: '',
+    redirectTo: null
+  }
+}
+
 watch(() => accountActor.value, (actor) => {
   if (actor?.kind !== 'platform_user') {
     return
@@ -234,6 +244,10 @@ const registrationRouteState = await useApiData<{
         redirectTo: null
       }
     } catch (error) {
+      if (signal.aborted) {
+        return createDefaultRegistrationRouteState()
+      }
+
       return {
         visibleEventId: null,
         hasExistingApplication: false,
@@ -244,13 +258,7 @@ const registrationRouteState = await useApiData<{
     }
   },
   {
-    default: () => ({
-      visibleEventId: null,
-      hasExistingApplication: false,
-      currentApplicationTerms: null,
-      workspaceErrorMessage: '',
-      redirectTo: null
-    }),
+    default: createDefaultRegistrationRouteState,
     watch: [
       slug,
       accountActorCacheKey,
@@ -259,6 +267,14 @@ const registrationRouteState = await useApiData<{
       computed(() => event.value.registrationClosesAt)
     ]
   }
+)
+
+const isRegistrationRouteStateLoading = computed(() =>
+  !submissionTransition.value
+  && (
+    registrationRouteState.status.value === 'idle'
+    || registrationRouteState.status.value === 'pending'
+  )
 )
 
 async function navigateToRegistrationRedirect(redirectTo: {
@@ -542,6 +558,7 @@ useSeoMeta({
           :profile-error="profileSaveError"
           :submission-error="submissionError"
           :submission-transition="submissionTransition"
+          :is-loading="isRegistrationRouteStateLoading"
           :workspace-error-message="workspaceErrorMessage"
           @submit-application="submitParticipantApplication"
         />
