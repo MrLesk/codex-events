@@ -373,6 +373,7 @@ Key characteristics:
 - The certificate page at `/events/:slug/:userId`, its JSON read, and its social-preview image are public. PDF and image downloads are offered on the page only to authenticated sessions, and the PDF read requires one.
 - The certificate page is the live verification record for the certificate. The PDF embeds a QR code that resolves back to that page, and the page exposes schema.org structured data describing the credential.
 - A participant can hide their own certificate from their account event workspace and make it public again. Hidden certificates respond not found on every public certificate read, and the admin Certificates tab marks them as hidden by the participant.
+- A certificate preview at `/events/:slug/preview` renders a synthetic certificate from query parameters for design review. Previews state that they are samples, are excluded from search indexing, allow image and PDF export without a session, and never represent issued certificates.
 
 ### Team
 

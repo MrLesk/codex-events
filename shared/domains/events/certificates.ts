@@ -1,5 +1,7 @@
 export const eventCertificateEventTypes = ['hackathon', 'meetup', 'build'] as const
 
+export const eventCertificatePreviewUserId = 'preview'
+
 export type EventCertificateEventType = typeof eventCertificateEventTypes[number]
 
 export interface EventCertificate {

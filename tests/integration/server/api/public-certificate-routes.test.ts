@@ -411,6 +411,63 @@ describe('public certificate routes', () => {
     expect(response.status).toBe(404)
   })
 
+  test('renders a synthetic preview certificate from query parameters', async () => {
+    const harness = createHarness()
+    await seedCertificateContext(harness)
+
+    const defaultResponse = await harness.request('/api/public/events/codex-build-vienna/participants/preview/certificate')
+
+    expect(defaultResponse.status).toBe(200)
+    const defaultPayload = await defaultResponse.json() as { data: Record<string, unknown> }
+    expect(defaultPayload.data).toMatchObject({
+      participantName: 'Sara Novak',
+      eventType: 'build',
+      placement: null,
+      prizes: []
+    })
+
+    const overriddenResponse = await harness.request(
+      '/api/public/events/codex-build-vienna/participants/preview/certificate?name=Blabla%20Tester&type=hackathon&rank=1&track=Advanced%20Builders&prizes=OpenAI%20API%20Credits,%20Trophy&team=Night%20Shift&project=Deploy%20Pilot'
+    )
+
+    expect(overriddenResponse.status).toBe(200)
+    const overriddenPayload = await overriddenResponse.json() as { data: Record<string, unknown> }
+    expect(overriddenPayload.data).toMatchObject({
+      participantName: 'Blabla Tester',
+      eventType: 'hackathon',
+      placement: 1,
+      trackName: 'Advanced Builders',
+      teamName: 'Night Shift',
+      projectName: 'Deploy Pilot',
+      prizes: ['OpenAI API Credits', 'Trophy'],
+      certificateId: 'HCK-VIE-2026-0620-BTESTER'
+    })
+  })
+
+  test('preview exports are public and uncached', async () => {
+    const harness = createHarness()
+    await seedCertificateContext(harness)
+
+    const pdfResponse = await harness.request('/api/public/events/codex-build-vienna/participants/preview/certificate.pdf?name=Blabla')
+
+    expect(pdfResponse.status).toBe(200)
+    expect(pdfResponse.headers.get('content-type')).toBe('application/pdf')
+
+    const pngResponse = await harness.request('/api/public/events/codex-build-vienna/participants/preview/certificate.png?name=Blabla')
+
+    expect(pngResponse.status).toBe(200)
+    expect(pngResponse.headers.get('cache-control')).toBe('no-store')
+  })
+
+  test('preview responds not found for unknown event slugs', async () => {
+    const harness = createHarness()
+    await seedCertificateContext(harness)
+
+    const response = await harness.request('/api/public/events/unknown-event/participants/preview/certificate')
+
+    expect(response.status).toBe(404)
+  })
+
   test('requires an authenticated session for the certificate PDF', async () => {
     const harness = createHarness()
     await seedCertificateContext(harness)

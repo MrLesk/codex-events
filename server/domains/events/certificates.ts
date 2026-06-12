@@ -25,9 +25,22 @@ import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/
 import type { EventCertificate } from '#shared/domains/events/certificates'
 import {
   buildEventCertificateId,
+  eventCertificateEventTypes,
   formatEventCertificateDate,
   resolveEventCertificateDateIso
 } from '#shared/domains/events/certificates'
+
+export const certificatePreviewQuerySchema = z.object({
+  name: z.string().trim().min(1).max(80).default('Sara Novak'),
+  type: z.enum(eventCertificateEventTypes).optional(),
+  rank: z.coerce.number().int().min(1).max(999).optional(),
+  track: z.string().trim().min(1).max(80).optional(),
+  project: z.string().trim().min(1).max(120).optional(),
+  team: z.string().trim().min(1).max(80).optional(),
+  prizes: z.string().trim().max(300).optional()
+})
+
+export type CertificatePreviewQuery = z.infer<typeof certificatePreviewQuerySchema>
 
 export const certificateRouteParamsSchema = z.object({
   slug: z.string().trim().min(1),
@@ -143,6 +156,44 @@ export async function getEventCertificateOrThrow(
       eventDateIso,
       participantName,
       applicationId: application.id
+    }),
+    backgroundImageUrl: resolveEventDisplayBackgroundImageUrl(event, imageOptions)
+  }
+}
+
+export async function getEventCertificatePreview(
+  database: AppDatabase,
+  slug: string,
+  query: CertificatePreviewQuery
+): Promise<EventCertificate> {
+  const event = await getPublicEventBySlugOrThrow(database, slug)
+  const imageOptions = await getEventDisplayImageOptions(database)
+  const eventType = query.type ?? event.eventType
+  const eventDateIso = resolveEventCertificateDateIso(
+    parseEventAgendaItems(event.agendaItemsJson),
+    event.submissionOpensAt
+  )
+
+  return {
+    participantName: query.name,
+    eventName: event.name,
+    eventSlug: event.slug,
+    eventType,
+    eventDateIso,
+    eventDateLabel: formatEventCertificateDate(eventDateIso),
+    city: event.city,
+    country: event.country,
+    trackName: query.track ?? null,
+    teamName: query.team ?? null,
+    projectName: query.project ?? null,
+    placement: query.rank ?? null,
+    prizes: query.prizes?.split(',').map(prize => prize.trim()).filter(prize => prize.length > 0) ?? [],
+    certificateId: buildEventCertificateId({
+      eventType,
+      city: event.city,
+      eventDateIso,
+      participantName: query.name,
+      applicationId: 'preview'
     }),
     backgroundImageUrl: resolveEventDisplayBackgroundImageUrl(event, imageOptions)
   }

@@ -3,6 +3,7 @@ import type { EventCertificate } from '#shared/domains/events/certificates'
 import {
   buildEventCertificatePath,
   buildEventCertificateSummary,
+  eventCertificatePreviewUserId,
   eventCertificateTypeLabels,
   formatEventCertificatePlacement
 } from '#shared/domains/events/certificates'
@@ -16,6 +17,26 @@ definePageMeta({
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
 const userId = computed(() => String(route.params.userId ?? '').trim())
+const isPreview = computed(() => userId.value === eventCertificatePreviewUserId)
+const previewQueryKeys = ['name', 'type', 'rank', 'track', 'project', 'team', 'prizes'] as const
+const previewSearch = computed(() => {
+  if (!isPreview.value) {
+    return ''
+  }
+
+  const params = new URLSearchParams()
+
+  for (const key of previewQueryKeys) {
+    const value = route.query[key]
+
+    if (typeof value === 'string' && value.trim()) {
+      params.set(key, value)
+    }
+  }
+
+  const search = params.toString()
+  return search ? `?${search}` : ''
+})
 const { actor: accountActor } = await useAccountLifecycleActor()
 const toast = useToast()
 
@@ -27,10 +48,10 @@ if (!slug.value || !userId.value) {
 }
 
 const { data: certificateData, error: certificateError } = await useApiResponse<EventCertificate>(
-  () => `public-event-certificate:${slug.value}:${userId.value}`,
-  () => `/api/public/events/${slug.value}/participants/${userId.value}/certificate`,
+  () => `public-event-certificate:${slug.value}:${userId.value}:${previewSearch.value}`,
+  () => `/api/public/events/${slug.value}/participants/${userId.value}/certificate${previewSearch.value}`,
   {
-    watch: [slug, userId]
+    watch: [slug, userId, previewSearch]
   }
 )
 
@@ -43,6 +64,7 @@ if (certificateError.value || !certificateData.value) {
 
 const certificate = computed(() => certificateData.value!)
 const isSignedIn = computed(() => accountActor.value.isAuthenticated)
+const showExportActions = computed(() => isSignedIn.value || isPreview.value)
 const signedInEmail = computed(() => accountActor.value.platformUser?.email ?? accountActor.value.sessionUser?.email ?? '')
 const typeLabel = computed(() => eventCertificateTypeLabels[certificate.value.eventType])
 const locationLabel = computed(() => [certificate.value.city, certificate.value.country].filter(part => part.trim().length > 0).join(', '))
@@ -61,16 +83,27 @@ const projectLine = computed(() => {
 
 const requestUrl = useRequestURL()
 const certificatePath = computed(() => buildEventCertificatePath(slug.value, userId.value))
-const certificateUrl = computed(() => new URL(certificatePath.value, requestUrl.origin).toString())
+const certificateUrl = computed(() => new URL(`${certificatePath.value}${previewSearch.value}`, requestUrl.origin).toString())
 const certificateApiBasePath = computed(() => `/api/public/events/${slug.value}/participants/${userId.value}`)
-const certificateImageUrl = computed(() => new URL(`${certificateApiBasePath.value}/certificate.png`, requestUrl.origin).toString())
+const certificateImageUrl = computed(() => new URL(`${certificateApiBasePath.value}/certificate.png${previewSearch.value}`, requestUrl.origin).toString())
 const certificateSummary = computed(() => buildEventCertificateSummary(certificate.value))
 const certificateHost = computed(() => requestUrl.host)
 const shouldCelebrate = ref(false)
 const isCertificateOwner = computed(() => accountActor.value.platformUser?.id === userId.value)
 
 onMounted(() => {
-  if (!isCertificateOwner.value || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    return
+  }
+
+  if (isPreview.value) {
+    setTimeout(() => {
+      shouldCelebrate.value = true
+    }, 600)
+    return
+  }
+
+  if (!isCertificateOwner.value) {
     return
   }
 
@@ -107,6 +140,7 @@ async function copyCertificateLink() {
 }
 
 useSeoMeta({
+  robots: () => isPreview.value ? 'noindex, nofollow' : undefined,
   title: () => `${certificate.value.participantName} - Certificate of Participation | Codex Events`,
   description: () => certificateSummary.value,
   ogTitle: () => `${certificate.value.participantName} · Certificate of Participation`,
@@ -159,12 +193,14 @@ useHead({
       href: certificateUrl
     }
   ],
-  script: [
-    {
-      type: 'application/ld+json',
-      innerHTML: certificateStructuredData
-    }
-  ]
+  script: isPreview.value
+    ? []
+    : [
+        {
+          type: 'application/ld+json',
+          innerHTML: certificateStructuredData
+        }
+      ]
 })
 </script>
 
@@ -228,9 +264,9 @@ useHead({
             Link
           </button>
 
-          <template v-if="isSignedIn">
+          <template v-if="showExportActions">
             <a
-              :href="`${certificateApiBasePath}/certificate.pdf`"
+              :href="`${certificateApiBasePath}/certificate.pdf${previewSearch}`"
               class="certificate-action-button"
               data-testid="certificate-download-pdf"
             >
@@ -241,7 +277,7 @@ useHead({
               PDF
             </a>
             <a
-              :href="`${certificateApiBasePath}/certificate.png?download=1`"
+              :href="`${certificateApiBasePath}/certificate.png${previewSearch ? `${previewSearch}&download=1` : '?download=1'}`"
               class="certificate-action-button"
               data-testid="certificate-download-image"
             >
@@ -401,23 +437,36 @@ useHead({
       </div>
 
       <div class="mx-auto mt-7 flex max-w-[46rem] flex-col items-center gap-1 text-center">
-        <p class="inline-flex items-center gap-1.5 text-[13px] text-neutral-600 dark:text-white/60">
+        <p
+          v-if="isPreview"
+          class="inline-flex items-center gap-1.5 text-[13px] text-neutral-600 dark:text-white/60"
+          data-testid="certificate-preview-notice"
+        >
           <AppIcon
-            name="i-lucide-lock"
+            name="i-lucide-flask-conical"
             class="size-3.5"
           />
-          This certificate is issued by the Codex Community Events Platform.
+          This is a design preview with sample data, not an issued certificate.
         </p>
-        <p class="text-[13px] text-neutral-600 dark:text-white/60">
-          This page at
-          <a
-            :href="certificateUrl"
-            class="font-medium text-indigo-600 transition-colors hover:text-neutral-950 dark:text-[#8b9bff] dark:hover:text-white"
-          >{{ certificateHost }}</a>
-          is the live verification record for certificate {{ certificate.certificateId }}.
-        </p>
+        <template v-else>
+          <p class="inline-flex items-center gap-1.5 text-[13px] text-neutral-600 dark:text-white/60">
+            <AppIcon
+              name="i-lucide-lock"
+              class="size-3.5"
+            />
+            This certificate is issued by the Codex Community Events Platform.
+          </p>
+          <p class="text-[13px] text-neutral-600 dark:text-white/60">
+            This page at
+            <a
+              :href="certificateUrl"
+              class="font-medium text-indigo-600 transition-colors hover:text-neutral-950 dark:text-[#8b9bff] dark:hover:text-white"
+            >{{ certificateHost }}</a>
+            is the live verification record for certificate {{ certificate.certificateId }}.
+          </p>
+        </template>
         <p
-          v-if="!isSignedIn"
+          v-if="!showExportActions"
           class="mt-2 text-[13px] text-neutral-500 dark:text-white/60"
         >
           Sign in to download this certificate as an image or PDF.
