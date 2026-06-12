@@ -7,6 +7,8 @@ import {
   resolveEventCertificatePlacementTier
 } from '#shared/domains/events/certificates'
 
+import codexMarkWhite from '~/assets/images/codex-mark-white.png'
+
 const props = defineProps<{
   certificate: EventCertificate
   celebrate?: boolean
@@ -213,18 +215,12 @@ const participantNameSize = computed(() => {
           aria-hidden="true"
         >+</span>
 
-        <svg
-          class="certificate-card__mark absolute right-[6cqw] top-[30%] z-0 w-[8.5cqw]"
-          viewBox="7 8.6 10.2 7"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
+        <img
+          :src="codexMarkWhite"
+          alt=""
           aria-hidden="true"
+          class="certificate-card__mark absolute right-[4.5cqw] top-[22%] z-0 w-[13cqw]"
         >
-          <path
-            d="M12.546 13.909a.637.637 0 000 1.272h3.636a.637.637 0 100-1.272h-3.636zM8.462 9.23a.637.637 0 00-1.106.631l1.272 2.224-1.266 2.136a.636.636 0 101.095.649l1.454-2.455a.636.636 0 00.005-.64L8.462 9.23z"
-            fill="#ffffff"
-          />
-        </svg>
 
         <div
           class="relative z-10 flex h-full flex-col px-[4.4cqw] py-[3.4cqw]"
