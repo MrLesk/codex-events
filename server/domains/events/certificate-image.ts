@@ -1,4 +1,5 @@
 import { Resvg, initWasm as initResvgWasm } from '@resvg/resvg-wasm'
+import qrcode from 'qrcode-generator'
 import satori, { init as initSatori } from 'satori/wasm'
 import initYoga from 'yoga-wasm-web'
 
@@ -62,9 +63,12 @@ const certificatePalettes: Record<EventCertificateEventType, CertificatePalette>
 }
 
 interface CertificateImageNode {
-  type: 'div'
+  type: 'div' | 'img'
   props: {
     style: Record<string, string | number>
+    src?: string
+    width?: number
+    height?: number
     children?: CertificateImageNode[] | string
   }
 }
@@ -77,6 +81,49 @@ function box(style: Record<string, string | number>, children?: CertificateImage
       children
     }
   }
+}
+
+function buildVerificationQrCodeDataUrl(verifyUrl: string) {
+  const qr = qrcode(0, 'M')
+  qr.addData(verifyUrl)
+  qr.make()
+
+  const moduleCount = qr.getModuleCount()
+  let modulePath = ''
+
+  for (let row = 0; row < moduleCount; row += 1) {
+    for (let column = 0; column < moduleCount; column += 1) {
+      if (qr.isDark(row, column)) {
+        modulePath += `M${column} ${row}h1v1h-1z`
+      }
+    }
+  }
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${moduleCount}" height="${moduleCount}" viewBox="0 0 ${moduleCount} ${moduleCount}" shape-rendering="crispEdges"><path d="${modulePath}" fill="#0a0d14"/></svg>`
+
+  return `data:image/svg+xml;base64,${btoa(svg)}`
+}
+
+function verificationQrCodeTile(verifyUrl: string, size: number): CertificateImageNode {
+  const quietZone = 10
+  const codeSize = size - quietZone * 2
+
+  return box({
+    marginLeft: 'auto',
+    padding: quietZone,
+    backgroundColor: '#ffffff',
+    borderRadius: 14
+  }, [
+    {
+      type: 'img',
+      props: {
+        src: buildVerificationQrCodeDataUrl(verifyUrl),
+        width: codeSize,
+        height: codeSize,
+        style: { width: codeSize, height: codeSize }
+      }
+    }
+  ])
 }
 
 let rendererReadyPromise: Promise<void> | null = null
@@ -155,7 +202,7 @@ const placementPillStyles = {
   }
 } as const
 
-function buildCertificateImageTree(certificate: EventCertificate) {
+function buildCertificateImageTree(certificate: EventCertificate, verifyUrl: string) {
   const palette = certificatePalettes[certificate.eventType]
   const placementTier = certificate.placement ? resolveEventCertificatePlacementTier(certificate.placement) : null
   const participantName = clampLine(certificate.participantName, 42).toUpperCase()
@@ -268,19 +315,20 @@ function buildCertificateImageTree(certificate: EventCertificate) {
       box({ alignItems: 'flex-end', width: '100%' }, [
         footerCell('EVENT DATE', certificate.eventDateLabel, '#ffffff', true),
         ...(certificate.trackName
-          ? [footerCell('TRACK', clampLine(certificate.trackName, 24), '#ffffff', true)]
+          ? [footerCell('TRACK', clampLine(certificate.trackName, 20), '#ffffff', true)]
           : []),
-        footerCell('CERTIFICATE ID', certificate.certificateId, palette.accent, false)
+        footerCell('CERTIFICATE ID', certificate.certificateId, palette.accent, false),
+        verificationQrCodeTile(verifyUrl, 104)
       ])
     ])
   ])
 }
 
-export async function renderEventCertificatePng(certificate: EventCertificate) {
+export async function renderEventCertificatePng(certificate: EventCertificate, verifyUrl: string) {
   await ensureCertificateRendererReady()
   const fonts = await loadCertificateFonts()
 
-  const svg = await satori(buildCertificateImageTree(certificate), {
+  const svg = await satori(buildCertificateImageTree(certificate, verifyUrl), {
     width: certificateImageWidth,
     height: certificateImageHeight,
     fonts: [
