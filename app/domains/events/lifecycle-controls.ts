@@ -113,8 +113,8 @@ export function getCurrentLifecycleControl(
     }
     case 'registration_open': {
       const registrationClosesAt = Date.parse(event.registrationClosesAt)
-      const submissionOpensAt = Date.parse(event.submissionOpensAt)
-      const submissionClosesAt = Date.parse(event.submissionClosesAt)
+      const submissionOpensAt = Date.parse(event.submissionOpensAt!)
+      const submissionClosesAt = Date.parse(event.submissionClosesAt!)
       const nowTimestamp = now.getTime()
       const isEnabled = nowTimestamp >= registrationClosesAt
         && nowTimestamp >= submissionOpensAt
@@ -142,7 +142,7 @@ export function getCurrentLifecycleControl(
       }
     }
     case 'submission_open': {
-      const submissionClosesAt = Date.parse(event.submissionClosesAt)
+      const submissionClosesAt = Date.parse(event.submissionClosesAt!)
       const nowTimestamp = now.getTime()
       let reason: string | undefined
       let code: string | undefined
