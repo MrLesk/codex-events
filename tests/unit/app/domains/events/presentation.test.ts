@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  buildVersionedEventImageUrl,
   describeEventWindowNote,
   describeEventWindowStatus,
   formatAccountEventHeaderSummary,
@@ -106,6 +107,23 @@ describe('public event agenda presentation helpers', () => {
 
     expect(resolveEventDetailBackgroundImageUrl(event)).toBe('https://example.com/default-background.png')
     expect(resolveEventCardHeroImageUrl(event)).toBe('https://example.com/banner.png')
+  })
+
+  test('appends update versions to event image URLs', () => {
+    expect(buildVersionedEventImageUrl(
+      'https://example.com/events/codex/images/background',
+      '2026-03-28T12:34:56.000Z'
+    )).toBe('https://example.com/events/codex/images/background?v=2026-03-28T12%3A34%3A56.000Z')
+
+    expect(buildVersionedEventImageUrl(
+      '/api/public/events/codex/images/background?size=large#preview',
+      '2026-03-28T12:34:56.000Z'
+    )).toBe('/api/public/events/codex/images/background?size=large&v=2026-03-28T12%3A34%3A56.000Z#preview')
+  })
+
+  test('returns the original event image URL when no version is available', () => {
+    expect(buildVersionedEventImageUrl('https://example.com/background.png', '')).toBe('https://example.com/background.png')
+    expect(buildVersionedEventImageUrl('', '2026-03-28T12:34:56.000Z')).toBeUndefined()
   })
 
   test('collapses agenda labels to time-only when the full agenda fits in one local day', () => {

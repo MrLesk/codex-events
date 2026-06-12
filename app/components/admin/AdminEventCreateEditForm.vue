@@ -37,6 +37,7 @@ const props = defineProps<{
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
   bannerImageUploadError?: string
+  imageVersion?: string | null
   isRetryingLumaConfiguration?: boolean
 }>()
 
@@ -77,6 +78,7 @@ function submitForm() {
       :background-image-upload-error="backgroundImageUploadError"
       :banner-image-upload-pending="bannerImageUploadPending"
       :banner-image-upload-error="bannerImageUploadError"
+      :image-version="imageVersion"
       :luma-webhook-url="initialEvent?.lumaWebhookUrl ?? null"
       :luma-webhook-status="initialEvent?.lumaWebhookStatus ?? null"
       :luma-webhook-error="initialEvent?.lumaWebhookError ?? null"

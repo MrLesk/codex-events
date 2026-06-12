@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { EventFormState } from '~/domains/events/admin-event'
 
+import { buildVersionedEventImageUrl } from '~/domains/events/presentation'
 import { getCountryOptions } from '~/utils/country-options'
 
 const form = defineModel<EventFormState>('form', {
@@ -14,6 +15,7 @@ const props = defineProps<{
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
   bannerImageUploadError?: string
+  imageVersion?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -28,6 +30,12 @@ const backgroundImageInput = ref<HTMLInputElement | null>(null)
 const bannerImageInput = ref<HTMLInputElement | null>(null)
 const managedBackgroundImageUrl = computed(() => form.value.backgroundImageUrl.trim())
 const managedBannerImageUrl = computed(() => form.value.bannerImageUrl.trim())
+const managedBackgroundImagePreviewUrl = computed(() =>
+  buildVersionedEventImageUrl(managedBackgroundImageUrl.value, props.imageVersion)
+)
+const managedBannerImagePreviewUrl = computed(() =>
+  buildVersionedEventImageUrl(managedBannerImageUrl.value, props.imageVersion)
+)
 const showBackgroundImageSection = computed(() =>
   Boolean(props.canUploadManagedImages || managedBackgroundImageUrl.value)
 )
@@ -153,7 +161,7 @@ function promptBannerImageUpload() {
         <div class="overflow-hidden rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111]">
           <img
             v-if="managedBackgroundImageUrl"
-            :src="managedBackgroundImageUrl"
+            :src="managedBackgroundImagePreviewUrl"
             alt="Event background preview"
             class="h-36 w-full object-cover"
           >
@@ -239,7 +247,7 @@ function promptBannerImageUpload() {
         <div class="overflow-hidden rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111]">
           <img
             v-if="managedBannerImageUrl"
-            :src="managedBannerImageUrl"
+            :src="managedBannerImagePreviewUrl"
             alt="Event banner preview"
             class="h-36 w-full object-cover"
           >

@@ -57,6 +57,7 @@ const props = defineProps<{
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
   bannerImageUploadError?: string
+  imageVersion?: string | null
   lumaWebhookUrl?: string | null
   lumaWebhookStatus?: EventRecord['lumaWebhookStatus'] | null
   lumaWebhookError?: string | null
@@ -1549,6 +1550,7 @@ const submitConfigForm = handleSubmit(() => {
         :background-image-upload-error="props.backgroundImageUploadError"
         :banner-image-upload-pending="props.bannerImageUploadPending"
         :banner-image-upload-error="props.bannerImageUploadError"
+        :image-version="props.imageVersion"
         @upload-background-image="emit('uploadBackgroundImage', $event)"
         @remove-background-image="emit('removeBackgroundImage')"
         @upload-banner-image="emit('uploadBannerImage', $event)"

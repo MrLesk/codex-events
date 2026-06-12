@@ -6,6 +6,7 @@ import type {
   PublicPrize
 } from '~/domains/events/presentation'
 import {
+  buildVersionedEventImageUrl,
   formatAccountEventHeaderSummary,
   resolveEventDetailBackgroundImageUrl
 } from '~/domains/events/presentation'
@@ -144,6 +145,7 @@ interface VerifyLumaEmailResponse {
 
 type AccountWorkspaceEvent = Omit<PublicEvent, 'tracks'> & {
   id: string
+  updatedAt: string
   hasGallery?: boolean
   discordServerUrl?: string | null
   tracks?: Array<{
@@ -187,7 +189,8 @@ if (!slug.value) {
 
 const {
   data: eventResponse,
-  error: eventError
+  error: eventError,
+  refresh: refreshEvent
 } = await useFetch<PublicApiDataResponse<AccountWorkspaceEvent>>(() => `/api/events/slug/${slug.value}`, {
   key: () => `account-event-detail:${slug.value}`
 })
@@ -257,6 +260,9 @@ const participationRecord = computed<EventParticipationRecord | null>(() => {
 })
 
 const event = computed(() => eventResponse.value!.data)
+async function refreshAccountEvent() {
+  await refreshEvent()
+}
 const isCompetitionEvent = computed(() => event.value.eventType === 'hackathon')
 const workspaceEventId = computed(() => resolveAccountEventScopedId({
   accessRecordId: accessRecord.value?.id,
@@ -743,7 +749,9 @@ const canViewRestrictedEventDetails = computed(() =>
   || canViewParticipantsAndTeams.value
 )
 
-const detailBackgroundImageUrl = computed(() => resolveEventDetailBackgroundImageUrl(event.value))
+const detailBackgroundImageUrl = computed(() =>
+  buildVersionedEventImageUrl(resolveEventDetailBackgroundImageUrl(event.value), event.value.updatedAt)
+)
 const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
   : undefined)
@@ -1381,6 +1389,7 @@ useSeoMeta({
           :show-terms-management="false"
           :show-criteria-configuration="false"
           :show-prize-configuration="true"
+          @updated="refreshAccountEvent"
         />
       </section>
 
@@ -1411,6 +1420,7 @@ useSeoMeta({
           :show-terms-management="false"
           :show-criteria-configuration="false"
           :show-prize-configuration="false"
+          @updated="refreshAccountEvent"
         />
       </section>
 
@@ -1582,6 +1592,7 @@ useSeoMeta({
           :show-terms-management="true"
           :show-criteria-configuration="true"
           :show-prize-configuration="false"
+          @updated="refreshAccountEvent"
         />
       </section>
     </AppContainer>

@@ -143,6 +143,25 @@ export interface EventImageSource {
   bannerImageUrl: string | null
 }
 
+export function buildVersionedEventImageUrl(
+  imageUrl: string | null | undefined,
+  version: string | null | undefined
+) {
+  const normalizedImageUrl = imageUrl?.trim() ?? ''
+  const normalizedVersion = version?.trim() ?? ''
+
+  if (!normalizedImageUrl || !normalizedVersion) {
+    return normalizedImageUrl || undefined
+  }
+
+  const hashIndex = normalizedImageUrl.indexOf('#')
+  const urlWithoutHash = hashIndex === -1 ? normalizedImageUrl : normalizedImageUrl.slice(0, hashIndex)
+  const hash = hashIndex === -1 ? '' : normalizedImageUrl.slice(hashIndex)
+  const separator = urlWithoutHash.includes('?') ? '&' : '?'
+
+  return `${urlWithoutHash}${separator}v=${encodeURIComponent(normalizedVersion)}${hash}`
+}
+
 export function resolveEventDetailBackgroundImageUrl(event: EventImageSource) {
   const displayBackgroundImageUrl = event.displayBackgroundImageUrl?.trim()
 

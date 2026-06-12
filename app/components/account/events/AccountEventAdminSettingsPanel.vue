@@ -46,6 +46,10 @@ const props = withDefaults(defineProps<{
   showPrizeConfiguration: true
 })
 
+const emit = defineEmits<{
+  updated: []
+}>()
+
 type CriterionEditState = Pick<EvaluationCriterion, 'name' | 'description' | 'weight' | 'displayOrder'>
 type EditableCriterionRow = EvaluationCriterion & {
   isLocalDraft?: boolean
@@ -608,6 +612,7 @@ async function patchConfiguration(
     })
 
     await workspace.refreshWorkspace()
+    emit('updated')
   } catch (error) {
     configMutationError.value = normalizeApiError(error).message
   } finally {
@@ -637,6 +642,7 @@ async function retryLumaConfiguration() {
     })
 
     await workspace.refreshWorkspace()
+    emit('updated')
   } catch (error) {
     configMutationError.value = normalizeApiError(error).message
   } finally {
@@ -667,6 +673,7 @@ async function uploadEventImage(slot: EventImageSlot, file: File) {
     })
 
     await workspace.refreshWorkspace()
+    emit('updated')
     toast.add({
       title: slot === 'background' ? 'Background image updated' : 'Banner image updated',
       description: slot === 'background'
@@ -698,6 +705,7 @@ async function removeEventImage(slot: EventImageSlot) {
     })
 
     await workspace.refreshWorkspace()
+    emit('updated')
     toast.add({
       title: slot === 'background' ? 'Background image removed' : 'Banner image removed',
       description: slot === 'background'
@@ -1152,6 +1160,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
       >
         <LazyAdminEventCreateEditForm
           :initial-event="currentEvent"
+          :image-version="currentEvent.updatedAt"
           :can-upload-managed-images="true"
           :is-submitting="isSavingConfig"
           :mode="props.programSettingsMode"
