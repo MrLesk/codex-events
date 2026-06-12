@@ -31,3 +31,14 @@ Feature: TASK-3.5 authenticated API management flows
     Given the saved "event_admin" Auth0 session state exists
     And the saved "event_admin" session opens submission for the fixture event
     Then the API error code should be "registration_window_still_open"
+
+  Scenario: Event admin can hide and restore a live event
+    Given the saved "event_admin" Auth0 session state exists
+    When the saved "event_admin" session hides the fixture event with reason "Serious fixture issue"
+    Then the fixture event hidden response should include reason "Serious fixture issue"
+    When the public API requests the fixture event detail
+    Then the API error code should be "event_not_found"
+    When the saved "event_admin" session makes the fixture event visible
+    Then the fixture event response should show it is visible
+    When the public API requests the fixture event detail
+    Then the public fixture event response should include slug "e2e-fixture-event"

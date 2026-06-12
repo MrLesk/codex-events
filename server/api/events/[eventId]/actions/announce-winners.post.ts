@@ -12,6 +12,7 @@ import {
 } from '#server/domains/outcomes/email-queue'
 import { chunkRowsForD1 } from '#server/domains/judging'
 import {
+  assertEventNotHidden,
   requireEventAdmin,
   routeIdParamsSchema,
   serializePrize,
@@ -48,6 +49,7 @@ export default defineApiHandler(async (h3Event) => {
   const database = getDatabase(h3Event)
   const { event } = await requireEventAdmin(h3Event, eventId)
 
+  assertEventNotHidden(event)
   assertWinnersAnnouncementAllowed(event)
 
   const prizeList = await database.query.prizes.findMany({

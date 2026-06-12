@@ -7,6 +7,7 @@ import { events, judgeAssignments } from '#server/database/schema'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
 import {
+  assertEventNotHidden,
   requireEventAdmin,
   routeIdParamsSchema,
   serializeEvent
@@ -22,6 +23,7 @@ export default defineApiHandler(async (h3Event) => {
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const database = getDatabase(h3Event)
   const { event } = await requireEventAdmin(h3Event, eventId)
+  assertEventNotHidden(event)
   const leaderboardEntries = await listLeaderboardEntries(database, eventId)
   const completedPitchReviewCount = event.state !== 'pitch_review'
     ? 0

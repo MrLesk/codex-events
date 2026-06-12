@@ -4,33 +4,40 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { events } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
-import { apiData } from '#server/http/api-response'
 import {
-  assertEventNotHidden,
-  assertOpenRegistrationAllowed,
+  hideEventBodySchema,
   requireEventAdmin,
   routeIdParamsSchema,
-  serializeEvent
+  serializeAdminEvent
 } from '#server/domains/events'
-import { parseValidatedParams } from '#server/http/validation'
+import { assertGuard } from '#server/domains/lifecycle-guard'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
+import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
+  const body = await parseValidatedBody(h3Event, hideEventBodySchema)
   const database = getDatabase(h3Event)
   const { event } = await requireEventAdmin(h3Event, eventId)
 
-  assertEventNotHidden(event)
-  assertOpenRegistrationAllowed(event)
+  assertGuard(!event.hiddenAt, {
+    statusCode: 409,
+    code: 'event_already_hidden',
+    message: 'This event is already hidden.',
+    details: { eventId }
+  })
 
-  const updatedAt = new Date().toISOString()
+  const hiddenAt = new Date().toISOString()
 
   await database
     .update(events)
     .set({
-      state: 'registration_open',
-      updatedAt
+      hiddenAt,
+      hiddenByUserId: actor.platformUser.id,
+      hiddenReason: body.reason,
+      updatedAt: hiddenAt
     })
     .where(eq(events.id, eventId))
 
@@ -38,10 +45,10 @@ export default defineApiHandler(async (h3Event) => {
     actorUserId: actor.platformUser.id,
     entityType: 'event',
     entityId: eventId,
-    action: 'event.open_registration',
+    action: 'event.hidden',
     metadata: {
-      previousState: event.state,
-      nextState: 'registration_open'
+      state: event.state,
+      reason: body.reason
     }
   })
 
@@ -49,5 +56,7 @@ export default defineApiHandler(async (h3Event) => {
     where: eq(events.id, eventId)
   })
 
-  return apiData(serializeEvent(updatedEvent!))
+  return apiData(serializeAdminEvent(updatedEvent!, undefined, undefined, {
+    appBaseUrl: useRuntimeConfig(h3Event).auth0.appBaseUrl
+  }))
 })

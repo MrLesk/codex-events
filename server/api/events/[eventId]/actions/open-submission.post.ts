@@ -7,6 +7,7 @@ import { events } from '#server/database/schema'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
 import {
+  assertEventNotHidden,
   assertOpenSubmissionAllowed,
   requireEventAdmin,
   routeIdParamsSchema,
@@ -20,6 +21,7 @@ export default defineApiHandler(async (h3Event) => {
   const database = getDatabase(h3Event)
   const { event } = await requireEventAdmin(h3Event, eventId)
 
+  assertEventNotHidden(event)
   assertOpenSubmissionAllowed(event)
 
   const updatedAt = new Date().toISOString()

@@ -106,6 +106,9 @@ It describes the intended persistent model at the level of entities, key fields,
 - `submission_opens_at`
 - `submission_closes_at`
 - `state`
+- `hidden_at`
+- `hidden_by_user_id`
+- `hidden_reason`
 - `blind_review_count`
 - `pitch_review_enabled`
 - `blind_score_weight_percent`
@@ -189,6 +192,10 @@ It describes the intended persistent model at the level of entities, key fields,
 - Meetup and Build events support only `draft`, `registration_open`, and `completed`.
 - Hackathon-only lifecycle states use the same shared `state` enum but are not valid operational states for Meetup and Build events.
 - `submission_open` is manually activated by an admin within the configured submission window for Hackathon events.
+- `hidden_at` records when an event admin or platform admin hid the event from public and participant-facing reads.
+- `hidden_by_user_id` references the admin who hid the event.
+- `hidden_reason` stores the required admin-entered reason for hiding the event.
+- Hidden events keep their lifecycle `state`; visibility and restoration are controlled by the hidden fields rather than by a lifecycle state.
 - `blind_review_count` controls how many blind review assignments each locked Hackathon submission receives.
 - `pitch_review_enabled` controls whether a Hackathon uses the optional live pitch stage plus the post-pitch review stage.
 - `blind_score_weight_percent` and `pitch_score_weight_percent` default to `70` and `30` when both blind review and pitch review are enabled for a Hackathon.

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { asc, eq } from 'drizzle-orm'
 
+import accountEventsGetHandler from '../../../../server/api/account/events.get'
 import eventsGetHandler from '../../../../server/api/events/index.get'
 import eventParticipationGetHandler from '../../../../server/api/events/participation.get'
 import ownEventRankGetHandler from '../../../../server/api/events/[eventId]/rank/me.get'
@@ -14,6 +15,8 @@ import eventPrizesGetHandler from '../../../../server/api/events/[eventId]/prize
 import eventStaffGetHandler from '../../../../server/api/events/[eventId]/staff/index.get'
 import eventBySlugGetHandler from '../../../../server/api/events/slug/[slug]/index.get'
 import openRegistrationPostHandler from '../../../../server/api/events/[eventId]/actions/open-registration.post'
+import hideEventPostHandler from '../../../../server/api/events/[eventId]/actions/hide.post'
+import unhideEventPostHandler from '../../../../server/api/events/[eventId]/actions/unhide.post'
 import publicEventsGetHandler from '../../../../server/api/public/events/index.get'
 import publicEventDetailGetHandler from '../../../../server/api/public/events/[slug]/index.get'
 import publicEventFeedbackPostHandler from '../../../../server/api/public/events/[slug]/feedback.post'
@@ -445,6 +448,209 @@ describe('TASK-3.5 event CRUD routes', () => {
 
     const publicPrizesResponse = await harness.request('/api/public/events/draft-internal-event/prizes')
     expect(publicPrizesResponse.status).toBe(404)
+  })
+
+  test('hidden events disappear publicly while event admins can still open them', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/events', handler: eventsGetHandler },
+        { method: 'get', path: '/api/events/:eventId', handler: eventDetailGetHandler },
+        { method: 'get', path: '/api/public/events', handler: publicEventsGetHandler },
+        { method: 'get', path: '/api/public/events/:slug', handler: publicEventDetailGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com',
+        name: 'Event Admin'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'event_admin',
+        auth0Subject: 'auth0|event_admin',
+        email: 'event-admin@example.com',
+        displayName: 'Event Admin'
+      }
+    ])
+    await harness.database.insert(events).values([
+      {
+        id: 'event_visible',
+        eventType: 'hackathon',
+        name: 'Visible Event',
+        slug: 'visible-event',
+        description: 'Visible',
+        city: 'Vienna',
+        country: 'Austria',
+        address: 'Address',
+        registrationOpensAt: '2026-03-20T12:00:00.000Z',
+        registrationClosesAt: '2026-03-23T12:00:00.000Z',
+        submissionOpensAt: '2026-03-23T12:00:00.000Z',
+        submissionClosesAt: '2026-03-25T12:00:00.000Z',
+        state: 'registration_open',
+        maxTeamMembers: 5,
+        createdByUserId: 'creator_1'
+      },
+      {
+        id: 'event_hidden',
+        eventType: 'hackathon',
+        name: 'Hidden Event',
+        slug: 'hidden-event',
+        description: 'Hidden',
+        city: 'Vienna',
+        country: 'Austria',
+        address: 'Address',
+        registrationOpensAt: '2026-03-20T12:00:00.000Z',
+        registrationClosesAt: '2026-03-23T12:00:00.000Z',
+        submissionOpensAt: '2026-03-23T12:00:00.000Z',
+        submissionClosesAt: '2026-03-25T12:00:00.000Z',
+        state: 'registration_open',
+        hiddenAt: '2026-03-21T12:00:00.000Z',
+        hiddenByUserId: 'event_admin',
+        hiddenReason: 'Incorrect registration details',
+        maxTeamMembers: 5,
+        createdByUserId: 'creator_1'
+      }
+    ])
+    await harness.database.insert(eventRoleAssignments).values({
+      id: 'role_hidden_admin',
+      eventId: 'event_hidden',
+      userId: 'event_admin',
+      role: 'event_admin',
+      isInJudgePool: false,
+      createdAt: '2026-03-20T12:30:00.000Z'
+    })
+
+    const publicListResponse = await harness.request('/api/public/events?page=1&page_size=100')
+    expect(publicListResponse.status).toBe(200)
+    const publicListPayload = await publicListResponse.json() as { data: Array<{ slug: string }> }
+    expect(publicListPayload.data.map(event => event.slug)).toEqual(['visible-event'])
+
+    const publicDetailResponse = await harness.request('/api/public/events/hidden-event')
+    expect(publicDetailResponse.status).toBe(404)
+
+    const adminListResponse = await harness.request('/api/events?page=1&page_size=100')
+    expect(adminListResponse.status).toBe(200)
+    const adminListPayload = await adminListResponse.json() as { data: Array<{ id: string }> }
+    expect(adminListPayload.data.map(event => event.id)).toContain('event_hidden')
+
+    const adminDetailResponse = await harness.request('/api/events/event_hidden')
+    expect(adminDetailResponse.status).toBe(200)
+    expect(await adminDetailResponse.json()).toMatchObject({
+      data: {
+        id: 'event_hidden',
+        state: 'registration_open',
+        hiddenAt: '2026-03-21T12:00:00.000Z',
+        hiddenByUserId: 'event_admin',
+        hiddenReason: 'Incorrect registration details'
+      }
+    })
+  })
+
+  test('hidden events are excluded from participant account reads', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/account/events', handler: accountEventsGetHandler },
+        { method: 'get', path: '/api/events/participation', handler: eventParticipationGetHandler },
+        { method: 'get', path: '/api/events/:eventId', handler: eventDetailGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|participant_1',
+        email: 'participant@example.com',
+        name: 'Participant One'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'participant_1',
+        auth0Subject: 'auth0|participant_1',
+        email: 'participant@example.com',
+        displayName: 'Participant One'
+      }
+    ])
+    await harness.database.insert(events).values([
+      {
+        id: 'event_visible_participant',
+        eventType: 'hackathon',
+        name: 'Visible Participant Event',
+        slug: 'visible-participant-event',
+        description: 'Visible',
+        city: 'Vienna',
+        country: 'Austria',
+        address: 'Address',
+        registrationOpensAt: '2026-03-20T12:00:00.000Z',
+        registrationClosesAt: '2026-03-23T12:00:00.000Z',
+        submissionOpensAt: '2026-03-23T12:00:00.000Z',
+        submissionClosesAt: '2026-03-25T12:00:00.000Z',
+        state: 'registration_open',
+        maxTeamMembers: 5,
+        createdByUserId: 'creator_1'
+      },
+      {
+        id: 'event_hidden_participant',
+        eventType: 'hackathon',
+        name: 'Hidden Participant Event',
+        slug: 'hidden-participant-event',
+        description: 'Hidden',
+        city: 'Vienna',
+        country: 'Austria',
+        address: 'Address',
+        registrationOpensAt: '2026-03-20T12:00:00.000Z',
+        registrationClosesAt: '2026-03-23T12:00:00.000Z',
+        submissionOpensAt: '2026-03-23T12:00:00.000Z',
+        submissionClosesAt: '2026-03-25T12:00:00.000Z',
+        state: 'registration_open',
+        hiddenAt: '2026-03-21T12:00:00.000Z',
+        hiddenByUserId: 'creator_1',
+        hiddenReason: 'Venue issue',
+        maxTeamMembers: 5,
+        createdByUserId: 'creator_1'
+      }
+    ])
+    await harness.database.insert(userApplications).values([
+      {
+        id: 'application_visible_participant',
+        eventId: 'event_visible_participant',
+        userId: 'participant_1',
+        status: 'approved',
+        submittedAt: '2026-03-20T12:30:00.000Z'
+      },
+      {
+        id: 'application_hidden_participant',
+        eventId: 'event_hidden_participant',
+        userId: 'participant_1',
+        status: 'approved',
+        submittedAt: '2026-03-20T12:31:00.000Z'
+      }
+    ])
+
+    const accountResponse = await harness.request('/api/account/events')
+    expect(accountResponse.status).toBe(200)
+    const accountPayload = await accountResponse.json() as { data: { current: Array<{ id: string }> } }
+    expect(accountPayload.data.current.map(event => event.id)).toEqual(['event_visible_participant'])
+
+    const participationResponse = await harness.request('/api/events/participation')
+    expect(participationResponse.status).toBe(200)
+    const participationPayload = await participationResponse.json() as { data: { current: Array<{ event: { id: string } }> } }
+    expect(participationPayload.data.current.map(record => record.event.id)).toEqual(['event_visible_participant'])
+
+    const directResponse = await harness.request('/api/events/event_hidden_participant')
+    expect(directResponse.status).toBe(404)
   })
 
   test('GET /api/events/participation requires a platform account', async () => {
@@ -5140,6 +5346,265 @@ describe('TASK-3.5 event CRUD routes', () => {
         action: 'event.open_registration'
       })
     ])
+  })
+
+  test('POST /api/events/:eventId/actions/hide and unhide preserve lifecycle state and audit the change', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/events/:eventId/actions/hide',
+          handler: hideEventPostHandler
+        },
+        {
+          method: 'post',
+          path: '/api/events/:eventId/actions/unhide',
+          handler: unhideEventPostHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'event_admin',
+        auth0Subject: 'auth0|event_admin',
+        email: 'event-admin@example.com',
+        displayName: 'Event Admin'
+      }
+    ])
+    await harness.database.insert(events).values({
+      id: 'event_hide_action',
+      eventType: 'hackathon',
+      name: 'Hide Action Event',
+      slug: 'hide-action-event',
+      description: 'Hide action',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+    await harness.database.insert(eventRoleAssignments).values({
+      id: 'role_hide_action_admin',
+      eventId: 'event_hide_action',
+      userId: 'event_admin',
+      role: 'event_admin',
+      isInJudgePool: false,
+      createdAt: '2026-03-20T12:30:00.000Z'
+    })
+
+    const missingReasonResponse = await harness.request('/api/events/event_hide_action/actions/hide', {
+      method: 'POST',
+      body: JSON.stringify({ reason: '   ' })
+    })
+    expect(missingReasonResponse.status).toBe(400)
+
+    const hideResponse = await harness.request('/api/events/event_hide_action/actions/hide', {
+      method: 'POST',
+      body: JSON.stringify({ reason: 'Incorrect public details' })
+    })
+
+    expect(hideResponse.status).toBe(200)
+    expect(await hideResponse.json()).toMatchObject({
+      data: {
+        id: 'event_hide_action',
+        state: 'registration_open',
+        hiddenByUserId: 'event_admin',
+        hiddenReason: 'Incorrect public details'
+      }
+    })
+
+    const hiddenEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_hide_action')
+    })
+    expect(hiddenEvent?.state).toBe('registration_open')
+    expect(hiddenEvent?.hiddenAt).toEqual(expect.any(String))
+    expect(hiddenEvent?.hiddenByUserId).toBe('event_admin')
+    expect(hiddenEvent?.hiddenReason).toBe('Incorrect public details')
+
+    const unhideResponse = await harness.request('/api/events/event_hide_action/actions/unhide', {
+      method: 'POST'
+    })
+
+    expect(unhideResponse.status).toBe(200)
+    expect(await unhideResponse.json()).toMatchObject({
+      data: {
+        id: 'event_hide_action',
+        state: 'registration_open',
+        hiddenAt: null,
+        hiddenByUserId: null,
+        hiddenReason: null
+      }
+    })
+
+    const restoredEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_hide_action')
+    })
+    const auditEntries = (await harness.database.select().from(auditLogs))
+      .sort((left, right) => left.action.localeCompare(right.action))
+
+    expect(restoredEvent?.state).toBe('registration_open')
+    expect(restoredEvent?.hiddenAt).toBeNull()
+    expect(restoredEvent?.hiddenByUserId).toBeNull()
+    expect(restoredEvent?.hiddenReason).toBeNull()
+    expect(auditEntries).toEqual([
+      expect.objectContaining({
+        actorUserId: 'event_admin',
+        entityType: 'event',
+        entityId: 'event_hide_action',
+        action: 'event.hidden',
+        metadata: expect.objectContaining({
+          state: 'registration_open',
+          reason: 'Incorrect public details'
+        })
+      }),
+      expect.objectContaining({
+        actorUserId: 'event_admin',
+        entityType: 'event',
+        entityId: 'event_hide_action',
+        action: 'event.unhidden',
+        metadata: expect.objectContaining({
+          state: 'registration_open',
+          hiddenByUserId: 'event_admin',
+          hiddenReason: 'Incorrect public details'
+        })
+      })
+    ])
+  })
+
+  test('POST /api/events/:eventId/actions/hide requires event admin access', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/events/:eventId/actions/hide',
+          handler: hideEventPostHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|participant_user',
+        email: 'participant@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'participant_user',
+        auth0Subject: 'auth0|participant_user',
+        email: 'participant@example.com',
+        displayName: 'Participant'
+      }
+    ])
+    await harness.database.insert(events).values({
+      id: 'event_hide_forbidden',
+      eventType: 'hackathon',
+      name: 'Forbidden Hide Event',
+      slug: 'forbidden-hide-event',
+      description: 'Forbidden hide',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+
+    const response = await harness.request('/api/events/event_hide_forbidden/actions/hide', {
+      method: 'POST',
+      body: JSON.stringify({ reason: 'Incorrect public details' })
+    })
+
+    expect(response.status).toBe(403)
+  })
+
+  test('POST /api/events/:eventId/actions/open-registration rejects hidden events', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/events/:eventId/actions/open-registration',
+          handler: openRegistrationPostHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'platform_admin',
+      auth0Subject: 'auth0|platform_admin',
+      email: 'platform-admin@example.com',
+      displayName: 'Platform Admin',
+      isPlatformAdmin: true
+    })
+
+    const now = Date.now()
+    await harness.database.insert(events).values({
+      id: 'event_hidden_lifecycle',
+      eventType: 'hackathon',
+      name: 'Hidden Lifecycle Event',
+      slug: 'hidden-lifecycle-event',
+      description: 'Hidden lifecycle',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: new Date(now - 86_400_000).toISOString(),
+      registrationClosesAt: new Date(now + 86_400_000).toISOString(),
+      submissionOpensAt: new Date(now + 86_400_000).toISOString(),
+      submissionClosesAt: new Date(now + 172_800_000).toISOString(),
+      state: 'draft',
+      hiddenAt: new Date(now - 3_600_000).toISOString(),
+      hiddenByUserId: 'platform_admin',
+      hiddenReason: 'Serious issue',
+      maxTeamMembers: 5,
+      createdByUserId: 'platform_admin'
+    })
+
+    const response = await harness.request('/api/events/event_hidden_lifecycle/actions/open-registration', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'event_hidden'
+      }
+    })
+
+    const event = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_hidden_lifecycle')
+    })
+    expect(event?.state).toBe('draft')
   })
 
   test('POST /api/events/:eventId/actions/start-judging-preparation transitions to judging preparation without locking submissions and audits', async () => {

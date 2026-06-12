@@ -61,6 +61,8 @@ This document defines the canonical permissions for the Codex event platform.
 
 | Action | Approved User | Staff | Judge | Event Admin | Platform Admin | System |
 | --- | --- | --- | --- | --- | --- | --- |
+| Hide event | No | No | No | Yes | Yes | No |
+| Make event visible | No | No | No | Yes | Yes | No |
 | Open registration | No | No | No | Yes | Yes | No |
 | Open submission | No | No | No | Yes, Hackathon only | Yes, Hackathon only | No |
 | Stop submissions | No | No | No | Yes, Hackathon only | Yes, Hackathon only | No |
@@ -239,6 +241,8 @@ Event credit permissions apply to every event type.
 ## Visibility Rules
 
 - Users can view only their own application records.
+- Hidden events are not visible to public users, workspace users, approved participants, staff, or judges through public pages, participant account lists, or non-admin direct event reads.
+- Hidden events remain visible to event admins for that event and platform admins.
 - Staff can view event-wide participant and team data.
 - Workspace users can view the published judge and staff rosters for events they can access in `/account/events/:slug`.
 - Published judge and staff rosters expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
@@ -267,5 +271,6 @@ Event credit permissions apply to every event type.
 - Blind review can require `0`, `1`, or `2` blind assignments per submission depending on Hackathon configuration.
 - Pitch review can be enabled independently from blind review for Hackathon events.
 - When pitch review is enabled, admins manually start the live `pitch` stage, advance the saved presentation lineup one team at a time, and only then manually start `pitch_review`.
+- Lifecycle-forwarding actions are blocked while an event is hidden; admins can still change configuration, review audit records, and make the event visible again.
 - When a blind assignment is skipped, the system creates a new active assignment for the judge with the lowest blind-review load.
 - When pitch review closes with missing votes, only submitted pitch votes are averaged into the pitch score.

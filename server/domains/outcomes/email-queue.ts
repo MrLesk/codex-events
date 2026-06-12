@@ -3,9 +3,9 @@ import type { H3Event } from 'h3'
 import { asc, eq, getTableColumns } from 'drizzle-orm'
 import { z } from 'zod'
 
-import type { AppDatabase } from '#server/database/client'
+import { createDatabase, resolveD1Binding, type AppDatabase, type D1DatabaseBinding } from '#server/database/client'
 import { writeAuditLog } from '#server/database/audit-log'
-import { prizeEligibilitySnapshots, users } from '#server/database/schema'
+import { events, prizeEligibilitySnapshots, users } from '#server/database/schema'
 import { getFinalDeliberationView } from '#server/domains/outcomes'
 import {
   sendEventOutcomeEmail,
@@ -19,6 +19,9 @@ export const defaultEventOutcomeEmailQueueName = 'codex-events-dev-event-outcome
 export const defaultEventOutcomeEmailRetryDelaySeconds = 120
 
 const eventOutcomeEmailsQueueRuntimeConfigSchema = z.object({
+  database: z.object({
+    binding: z.string().trim().optional()
+  }).optional(),
   eventOutcomeEmails: z.object({
     queueBinding: z.string().trim().optional(),
     queueName: z.string().trim().optional(),
@@ -233,6 +236,10 @@ function getRetryDelaySeconds(config: EventOutcomeEmailQueueRuntimeConfig) {
   return config.eventOutcomeEmails?.retryDelaySeconds ?? defaultEventOutcomeEmailRetryDelaySeconds
 }
 
+function getDatabaseBindingName(config: EventOutcomeEmailQueueRuntimeConfig) {
+  return config.database?.binding?.trim() || 'DB'
+}
+
 function isQueueProducerLike(value: unknown): value is QueueProducerLike {
   if (!value || typeof value !== 'object') {
     return false
@@ -312,11 +319,38 @@ function shouldRetryDeliveryFailure(delivery: EventOutcomeEmailDeliveryResult) {
   return isRetryableOutboundEmailProviderError(delivery.providerError)
 }
 
+async function resolveProcessingDatabase(options: {
+  database?: AppDatabase
+  cloudflareEnv?: Record<string, unknown>
+  runtimeConfig?: unknown
+  d1Database?: D1DatabaseBinding
+}) {
+  if (options.database) {
+    return options.database
+  }
+
+  const config = resolveQueueRuntimeConfigFromUnknown(options.runtimeConfig ?? {})
+
+  if (options.d1Database) {
+    return createDatabase(options.d1Database)
+  }
+
+  const bindingName = getDatabaseBindingName(config)
+
+  if (!options.cloudflareEnv?.[bindingName]) {
+    return null
+  }
+
+  return createDatabase(resolveD1Binding(bindingName, options.cloudflareEnv))
+}
+
 export async function processEventOutcomeEmailQueueMessage(
   message: QueueMessageLike,
   options?: {
     runtimeConfig?: unknown
     cloudflareEnv?: Record<string, unknown>
+    d1Database?: D1DatabaseBinding
+    database?: AppDatabase
     sendOutcomeEmail?: typeof sendEventOutcomeEmail
   }
 ): Promise<EventOutcomeEmailQueueMessageOutcome> {
@@ -335,6 +369,44 @@ export async function processEventOutcomeEmailQueueMessage(
 
   const config = resolveQueueRuntimeConfigFromUnknown(options?.runtimeConfig ?? {})
   const sendOutcomeEmail = options?.sendOutcomeEmail ?? sendEventOutcomeEmail
+  const database = await resolveProcessingDatabase({
+    database: options?.database,
+    runtimeConfig: options?.runtimeConfig,
+    cloudflareEnv: options?.cloudflareEnv,
+    d1Database: options?.d1Database
+  })
+
+  if (database) {
+    const event = await database.query.events.findFirst({
+      columns: {
+        hiddenAt: true
+      },
+      where: eq(events.id, parsedMessage.data.eventId)
+    })
+
+    if (!event) {
+      message.ack()
+
+      return {
+        messageId: message.id,
+        action: 'ack',
+        reason: 'event_missing',
+        delivery: null
+      }
+    }
+
+    if (event.hiddenAt) {
+      message.ack()
+
+      return {
+        messageId: message.id,
+        action: 'ack',
+        reason: 'event_hidden',
+        delivery: null
+      }
+    }
+  }
+
   const delivery = await sendOutcomeEmail(
     { context: {} } as H3Event,
     parsedMessage.data,
@@ -383,6 +455,8 @@ export async function processEventOutcomeEmailQueueBatch(
   options?: {
     runtimeConfig?: unknown
     cloudflareEnv?: Record<string, unknown>
+    d1Database?: D1DatabaseBinding
+    database?: AppDatabase
     queueName?: string
     sendOutcomeEmail?: typeof sendEventOutcomeEmail
   }
@@ -404,6 +478,8 @@ export async function processEventOutcomeEmailQueueBatch(
     outcomes.push(await processEventOutcomeEmailQueueMessage(message, {
       runtimeConfig: options?.runtimeConfig,
       cloudflareEnv: options?.cloudflareEnv,
+      d1Database: options?.d1Database,
+      database: options?.database,
       sendOutcomeEmail: options?.sendOutcomeEmail
     }))
   }

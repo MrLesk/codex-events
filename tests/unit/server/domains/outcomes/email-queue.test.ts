@@ -140,6 +140,35 @@ describe('event outcome email queue utilities', () => {
     expect(message.ack).not.toHaveBeenCalled()
   })
 
+  test('queue message processing skips delivery when the event is hidden', async () => {
+    const message = createQueueMessage()
+    const sendOutcomeEmail = vi.fn()
+    const database = {
+      query: {
+        events: {
+          findFirst: vi.fn(async () => ({
+            hiddenAt: '2026-03-27T21:00:00.000Z'
+          }))
+        }
+      }
+    }
+
+    const result = await processEventOutcomeEmailQueueMessage(message, {
+      database: database as never,
+      sendOutcomeEmail
+    })
+
+    expect(result).toEqual({
+      messageId: 'msg_1',
+      action: 'ack',
+      reason: 'event_hidden',
+      delivery: null
+    })
+    expect(message.ack).toHaveBeenCalled()
+    expect(message.retry).not.toHaveBeenCalled()
+    expect(sendOutcomeEmail).not.toHaveBeenCalled()
+  })
+
   test('queue batch processing skips unrelated queues', async () => {
     const message = createQueueMessage()
     const result = await processEventOutcomeEmailQueueBatch({

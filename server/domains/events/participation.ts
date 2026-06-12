@@ -186,25 +186,28 @@ export async function listOwnEventParticipation(event: H3Event) {
   }
 
   const relatedEvents = await database.query.events.findMany({
-    where: or(
-      exists(
-        database
-          .select({ id: userApplications.id })
-          .from(userApplications)
-          .where(and(
-            eq(userApplications.eventId, events.id),
-            eq(userApplications.userId, userId)
-          ))
-      ),
-      exists(
-        database
-          .select({ id: teamMembers.id })
-          .from(teamMembers)
-          .innerJoin(teams, eq(teams.id, teamMembers.teamId))
-          .where(and(
-            eq(teams.eventId, events.id),
-            eq(teamMembers.userId, userId)
-          ))
+    where: and(
+      isNull(events.hiddenAt),
+      or(
+        exists(
+          database
+            .select({ id: userApplications.id })
+            .from(userApplications)
+            .where(and(
+              eq(userApplications.eventId, events.id),
+              eq(userApplications.userId, userId)
+            ))
+        ),
+        exists(
+          database
+            .select({ id: teamMembers.id })
+            .from(teamMembers)
+            .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+            .where(and(
+              eq(teams.eventId, events.id),
+              eq(teamMembers.userId, userId)
+            ))
+        )
       )
     ),
     orderBy: [desc(events.createdAt)]

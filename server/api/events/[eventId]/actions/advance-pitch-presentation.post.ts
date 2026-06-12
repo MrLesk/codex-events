@@ -14,6 +14,7 @@ import {
   selectPitchReviewSubmissions
 } from '#server/domains/judging'
 import {
+  assertEventNotHidden,
   requireEventAdmin,
   routeIdParamsSchema,
   serializeEvent
@@ -25,6 +26,7 @@ export default defineApiHandler(async (h3Event) => {
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const database = getDatabase(h3Event)
   const { event } = await requireEventAdmin(h3Event, eventId)
+  assertEventNotHidden(event)
   const lockedSubmissions = await listLockedSubmissionsForEvent(database, eventId)
   const finalistSubmissions = selectPitchReviewSubmissions(event, lockedSubmissions)
 

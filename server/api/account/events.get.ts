@@ -160,35 +160,38 @@ export default defineApiHandler(async (h3Event) => {
   }
 
   const eventRecords: EventRecord[] = await database.query.events.findMany({
-    where: or(
-      exists(
-        database
-          .select({ id: userApplications.id })
-          .from(userApplications)
-          .where(and(
-            eq(userApplications.eventId, events.id),
-            eq(userApplications.userId, actor.platformUser.id)
-          ))
-      ),
-      exists(
-        database
-          .select({ id: teamMembers.id })
-          .from(teamMembers)
-          .innerJoin(teams, eq(teams.id, teamMembers.teamId))
-          .where(and(
-            eq(teams.eventId, events.id),
-            eq(teamMembers.userId, actor.platformUser.id),
-            isNull(teamMembers.leftAt)
-          ))
-      ),
-      exists(
-        database
-          .select({ id: eventRoleAssignments.id })
-          .from(eventRoleAssignments)
-          .where(and(
-            eq(eventRoleAssignments.eventId, events.id),
-            eq(eventRoleAssignments.userId, actor.platformUser.id)
-          ))
+    where: and(
+      isNull(events.hiddenAt),
+      or(
+        exists(
+          database
+            .select({ id: userApplications.id })
+            .from(userApplications)
+            .where(and(
+              eq(userApplications.eventId, events.id),
+              eq(userApplications.userId, actor.platformUser.id)
+            ))
+        ),
+        exists(
+          database
+            .select({ id: teamMembers.id })
+            .from(teamMembers)
+            .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+            .where(and(
+              eq(teams.eventId, events.id),
+              eq(teamMembers.userId, actor.platformUser.id),
+              isNull(teamMembers.leftAt)
+            ))
+        ),
+        exists(
+          database
+            .select({ id: eventRoleAssignments.id })
+            .from(eventRoleAssignments)
+            .where(and(
+              eq(eventRoleAssignments.eventId, events.id),
+              eq(eventRoleAssignments.userId, actor.platformUser.id)
+            ))
+        )
       )
     )
   })

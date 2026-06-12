@@ -9,6 +9,7 @@ import { apiData } from '#server/http/api-response'
 import { enqueueWinnerOutcomeEmails } from '#server/domains/outcomes/email-queue'
 import {
   assertCompetitionEvent,
+  assertEventNotHidden,
   requireEventAdmin,
   routeIdParamsSchema,
   serializeEvent
@@ -26,6 +27,8 @@ export default defineApiHandler(async (h3Event) => {
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const database = getDatabase(h3Event)
   const { event } = await requireEventAdmin(h3Event, eventId)
+
+  assertEventNotHidden(event)
 
   if (event.eventType !== 'hackathon') {
     assertAllowedState(event.state, ['registration_open'], {

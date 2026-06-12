@@ -4,18 +4,14 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { events } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
-import { apiData } from '#server/http/api-response'
 import {
-  assertEventNotHidden,
   requireEventAdmin,
   routeIdParamsSchema,
-  serializeEvent
+  serializeAdminEvent
 } from '#server/domains/events'
-import {
-  assertStartShortlistAllowed,
-  listLeaderboardEntries
-} from '#server/domains/outcomes'
+import { assertGuard } from '#server/domains/lifecycle-guard'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (h3Event) => {
@@ -23,22 +19,23 @@ export default defineApiHandler(async (h3Event) => {
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const database = getDatabase(h3Event)
   const { event } = await requireEventAdmin(h3Event, eventId)
-  assertEventNotHidden(event)
-  const leaderboardEntries = await listLeaderboardEntries(database, eventId)
 
-  assertStartShortlistAllowed(event, leaderboardEntries)
+  assertGuard(Boolean(event.hiddenAt), {
+    statusCode: 409,
+    code: 'event_not_hidden',
+    message: 'This event is already visible.',
+    details: { eventId }
+  })
 
-  const transitionedAt = new Date().toISOString()
+  const restoredAt = new Date().toISOString()
 
   await database
     .update(events)
     .set({
-      state: 'shortlist',
-      pitchFinalistSubmissionIdsJson: '[]',
-      activePitchPresentationSubmissionId: null,
-      pitchPresentationsCompletedAt: null,
-      finalRankingSubmissionIdsJson: '[]',
-      updatedAt: transitionedAt
+      hiddenAt: null,
+      hiddenByUserId: null,
+      hiddenReason: null,
+      updatedAt: restoredAt
     })
     .where(eq(events.id, eventId))
 
@@ -46,11 +43,12 @@ export default defineApiHandler(async (h3Event) => {
     actorUserId: actor.platformUser.id,
     entityType: 'event',
     entityId: eventId,
-    action: 'event.start_shortlist',
+    action: 'event.unhidden',
     metadata: {
-      previousState: event.state,
-      nextState: 'shortlist',
-      rankedSubmissionCount: leaderboardEntries.filter(entry => entry.isRanked).length
+      state: event.state,
+      hiddenAt: event.hiddenAt,
+      hiddenByUserId: event.hiddenByUserId,
+      hiddenReason: event.hiddenReason
     }
   })
 
@@ -58,5 +56,7 @@ export default defineApiHandler(async (h3Event) => {
     where: eq(events.id, eventId)
   })
 
-  return apiData(serializeEvent(updatedEvent!))
+  return apiData(serializeAdminEvent(updatedEvent!, undefined, undefined, {
+    appBaseUrl: useRuntimeConfig(h3Event).auth0.appBaseUrl
+  }))
 })

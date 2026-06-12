@@ -70,6 +70,9 @@ export interface EventRecord {
   submissionOpensAt: string
   submissionClosesAt: string
   state: EventState
+  hiddenAt?: string | null
+  hiddenByUserId?: string | null
+  hiddenReason?: string | null
   maxTeamMembers: number
   participantsLimit?: number | null
   autoApproveApplications: boolean

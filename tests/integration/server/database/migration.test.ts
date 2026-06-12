@@ -131,6 +131,51 @@ describe('shared database migration', () => {
     `).run('unknown', 'event_1')).rejects.toThrow()
   })
 
+  test('stores emergency event hiding metadata on events', async () => {
+    const now = isoTimestamp(0)
+    await seedUser(database, 'creator_1', now)
+    await seedUser(database, 'admin_1', now)
+    await seedEvent(database, 'event_1', 'registration_open', now, 'creator_1')
+
+    const defaultRows = await database.prepare(`
+      select hidden_at, hidden_by_user_id, hidden_reason
+      from events
+      where id = ?
+    `).all<{
+      hidden_at: string | null
+      hidden_by_user_id: string | null
+      hidden_reason: string | null
+    }>('event_1')
+
+    expect(defaultRows.results).toEqual([{
+      hidden_at: null,
+      hidden_by_user_id: null,
+      hidden_reason: null
+    }])
+
+    await database.prepare(`
+      update events
+      set hidden_at = ?, hidden_by_user_id = ?, hidden_reason = ?
+      where id = ?
+    `).run(isoTimestamp(1), 'admin_1', 'Incorrect public details', 'event_1')
+
+    const hiddenRows = await database.prepare(`
+      select hidden_at, hidden_by_user_id, hidden_reason
+      from events
+      where id = ?
+    `).all<{
+      hidden_at: string | null
+      hidden_by_user_id: string | null
+      hidden_reason: string | null
+    }>('event_1')
+
+    expect(hiddenRows.results).toEqual([{
+      hidden_at: isoTimestamp(1),
+      hidden_by_user_id: 'admin_1',
+      hidden_reason: 'Incorrect public details'
+    }])
+  })
+
   test('creates and removes primary linked-auth-identity rows with user inserts and soft deletion', async () => {
     const now = isoTimestamp(0)
 

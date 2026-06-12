@@ -484,6 +484,10 @@ export const updateEventBodySchema = z.object({
   'At least one event configuration field must be provided.'
 )
 
+export const hideEventBodySchema = z.object({
+  reason: z.string().trim().min(1).max(1000)
+})
+
 export const roleAssignmentParamsSchema = routeIdParamsSchema.extend({
   userId: z.string().trim().min(1)
 })
@@ -916,18 +920,38 @@ function buildPublicEventVisibilityClauses() {
 }
 
 function buildPublicEventVisibilityWhere(filters: ReturnType<typeof buildEventListFilters> = []) {
-  const visibilityWhere = or(...buildPublicEventVisibilityClauses())
+  const visibilityWhere = and(
+    isNull(events.hiddenAt),
+    or(...buildPublicEventVisibilityClauses())!
+  )!
 
   return filters.length > 0
     ? and(...filters, visibilityWhere)
     : visibilityWhere
 }
 
-function isDraftVisibleToActor(
-  actor: Awaited<ReturnType<typeof getRequestActor>>,
-  eventId: string,
+type ActorEventAccessIds = {
   internalEventIds: Set<string>
+  adminEventIds: Set<string>
+}
+
+function isEventVisibleToActor(
+  actor: Awaited<ReturnType<typeof getRequestActor>>,
+  event: Pick<EventRecord, 'id' | 'state' | 'hiddenAt'>,
+  accessIds: ActorEventAccessIds
 ) {
+  if (event.hiddenAt) {
+    if (actor.kind !== 'platform_user') {
+      return false
+    }
+
+    return actor.platformUser.isPlatformAdmin || accessIds.adminEventIds.has(event.id)
+  }
+
+  if (event.state !== 'draft') {
+    return true
+  }
+
   if (actor.kind !== 'platform_user') {
     return false
   }
@@ -936,7 +960,7 @@ function isDraftVisibleToActor(
     return true
   }
 
-  return internalEventIds.has(eventId)
+  return accessIds.internalEventIds.has(event.id)
 }
 
 export function assertRoleCapabilityInvariant(
@@ -1105,6 +1129,17 @@ export function assertCompetitionEvent(event: Pick<EventRecord, 'id' | 'eventTyp
   })
 }
 
+export function assertEventNotHidden(event: Pick<EventRecord, 'id' | 'hiddenAt'>) {
+  assertGuard(!event.hiddenAt, {
+    statusCode: 409,
+    code: 'event_hidden',
+    message: 'This event is hidden and cannot move forward until it is made visible again.',
+    details: {
+      eventId: event.id
+    }
+  })
+}
+
 export function buildEventUpdatePayload(
   existingEvent: EventRecord,
   patch: z.infer<typeof updateEventBodySchema>
@@ -1237,17 +1272,21 @@ export async function getEventOrThrow(database: AppDatabase, eventId: string) {
   return event
 }
 
-async function getActorInternalEventIds(
+async function getActorEventAccessIds(
   database: AppDatabase,
   actor: Awaited<ReturnType<typeof getRequestActor>>
-) {
+): Promise<ActorEventAccessIds> {
   if (actor.kind !== 'platform_user' || actor.platformUser.isPlatformAdmin) {
-    return new Set<string>()
+    return {
+      internalEventIds: new Set<string>(),
+      adminEventIds: new Set<string>()
+    }
   }
 
   const assignments = await database.query.eventRoleAssignments.findMany({
     columns: {
-      eventId: true
+      eventId: true,
+      role: true
     },
     where: and(
       eq(eventRoleAssignments.userId, actor.platformUser.id),
@@ -1255,7 +1294,14 @@ async function getActorInternalEventIds(
     )
   })
 
-  return new Set(assignments.map(assignment => assignment.eventId))
+  return {
+    internalEventIds: new Set(assignments.map(assignment => assignment.eventId)),
+    adminEventIds: new Set(
+      assignments
+        .filter(assignment => assignment.role === 'event_admin')
+        .map(assignment => assignment.eventId)
+    )
+  }
 }
 
 export async function getVisibleEventOrThrow(h3Event: H3Event, eventId: string) {
@@ -1263,13 +1309,9 @@ export async function getVisibleEventOrThrow(h3Event: H3Event, eventId: string) 
   const actor = await getRequestActor(h3Event)
   const eventRecord = await getEventOrThrow(database, eventId)
 
-  if (eventRecord.state !== 'draft') {
-    return eventRecord
-  }
+  const accessIds = await getActorEventAccessIds(database, actor)
 
-  const internalEventIds = await getActorInternalEventIds(database, actor)
-
-  if (isDraftVisibleToActor(actor, eventId, internalEventIds)) {
+  if (isEventVisibleToActor(actor, eventRecord, accessIds)) {
     return eventRecord
   }
 
@@ -1297,13 +1339,9 @@ export async function getVisibleEventBySlugOrThrow(h3Event: H3Event, slug: strin
     })
   }
 
-  if (eventRecord.state !== 'draft') {
-    return eventRecord
-  }
+  const accessIds = await getActorEventAccessIds(database, actor)
 
-  const internalEventIds = await getActorInternalEventIds(database, actor)
-
-  if (isDraftVisibleToActor(actor, eventRecord.id, internalEventIds)) {
+  if (isEventVisibleToActor(actor, eventRecord, accessIds)) {
     return eventRecord
   }
 
@@ -1507,9 +1545,22 @@ export async function listVisibleEvents(
           ))
       )
     : undefined
+  const adminEventVisibility = actor.kind === 'platform_user'
+    ? exists(
+        database
+          .select({ id: eventRoleAssignments.id })
+          .from(eventRoleAssignments)
+          .where(and(
+            eq(eventRoleAssignments.eventId, events.id),
+            eq(eventRoleAssignments.userId, actor.platformUser.id),
+            eq(eventRoleAssignments.role, 'event_admin')
+          ))
+      )
+    : undefined
   const visibilityClauses = [
-    ...buildPublicEventVisibilityClauses(),
-    ...(internalEventVisibility ? [internalEventVisibility] : [])
+    buildPublicEventVisibilityWhere(),
+    ...(internalEventVisibility ? [and(isNull(events.hiddenAt), internalEventVisibility)!] : []),
+    ...(adminEventVisibility ? [adminEventVisibility] : [])
   ]
   const visibilityWhere = baseWhere
     ? and(baseWhere, or(...visibilityClauses))
@@ -1779,6 +1830,9 @@ export function serializeAdminEvent(
 
   return {
     ...serializeEvent(event, currentTerms, tracks, options),
+    hiddenAt: event.hiddenAt,
+    hiddenByUserId: event.hiddenByUserId,
+    hiddenReason: event.hiddenReason,
     lumaApiKey: event.lumaApiKey,
     lumaWebhookStatus: event.lumaWebhookStatus,
     lumaWebhookError: event.lumaWebhookError,

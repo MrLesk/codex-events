@@ -89,6 +89,7 @@ Key characteristics:
 - A configured Luma event API ID maps to at most one event.
 - Each event has a city, country, and address.
 - An event street address is visible only in account-scoped event workspace views for approved participants, judges, staff, event admins, and platform admins.
+- Each event can be hidden by an event admin or platform admin with a required reason when public and participant access must be paused.
 - Each event has its own registration window.
 - Each event has a registration flow that can be activated manually within its configured registration window.
 - Each event can optionally define a participant approval limit used as an indicative planning target during admin review and as the capacity boundary for automatic approval.
@@ -103,6 +104,14 @@ Key characteristics:
 - A configured Discord server URL is visible only in the account-scoped event workspace for approved participants, judges, staff, event admins, and platform admins.
 - Each event can define credit offers with uploaded redeemable values for approved participants.
 - Hackathon and Build events can define ordered tracks with a participant-facing name, description, and resource links.
+
+Rules:
+
+- Hiding an event does not change its lifecycle state.
+- Hidden events are unavailable from public event discovery, public event pages, public images, public gallery, prizes, winners, published projects, certificates, feedback, participant account event lists, and non-admin direct event reads.
+- Hidden events remain visible to event admins and platform admins for configuration, audit review, remediation, and restoration.
+- Lifecycle-forwarding actions are rejected while an event is hidden.
+- Live or previously live events are not hard-deleted because event-owned applications, teams, submissions, terms acceptance, audit records, media, integrations, and queued work must remain recoverable and auditable.
 
 Hackathon-only characteristics:
 
