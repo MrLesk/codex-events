@@ -8,6 +8,8 @@ import {
   getApplicationAttendanceStatusColor,
   isApplicationCheckedIn
 } from '~/domains/applications/admin-application-record'
+import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
+import { formatTimestamp } from '~/lib/date-formatting'
 import type { ApplicationCheckInOverrideStatus } from '#shared/domains/applications/check-in'
 import { buildEventCertificatePath } from '#shared/domains/events/certificates'
 
@@ -24,7 +26,7 @@ type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 const applications = ref<AdminApplicationRecord[]>([])
 const loadStatus = ref<LoadStatus>('pending')
 const loadErrorMessage = ref('')
-const pendingApplicationId = ref('')
+const pendingActionKey = ref('')
 const searchTerm = ref('')
 
 const attendanceFilters = [
@@ -63,6 +65,17 @@ const visibleApplications = computed(() => {
 })
 
 const checkedInCount = computed(() => approvedApplications.value.filter(application => isApplicationCheckedIn(application)).length)
+const notCheckedInCount = computed(() => approvedApplications.value.length - checkedInCount.value)
+const attendanceFilterTabs = computed(() =>
+  attendanceFilters.map(filter => ({
+    ...filter,
+    count: filter.id === 'all'
+      ? approvedApplications.value.length
+      : filter.id === 'checked_in'
+        ? checkedInCount.value
+        : notCheckedInCount.value
+  }))
+)
 
 async function loadApplications() {
   loadStatus.value = 'pending'
@@ -92,11 +105,11 @@ async function loadApplications() {
 }
 
 async function overrideCheckIn(application: AdminApplicationRecord, status: ApplicationCheckInOverrideStatus) {
-  if (pendingApplicationId.value) {
+  if (pendingActionKey.value) {
     return
   }
 
-  pendingApplicationId.value = application.id
+  pendingActionKey.value = getCheckInActionKey(application, status)
 
   try {
     const response = await $fetch<ApiDataResponse<AdminApplicationRecord>>(
@@ -117,7 +130,7 @@ async function overrideCheckIn(application: AdminApplicationRecord, status: Appl
       color: 'error'
     })
   } finally {
-    pendingApplicationId.value = ''
+    pendingActionKey.value = ''
   }
 }
 
@@ -125,30 +138,82 @@ function certificateHref(application: AdminApplicationRecord) {
   return buildEventCertificatePath(props.eventSlug, application.userId)
 }
 
+function getCheckInActionKey(application: AdminApplicationRecord, status: ApplicationCheckInOverrideStatus) {
+  return `${application.id}:${status}`
+}
+
+function isCheckInActionPending(application: AdminApplicationRecord, status: ApplicationCheckInOverrideStatus) {
+  return pendingActionKey.value === getCheckInActionKey(application, status)
+}
+
+function isCheckInActionDisabled(application: AdminApplicationRecord, status: ApplicationCheckInOverrideStatus) {
+  return pendingActionKey.value.length > 0 && !isCheckInActionPending(application, status)
+}
+
+function getCertificateDecisionButtonClass(status: ApplicationCheckInOverrideStatus, isActive: boolean) {
+  const baseClass = 'inline-flex w-full items-center justify-between rounded-xl border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-45'
+
+  if (isActive) {
+    return status === 'joined'
+      ? `${baseClass} border-success/30 bg-success/12 text-success hover:bg-success/16`
+      : `${baseClass} border-error/30 bg-error/12 text-error hover:bg-error/16`
+  }
+
+  return `${baseClass} border-black/8 bg-transparent text-toned hover:border-black/20 hover:text-highlighted dark:border-white/[0.08] dark:hover:border-white/[0.18] dark:hover:text-white`
+}
+
+function getParticipantIdentityLabel(application: AdminApplicationRecord) {
+  if (application.user?.displayName && application.user?.email && application.user.displayName !== application.user.email) {
+    return `${application.user.displayName} - ${application.user.email}`
+  }
+
+  return application.user?.displayName ?? application.user?.email ?? application.userId
+}
+
+function getParticipantAvatarAlt(application: AdminApplicationRecord) {
+  return application.user?.displayName ?? application.user?.email ?? application.userId
+}
+
+function getParticipantProfileIconHref(application: AdminApplicationRecord) {
+  return buildProfileIconHref(
+    application.userId,
+    application.user?.profileIconUpdatedAt,
+    eventId.value
+  )
+}
+
+function formatCheckedInTimestamp(application: AdminApplicationRecord) {
+  return application.checkedInAt
+    ? `Checked in ${formatTimestamp(application.checkedInAt, 'recently')}`
+    : null
+}
+
 onMounted(loadApplications)
 </script>
 
 <template>
-  <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
-    <div class="space-y-1 border-b border-black/8 pb-4 dark:border-white/[0.08]">
-      <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-        Certificates
-      </h2>
-      <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-        Confirm who actually joined this event. Luma check-ins are the default, your decisions override them, and only joined participants have a public certificate.
-      </p>
-    </div>
+  <AppCard class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60">
+    <template #header>
+      <div class="space-y-1">
+        <h2 class="text-lg font-semibold text-highlighted">
+          Certificates
+        </h2>
+        <p class="text-sm text-muted">
+          Confirm who actually joined this event. Luma check-ins are the default, your decisions override them, and only joined participants have a public certificate.
+        </p>
+      </div>
+    </template>
 
-    <p
+    <AppAlert
       v-if="loadStatus === 'pending'"
-      class="mt-4 text-sm text-neutral-600 dark:text-[#A3A3A3]"
-    >
-      Loading participants…
-    </p>
+      color="neutral"
+      variant="soft"
+      title="Loading participants"
+      description="Participant records are still loading."
+    />
 
     <AppAlert
       v-else-if="loadStatus === 'error'"
-      class="mt-4"
       color="error"
       variant="soft"
       title="Participants could not be loaded"
@@ -156,127 +221,191 @@ onMounted(loadApplications)
     />
 
     <template v-else>
-      <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <div
-          class="flex items-center gap-1.5"
-          role="group"
-          aria-label="Attendance filter"
-        >
+      <section class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex flex-col gap-4 rounded-xl p-2">
+        <div class="flex min-w-0 flex-wrap items-center gap-2">
           <button
-            v-for="filter in attendanceFilters"
+            v-for="filter in attendanceFilterTabs"
             :key="filter.id"
             type="button"
-            class="rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors"
+            class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
             :class="activeAttendanceFilter === filter.id
-              ? 'bg-black text-white dark:bg-white dark:text-black'
-              : 'text-neutral-600 hover:bg-black/5 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:bg-white/10 dark:hover:text-white'"
+              ? 'bg-black text-white font-medium dark:bg-white dark:text-black'
+              : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
             :data-testid="`certificates-filter-${filter.id}`"
             @click="activeAttendanceFilter = filter.id"
           >
-            {{ filter.label }}
+            <span>{{ filter.label }}</span>
+            <span
+              class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
+              :class="activeAttendanceFilter === filter.id ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
+            >
+              {{ filter.count }}
+            </span>
           </button>
         </div>
 
-        <div class="flex items-center gap-3">
-          <p class="text-[13px] text-neutral-500 dark:text-[#8C8C8C]">
-            {{ checkedInCount }} of {{ approvedApplications.length }} checked in
-          </p>
+        <div class="px-2 pb-2">
+          <label
+            for="certificates-search"
+            class="sr-only"
+          >
+            Search participants
+          </label>
           <AppInput
+            id="certificates-search"
             v-model="searchTerm"
             type="search"
+            name="certificates-search"
+            autocomplete="off"
+            autocapitalize="none"
+            autocorrect="off"
+            spellcheck="false"
+            data-1p-ignore="true"
+            data-lpignore="true"
+            data-bwignore="true"
             placeholder="Search name or email"
-            class="w-56"
             data-testid="certificates-search"
           />
+          <p class="mt-2 text-[13px] text-neutral-500 dark:text-[#8C8C8C]">
+            {{ checkedInCount }} of {{ approvedApplications.length }} checked in
+          </p>
         </div>
-      </div>
+      </section>
 
-      <p
+      <AppAlert
         v-if="visibleApplications.length === 0"
-        class="mt-6 text-sm text-neutral-600 dark:text-[#A3A3A3]"
+        class="mt-5"
+        color="neutral"
+        variant="soft"
+        :title="approvedApplications.length === 0 ? 'No approved participants yet' : 'No participants match this view'"
+        :description="approvedApplications.length === 0 ? 'Approved participants will appear here before certificates can be issued.' : 'Try a different attendance filter or search.'"
         data-testid="certificates-empty-state"
-      >
-        {{ approvedApplications.length === 0 ? 'No approved participants yet.' : 'No participants match the current filter.' }}
-      </p>
+      />
 
-      <ul
+      <div
         v-else
-        class="mt-4 divide-y divide-black/6 dark:divide-white/[0.07]"
+        class="mt-5 grid gap-5"
       >
-        <li
+        <section
           v-for="application in visibleApplications"
           :key="application.id"
-          class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 py-3.5"
+          class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 overflow-hidden rounded-xl"
           :data-testid="`certificates-row-${application.userId}`"
         >
-          <div class="min-w-0">
-            <p class="truncate text-[15px] font-medium text-highlighted dark:text-white">
-              {{ application.user?.displayName ?? 'Unknown participant' }}
-            </p>
-            <p class="truncate text-[13px] text-neutral-500 dark:text-[#8C8C8C]">
-              {{ application.user?.email }}
-            </p>
-          </div>
+          <article class="grid gap-5 px-5 py-5 sm:grid-cols-[minmax(0,1fr)_14rem] sm:items-start xl:items-center">
+            <div class="min-w-0 space-y-3">
+              <div class="flex min-w-0 items-start gap-3">
+                <AppAvatar
+                  size="lg"
+                  :src="getParticipantProfileIconHref(application)"
+                  :alt="getParticipantAvatarAlt(application)"
+                  class="shrink-0"
+                />
 
-          <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <div class="flex flex-col items-end gap-0.5 text-right">
-              <span class="flex items-center gap-1.5">
-                <AppBadge
-                  v-if="application.certificateHiddenAt"
-                  color="neutral"
-                  variant="outline"
+                <div class="min-w-0 space-y-1">
+                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                    Participant
+                  </p>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h4 class="text-lg font-semibold text-highlighted">
+                      {{ getParticipantIdentityLabel(application) }}
+                    </h4>
+                    <AppBadge
+                      :color="getApplicationAttendanceStatusColor(application)"
+                      variant="soft"
+                    >
+                      {{ formatApplicationAttendanceStatus(application) }}
+                    </AppBadge>
+                    <AppBadge
+                      v-if="application.certificateHiddenAt"
+                      color="neutral"
+                      variant="outline"
+                    >
+                      Hidden by participant
+                    </AppBadge>
+                    <span
+                      v-if="formatCheckedInTimestamp(application)"
+                      class="rounded-full border border-black/10 px-3 py-1 text-xs text-highlighted dark:border-white/[0.12]"
+                    >
+                      {{ formatCheckedInTimestamp(application) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap gap-2 text-xs text-muted">
+                <span class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]">
+                  {{ formatApplicationAttendanceSource(application) }}
+                </span>
+                <span
+                  v-if="application.user?.email"
+                  class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
                 >
-                  Hidden by participant
-                </AppBadge>
-                <AppBadge
-                  :color="getApplicationAttendanceStatusColor(application)"
-                  variant="soft"
+                  Account: {{ application.user.email }}
+                </span>
+                <span
+                  v-if="application.user?.lumaEmail"
+                  class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
                 >
-                  {{ formatApplicationAttendanceStatus(application) }}
-                </AppBadge>
-              </span>
-              <span class="text-[12px] text-neutral-500 dark:text-[#8C8C8C]">
-                {{ formatApplicationAttendanceSource(application) }}
-              </span>
+                  Luma: {{ application.user.lumaEmail }}
+                </span>
+              </div>
             </div>
 
-            <div class="flex items-center gap-2">
-              <AppButton
-                size="sm"
-                color="neutral"
-                :variant="application.checkInOverrideStatus === 'joined' ? 'solid' : 'outline'"
-                :loading="pendingApplicationId === application.id"
+            <div class="grid gap-2 self-center xl:pl-2">
+              <button
+                type="button"
+                :class="getCertificateDecisionButtonClass('joined', application.checkInOverrideStatus === 'joined')"
+                :disabled="isCheckInActionDisabled(application, 'joined')"
                 :data-testid="`certificates-mark-joined-${application.userId}`"
                 @click="overrideCheckIn(application, 'joined')"
               >
-                Joined
-              </AppButton>
-              <AppButton
-                size="sm"
-                color="neutral"
-                :variant="application.checkInOverrideStatus === 'not_joined' ? 'solid' : 'outline'"
-                :loading="pendingApplicationId === application.id"
+                <span>Joined</span>
+                <AppIcon
+                  v-if="isCheckInActionPending(application, 'joined')"
+                  name="i-lucide-loader-circle"
+                  class="size-4 animate-spin"
+                />
+                <AppIcon
+                  v-else
+                  name="i-lucide-check"
+                  class="size-4"
+                />
+              </button>
+              <button
+                type="button"
+                :class="getCertificateDecisionButtonClass('not_joined', application.checkInOverrideStatus === 'not_joined')"
+                :disabled="isCheckInActionDisabled(application, 'not_joined')"
                 :data-testid="`certificates-mark-not-joined-${application.userId}`"
                 @click="overrideCheckIn(application, 'not_joined')"
               >
-                Not joined
-              </AppButton>
+                <span>Not joined</span>
+                <AppIcon
+                  v-if="isCheckInActionPending(application, 'not_joined')"
+                  name="i-lucide-loader-circle"
+                  class="size-4 animate-spin"
+                />
+                <AppIcon
+                  v-else
+                  name="i-lucide-x"
+                  class="size-4"
+                />
+              </button>
               <AppButton
                 v-if="isApplicationCheckedIn(application) && !application.certificateHiddenAt"
-                size="sm"
                 color="neutral"
-                variant="ghost"
+                variant="outline"
                 trailing-icon="i-lucide-arrow-up-right"
                 :to="certificateHref(application)"
-                target="_blank"
+                class="w-full justify-between rounded-xl"
                 :data-testid="`certificates-view-${application.userId}`"
               >
                 Certificate
               </AppButton>
             </div>
-          </div>
-        </li>
-      </ul>
+          </article>
+        </section>
+      </div>
     </template>
-  </div>
+  </AppCard>
 </template>
