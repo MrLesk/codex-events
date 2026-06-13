@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import type Sortable from 'sortablejs'
 import type { SortableEvent } from 'sortablejs'
 
-import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
+import AdminSortableEditorRow from '~/components/admin/AdminSortableEditorRow.vue'
 
 import type {
   EventState
@@ -11,6 +10,7 @@ import type {
   ShortlistEntry
 } from '~/domains/outcomes/admin-outcomes'
 
+import { useAdminSortableLists } from '~/composables/useAdminSortableLists'
 import { moveListItemByIndex } from '~/utils/reorder-list'
 
 const props = defineProps<{
@@ -27,17 +27,12 @@ const emit = defineEmits<{
 }>()
 
 type ShortlistSectionKey = 'finalists' | 'not-finalists'
-type SortableInstance = Sortable
-type SortableConstructor = typeof Sortable
 
 const draftFinalistSubmissionIds = ref<string[]>([])
 const draftNotFinalistSubmissionIds = ref<string[]>([])
 const activeDragSubmissionId = ref<string | null>(null)
 const finalistListElement = ref<HTMLElement | null>(null)
 const notFinalistListElement = ref<HTMLElement | null>(null)
-let finalistSortable: SortableInstance | null = null
-let notFinalistSortable: SortableInstance | null = null
-let sortableConstructor: SortableConstructor | null = null
 
 watch(() => props.shortlist, (entries) => {
   draftFinalistSubmissionIds.value = entries
@@ -276,79 +271,31 @@ function handleSortableEnd(event: SortableEvent) {
   applyDraftSections(finalists, notFinalists)
 }
 
-function destroySortables() {
-  finalistSortable?.destroy()
-  notFinalistSortable?.destroy()
-  finalistSortable = null
-  notFinalistSortable = null
-  activeDragSubmissionId.value = null
-}
-
-async function loadSortableConstructor() {
-  if (!sortableConstructor) {
-    const module = await import('sortablejs')
-    sortableConstructor = module.default
+useAdminSortableLists({
+  elements: computed(() => [finalistListElement.value, notFinalistListElement.value]),
+  enabled: computed(() =>
+    canManageShortlist.value && props.pendingActionKey === null
+  ),
+  sources: [draftStateKey, canManageShortlist, () => props.pendingActionKey],
+  createOptions() {
+    return {
+      animation: 180,
+      group: 'admin-shortlist',
+      handle: '[data-shortlist-sort-handle]',
+      draggable: '[data-shortlist-row]',
+      dataIdAttr: 'data-shortlist-id',
+      ghostClass: 'opacity-45',
+      chosenClass: 'cursor-grabbing',
+      dragClass: 'cursor-grabbing',
+      onChoose(sortableEvent) {
+        activeDragSubmissionId.value = sortableEvent.item.dataset.shortlistId ?? null
+      },
+      onEnd: handleSortableEnd
+    }
+  },
+  onDestroy() {
+    activeDragSubmissionId.value = null
   }
-
-  return sortableConstructor
-}
-
-function createSectionSortable(Sortable: SortableConstructor, element: HTMLElement) {
-  return Sortable.create(element, {
-    animation: 180,
-    group: 'admin-shortlist',
-    handle: '[data-shortlist-sort-handle]',
-    draggable: '[data-shortlist-row]',
-    dataIdAttr: 'data-shortlist-id',
-    ghostClass: 'opacity-45',
-    chosenClass: 'cursor-grabbing',
-    dragClass: 'cursor-grabbing',
-    onChoose(sortableEvent) {
-      activeDragSubmissionId.value = sortableEvent.item.dataset.shortlistId ?? null
-    },
-    onEnd: handleSortableEnd
-  })
-}
-
-async function initializeSortables() {
-  if (
-    !import.meta.client
-    || !canManageShortlist.value
-    || props.pendingActionKey !== null
-    || !finalistListElement.value
-    || !notFinalistListElement.value
-  ) {
-    destroySortables()
-    return
-  }
-
-  const Sortable = await loadSortableConstructor()
-
-  if (
-    !canManageShortlist.value
-    || props.pendingActionKey !== null
-    || !finalistListElement.value
-    || !notFinalistListElement.value
-  ) {
-    destroySortables()
-    return
-  }
-
-  destroySortables()
-  finalistSortable = createSectionSortable(Sortable, finalistListElement.value)
-  notFinalistSortable = createSectionSortable(Sortable, notFinalistListElement.value)
-}
-
-watch([draftStateKey, canManageShortlist, () => props.pendingActionKey], async () => {
-  await nextTick()
-  await initializeSortables()
-}, {
-  immediate: true,
-  flush: 'post'
-})
-
-onBeforeUnmount(() => {
-  destroySortables()
 })
 </script>
 
@@ -452,101 +399,62 @@ onBeforeUnmount(() => {
                 activeDragSubmissionId && finalistEntries.length > 0 ? 'border-black/16 dark:border-white/[0.16]' : ''
               ]"
             >
-              <article
+              <AdminSortableEditorRow
                 v-for="entry in finalistEntries"
                 :key="entry.submissionId"
-                :data-testid="`admin-competition-shortlist-${entry.submissionId}`"
-                :data-shortlist-id="entry.submissionId"
-                data-shortlist-row
-                class="rounded-xl border bg-white/88 p-3 transition-all dark:bg-[#111111]"
-                :class="[
-                  activeDragSubmissionId === entry.submissionId
-                    ? 'border-black/16 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.55)] dark:border-white/[0.16]'
-                    : 'border-black/8 dark:border-white/[0.08]'
-                ]"
+                :item-id="entry.submissionId"
+                :test-id="`admin-competition-shortlist-${entry.submissionId}`"
+                item-id-attribute="data-shortlist-id"
+                row-attribute="data-shortlist-row"
+                sort-handle-attribute="data-shortlist-sort-handle"
+                columns-class="sm:grid-cols-[4.25rem_minmax(0,1fr)_8.75rem]"
+                actions-class="flex items-center justify-start sm:justify-end sm:self-center"
+                :active="activeDragSubmissionId === entry.submissionId"
+                :move-up-label="`Move shortlist entry ${getDraftShortlistRank(entry.submissionId) ?? 0} up`"
+                :move-up-test-id="`admin-competition-shortlist-move-up-${entry.submissionId}`"
+                :move-up-disabled="!canMoveSubmissionUp(entry.submissionId) || pendingActionKey !== null"
+                :drag-label="`Drag shortlist entry ${getDraftShortlistRank(entry.submissionId) ?? 0}`"
+                :drag-disabled="pendingActionKey !== null"
+                :move-down-label="`Move shortlist entry ${getDraftShortlistRank(entry.submissionId) ?? 0} down`"
+                :move-down-test-id="`admin-competition-shortlist-move-down-${entry.submissionId}`"
+                :move-down-disabled="!canMoveSubmissionDown(entry.submissionId) || pendingActionKey !== null"
+                @move-up="moveSubmission(entry.submissionId, -1)"
+                @move-down="moveSubmission(entry.submissionId, 1)"
               >
-                <AdminEditorRowShell
-                  columns-class="sm:grid-cols-[4.25rem_minmax(0,1fr)_8.75rem]"
-                  actions-class="flex items-center justify-start sm:justify-end sm:self-center"
-                >
-                  <template #controls>
-                    <button
-                      type="button"
-                      class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
-                      :aria-label="`Move shortlist entry ${getDraftShortlistRank(entry.submissionId) ?? 0} up`"
-                      :data-testid="`admin-competition-shortlist-move-up-${entry.submissionId}`"
-                      :disabled="!canMoveSubmissionUp(entry.submissionId) || pendingActionKey !== null"
-                      @click="moveSubmission(entry.submissionId, -1)"
-                    >
-                      <AppIcon
-                        name="i-lucide-arrow-up"
-                        class="size-4"
-                      />
-                    </button>
-
-                    <button
-                      type="button"
-                      data-shortlist-sort-handle
-                      class="group inline-flex h-11 w-11 cursor-grab items-center justify-center rounded-xl border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
-                      :aria-label="`Drag shortlist entry ${getDraftShortlistRank(entry.submissionId) ?? 0}`"
-                      :disabled="pendingActionKey !== null"
-                    >
-                      <AppIcon
-                        name="i-lucide-grip-vertical"
-                        class="size-4.5 transition group-hover:scale-105"
-                      />
-                    </button>
-
-                    <button
-                      type="button"
-                      class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
-                      :aria-label="`Move shortlist entry ${getDraftShortlistRank(entry.submissionId) ?? 0} down`"
-                      :data-testid="`admin-competition-shortlist-move-down-${entry.submissionId}`"
-                      :disabled="!canMoveSubmissionDown(entry.submissionId) || pendingActionKey !== null"
-                      @click="moveSubmission(entry.submissionId, 1)"
-                    >
-                      <AppIcon
-                        name="i-lucide-arrow-down"
-                        class="size-4"
-                      />
-                    </button>
-                  </template>
-
-                  <div class="grid gap-2">
-                    <div class="flex flex-wrap items-baseline gap-3">
-                      <p
-                        :data-testid="`admin-competition-shortlist-rank-${entry.submissionId}`"
-                        class="text-sm font-semibold text-highlighted"
-                      >
-                        #{{ getDraftShortlistRank(entry.submissionId) }}
-                      </p>
-
-                      <p class="min-w-0 flex-1 text-sm font-semibold text-highlighted">
-                        {{ formatPrimaryEntryLabel(entry) }}
-                      </p>
-                    </div>
-
+                <div class="grid gap-2">
+                  <div class="flex flex-wrap items-baseline gap-3">
                     <p
-                      v-if="getEntrySummary(entry)"
-                      class="text-sm text-toned"
+                      :data-testid="`admin-competition-shortlist-rank-${entry.submissionId}`"
+                      class="text-sm font-semibold text-highlighted"
                     >
-                      {{ getEntrySummary(entry) }}
+                      #{{ getDraftShortlistRank(entry.submissionId) }}
+                    </p>
+
+                    <p class="min-w-0 flex-1 text-sm font-semibold text-highlighted">
+                      {{ formatPrimaryEntryLabel(entry) }}
                     </p>
                   </div>
 
-                  <template #actions>
-                    <AppButton
-                      variant="soft"
-                      color="primary"
-                      class="w-full"
-                      :disabled="pendingActionKey !== null"
-                      @click="moveToNotFinalists(entry.submissionId)"
-                    >
-                      Move out
-                    </AppButton>
-                  </template>
-                </AdminEditorRowShell>
-              </article>
+                  <p
+                    v-if="getEntrySummary(entry)"
+                    class="text-sm text-toned"
+                  >
+                    {{ getEntrySummary(entry) }}
+                  </p>
+                </div>
+
+                <template #actions>
+                  <AppButton
+                    variant="soft"
+                    color="primary"
+                    class="w-full"
+                    :disabled="pendingActionKey !== null"
+                    @click="moveToNotFinalists(entry.submissionId)"
+                  >
+                    Move out
+                  </AppButton>
+                </template>
+              </AdminSortableEditorRow>
 
               <div
                 v-if="finalistEntries.length === 0"
@@ -578,101 +486,62 @@ onBeforeUnmount(() => {
                 activeDragSubmissionId && notFinalistEntries.length > 0 ? 'border-black/16 dark:border-white/[0.16]' : ''
               ]"
             >
-              <article
+              <AdminSortableEditorRow
                 v-for="entry in notFinalistEntries"
                 :key="entry.submissionId"
-                :data-testid="`admin-competition-shortlist-${entry.submissionId}`"
-                :data-shortlist-id="entry.submissionId"
-                data-shortlist-row
-                class="rounded-xl border bg-white/88 p-3 transition-all dark:bg-[#111111]"
-                :class="[
-                  activeDragSubmissionId === entry.submissionId
-                    ? 'border-black/16 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.55)] dark:border-white/[0.16]'
-                    : 'border-black/8 dark:border-white/[0.08]'
-                ]"
+                :item-id="entry.submissionId"
+                :test-id="`admin-competition-shortlist-${entry.submissionId}`"
+                item-id-attribute="data-shortlist-id"
+                row-attribute="data-shortlist-row"
+                sort-handle-attribute="data-shortlist-sort-handle"
+                columns-class="sm:grid-cols-[4.25rem_minmax(0,1fr)_8.75rem]"
+                actions-class="flex items-center justify-start sm:justify-end sm:self-center"
+                :active="activeDragSubmissionId === entry.submissionId"
+                :move-up-label="`Move shortlist entry ${getDraftShortlistRank(entry.submissionId) ?? 0} up`"
+                :move-up-test-id="`admin-competition-shortlist-move-up-${entry.submissionId}`"
+                :move-up-disabled="!canMoveSubmissionUp(entry.submissionId) || pendingActionKey !== null"
+                :drag-label="`Drag shortlist entry ${getDraftShortlistRank(entry.submissionId) ?? 0}`"
+                :drag-disabled="pendingActionKey !== null"
+                :move-down-label="`Move shortlist entry ${getDraftShortlistRank(entry.submissionId) ?? 0} down`"
+                :move-down-test-id="`admin-competition-shortlist-move-down-${entry.submissionId}`"
+                :move-down-disabled="!canMoveSubmissionDown(entry.submissionId) || pendingActionKey !== null"
+                @move-up="moveSubmission(entry.submissionId, -1)"
+                @move-down="moveSubmission(entry.submissionId, 1)"
               >
-                <AdminEditorRowShell
-                  columns-class="sm:grid-cols-[4.25rem_minmax(0,1fr)_8.75rem]"
-                  actions-class="flex items-center justify-start sm:justify-end sm:self-center"
-                >
-                  <template #controls>
-                    <button
-                      type="button"
-                      class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
-                      :aria-label="`Move shortlist entry ${getDraftShortlistRank(entry.submissionId) ?? 0} up`"
-                      :data-testid="`admin-competition-shortlist-move-up-${entry.submissionId}`"
-                      :disabled="!canMoveSubmissionUp(entry.submissionId) || pendingActionKey !== null"
-                      @click="moveSubmission(entry.submissionId, -1)"
-                    >
-                      <AppIcon
-                        name="i-lucide-arrow-up"
-                        class="size-4"
-                      />
-                    </button>
-
-                    <button
-                      type="button"
-                      data-shortlist-sort-handle
-                      class="group inline-flex h-11 w-11 cursor-grab items-center justify-center rounded-xl border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
-                      :aria-label="`Drag shortlist entry ${getDraftShortlistRank(entry.submissionId) ?? 0}`"
-                      :disabled="pendingActionKey !== null"
-                    >
-                      <AppIcon
-                        name="i-lucide-grip-vertical"
-                        class="size-4.5 transition group-hover:scale-105"
-                      />
-                    </button>
-
-                    <button
-                      type="button"
-                      class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
-                      :aria-label="`Move shortlist entry ${getDraftShortlistRank(entry.submissionId) ?? 0} down`"
-                      :data-testid="`admin-competition-shortlist-move-down-${entry.submissionId}`"
-                      :disabled="!canMoveSubmissionDown(entry.submissionId) || pendingActionKey !== null"
-                      @click="moveSubmission(entry.submissionId, 1)"
-                    >
-                      <AppIcon
-                        name="i-lucide-arrow-down"
-                        class="size-4"
-                      />
-                    </button>
-                  </template>
-
-                  <div class="grid gap-2">
-                    <div class="flex flex-wrap items-baseline gap-3">
-                      <p
-                        :data-testid="`admin-competition-shortlist-rank-${entry.submissionId}`"
-                        class="text-sm font-semibold text-highlighted"
-                      >
-                        #{{ getDraftShortlistRank(entry.submissionId) }}
-                      </p>
-
-                      <p class="min-w-0 flex-1 text-sm font-semibold text-highlighted">
-                        {{ formatPrimaryEntryLabel(entry) }}
-                      </p>
-                    </div>
-
+                <div class="grid gap-2">
+                  <div class="flex flex-wrap items-baseline gap-3">
                     <p
-                      v-if="getEntrySummary(entry)"
-                      class="text-sm text-toned"
+                      :data-testid="`admin-competition-shortlist-rank-${entry.submissionId}`"
+                      class="text-sm font-semibold text-highlighted"
                     >
-                      {{ getEntrySummary(entry) }}
+                      #{{ getDraftShortlistRank(entry.submissionId) }}
+                    </p>
+
+                    <p class="min-w-0 flex-1 text-sm font-semibold text-highlighted">
+                      {{ formatPrimaryEntryLabel(entry) }}
                     </p>
                   </div>
 
-                  <template #actions>
-                    <AppButton
-                      variant="soft"
-                      color="primary"
-                      class="w-full"
-                      :disabled="pendingActionKey !== null"
-                      @click="moveToFinalists(entry.submissionId)"
-                    >
-                      Make finalist
-                    </AppButton>
-                  </template>
-                </AdminEditorRowShell>
-              </article>
+                  <p
+                    v-if="getEntrySummary(entry)"
+                    class="text-sm text-toned"
+                  >
+                    {{ getEntrySummary(entry) }}
+                  </p>
+                </div>
+
+                <template #actions>
+                  <AppButton
+                    variant="soft"
+                    color="primary"
+                    class="w-full"
+                    :disabled="pendingActionKey !== null"
+                    @click="moveToFinalists(entry.submissionId)"
+                  >
+                    Make finalist
+                  </AppButton>
+                </template>
+              </AdminSortableEditorRow>
 
               <div
                 v-if="notFinalistEntries.length === 0"
