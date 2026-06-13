@@ -30,6 +30,7 @@ import {
   getJudgeAssignmentActionDisabledReason,
   getJudgeAssignmentInboxCardCopy,
   getJudgeEventDashboardCopy,
+  getJudgeSubmissionPanelDisplay,
   getJudgeWorkspaceSubjectKey,
   hasIncompleteCriterionScores,
   hasIncompletePitchScore,
@@ -409,6 +410,77 @@ describe('judging-workspace copy', () => {
       contextValue: 'Alpha Team',
       reviewSignal: 'Ready to vote',
       openLabel: 'Open pitch review'
+    })
+  })
+
+  test('normalizes blind submission panel display without revealing team identity', () => {
+    const display = getJudgeSubmissionPanelDisplay(createBlindAssignment({
+      blindSubmission: {
+        ...createBlindAssignment().blindSubmission,
+        projectName: null,
+        summary: '',
+        track: {
+          id: 'track-1',
+          name: 'Infrastructure',
+          description: 'Tools for event teams.'
+        }
+      }
+    }))
+
+    expect(display).toEqual({
+      overline: 'Blind review assignment',
+      title: 'Untitled submission',
+      bodyTestId: 'judge-blind-submission',
+      summary: 'No project summary is available for this submission yet.',
+      repositoryUrl: 'https://example.com/repo',
+      demoUrl: 'https://example.com/demo',
+      status: 'assigned',
+      ineligibilityStatus: 'eligible',
+      detailCards: [{
+        label: 'Track',
+        title: 'Infrastructure',
+        markdownDescription: 'Tools for event teams.'
+      }]
+    })
+    expect(JSON.stringify(display)).not.toContain('Alpha Team')
+  })
+
+  test('normalizes pitch submission panel display with team and track context', () => {
+    const display = getJudgeSubmissionPanelDisplay(createPitchAssignment({
+      status: 'judge_started',
+      pitchSubmission: {
+        ...createPitchAssignment().pitchSubmission,
+        projectName: null,
+        summary: '',
+        track: {
+          id: 'track-1',
+          name: 'Infrastructure',
+          description: 'Tools for event teams.'
+        }
+      }
+    }))
+
+    expect(display).toEqual({
+      overline: 'Pitch review finalist',
+      title: 'Untitled pitch finalist',
+      bodyTestId: 'judge-pitch-submission',
+      summary: 'No project summary is available for this finalist yet.',
+      repositoryUrl: 'https://example.com/repo',
+      demoUrl: 'https://example.com/demo',
+      status: 'judge_started',
+      ineligibilityStatus: 'eligible',
+      detailCards: [
+        {
+          label: 'Team',
+          title: 'Alpha Team',
+          markdownDescription: null
+        },
+        {
+          label: 'Track',
+          title: 'Infrastructure',
+          markdownDescription: 'Tools for event teams.'
+        }
+      ]
     })
   })
 

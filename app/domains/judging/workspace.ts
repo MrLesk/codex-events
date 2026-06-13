@@ -154,6 +154,24 @@ export interface PitchScoreDraft {
   comment: string
 }
 
+export interface JudgeSubmissionPanelDetailCard {
+  label: string
+  title: string
+  markdownDescription: string | null
+}
+
+export interface JudgeSubmissionPanelDisplay {
+  overline: string
+  title: string
+  bodyTestId: 'judge-blind-submission' | 'judge-pitch-submission'
+  summary: string
+  repositoryUrl: string | null
+  demoUrl: string | null
+  status: JudgeAssignmentStatus
+  ineligibilityStatus: JudgeIneligibilityStatus
+  detailCards: JudgeSubmissionPanelDetailCard[]
+}
+
 const minimumJudgeScore = 1
 const maximumJudgeScore = 5
 
@@ -488,6 +506,56 @@ export function getJudgeAssignmentInboxCardCopy(
     contextValue: assignment.pitchSubmission.teamName,
     reviewSignal: assignment.startedAt ? `Started ${formatJudgeTimestamp(assignment.startedAt)}` : 'Ready to vote',
     openLabel: 'Open pitch review'
+  }
+}
+
+export function getJudgeSubmissionPanelDisplay(
+  assignment: JudgeAssignmentDetail
+): JudgeSubmissionPanelDisplay {
+  if (isBlindJudgeAssignment(assignment)) {
+    return {
+      overline: 'Blind review assignment',
+      title: assignment.blindSubmission.projectName ?? 'Untitled submission',
+      bodyTestId: 'judge-blind-submission',
+      summary: assignment.blindSubmission.summary || 'No project summary is available for this submission yet.',
+      repositoryUrl: assignment.blindSubmission.repositoryUrl,
+      demoUrl: assignment.blindSubmission.demoUrl,
+      status: assignment.status,
+      ineligibilityStatus: assignment.ineligibilityStatus,
+      detailCards: assignment.blindSubmission.track
+        ? [{
+            label: 'Track',
+            title: assignment.blindSubmission.track.name,
+            markdownDescription: assignment.blindSubmission.track.description
+          }]
+        : []
+    }
+  }
+
+  const detailCards: JudgeSubmissionPanelDetailCard[] = [{
+    label: 'Team',
+    title: assignment.pitchSubmission.teamName,
+    markdownDescription: null
+  }]
+
+  if (assignment.pitchSubmission.track) {
+    detailCards.push({
+      label: 'Track',
+      title: assignment.pitchSubmission.track.name,
+      markdownDescription: assignment.pitchSubmission.track.description
+    })
+  }
+
+  return {
+    overline: 'Pitch review finalist',
+    title: assignment.pitchSubmission.projectName ?? 'Untitled pitch finalist',
+    bodyTestId: 'judge-pitch-submission',
+    summary: assignment.pitchSubmission.summary || 'No project summary is available for this finalist yet.',
+    repositoryUrl: assignment.pitchSubmission.repositoryUrl,
+    demoUrl: assignment.pitchSubmission.demoUrl,
+    status: assignment.status,
+    ineligibilityStatus: assignment.ineligibilityStatus,
+    detailCards
   }
 }
 
