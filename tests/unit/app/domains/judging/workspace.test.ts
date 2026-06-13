@@ -422,7 +422,7 @@ describe('judging-workspace copy', () => {
         track: {
           id: 'track-1',
           name: 'Infrastructure',
-          description: 'Tools for event teams.'
+          shortDescription: 'Tools for event teams.'
         }
       }
     }))
@@ -455,7 +455,7 @@ describe('judging-workspace copy', () => {
         track: {
           id: 'track-1',
           name: 'Infrastructure',
-          description: 'Tools for event teams.'
+          shortDescription: 'Tools for event teams.'
         }
       }
     }))

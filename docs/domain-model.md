@@ -103,7 +103,7 @@ Key characteristics:
 - Each event can optionally reference event-specific application terms.
 - A configured Discord server URL is visible only in the account-scoped event workspace for approved participants, judges, staff, event admins, and platform admins.
 - Each event can define credit offers with uploaded redeemable values for approved participants.
-- Hackathon and Build events can define ordered tracks with a participant-facing name, markdown description, and resource links.
+- Hackathon and Build events can define ordered tracks with a participant-facing name, short description, full participant guidelines, staff instructions, and resource links.
 
 Rules:
 
@@ -133,7 +133,7 @@ Meetup and Build rules:
 - Meetups and Builds use only `draft`, `registration_open`, and `completed`.
 - Meetups and Builds can approve, reject, and withdraw applications through the shared `UserApplication` model.
 - Approved applications represent participation directly.
-- Build tracks organize participant-visible resource links and do not create submission, judging, or outcome workflows.
+- Build tracks organize selected-track resource links and do not create submission, judging, or outcome workflows.
 - Meetups and Builds do not create teams, submissions, judging assignments, prizes, winner records, or completed competition outcomes.
 - Competition-only APIs and UI surfaces are unavailable for Meetups and Builds.
 
@@ -144,17 +144,24 @@ An ordered participant-facing category belonging to one Hackathon or Build event
 Rules:
 
 - Each track belongs to exactly one Hackathon or Build event.
-- A track has a name and a participant-facing markdown description.
+- A track has a name, a short participant-facing markdown description, full participant-facing markdown guidelines, and staff-only markdown instructions.
 - A track can include zero or more resources.
 - Each track resource has a title, an `http` or `https` link, and an optional description.
 - Tracks are ordered for admin editing and public display.
-- Tracks are visible on the public and account-scoped event detail pages when configured.
+- Public event pages show only track names and short descriptions.
+- Account-scoped event detail pages show every track name and short description to eligible participants before track selection.
+- Submitted and approved participants can choose or change their event track from the account-scoped event detail page.
+- A participant's selected track is stored on that participant's `UserApplication` for the event.
+- After a participant selects a track, the selected track appears first in the account-scoped event detail page and shows its full guidelines and resources.
+- Track resources are hidden from public event pages and from participant account pages until the participant selects that track.
+- Staff instructions are visible only to platform admins, event admins, whole-event staff, and staff members assigned to that track.
 - Hackathon tracks are available as submission choices.
 - Build tracks are resource groups for participants.
 - Tracks do not change judging assignment, scoring criteria, or blind-review behavior in this version.
 - Staff assignments can reference one track as participant-facing support context.
 - Staff track context does not restrict staff permissions or participant and team visibility.
 - Removing a track clears that track from staff roster display for affected assignments.
+- Removing a track clears participant selected-track references for affected applications.
 - A track cannot be deleted once one or more submissions reference it.
 
 ### EventPhoto
@@ -339,6 +346,8 @@ Rules:
 - Platform admins can run an event-scoped operational backfill route to resolve stored legacy Luma usernames into canonical Luma emails for already-registered users.
 - In Hackathon events, a user must be approved before creating or joining a team in that event.
 - In Meetup and Build events, an approved application is the participant's event access record.
+- In Hackathon and Build events with tracks, submitted and approved applicants can store one selected track on their application.
+- A participant's selected track can prefill a new Hackathon submission draft when the selected track is valid for the event, but team admins can change the submission track.
 - Withdrawal ends participation eligibility for the event, including in-person attendance eligibility when applicable.
 - Withdrawal retains the application record for auditability, event-terms acceptance when present, and operational history. It does not hard-delete the application.
 - Admin-managed withdrawal removes the participant from any active team in that event when the team can remain valid.

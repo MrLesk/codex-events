@@ -363,7 +363,7 @@ function handleSubmitProjectAttempt(event?: Event) {
                 v-else-if="form.trackId"
                 class="text-xs text-muted"
               >
-                {{ sortedTracks.find(track => track.id === form.trackId)?.description }}
+                {{ sortedTracks.find(track => track.id === form.trackId)?.shortDescription }}
               </p>
             </AppFormField>
 

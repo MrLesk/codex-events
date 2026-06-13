@@ -5,6 +5,7 @@ import { and, eq } from 'drizzle-orm'
 import applicationsListHandler from '../../../../server/api/events/[eventId]/applications/index.get'
 import applicationsPostHandler from '../../../../server/api/events/[eventId]/applications/index.post'
 import ownApplicationHandler from '../../../../server/api/events/[eventId]/applications/me.get'
+import selectOwnApplicationTrackHandler from '../../../../server/api/events/[eventId]/applications/me/actions/select-track.post'
 import withdrawOwnApplicationHandler from '../../../../server/api/events/[eventId]/applications/me/actions/withdraw.post'
 import verifyOwnApplicationLumaEmailHandler from '../../../../server/api/events/[eventId]/applications/me/actions/verify-luma-email.post'
 import approveApplicationHandler from '../../../../server/api/events/[eventId]/applications/[applicationId]/actions/approve.post'
@@ -16,6 +17,7 @@ import {
   auditLogs,
   eventRoleAssignments,
   eventTermsDocuments,
+  eventTracks,
   events,
   submissions,
   teamJoinRequests,
@@ -1552,6 +1554,194 @@ describe('TASK-3.6 application routes', () => {
         }
       }
     })
+  })
+
+  test.each(['submitted', 'approved'] as const)(
+    'POST /api/events/:eventId/applications/me/actions/select-track stores the selected track for %s applicants',
+    async (status) => {
+      const harness = createApiRouteTestHarness({
+        routes: [
+          {
+            method: 'post',
+            path: '/api/events/:eventId/applications/me/actions/select-track',
+            handler: selectOwnApplicationTrackHandler
+          }
+        ],
+        sessionUser: {
+          sub: 'auth0|regular_user',
+          email: 'regular@example.com'
+        }
+      })
+      harnesses.push(harness)
+      await seedApplicationContext(harness)
+
+      await harness.database.insert(eventTracks).values({
+        id: 'track_agents',
+        eventId: 'event_1',
+        name: 'Agents',
+        shortDescription: 'Build agent projects.',
+        fullDescription: 'Follow the agent track guidelines.',
+        staffInstructions: 'Route agent questions to the mentor desk.',
+        displayOrder: 1,
+        createdAt: '2026-03-22T12:08:00.000Z'
+      })
+      await harness.database.insert(userApplications).values({
+        id: 'application_1',
+        eventId: 'event_1',
+        userId: 'regular_user',
+        status,
+        submittedAt: '2026-03-22T12:10:00.000Z',
+        applicationTermsDocumentId: 'terms_app_2',
+        applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+        createdAt: '2026-03-22T12:10:00.000Z',
+        updatedAt: '2026-03-22T12:10:00.000Z'
+      })
+
+      const response = await harness.request('/api/events/event_1/applications/me/actions/select-track', {
+        method: 'POST',
+        body: JSON.stringify({
+          trackId: 'track_agents'
+        })
+      })
+
+      expect(response.status).toBe(200)
+      expect(await response.json()).toMatchObject({
+        data: {
+          id: 'application_1',
+          status,
+          selectedTrackId: 'track_agents'
+        }
+      })
+
+      const storedApplication = await harness.database.query.userApplications.findFirst({
+        where: eq(userApplications.id, 'application_1')
+      })
+      expect(storedApplication).toMatchObject({
+        selectedTrackId: 'track_agents'
+      })
+
+      const auditRecords = await harness.database.query.auditLogs.findMany({
+        where: eq(auditLogs.entityId, 'application_1')
+      })
+      expect(auditRecords).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          entityType: 'user_application',
+          action: 'user_application.track_selected',
+          metadata: expect.objectContaining({
+            selectedTrackId: 'track_agents'
+          })
+        })
+      ]))
+    }
+  )
+
+  test('POST /api/events/:eventId/applications/me/actions/select-track rejects ineligible applications and tracks from other events', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/events/:eventId/applications/me/actions/select-track',
+          handler: selectOwnApplicationTrackHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness)
+
+    await harness.database.insert(events).values({
+      id: 'event_2',
+      eventType: 'hackathon',
+      name: 'Other Event',
+      slug: 'other-event',
+      description: 'Other fixture event',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Other Address',
+      registrationOpensAt: fixtureRegistrationOpensAt,
+      registrationClosesAt: fixtureRegistrationClosesAt,
+      submissionOpensAt: fixtureSubmissionOpensAt,
+      submissionClosesAt: fixtureSubmissionClosesAt,
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      currentApplicationTermsDocumentId: null,
+      currentWinnerTermsDocumentId: null,
+      createdByUserId: 'platform_admin'
+    })
+    await harness.database.insert(eventTracks).values([
+      {
+        id: 'track_agents',
+        eventId: 'event_1',
+        name: 'Agents',
+        shortDescription: 'Build agent projects.',
+        fullDescription: '',
+        staffInstructions: '',
+        displayOrder: 1,
+        createdAt: '2026-03-22T12:08:00.000Z'
+      },
+      {
+        id: 'track_other_event',
+        eventId: 'event_2',
+        name: 'Other Track',
+        shortDescription: 'Belongs to another event.',
+        fullDescription: '',
+        staffInstructions: '',
+        displayOrder: 1,
+        createdAt: '2026-03-22T12:08:00.000Z'
+      }
+    ])
+    await harness.database.insert(userApplications).values({
+      id: 'application_1',
+      eventId: 'event_1',
+      userId: 'regular_user',
+      status: 'rejected',
+      submittedAt: '2026-03-22T12:10:00.000Z',
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+      createdAt: '2026-03-22T12:10:00.000Z',
+      updatedAt: '2026-03-22T12:10:00.000Z'
+    })
+
+    const rejectedStatusResponse = await harness.request('/api/events/event_1/applications/me/actions/select-track', {
+      method: 'POST',
+      body: JSON.stringify({
+        trackId: 'track_agents'
+      })
+    })
+    expect(rejectedStatusResponse.status).toBe(409)
+    expect(await rejectedStatusResponse.json()).toMatchObject({
+      error: {
+        code: 'application_track_selection_unavailable'
+      }
+    })
+
+    await harness.database
+      .update(userApplications)
+      .set({
+        status: 'submitted'
+      })
+      .where(eq(userApplications.id, 'application_1'))
+
+    const otherEventTrackResponse = await harness.request('/api/events/event_1/applications/me/actions/select-track', {
+      method: 'POST',
+      body: JSON.stringify({
+        trackId: 'track_other_event'
+      })
+    })
+    expect(otherEventTrackResponse.status).toBe(400)
+    expect(await otherEventTrackResponse.json()).toMatchObject({
+      error: {
+        code: 'event_track_invalid'
+      }
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: eq(userApplications.id, 'application_1')
+    })
+    expect(storedApplication?.selectedTrackId).toBeNull()
   })
 
   test('POST /api/events/:eventId/applications/me/actions/withdraw transitions the caller application and writes an audit record', async () => {

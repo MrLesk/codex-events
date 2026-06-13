@@ -46,11 +46,11 @@ import {
   LazyAccountEventsAccountEventParticipantWorkspacePanel as LazyAccountEventParticipantWorkspacePanel,
   LazyAccountEventsAccountEventPublishedRosterPanel as LazyAccountEventPublishedRosterPanel,
   LazyAccountEventsAccountEventRoleRosterPanel as LazyAccountEventRoleRosterPanel,
+  LazyAccountEventsAccountEventTracksPanel as LazyAccountEventTracksPanel,
   LazyPublicEventsEventAgendaPanel as LazyEventAgendaPanel,
   LazyPublicEventsEventPrizeList as LazyEventPrizeList,
   LazyPublicEventsEventPublishedProjectsShowcase as LazyEventPublishedProjectsShowcase,
   LazyPublicEventsEventTimeline as LazyEventTimeline,
-  LazyPublicEventsEventTracksPanel as LazyEventTracksPanel,
   LazyPublicEventsEventWinnersShowcase as LazyEventWinnersShowcase
 } from '#components'
 import AccountEventParticipationRankNotice from '~/components/account/events/AccountEventParticipationRankNotice.vue'
@@ -152,8 +152,11 @@ type AccountWorkspaceEvent = Omit<PublicEvent, 'tracks'> & {
   tracks?: Array<{
     id: string
     name: string
-    description: string
+    shortDescription: string
+    fullDescription: string
+    staffInstructions?: string
     resources: Array<{
+      id?: string
       title: string
       url: string
       description: string | null
@@ -308,6 +311,27 @@ const workspaceBackLink = computed(() => getAccountEventWorkspaceBackLink({
 const applicationStatus = computed(() =>
   participationRecord.value?.application?.status ?? accessRecord.value?.applicationStatus ?? null
 )
+const currentEventRole = computed(() => {
+  if (actor.value.kind !== 'platform_user') {
+    return null
+  }
+
+  return actor.value.eventRoles.find(role => role.eventId === event.value.id) ?? null
+})
+const currentStaffTrackId = computed(() =>
+  currentEventRole.value?.isStaff ? currentEventRole.value.staffTrackId : null
+)
+const accountTrackViewerMode = computed<'participant' | 'all-staff' | 'track-staff'>(() => {
+  if (canAdmin.value) {
+    return 'all-staff'
+  }
+
+  if (!currentEventRole.value?.isStaff) {
+    return 'participant'
+  }
+
+  return currentStaffTrackId.value ? 'track-staff' : 'all-staff'
+})
 const accountLumaEmail = computed(() =>
   actor.value.kind === 'platform_user'
     ? actor.value.platformUser.lumaEmail ?? ''
@@ -329,6 +353,16 @@ const canManageParticipantCertificateGeneration = computed(() => {
     && application.isCheckedIn
 })
 const isCertificateGenerationDisabled = computed(() => Boolean(participationRecord.value?.application?.certificateHiddenAt))
+const selectedTrackId = computed(() => participationRecord.value?.application?.selectedTrackId ?? null)
+const accountEventTracks = computed(() => event.value.tracks ?? [])
+const canSelectParticipantTrack = computed(() =>
+  accountTrackViewerMode.value === 'participant'
+  && (applicationStatus.value === 'submitted' || applicationStatus.value === 'approved')
+  && accountEventTracks.value.length > 0
+)
+const showTrackSelectionOverviewPrompt = computed(() =>
+  canSelectParticipantTrack.value && !selectedTrackId.value
+)
 const participantCertificatePath = computed(() => {
   if (
     actor.value.kind !== 'platform_user'
@@ -341,6 +375,7 @@ const participantCertificatePath = computed(() => {
   return buildEventCertificatePath(slug.value, actor.value.platformUser.id)
 })
 const isCertificateVisibilityPending = ref(false)
+const pendingSelectedTrackId = ref<string | null>(null)
 
 async function setCertificateGenerationDisabled(disabled: boolean) {
   const application = participationRecord.value?.application
@@ -798,6 +833,7 @@ function updateParticipationRecordApplication(nextApplication: ParticipantApplic
             checkedInAt: nextApplication.checkedInAt,
             isCheckedIn: isApplicationEffectivelyCheckedIn(nextApplication),
             certificateHiddenAt: nextApplication.certificateHiddenAt,
+            selectedTrackId: nextApplication.selectedTrackId,
             updatedAt: nextApplication.updatedAt
           }
         }
@@ -861,6 +897,41 @@ async function verifyLumaEmail() {
     lumaEmailVerificationErrorMessage.value = normalizeParticipantApiError(error).message
   } finally {
     isLumaEmailVerificationPending.value = false
+  }
+}
+
+async function selectParticipantTrack(trackId: string) {
+  if (!canSelectParticipantTrack.value || pendingSelectedTrackId.value || selectedTrackId.value === trackId) {
+    return
+  }
+
+  pendingSelectedTrackId.value = trackId
+
+  try {
+    const response = await $fetch<ParticipantApiDataResponse<ParticipantApplicationRecord>>(
+      `/api/events/${workspaceEventId.value}/applications/me/actions/select-track`,
+      {
+        method: 'POST',
+        body: {
+          trackId
+        }
+      }
+    )
+
+    updateParticipationRecordApplication(response.data)
+    toast.add({
+      title: 'Track selected',
+      description: 'Your event track was updated.',
+      color: 'success'
+    })
+  } catch (error) {
+    toast.add({
+      title: 'Track could not be selected',
+      description: normalizeParticipantApiError(error).message,
+      color: 'error'
+    })
+  } finally {
+    pendingSelectedTrackId.value = null
   }
 }
 
@@ -1186,6 +1257,33 @@ useSeoMeta({
 
         <EventOverviewPanel :description="event.description" />
 
+        <section
+          v-if="showTrackSelectionOverviewPrompt"
+          class="rounded-xl !border !border-sky-500/20 !bg-sky-500/[0.08] px-5 py-5 !shadow-[0_12px_32px_-28px_rgba(2,132,199,0.55)] !backdrop-blur-xl dark:!border-sky-300/25 dark:!bg-sky-300/[0.08]"
+          data-testid="account-event-track-selection-prompt"
+        >
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div class="space-y-1">
+              <h2 class="text-lg font-semibold text-highlighted dark:text-white">
+                Choose your track
+              </h2>
+              <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                Open Details and choose the track you want to participate in before reviewing track resources.
+              </p>
+            </div>
+
+            <AppButton
+              :to="detailsTabHref"
+              color="neutral"
+              variant="solid"
+              trailing-icon="i-lucide-arrow-up-right"
+              class="w-fit rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+            >
+              Open Details
+            </AppButton>
+          </div>
+        </section>
+
         <template v-if="applicationStatus === 'approved'">
           <section
             v-if="showApprovedOverviewActions"
@@ -1377,6 +1475,7 @@ useSeoMeta({
         <LazyAccountEventParticipantWorkspacePanel
           :event="event"
           :application-status="applicationStatus"
+          :selected-track-id="selectedTrackId"
           :initial-submission="participationRecord?.latestSubmission ?? null"
           :participation-outcome="participationRecord?.outcome ?? null"
           :participation-rank="participationRank"
@@ -1428,9 +1527,15 @@ useSeoMeta({
           :show-address="canViewRestrictedEventDetails"
         />
 
-        <LazyEventTracksPanel
+        <LazyAccountEventTracksPanel
           :event-type="event.eventType"
-          :tracks="event.tracks ?? []"
+          :tracks="accountEventTracks"
+          :selected-track-id="selectedTrackId"
+          :can-select-track="canSelectParticipantTrack"
+          :pending-track-id="pendingSelectedTrackId"
+          :viewer-mode="accountTrackViewerMode"
+          :staff-track-id="currentStaffTrackId"
+          @select-track="selectParticipantTrack"
         />
 
         <LazyEventAgendaPanel :agenda-items="event.agendaItems" />
@@ -1490,6 +1595,7 @@ useSeoMeta({
           title="Staff"
           description="Meet the people supporting this event behind the scenes."
           :tracks="event.tracks ?? []"
+          :selected-track-id="selectedTrackId"
           :management-event-id="canAdmin ? workspaceEventId : null"
         />
 

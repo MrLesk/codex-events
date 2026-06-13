@@ -4,6 +4,7 @@ import {
   formatTeamSubmissionStatus,
   getCreateSubmissionAvailability,
   hasEventEnteredSubmissionPhase,
+  resolveSelectedTrackPrefillId,
   getTeamSubmissionStateSummary,
   getTeamSubmissionStatusColor,
   getSubmitSubmissionAvailability,
@@ -18,6 +19,7 @@ function createSubmission(status: TeamSubmissionRecord['status']): TeamSubmissio
   return {
     id: 'submission_fixture',
     teamId: 'team_fixture',
+    trackId: null,
     status,
     projectName: 'Launch Console',
     summary: 'Fixture summary',
@@ -82,6 +84,27 @@ describe('team submission helpers', () => {
       isAllowed: false,
       reason: 'Only team admins can manage the project submission.'
     })
+  })
+
+  test('prefills new submission drafts from a valid participant-selected track only', () => {
+    const tracks = [
+      {
+        id: 'track_agents',
+        name: 'Agents',
+        shortDescription: 'Build agent projects.',
+        displayOrder: 1
+      },
+      {
+        id: 'track_tools',
+        name: 'Tools',
+        shortDescription: 'Build developer tools.',
+        displayOrder: 2
+      }
+    ]
+
+    expect(resolveSelectedTrackPrefillId(tracks, ' track_agents ')).toBe('track_agents')
+    expect(resolveSelectedTrackPrefillId(tracks, 'track_missing')).toBeNull()
+    expect(resolveSelectedTrackPrefillId(tracks, null)).toBeNull()
   })
 
   test('keeps existing submissions mutable during judging preparation until locking begins', () => {

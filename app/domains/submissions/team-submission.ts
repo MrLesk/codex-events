@@ -44,8 +44,21 @@ export interface TeamSubmissionRequirementConfig {
 export interface SubmissionTrackOption {
   id: string
   name: string
-  description: string
+  shortDescription: string
   displayOrder: number
+}
+
+export function resolveSelectedTrackPrefillId(
+  tracks: SubmissionTrackOption[] | null | undefined,
+  selectedTrackId: string | null | undefined
+) {
+  const normalizedTrackId = selectedTrackId?.trim() ?? ''
+
+  if (!normalizedTrackId) {
+    return null
+  }
+
+  return tracks?.some(track => track.id === normalizedTrackId) ? normalizedTrackId : null
 }
 
 export function normalizeTeamSubmissionApiError(error: unknown) {

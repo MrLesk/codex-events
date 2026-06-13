@@ -32,7 +32,7 @@ export interface BlindSubmissionSummary {
   track: {
     id: string
     name: string
-    description: string
+    shortDescription: string
   } | null
   status: 'draft' | 'submitted' | 'withdrawn' | 'locked' | 'disqualified'
   submittedAt: string | null
@@ -50,7 +50,7 @@ export interface PitchSubmissionSummary {
   track: {
     id: string
     name: string
-    description: string
+    shortDescription: string
   } | null
   status: 'draft' | 'submitted' | 'withdrawn' | 'locked' | 'disqualified'
   submittedAt: string | null
@@ -526,7 +526,7 @@ export function getJudgeSubmissionPanelDisplay(
         ? [{
             label: 'Track',
             title: assignment.blindSubmission.track.name,
-            markdownDescription: assignment.blindSubmission.track.description
+            markdownDescription: assignment.blindSubmission.track.shortDescription
           }]
         : []
     }
@@ -542,7 +542,7 @@ export function getJudgeSubmissionPanelDisplay(
     detailCards.push({
       label: 'Track',
       title: assignment.pitchSubmission.track.name,
-      markdownDescription: assignment.pitchSubmission.track.description
+      markdownDescription: assignment.pitchSubmission.track.shortDescription
     })
   }
 

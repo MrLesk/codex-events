@@ -19,6 +19,7 @@ export interface EventAuthorization {
   canReviewThroughAssignment: boolean
   isInJudgePool: boolean
   isStaff: boolean
+  staffTrackId: string | null
   canViewParticipantsAndTeams: boolean
 }
 
@@ -77,6 +78,7 @@ export async function resolveEventAuthorization(
           canReviewThroughAssignment: false,
           isInJudgePool: false,
           isStaff: false,
+          staffTrackId: null,
           canViewParticipantsAndTeams: true
         } satisfies EventAuthorization
       }
@@ -93,6 +95,7 @@ export async function resolveEventAuthorization(
       const isEventAdmin = explicitRole === 'event_admin'
       const isInJudgePool = assignment?.isInJudgePool ?? false
       const isStaff = assignment?.isStaff ?? false
+      const staffTrackId = assignment?.staffTrackId ?? null
 
       return {
         eventId,
@@ -102,6 +105,7 @@ export async function resolveEventAuthorization(
         canReviewThroughAssignment: explicitRole === 'judge' || (isEventAdmin && isInJudgePool),
         isInJudgePool,
         isStaff,
+        staffTrackId,
         canViewParticipantsAndTeams: isEventAdmin || isStaff
       } satisfies EventAuthorization
     })())

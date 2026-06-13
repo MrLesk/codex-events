@@ -22,17 +22,9 @@ export interface PublicEventAgendaItem {
   displayOrder: number
 }
 
-export interface PublicEventTrackResource {
-  title: string
-  url: string
-  description: string | null
-  displayOrder: number
-}
-
 export interface PublicEventTrack {
   name: string
-  description: string
-  resources: PublicEventTrackResource[]
+  shortDescription: string
   displayOrder: number
 }
 

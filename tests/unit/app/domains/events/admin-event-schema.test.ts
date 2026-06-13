@@ -105,7 +105,9 @@ describe('event config form schema', () => {
         {
           id: 'track-1',
           name: 'Best AI Agent',
-          description: '  **Projects** focused on autonomous workflows.\n\n- Agents\n- Tools  ',
+          shortDescription: '  **Projects** focused on autonomous workflows.  ',
+          fullDescription: '  ## Guidelines\n\n- Agents\n- Tools  ',
+          staffInstructions: '  Help this track choose starter resources.  ',
           resources: [{
             id: 'resource-1',
             title: 'Starter guide',
@@ -124,7 +126,9 @@ describe('event config form schema', () => {
       return
     }
 
-    expect(result.data.tracks[0]?.description).toBe('**Projects** focused on autonomous workflows.\n\n- Agents\n- Tools')
+    expect(result.data.tracks[0]?.shortDescription).toBe('**Projects** focused on autonomous workflows.')
+    expect(result.data.tracks[0]?.fullDescription).toBe('## Guidelines\n\n- Agents\n- Tools')
+    expect(result.data.tracks[0]?.staffInstructions).toBe('Help this track choose starter resources.')
   })
 
   test('ignores hidden hackathon fields for non-hackathon events', () => {
@@ -135,7 +139,9 @@ describe('event config form schema', () => {
         {
           id: 'track-1',
           name: '',
-          description: '',
+          shortDescription: '',
+          fullDescription: '',
+          staffInstructions: '',
           resources: [],
           displayOrder: 1
         }
@@ -290,7 +296,9 @@ describe('event config form schema', () => {
         {
           id: 'track-1',
           name: 'Track',
-          description: 'Track description',
+          shortDescription: 'Track description',
+          fullDescription: '',
+          staffInstructions: '',
           resources: [],
           displayOrder: 1
         }
@@ -334,7 +342,9 @@ describe('event config form schema', () => {
         {
           id: 'track-1',
           name: 'Agents',
-          description: 'Build with agents.',
+          shortDescription: 'Build with agents.',
+          fullDescription: 'Use the agent track guidelines.',
+          staffInstructions: 'Route agent questions to the mentor desk.',
           resources: [{
             id: 'resource-1',
             title: 'Starter guide',
@@ -351,7 +361,9 @@ describe('event config form schema', () => {
       tracks: [{
         id: 'track-1',
         name: 'Agents',
-        description: 'Build with agents.',
+        shortDescription: 'Build with agents.',
+        fullDescription: 'Use the agent track guidelines.',
+        staffInstructions: 'Route agent questions to the mentor desk.',
         resources: [{
           id: 'resource-1',
           title: 'Starter guide',
@@ -373,7 +385,9 @@ describe('event config form schema', () => {
         {
           id: 'track-1',
           name: '',
-          description: 'Projects focused on autonomous workflows.',
+          shortDescription: 'Projects focused on autonomous workflows.',
+          fullDescription: '',
+          staffInstructions: '',
           resources: [],
           displayOrder: 1
         }

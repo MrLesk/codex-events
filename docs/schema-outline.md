@@ -233,7 +233,9 @@ It describes the intended persistent model at the level of entities, key fields,
 - `id`
 - `event_id`
 - `name`
-- `description`
+- `short_description`
+- `full_description`
+- `staff_instructions`
 - `resources_json`
 - `display_order`
 - `created_at`
@@ -246,13 +248,15 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - Each track belongs to one event.
 - Tracks are ordered for admin editing and public display.
-- A track stores a participant-facing name and markdown description.
+- A track stores a participant-facing name, short markdown description, full participant guideline markdown, and staff-only instruction markdown.
 - `resources_json` stores a validated ordered JSON array of track resources (`id`, `title`, `url`, optional `description`, `displayOrder`).
 - Hackathon and Build events can define tracks. Meetup events do not use tracks.
-- Hackathon tracks are submission choices. Build tracks are participant-visible resource groups.
+- Public event payloads expose only track name, short description, and display order.
+- Account event payloads expose full descriptions and resources. Staff instructions are included only for platform admins, event admins, whole-event staff, and staff assigned to that track.
+- Hackathon tracks are submission choices. Build tracks are participant-visible resource groups after selection.
 - Tracks do not control judge assignment in this version.
 - Track deletion is blocked once submissions reference it.
-- Track deletion clears staff display scopes that reference the removed track.
+- Track deletion clears staff display scopes and participant selected-track references that reference the removed track.
 
 ## EventPhoto
 
@@ -485,6 +489,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `reviewed_by_user_id`
 - `pre_approval_status`
 - `luma_sync_status`
+- `selected_track_id`
 - `application_terms_document_id`
 - `application_terms_accepted_at`
 - `registration_details_json`
@@ -511,6 +516,7 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Constraints
 
 - `unique (event_id, user_id)`
+- `selected_track_id` references `EventTrack(id)` with `on delete set null`
 
 ### Notes
 
@@ -526,6 +532,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `pre_approval_status` stores a staged admin review decision that is applied later to transition the canonical `status`.
 - Applications created while `auto_approve_applications` is true are stored directly as `approved` with `reviewed_at` equal to `submitted_at` and no reviewing user.
 - `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for events that show and require a Luma email and have configured Luma sync.
+- `selected_track_id` stores the participant's selected Hackathon or Build track for that event when the application is `submitted` or `approved`.
 - `checked_in_at` is sticky in this version and is not cleared by later Luma uncheck updates.
 - `check_in_override_status` stores an admin attendance decision of `joined` or `not_joined` for an approved application, with `check_in_override_at` and `check_in_override_by_user_id` recording when and by whom it was set. The override wins over `checked_in_at` in both directions and is cleared back to the Luma default by repeating the active decision.
 - `certificate_hidden_at` records when the participant disabled certificate generation. Null means the certificate is generated and publicly reachable when the participant is otherwise certificate-eligible.

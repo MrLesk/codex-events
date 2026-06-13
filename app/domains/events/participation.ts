@@ -31,6 +31,7 @@ export interface EventParticipationApplicationSummary {
   checkedInAt: string | null
   isCheckedIn: boolean
   certificateHiddenAt: string | null
+  selectedTrackId: string | null
   updatedAt: string
 }
 

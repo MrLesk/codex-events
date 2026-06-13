@@ -5,6 +5,7 @@ import {
   getVisibleEventOrThrow,
   getCurrentEventTerms,
   listEventTracks,
+  resolveEventTrackStaffInstructionIds,
   resolveVisibleEventRestrictedFields,
   routeIdParamsSchema,
   serializeAdminEvent,
@@ -14,11 +15,11 @@ import { parseValidatedParams } from '#server/http/validation'
 import { getDatabase } from '#server/database/client'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 
-async function isCurrentActorEventAdmin(h3Event: Parameters<typeof resolveEventAuthorization>[0], eventId: string) {
+async function resolveCurrentActorEventAuthorization(h3Event: Parameters<typeof resolveEventAuthorization>[0], eventId: string) {
   try {
-    return (await resolveEventAuthorization(h3Event, eventId)).isEventAdmin
+    return await resolveEventAuthorization(h3Event, eventId)
   } catch {
-    return false
+    return null
   }
 }
 
@@ -40,21 +41,26 @@ export default defineApiHandler(async (h3Event) => {
     currentTerms,
     tracks,
     restrictedFields,
-    isEventAdmin,
+    authorization,
     imageOptions
   ] = await Promise.all([
     getCurrentEventTerms(database, event),
     listEventTracks(database, eventId),
     resolveVisibleEventRestrictedFields(h3Event, event),
-    isCurrentActorEventAdmin(h3Event, eventId),
+    resolveCurrentActorEventAuthorization(h3Event, eventId),
     getEventDisplayImageOptions(database)
   ])
-  const serializedEvent = isEventAdmin
+  const serializedEvent = authorization?.isEventAdmin
     ? serializeAdminEvent(event, undefined, tracks, {
         appBaseUrl: useRuntimeConfig(h3Event).auth0.appBaseUrl,
         ...imageOptions
       })
-    : serializeEvent(event, undefined, tracks, imageOptions)
+    : serializeEvent(event, undefined, tracks, {
+        ...imageOptions,
+        trackStaffInstructionIds: authorization
+          ? resolveEventTrackStaffInstructionIds(authorization)
+          : undefined
+      })
 
   return apiData({
     ...serializedEvent,

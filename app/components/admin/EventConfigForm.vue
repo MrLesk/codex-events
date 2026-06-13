@@ -300,7 +300,9 @@ function addTrack() {
   form.value.tracks.push({
     id: createTrackId(),
     name: '',
-    description: '',
+    shortDescription: '',
+    fullDescription: '',
+    staffInstructions: '',
     resources: [],
     displayOrder: nextTrackDisplayOrder()
   })
@@ -943,12 +945,12 @@ const submitConfigForm = handleSubmit(() => {
 
                     <LazyAdminMarkdownEditorField
                       v-if="trackDescriptionFieldType === 'markdown'"
-                      v-model="track.description"
-                      :name="`event-track-${track.id}-description`"
-                      :editor-id="`event-track-${track.id}-description-editor`"
-                      label="Description"
-                      placeholder="Describe what belongs in this track."
-                      height="260px"
+                      v-model="track.shortDescription"
+                      :name="`event-track-${track.id}-short-description`"
+                      :editor-id="`event-track-${track.id}-short-description-editor`"
+                      label="Short description"
+                      placeholder="Summarize who this track is for."
+                      height="180px"
                       required
                     />
 
@@ -956,12 +958,56 @@ const submitConfigForm = handleSubmit(() => {
                       v-else
                       class="grid gap-2"
                     >
-                      <span class="text-xs font-medium text-toned">Description</span>
+                      <span class="text-xs font-medium text-toned">Short description</span>
                       <AppTextarea
-                        v-model="track.description"
+                        v-model="track.shortDescription"
                         rows="1"
-                        placeholder="Describe what belongs in this track."
+                        placeholder="Summarize who this track is for."
                         required
+                      />
+                    </label>
+
+                    <LazyAdminMarkdownEditorField
+                      v-if="trackDescriptionFieldType === 'markdown'"
+                      v-model="track.fullDescription"
+                      :name="`event-track-${track.id}-full-description`"
+                      :editor-id="`event-track-${track.id}-full-description-editor`"
+                      label="Full description"
+                      placeholder="Add track guidelines, requirements, and judging notes participants should read after choosing this track."
+                      height="360px"
+                    />
+
+                    <label
+                      v-else
+                      class="grid gap-2"
+                    >
+                      <span class="text-xs font-medium text-toned">Full description</span>
+                      <AppTextarea
+                        v-model="track.fullDescription"
+                        rows="6"
+                        placeholder="Add track guidelines, requirements, and judging notes participants should read after choosing this track."
+                      />
+                    </label>
+
+                    <LazyAdminMarkdownEditorField
+                      v-if="trackDescriptionFieldType === 'markdown'"
+                      v-model="track.staffInstructions"
+                      :name="`event-track-${track.id}-staff-instructions`"
+                      :editor-id="`event-track-${track.id}-staff-instructions-editor`"
+                      label="Staff instructions"
+                      placeholder="Add internal notes for staff and admins supporting this track."
+                      height="260px"
+                    />
+
+                    <label
+                      v-else
+                      class="grid gap-2"
+                    >
+                      <span class="text-xs font-medium text-toned">Staff instructions</span>
+                      <AppTextarea
+                        v-model="track.staffInstructions"
+                        rows="4"
+                        placeholder="Add internal notes for staff and admins supporting this track."
                       />
                     </label>
 

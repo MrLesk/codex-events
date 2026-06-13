@@ -52,6 +52,7 @@ export interface EventRoleSummary {
   role: EventScopedRole
   isInJudgePool: boolean
   isStaff: boolean
+  staffTrackId: string | null
   createdAt: string
 }
 

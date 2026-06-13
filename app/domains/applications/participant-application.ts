@@ -94,6 +94,7 @@ export interface ParticipantApplicationRecord {
   checkedInAt: string | null
   checkInOverrideStatus: 'joined' | 'not_joined' | null
   certificateHiddenAt: string | null
+  selectedTrackId: string | null
   reviewedAt: string | null
   reviewedByUserId: string | null
   applicationTermsDocumentId: string | null

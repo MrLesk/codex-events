@@ -1,4 +1,5 @@
 import { getDatabase } from '#server/database/client'
+import { resolveEventAuthorization } from '#server/auth/authorization'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
 import { hasEventPhotos } from '#server/domains/events/photos'
@@ -7,6 +8,7 @@ import {
   getCurrentEventTerms,
   getVisibleEventBySlugOrThrow,
   listEventTracks,
+  resolveEventTrackStaffInstructionIds,
   resolveVisibleEventRestrictedFields,
   routeSlugParamsSchema,
   serializeEvent
@@ -23,17 +25,24 @@ export default defineApiHandler(async (h3Event) => {
     tracks,
     canViewPhotos,
     restrictedFields,
-    imageOptions
+    imageOptions,
+    authorization
   ] = await Promise.all([
     getCurrentEventTerms(database, event),
     listEventTracks(database, event.id),
     canViewRestrictedEventDetails(h3Event, event.id),
     resolveVisibleEventRestrictedFields(h3Event, event),
-    getEventDisplayImageOptions(database)
+    getEventDisplayImageOptions(database),
+    resolveEventAuthorization(h3Event, event.id).catch(() => null)
   ])
 
   return apiData({
-    ...serializeEvent(event, currentTerms, tracks, imageOptions),
+    ...serializeEvent(event, currentTerms, tracks, {
+      ...imageOptions,
+      trackStaffInstructionIds: authorization
+        ? resolveEventTrackStaffInstructionIds(authorization)
+        : undefined
+    }),
     ...restrictedFields,
     ...(canViewPhotos
       ? {

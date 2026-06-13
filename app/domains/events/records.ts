@@ -35,7 +35,9 @@ export interface EventTrack {
   id: string
   eventId: string
   name: string
-  description: string
+  shortDescription: string
+  fullDescription: string
+  staffInstructions?: string
   resources: EventTrackResource[]
   displayOrder: number
   createdAt: string

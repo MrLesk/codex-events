@@ -1472,7 +1472,9 @@ describe('TASK-3.5 event CRUD routes', () => {
       id: 'track_ai',
       eventId: 'event_1',
       name: 'AI Track',
-      description: 'AI projects',
+      shortDescription: 'AI projects',
+      fullDescription: 'Internal AI track guidance.',
+      staffInstructions: 'Help AI track participants find review support.',
       displayOrder: 1,
       createdAt: '2026-03-10T08:00:00.000Z'
     })
@@ -1564,8 +1566,10 @@ describe('TASK-3.5 event CRUD routes', () => {
           id: 'staff_user',
           fullName: 'Staff User',
           staffTrack: {
+            id: 'track_ai',
             name: 'AI Track',
-            description: 'AI projects'
+            shortDescription: 'AI projects',
+            displayOrder: 1
           },
           linkedinProfileUrl: 'https://linkedin.com/in/staff-user'
         }
@@ -1831,6 +1835,23 @@ describe('TASK-3.5 event CRUD routes', () => {
         currentWinnerTermsDocumentId: 'terms_public_win_1'
       })
       .where(eq(events.id, 'event_target'))
+    await harness.database.insert(eventTracks).values({
+      id: 'track_public_agents',
+      eventId: 'event_target',
+      name: 'Agents',
+      shortDescription: 'Build with agents.',
+      fullDescription: 'Internal participant guidelines.',
+      staffInstructions: 'Internal staff notes.',
+      resourcesJson: JSON.stringify([{
+        id: 'resource_public_agents',
+        title: 'Starter guide',
+        url: 'https://example.com/agents',
+        description: 'Private until selected.',
+        displayOrder: 1
+      }]),
+      displayOrder: 1,
+      createdAt: '2026-03-01T00:00:00.000Z'
+    })
 
     const response = await harness.request('/api/public/events/public-event')
 
@@ -1866,6 +1887,205 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect(payload.data).not.toHaveProperty('discordServerUrl')
     expect(payload.data.currentTerms.applicationTerms).not.toHaveProperty('id')
     expect(payload.data.currentTerms.winnerTerms).not.toHaveProperty('id')
+    expect(payload.data.tracks).toEqual([
+      {
+        name: 'Agents',
+        shortDescription: 'Build with agents.',
+        displayOrder: 1
+      }
+    ])
+    expect(payload.data.tracks[0]).not.toHaveProperty('id')
+    expect(payload.data.tracks[0]).not.toHaveProperty('fullDescription')
+    expect(payload.data.tracks[0]).not.toHaveProperty('staffInstructions')
+    expect(payload.data.tracks[0]).not.toHaveProperty('resources')
+  })
+
+  test('GET /api/events/:eventId gates track staff instructions by event role', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/events/:eventId', handler: eventDetailGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|participant',
+        email: 'participant@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'platform_admin',
+        auth0Subject: 'auth0|platform_admin',
+        email: 'platform-admin@example.com',
+        displayName: 'Platform Admin',
+        isPlatformAdmin: true
+      },
+      {
+        id: 'event_admin',
+        auth0Subject: 'auth0|event_admin',
+        email: 'event-admin@example.com',
+        displayName: 'Event Admin'
+      },
+      {
+        id: 'general_staff',
+        auth0Subject: 'auth0|general_staff',
+        email: 'general-staff@example.com',
+        displayName: 'General Staff'
+      },
+      {
+        id: 'track_staff',
+        auth0Subject: 'auth0|track_staff',
+        email: 'track-staff@example.com',
+        displayName: 'Track Staff'
+      },
+      {
+        id: 'participant',
+        auth0Subject: 'auth0|participant',
+        email: 'participant@example.com',
+        displayName: 'Participant'
+      }
+    ])
+    await harness.database.insert(events).values({
+      id: 'event_track_visibility',
+      eventType: 'build',
+      name: 'Track Visibility Event',
+      slug: 'track-visibility-event',
+      description: 'Track visibility fixture',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 1,
+      currentApplicationTermsDocumentId: null,
+      currentWinnerTermsDocumentId: null,
+      createdByUserId: 'platform_admin'
+    })
+    await harness.database.insert(eventTracks).values([
+      {
+        id: 'track_agents',
+        eventId: 'event_track_visibility',
+        name: 'Agents',
+        shortDescription: 'Build agent projects.',
+        fullDescription: 'Follow agent track guidelines.',
+        staffInstructions: 'Agent staff instructions.',
+        displayOrder: 1,
+        createdAt: '2026-03-22T12:00:00.000Z'
+      },
+      {
+        id: 'track_tools',
+        eventId: 'event_track_visibility',
+        name: 'Tools',
+        shortDescription: 'Build developer tools.',
+        fullDescription: 'Follow tools track guidelines.',
+        staffInstructions: 'Tools staff instructions.',
+        displayOrder: 2,
+        createdAt: '2026-03-22T12:01:00.000Z'
+      }
+    ])
+    await harness.database.insert(eventRoleAssignments).values([
+      {
+        id: 'role_event_admin_visibility',
+        eventId: 'event_track_visibility',
+        userId: 'event_admin',
+        role: 'event_admin',
+        isInJudgePool: false,
+        isStaff: false,
+        createdAt: '2026-03-22T12:02:00.000Z'
+      },
+      {
+        id: 'role_general_staff_visibility',
+        eventId: 'event_track_visibility',
+        userId: 'general_staff',
+        role: 'staff',
+        isInJudgePool: false,
+        isStaff: true,
+        staffTrackId: null,
+        createdAt: '2026-03-22T12:03:00.000Z'
+      },
+      {
+        id: 'role_track_staff_visibility',
+        eventId: 'event_track_visibility',
+        userId: 'track_staff',
+        role: 'staff',
+        isInJudgePool: false,
+        isStaff: true,
+        staffTrackId: 'track_agents',
+        createdAt: '2026-03-22T12:04:00.000Z'
+      }
+    ])
+    await harness.database.insert(userApplications).values({
+      id: 'application_visibility_participant',
+      eventId: 'event_track_visibility',
+      userId: 'participant',
+      status: 'approved',
+      submittedAt: '2026-03-22T12:05:00.000Z',
+      createdAt: '2026-03-22T12:05:00.000Z',
+      updatedAt: '2026-03-22T12:05:00.000Z'
+    })
+
+    async function requestTracksFor(sessionUser: { sub: string, email: string }) {
+      stubAuth0Session(sessionUser)
+      const response = await harness.request('/api/events/event_track_visibility')
+      expect(response.status).toBe(200)
+      const payload = await response.json()
+      return payload.data.tracks as Array<{ id: string, staffInstructions?: string }>
+    }
+
+    const platformAdminTracks = await requestTracksFor({
+      sub: 'auth0|platform_admin',
+      email: 'platform-admin@example.com'
+    })
+    expect(platformAdminTracks.map(track => track.staffInstructions)).toEqual([
+      'Agent staff instructions.',
+      'Tools staff instructions.'
+    ])
+
+    const eventAdminTracks = await requestTracksFor({
+      sub: 'auth0|event_admin',
+      email: 'event-admin@example.com'
+    })
+    expect(eventAdminTracks.map(track => track.staffInstructions)).toEqual([
+      'Agent staff instructions.',
+      'Tools staff instructions.'
+    ])
+
+    const generalStaffTracks = await requestTracksFor({
+      sub: 'auth0|general_staff',
+      email: 'general-staff@example.com'
+    })
+    expect(generalStaffTracks.map(track => track.staffInstructions)).toEqual([
+      'Agent staff instructions.',
+      'Tools staff instructions.'
+    ])
+
+    const trackStaffTracks = await requestTracksFor({
+      sub: 'auth0|track_staff',
+      email: 'track-staff@example.com'
+    })
+    expect(trackStaffTracks).toEqual([
+      expect.objectContaining({
+        id: 'track_agents',
+        staffInstructions: 'Agent staff instructions.'
+      }),
+      expect.not.objectContaining({
+        staffInstructions: expect.any(String)
+      })
+    ])
+
+    const participantTracks = await requestTracksFor({
+      sub: 'auth0|participant',
+      email: 'participant@example.com'
+    })
+    expect(participantTracks).toEqual([
+      expect.not.objectContaining({
+        staffInstructions: expect.any(String)
+      }),
+      expect.not.objectContaining({
+        staffInstructions: expect.any(String)
+      })
+    ])
   })
 
   test('event payloads expose platform default display backgrounds without replacing event backgrounds', async () => {
@@ -3611,7 +3831,9 @@ describe('TASK-3.5 event CRUD routes', () => {
         tracks: [{
           id: 'track_build_agents',
           name: 'Agents',
-          description: 'Build with agents.',
+          shortDescription: 'Build with agents.',
+          fullDescription: 'Use the agent track guidelines.',
+          staffInstructions: 'Route agent questions to the mentor desk.',
           resources: [{
             id: 'resource_agent_guide',
             title: 'Starter guide',
@@ -4077,7 +4299,9 @@ describe('TASK-3.5 event CRUD routes', () => {
       id: 'meetup_track_should_remain',
       eventId: 'event_meetup_patch',
       name: 'Hidden Track',
-      description: 'Legacy hidden track',
+      shortDescription: 'Legacy hidden track',
+      fullDescription: '',
+      staffInstructions: '',
       displayOrder: 1,
       createdAt: '2026-03-22T12:00:00.000Z'
     })

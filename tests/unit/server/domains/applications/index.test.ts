@@ -24,6 +24,7 @@ describe('application utilities', () => {
       submittedAt: '2026-03-22T12:10:00.000Z',
       withdrawnAt: null,
       checkedInAt: '2026-03-28T09:00:00.000Z',
+      selectedTrackId: 'track_agents',
       reviewedAt: null,
       reviewedByUserId: null,
       applicationTermsDocumentId: 'terms_app_2',
@@ -56,6 +57,7 @@ describe('application utilities', () => {
       }
     })).toMatchObject({
       checkedInAt: '2026-03-28T09:00:00.000Z',
+      selectedTrackId: 'track_agents',
       user: {
         id: 'user_1',
         profileIconUpdatedAt: '2026-03-28T12:34:56.000Z'

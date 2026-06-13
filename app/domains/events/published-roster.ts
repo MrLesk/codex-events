@@ -12,14 +12,9 @@ export interface PublishedEventRosterMember {
   githubProfileUrl: string | null
   profileIconUpdatedAt: string | null
   staffTrack?: {
+    id: string
     name: string
-    description: string
-    resources: Array<{
-      title: string
-      url: string
-      description: string | null
-      displayOrder: number
-    }>
+    shortDescription: string
     displayOrder: number
   } | null
 }

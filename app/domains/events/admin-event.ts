@@ -71,7 +71,9 @@ export interface EventFormAgendaItem {
 export interface EventFormTrack {
   id: string
   name: string
-  description: string
+  shortDescription: string
+  fullDescription: string
+  staffInstructions: string
   resources: EventFormTrackResource[]
   displayOrder: number
 }
@@ -265,7 +267,9 @@ const trackResourcesFormSchema = z.array(trackResourceSchema).superRefine((resou
 const trackSchema = z.object({
   id: z.string().trim().min(1),
   name: z.string().trim().min(1, 'Enter a track name.'),
-  description: z.string().trim().min(1, 'Enter a track description.'),
+  shortDescription: z.string().trim().min(1, 'Enter a short track description.'),
+  fullDescription: z.string().trim().default(''),
+  staffInstructions: z.string().trim().default(''),
   resources: trackResourcesFormSchema.default([]),
   displayOrder: z.number().int().min(0)
 })
@@ -656,7 +660,9 @@ export function createEventFormState(event: EventRecord): EventFormState {
       .map(track => ({
         id: track.id,
         name: track.name,
-        description: track.description,
+        shortDescription: track.shortDescription,
+        fullDescription: track.fullDescription,
+        staffInstructions: track.staffInstructions ?? '',
         resources: [...track.resources]
           .sort((left, right) => left.displayOrder - right.displayOrder || left.title.localeCompare(right.title))
           .map(resource => ({
@@ -794,7 +800,9 @@ export function toEventTracksPayload(items: EventFormTrack[]) {
     .map(track => ({
       id: track.id,
       name: track.name.trim(),
-      description: track.description.trim(),
+      shortDescription: track.shortDescription.trim(),
+      fullDescription: track.fullDescription.trim(),
+      staffInstructions: track.staffInstructions.trim(),
       resources: track.resources
         .map(resource => ({
           id: resource.id,

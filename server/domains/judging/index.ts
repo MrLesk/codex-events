@@ -161,7 +161,7 @@ export function serializeBlindSubmission(
       ? {
           id: track.id,
           name: track.name,
-          description: track.description
+          shortDescription: track.shortDescription
         }
       : null,
     status: submission.status,
@@ -187,7 +187,7 @@ export function serializePitchSubmission(
       ? {
           id: track.id,
           name: track.name,
-          description: track.description
+          shortDescription: track.shortDescription
         }
       : null,
     status: submission.status,

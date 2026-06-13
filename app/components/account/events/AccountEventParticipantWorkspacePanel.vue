@@ -29,6 +29,7 @@ import {
 } from '~/domains/teams/workspace'
 import {
   getCreateSubmissionAvailability,
+  resolveSelectedTrackPrefillId,
   getSubmitSubmissionAvailability,
   getUpdateSubmissionPublicVisibilityAvailability,
   getUpdateSubmissionAvailability,
@@ -46,6 +47,7 @@ const props = defineProps<{
     tracks?: SubmissionTrackOption[]
   }
   applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null
+  selectedTrackId?: string | null
   initialSubmission: TeamSubmissionRecord | null
   participationOutcome: EventParticipationOutcomeSummary | null
   participationRank: EventParticipationRankSummary | null
@@ -164,6 +166,9 @@ const hasActiveTeamSubmission = computed(() => {
   const status = submissionWorkspace.currentSubmission.value?.status
   return status === 'draft' || status === 'submitted'
 })
+const selectedTrackPrefillId = computed(() => {
+  return resolveSelectedTrackPrefillId(props.event.tracks, props.selectedTrackId)
+})
 const leaveAvailability = computed(() => {
   if (!displayedTeam.value) {
     return {
@@ -197,12 +202,15 @@ const showMembershipActions = computed(() =>
   shouldShowParticipantLeaveTeamAction(props.event, displayedTeamMembership.value)
 )
 
-watch(() => submissionWorkspace.currentSubmission.value, (submission) => {
+watch([
+  () => submissionWorkspace.currentSubmission.value,
+  selectedTrackPrefillId
+], ([submission, prefillTrackId]) => {
   submissionForm.projectName = submission?.projectName ?? ''
   submissionForm.summary = submission?.summary ?? ''
   submissionForm.repositoryUrl = submission?.repositoryUrl ?? ''
   submissionForm.demoUrl = submission?.demoUrl ?? ''
-  submissionForm.trackId = submission?.trackId ?? null
+  submissionForm.trackId = submission?.trackId ?? prefillTrackId
 }, {
   immediate: true
 })

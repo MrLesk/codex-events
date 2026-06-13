@@ -6,7 +6,8 @@ import { z } from 'zod'
 import { getRequestActor, requirePlatformActor } from '#server/auth/actor'
 import {
   assertEventAdminAccess,
-  resolveEventAuthorization
+  resolveEventAuthorization,
+  type EventAuthorization
 } from '#server/auth/authorization'
 import { getDatabase, type AppDatabase } from '#server/database/client'
 import {
@@ -188,7 +189,9 @@ const trackResourcesSchema = z.array(trackResourceSchema)
 const trackSchema = z.object({
   id: z.string().trim().min(1),
   name: z.string().trim().min(1),
-  description: z.string().trim().min(1),
+  shortDescription: z.string().trim().min(1),
+  fullDescription: z.string().trim().default(''),
+  staffInstructions: z.string().trim().default(''),
   resources: trackResourcesSchema.default([]),
   displayOrder: z.coerce.number().int().min(0)
 })
@@ -590,6 +593,14 @@ export type EventTrackResourceInput = z.infer<typeof trackResourceSchema>
 export type EventType = typeof eventTypes[number]
 export type EventLumaWebhookStatus = (typeof eventLumaWebhookStatuses)[number]
 
+type EventTrackSerializationOptions = {
+  includeStaffInstructions?: boolean
+}
+
+type EventSerializationOptions = EventDisplayImageOptions & {
+  trackStaffInstructionIds?: 'all' | Set<string>
+}
+
 const publicEventStates = [
   'registration_open',
   'submission_open',
@@ -605,6 +616,20 @@ const publicEventStates = [
 
 export const publishedEventRosterRoles = ['judge', 'staff'] as const
 export type PublishedEventRosterRole = (typeof publishedEventRosterRoles)[number]
+
+export function resolveEventTrackStaffInstructionIds(
+  authorization: Pick<EventAuthorization, 'isPlatformAdmin' | 'isEventAdmin' | 'isStaff' | 'staffTrackId'>
+) {
+  if (authorization.isPlatformAdmin || authorization.isEventAdmin) {
+    return 'all' as const
+  }
+
+  if (!authorization.isStaff) {
+    return undefined
+  }
+
+  return authorization.staffTrackId ? new Set([authorization.staffTrackId]) : 'all'
+}
 
 function buildPublishedEventRosterFullName(user: Pick<UserRecord, 'displayName' | 'firstName' | 'familyName'>) {
   const fullName = `${user.firstName.trim()} ${user.familyName.trim()}`.trim()
@@ -715,28 +740,40 @@ export function serializeEventTrackResources(resources: EventTrackResourceInput[
   return JSON.stringify([...resources].sort(compareEventTrackResources))
 }
 
-export function serializeEventTrack(track: EventTrackRecord) {
+export function serializeEventTrack(
+  track: EventTrackRecord,
+  options: EventTrackSerializationOptions = {}
+) {
   return {
     id: track.id,
     eventId: track.eventId,
     name: track.name,
-    description: track.description,
+    shortDescription: track.shortDescription,
+    fullDescription: track.fullDescription,
     resources: parseEventTrackResources(track.resourcesJson),
     displayOrder: track.displayOrder,
-    createdAt: track.createdAt
+    createdAt: track.createdAt,
+    ...(options.includeStaffInstructions
+      ? {
+          staffInstructions: track.staffInstructions
+        }
+      : {})
   }
 }
 
 export function serializePublicEventTrack(track: EventTrackRecord) {
   return {
     name: track.name,
-    description: track.description,
-    resources: parseEventTrackResources(track.resourcesJson).map(resource => ({
-      title: resource.title,
-      url: resource.url,
-      description: resource.description,
-      displayOrder: resource.displayOrder
-    })),
+    shortDescription: track.shortDescription,
+    displayOrder: track.displayOrder
+  }
+}
+
+export function serializePublishedStaffTrack(track: EventTrackRecord) {
+  return {
+    id: track.id,
+    name: track.name,
+    shortDescription: track.shortDescription,
     displayOrder: track.displayOrder
   }
 }
@@ -759,7 +796,9 @@ export async function createEventTracks(
         id: track.id,
         eventId,
         name: track.name,
-        description: track.description,
+        shortDescription: track.shortDescription,
+        fullDescription: track.fullDescription,
+        staffInstructions: track.staffInstructions,
         resourcesJson: serializeEventTrackResources(track.resources),
         displayOrder: track.displayOrder,
         createdAt
@@ -867,7 +906,9 @@ export async function replaceEventTracks(
         .update(eventTracks)
         .set({
           name: track.name,
-          description: track.description,
+          shortDescription: track.shortDescription,
+          fullDescription: track.fullDescription,
+          staffInstructions: track.staffInstructions,
           resourcesJson: serializeEventTrackResources(track.resources),
           displayOrder: track.displayOrder
         })
@@ -879,7 +920,9 @@ export async function replaceEventTracks(
       id: track.id,
       eventId,
       name: track.name,
-      description: track.description,
+      shortDescription: track.shortDescription,
+      fullDescription: track.fullDescription,
+      staffInstructions: track.staffInstructions,
       resourcesJson: serializeEventTrackResources(track.resources),
       displayOrder: track.displayOrder,
       createdAt: new Date().toISOString()
@@ -1732,7 +1775,7 @@ export function serializeEvent(
     winnerTerms: EventTermsDocumentRecord | null
   },
   tracks?: EventTrackRecord[],
-  options: EventDisplayImageOptions = {}
+  options: EventSerializationOptions = {}
 ) {
   const isCompetitionEvent = event.eventType === 'hackathon'
   const pitchPresentationSubmissionIds = isCompetitionEvent
@@ -1801,7 +1844,12 @@ export function serializeEvent(
     updatedAt: event.updatedAt,
     ...(tracks
       ? {
-          tracks: eventTypeSupportsTracks(event.eventType) ? tracks.map(serializeEventTrack) : []
+          tracks: eventTypeSupportsTracks(event.eventType)
+            ? tracks.map(track => serializeEventTrack(track, {
+                includeStaffInstructions: options.trackStaffInstructionIds === 'all'
+                  || options.trackStaffInstructionIds?.has(track.id)
+              }))
+            : []
         }
       : {}),
     ...(currentTerms
@@ -1829,7 +1877,10 @@ export function serializeAdminEvent(
   const appBaseUrl = options?.appBaseUrl?.trim() ?? ''
 
   return {
-    ...serializeEvent(event, currentTerms, tracks, options),
+    ...serializeEvent(event, currentTerms, tracks, {
+      ...options,
+      trackStaffInstructionIds: 'all'
+    }),
     hiddenAt: event.hiddenAt,
     hiddenByUserId: event.hiddenByUserId,
     hiddenReason: event.hiddenReason,
@@ -1966,7 +2017,7 @@ export function serializePublishedEventRosterMember(
     profileIconUpdatedAt: user.profileIconUpdatedAt,
     ...(staffTrack !== undefined
       ? {
-          staffTrack: staffTrack ? serializePublicEventTrack(staffTrack) : null
+          staffTrack: staffTrack ? serializePublishedStaffTrack(staffTrack) : null
         }
       : {})
   }

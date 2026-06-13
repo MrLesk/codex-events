@@ -37,9 +37,10 @@ const props = defineProps<{
   tracks?: Array<{
     id: string
     name: string
-    description: string
+    shortDescription: string
     displayOrder: number
   }>
+  selectedTrackId?: string | null
   managementEventId?: string | null
 }>()
 
@@ -132,6 +133,7 @@ const sortedTracks = computed(() =>
 const canSetStaffTrackScope = computed(() =>
   props.role === 'staff' && canManageRoster.value && sortedTracks.value.length > 0
 )
+const selectedTrackId = computed(() => props.selectedTrackId?.trim() || null)
 const candidateRows = computed(() =>
   canManageRoster.value
     ? buildRoleRosterRows(
@@ -198,6 +200,12 @@ function getAssignedRosterAssignment(userId: string) {
 
 function getStaffTrackScopeLabel(member: PublishedEventRosterMember) {
   return member.staffTrack?.name ?? 'Whole event'
+}
+
+function isSelectedTrackStaff(member: PublishedEventRosterMember) {
+  return props.role === 'staff'
+    && Boolean(selectedTrackId.value)
+    && member.staffTrack?.id === selectedTrackId.value
 }
 
 function getRoleBadges(row: EventRoleRosterRow) {
@@ -617,7 +625,10 @@ async function removePublishedRosterMember(userId: string) {
         <article
           v-for="member in members"
           :key="member.id"
-          class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex h-full flex-col gap-5 rounded-xl p-5"
+          class="!border !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl flex h-full flex-col gap-5 rounded-xl p-5 transition"
+          :class="isSelectedTrackStaff(member)
+            ? '!border-sky-500/35 !bg-sky-500/[0.08] dark:!border-sky-300/30 dark:!bg-sky-300/[0.08]'
+            : '!border-black/8 !bg-white/78 dark:!border-white/[0.10] dark:!bg-[#151515]/64'"
         >
           <div class="flex items-start justify-between gap-4">
             <div class="min-w-0 flex items-start gap-4">
@@ -639,6 +650,13 @@ async function removePublishedRosterMember(userId: string) {
                     variant="soft"
                   >
                     You
+                  </AppBadge>
+                  <AppBadge
+                    v-if="isSelectedTrackStaff(member)"
+                    color="primary"
+                    variant="soft"
+                  >
+                    Your track
                   </AppBadge>
                 </div>
 

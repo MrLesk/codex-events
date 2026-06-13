@@ -508,7 +508,7 @@ describe('event management utilities', () => {
       tracks: [{
         id: 'track_1',
         name: 'Track',
-        description: 'Track description',
+        shortDescription: 'Track description',
         resources: [],
         displayOrder: 1
       }]
@@ -522,7 +522,7 @@ describe('event management utilities', () => {
       tracks: [{
         id: 'track_1',
         name: 'Track',
-        description: 'Track description',
+        shortDescription: 'Track description',
         resources: [{
           id: 'resource_1',
           title: 'Starter guide',
@@ -640,19 +640,21 @@ describe('event management utilities', () => {
       tracks: [{
         id: 'track_1',
         name: 'Track',
-        description: 'Track description',
+        shortDescription: 'Track description',
         resources: [],
         displayOrder: 1
       }]
     })).toThrowError(ApiError)
   })
 
-  test('serializes track resources in internal and public event responses', () => {
+  test('serializes track guidelines internally and keeps public tracks short-only', () => {
     const tracks = [{
       id: 'track_1',
       eventId: 'event_1',
       name: 'Agents',
-      description: 'Build with agents.',
+      shortDescription: 'Build with agents.',
+      fullDescription: 'Read the full track guidelines.',
+      staffInstructions: 'Help participants find the right starter guide.',
       resourcesJson: JSON.stringify([{
         id: 'resource_1',
         title: 'Starter guide',
@@ -667,6 +669,8 @@ describe('event management utilities', () => {
     expect(serializeEvent(buildEventRecord(), undefined, tracks)).toMatchObject({
       tracks: [{
         id: 'track_1',
+        shortDescription: 'Build with agents.',
+        fullDescription: 'Read the full track guidelines.',
         resources: [{
           id: 'resource_1',
           title: 'Starter guide',
@@ -676,17 +680,24 @@ describe('event management utilities', () => {
         }]
       }]
     })
+    expect(serializeEvent(buildEventRecord(), undefined, tracks).tracks?.[0]).not.toHaveProperty('staffInstructions')
+    expect(serializeEvent(buildEventRecord(), undefined, tracks, {
+      trackStaffInstructionIds: 'all'
+    }).tracks?.[0]).toMatchObject({
+      staffInstructions: 'Help participants find the right starter guide.'
+    })
     expect(serializePublicEvent(buildEventRecord({
       eventType: 'build'
-    }), undefined, tracks)).toMatchObject({
+    }), undefined, tracks).tracks).toEqual([{
+      name: 'Agents',
+      shortDescription: 'Build with agents.',
+      displayOrder: 1
+    }])
+    expect(serializePublicEvent(buildEventRecord({
+      eventType: 'build'
+    }), undefined, tracks)).not.toMatchObject({
       tracks: [{
-        name: 'Agents',
-        resources: [{
-          title: 'Starter guide',
-          url: 'https://example.com/guide',
-          description: 'Read this before the event.',
-          displayOrder: 1
-        }]
+        resources: expect.any(Array)
       }]
     })
   })

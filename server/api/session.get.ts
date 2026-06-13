@@ -70,6 +70,7 @@ export default defineApiHandler(async (h3Event) => {
         role: assignment.role,
         isInJudgePool: assignment.isInJudgePool,
         isStaff: assignment.isStaff,
+        staffTrackId: assignment.staffTrackId,
         createdAt: assignment.createdAt
       }))
     }

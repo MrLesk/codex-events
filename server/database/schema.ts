@@ -247,7 +247,9 @@ export const eventTracks = sqliteTable(
       .notNull()
       .references(() => events.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
-    description: text('description').notNull(),
+    shortDescription: text('short_description').notNull(),
+    fullDescription: text('full_description').notNull().default(''),
+    staffInstructions: text('staff_instructions').notNull().default(''),
     resourcesJson: text('resources_json').notNull().default('[]'),
     displayOrder: integer('display_order').notNull(),
     createdAt: createdAtColumn()
@@ -515,6 +517,7 @@ export const userApplications = sqliteTable(
     checkInOverrideAt: text('check_in_override_at'),
     checkInOverrideByUserId: text('check_in_override_by_user_id').references(() => users.id),
     certificateHiddenAt: text('certificate_hidden_at'),
+    selectedTrackId: text('selected_track_id').references(() => eventTracks.id, { onDelete: 'set null' }),
     reviewedAt: text('reviewed_at'),
     reviewedByUserId: text('reviewed_by_user_id').references(() => users.id),
     applicationTermsDocumentId: text('application_terms_document_id')
@@ -530,7 +533,8 @@ export const userApplications = sqliteTable(
     uniqueIndex('user_applications_event_user_idx').on(table.eventId, table.userId),
     index('user_applications_user_submitted_idx').on(table.userId, table.submittedAt),
     index('user_applications_event_submitted_idx').on(table.eventId, table.submittedAt),
-    index('user_applications_event_status_submitted_idx').on(table.eventId, table.status, table.submittedAt)
+    index('user_applications_event_status_submitted_idx').on(table.eventId, table.status, table.submittedAt),
+    index('user_applications_event_selected_track_idx').on(table.eventId, table.selectedTrackId)
   ]
 )
 

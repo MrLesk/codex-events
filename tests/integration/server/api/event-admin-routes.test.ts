@@ -137,7 +137,9 @@ describe('TASK-3.5 event admin route groups', () => {
       id: 'track_ai',
       eventId: 'event_1',
       name: 'AI Track',
-      description: 'AI projects',
+      shortDescription: 'AI projects',
+      fullDescription: '',
+      staffInstructions: '',
       displayOrder: 1,
       createdAt: '2026-03-22T12:00:00.000Z'
     })

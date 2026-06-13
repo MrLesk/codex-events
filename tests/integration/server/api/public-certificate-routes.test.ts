@@ -109,7 +109,9 @@ async function seedCertificateContext(
         id: `build_track_${index + 1}`,
         eventId: 'event_1',
         name: index === 0 ? 'Advanced Builders' : `Build Track ${index + 1}`,
-        description: 'Build resources',
+        shortDescription: 'Build resources',
+        fullDescription: '',
+        staffInstructions: '',
         displayOrder: index + 1
       }))
     )
@@ -120,7 +122,9 @@ async function seedCertificateContext(
       id: 'track_agents',
       eventId: 'event_1',
       name: 'Agents & Automation',
-      description: 'Agentic apps',
+      shortDescription: 'Agentic apps',
+      fullDescription: '',
+      staffInstructions: '',
       displayOrder: 1
     })
 

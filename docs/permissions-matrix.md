@@ -103,6 +103,7 @@ This document defines the canonical permissions for the Codex event platform.
 | --- | --- | --- | --- | --- | --- |
 | Submit `UserApplication` | Yes, if no application exists for the event and the event is `registration_open` | No | No | No | No |
 | View own application | Yes | Yes | No | No | No |
+| Select own event track | Yes, if the application is `submitted` and the selected track belongs to the same Hackathon or Build event | Yes, if the selected track belongs to the same Hackathon or Build event | No | No | No |
 | Verify own Luma email | No | Yes, when Luma sync is enabled for the event | No | No | No |
 | Withdraw own application | Yes, if the application is still `submitted` and the user has no active team membership in the event | Yes, if the application is `approved` and the user has no active team membership in the event | No | No | No |
 | View event application records | No | No | Yes | Yes | Yes |
@@ -246,7 +247,9 @@ Event credit permissions apply to every event type.
 - Staff can view event-wide participant and team data.
 - Workspace users can view the published judge and staff rosters for events they can access in `/account/events/:slug`.
 - Published judge and staff rosters expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
-- Published staff rosters also show whether each staff member supports the whole event or a specific event track.
+- Published staff rosters also show whether each staff member supports the whole event or a specific event track. Track-specific staff roster entries include the track ID, name, short description, and display order so participant account pages can highlight staff connected to the participant's selected track.
+- Public event detail pages show only track names and short descriptions. Account-scoped participant details show full guidelines and resources only for the participant's selected track.
+- Track staff instructions are visible only to platform admins, event admins, whole-event staff, and staff assigned to that track.
 - Approved participants can view event photo galleries for events where they are approved.
 - Judges, staff, event admins, and platform admins can manage event photo galleries for events where they hold that access.
 - Public event detail pages expose a Gallery tab only when the event has one or more gallery photos marked public.
