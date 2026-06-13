@@ -107,6 +107,7 @@ const criterionEdits = reactive<Record<string, CriterionEditState>>({})
 const prizeEdits = reactive<Record<string, PrizeEditState>>({})
 const criteriaRows = ref<EditableCriterionRow[]>([])
 const prizeRows = ref<EditablePrizeRow[]>([])
+const hideEventReason = ref('')
 const activeCriterionDragId = ref<string | null>(null)
 const criterionDropTargetId = ref<string | null>(null)
 const criteriaListElement = ref<HTMLElement | null>(null)
@@ -117,11 +118,16 @@ const applicationTermsDraft = ref('')
 const winnerTermsDraft = ref('')
 const lastSyncedApplicationTermsContent = ref('')
 const lastSyncedWinnerTermsContent = ref('')
+const eventVisibilityMutationError = ref('')
+const isUpdatingEventVisibility = ref(false)
 let criteriaSortable: SortableInstance | null = null
 let prizeSortable: SortableInstance | null = null
 let sortableConstructor: SortableConstructor | null = null
 
 const currentEvent = computed(() => workspace.currentEvent.value)
+const showEmergencyVisibilitySettings = computed(() => props.showProgramSettings && props.programSettingsMode === 'settings')
+const isEventHidden = computed(() => Boolean(currentEvent.value?.hiddenAt))
+const trimmedHideEventReason = computed(() => hideEventReason.value.trim())
 const isCompetitionEvent = computed(() => currentEvent.value?.eventType === 'hackathon')
 const settingsOverviewGridClass = computed(() =>
   isCompetitionEvent.value
@@ -134,6 +140,19 @@ const eventTypeLabel = computed(() =>
 const actor = computed(() => workspace.actor.value)
 const canManage = computed(() => workspace.canManageCurrentEvent.value)
 const programSettingsCopy = computed(() => getEventProgramSettingsCopy(props.programSettingsMode))
+const hiddenEventAlertDescription = computed(() => {
+  const reason = currentEvent.value?.hiddenReason?.trim()
+
+  return reason
+    ? `Public pages and participant event lists are unavailable. Reason: ${reason}`
+    : 'Public pages and participant event lists are unavailable until an admin makes this event visible again.'
+})
+const eventVisibilityCardTitle = computed(() => isEventHidden.value ? 'Event hidden' : 'Hide event')
+const eventVisibilityCardDescription = computed(() =>
+  isEventHidden.value
+    ? 'Public pages and participant event lists are unavailable while admins fix the issue.'
+    : 'Hide this event when public access needs to stop while admins fix a serious issue.'
+)
 const criteria = computed(() => workspace.criteria.data.value?.data ?? [])
 const prizes = computed(() => workspace.prizes.data.value?.data ?? [])
 const roleAssignments = computed(() => workspace.roleAssignments.data.value?.data ?? [])
@@ -651,6 +670,68 @@ async function retryLumaConfiguration() {
     configMutationError.value = normalizeApiError(error).message
   } finally {
     isRetryingLumaConfiguration.value = false
+  }
+}
+
+async function hideEvent() {
+  const event = currentEvent.value
+
+  if (!event || !trimmedHideEventReason.value) {
+    return
+  }
+
+  eventVisibilityMutationError.value = ''
+  isUpdatingEventVisibility.value = true
+
+  try {
+    await $fetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}/actions/hide`, {
+      method: 'POST',
+      body: {
+        reason: trimmedHideEventReason.value
+      }
+    })
+
+    hideEventReason.value = ''
+    toast.add({
+      title: 'Event hidden',
+      description: 'Public and participant access has been paused.',
+      color: 'success'
+    })
+    await workspace.refreshWorkspace()
+    emit('updated')
+  } catch (error) {
+    eventVisibilityMutationError.value = normalizeApiError(error).message
+  } finally {
+    isUpdatingEventVisibility.value = false
+  }
+}
+
+async function unhideEvent() {
+  const event = currentEvent.value
+
+  if (!event) {
+    return
+  }
+
+  eventVisibilityMutationError.value = ''
+  isUpdatingEventVisibility.value = true
+
+  try {
+    await $fetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}/actions/unhide`, {
+      method: 'POST'
+    })
+
+    toast.add({
+      title: 'Event visible',
+      description: 'Public and participant access has been restored.',
+      color: 'success'
+    })
+    await workspace.refreshWorkspace()
+    emit('updated')
+  } catch (error) {
+    eventVisibilityMutationError.value = normalizeApiError(error).message
+  } finally {
+    isUpdatingEventVisibility.value = false
   }
 }
 
@@ -1636,6 +1717,104 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
           </div>
         </AppCard>
       </section>
+
+      <AppCard
+        v-if="showEmergencyVisibilitySettings"
+        class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
+      >
+        <template #header>
+          <div class="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
+            <div class="space-y-1">
+              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                Emergency visibility
+              </p>
+              <h2 class="text-lg font-semibold text-highlighted">
+                {{ eventVisibilityCardTitle }}
+              </h2>
+              <p class="max-w-3xl text-sm text-muted">
+                {{ eventVisibilityCardDescription }}
+              </p>
+            </div>
+
+            <AppButton
+              v-if="isEventHidden"
+              type="button"
+              color="primary"
+              size="md"
+              :disabled="isUpdatingEventVisibility"
+              :loading="isUpdatingEventVisibility"
+              class="justify-center"
+              @click="unhideEvent"
+            >
+              Make event visible
+            </AppButton>
+          </div>
+        </template>
+
+        <div class="grid gap-4">
+          <AppAlert
+            v-if="isEventHidden"
+            color="warning"
+            variant="soft"
+            title="Event hidden"
+            :description="hiddenEventAlertDescription"
+          />
+
+          <AppAlert
+            v-if="eventVisibilityMutationError"
+            color="error"
+            variant="soft"
+            title="Visibility update failed"
+            :description="eventVisibilityMutationError"
+          />
+
+          <div
+            v-if="isEventHidden"
+            class="space-y-1"
+          >
+            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+              Hidden reason
+            </p>
+            <p class="text-sm text-toned">
+              {{ currentEvent.hiddenReason || 'No reason recorded.' }}
+            </p>
+          </div>
+
+          <div
+            v-else
+            class="grid gap-3"
+          >
+            <label class="grid gap-2">
+              <span class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+                Reason
+              </span>
+              <AppTextarea
+                v-model="hideEventReason"
+                rows="3"
+                placeholder="What needs to be fixed before the event is visible again?"
+                :disabled="isUpdatingEventVisibility"
+              />
+            </label>
+
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p class="text-sm text-toned">
+                Admins can still open this event and restore it from this Settings tab.
+              </p>
+              <AppButton
+                type="button"
+                color="error"
+                size="md"
+                :disabled="!trimmedHideEventReason || isUpdatingEventVisibility"
+                :loading="isUpdatingEventVisibility"
+                class="justify-center"
+                @click="hideEvent"
+              >
+                Hide event
+              </AppButton>
+            </div>
+          </div>
+        </div>
+      </AppCard>
     </template>
   </div>
 </template>

@@ -125,11 +125,8 @@ type PitchLineupEntry = {
 
 const mutationError = ref('')
 const pendingActionKey = ref<string | null>(null)
-const hideEventReason = ref('')
 
 const currentEvent = computed(() => workspace.currentEvent.value)
-const isEventHidden = computed(() => Boolean(currentEvent.value?.hiddenAt))
-const trimmedHideEventReason = computed(() => hideEventReason.value.trim())
 const isCompetitionEvent = computed(() => currentEvent.value?.eventType === 'hackathon')
 const loadCompetitionLifecycleData = computed(() => showLifecycleSection.value && isCompetitionEvent.value)
 const showSubmissionsSection = computed(() => section.value === 'submissions' && isCompetitionEvent.value)
@@ -1073,14 +1070,6 @@ const lifecycleActionAvailability = computed(() => {
     }
   }
 
-  if (event.hiddenAt) {
-    return {
-      label: 'Hidden',
-      message: 'Make the event visible before moving it forward.',
-      className: 'text-warning'
-    }
-  }
-
   if (!control) {
     if (event.state === 'shortlist') {
       return {
@@ -1194,20 +1183,6 @@ const lifecycleActionDescription = computed(() => {
 
   return 'The event has reached a stable state with no additional lifecycle transition available from this view.'
 })
-
-const hiddenEventAlertDescription = computed(() => {
-  const reason = currentEvent.value?.hiddenReason?.trim()
-
-  return reason
-    ? `Public pages and participant event lists are unavailable. Reason: ${reason}`
-    : 'Public pages and participant event lists are unavailable until an admin makes this event visible again.'
-})
-const eventVisibilityCardTitle = computed(() => isEventHidden.value ? 'Event hidden' : 'Hide event')
-const eventVisibilityCardDescription = computed(() =>
-  isEventHidden.value
-    ? 'Public pages and participant event lists are unavailable while admins fix the issue.'
-    : 'Hide this event when public access needs to stop while admins fix a serious issue.'
-)
 
 const lifecycleMetricCards = computed<LifecycleMetricCard[]>(() => {
   if (!isCompetitionEvent.value) {
@@ -1508,48 +1483,6 @@ async function runMutation<Result>(
       })
     }
   }
-}
-
-async function hideEvent() {
-  if (!trimmedHideEventReason.value) {
-    return
-  }
-
-  await runMutation(
-    'hide-event',
-    async () => {
-      await $fetch(`/api/events/${eventId.value}/actions/hide`, {
-        method: 'POST',
-        body: {
-          reason: trimmedHideEventReason.value
-        }
-      })
-    },
-    {
-      title: 'Event hidden',
-      description: 'Public and participant access has been paused.'
-    },
-    {
-      onSuccess: () => {
-        hideEventReason.value = ''
-      }
-    }
-  )
-}
-
-async function unhideEvent() {
-  await runMutation(
-    'unhide-event',
-    async () => {
-      await $fetch(`/api/events/${eventId.value}/actions/unhide`, {
-        method: 'POST'
-      })
-    },
-    {
-      title: 'Event visible',
-      description: 'Public and participant access has been restored.'
-    }
-  )
 }
 
 async function loadShortlist() {
@@ -2170,89 +2103,10 @@ async function runLifecycleAction() {
     />
 
     <template v-else-if="currentEvent">
-      <AppAlert
-        v-if="isEventHidden"
-        color="warning"
-        variant="soft"
-        title="Event hidden"
-        :description="hiddenEventAlertDescription"
-      />
-
       <section
         v-if="showLifecycleSection"
         class="space-y-4"
       >
-        <AppCard class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64">
-          <div class="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
-            <div class="space-y-2">
-              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                Emergency visibility
-              </p>
-              <h3 class="text-base font-semibold text-highlighted">
-                {{ eventVisibilityCardTitle }}
-              </h3>
-              <p class="max-w-3xl text-sm text-toned">
-                {{ eventVisibilityCardDescription }}
-              </p>
-            </div>
-
-            <AppButton
-              v-if="isEventHidden"
-              color="primary"
-              size="md"
-              :disabled="pendingActionKey !== null"
-              class="justify-center"
-              @click="unhideEvent"
-            >
-              Make event visible
-            </AppButton>
-          </div>
-
-          <div
-            v-if="isEventHidden"
-            class="mt-5 space-y-1 border-t border-black/8 pt-4 dark:border-white/[0.08]"
-          >
-            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-              Hidden reason
-            </p>
-            <p class="text-sm text-toned">
-              {{ currentEvent.hiddenReason || 'No reason recorded.' }}
-            </p>
-          </div>
-
-          <div
-            v-else
-            class="mt-5 grid gap-3"
-          >
-            <label class="grid gap-2">
-              <span class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-                Reason
-              </span>
-              <AppTextarea
-                v-model="hideEventReason"
-                rows="3"
-                placeholder="What needs to be fixed before the event is visible again?"
-                :disabled="pendingActionKey !== null"
-              />
-            </label>
-
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p class="text-sm text-toned">
-                Admins can still open this event and restore it from Operations.
-              </p>
-              <AppButton
-                color="error"
-                size="md"
-                :disabled="!trimmedHideEventReason || pendingActionKey !== null"
-                class="justify-center"
-                @click="hideEvent"
-              >
-                Hide event
-              </AppButton>
-            </div>
-          </div>
-        </AppCard>
-
         <div
           v-if="lifecycleMetricCards.length > 0"
           class="grid gap-4 md:grid-cols-2"
@@ -2363,7 +2217,7 @@ async function runLifecycleAction() {
 
               <AppButton
                 v-if="lifecycleControl"
-                :disabled="!lifecycleControl.isEnabled || isEventHidden"
+                :disabled="!lifecycleControl.isEnabled"
                 color="primary"
                 size="md"
                 class="justify-center sm:justify-start"
