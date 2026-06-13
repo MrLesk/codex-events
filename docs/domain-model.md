@@ -103,7 +103,7 @@ Key characteristics:
 - Each event can optionally reference event-specific application terms.
 - A configured Discord server URL is visible only in the account-scoped event workspace for approved participants, judges, staff, event admins, and platform admins.
 - Each event can define credit offers with uploaded redeemable values for approved participants.
-- Hackathon and Build events can define ordered tracks with a participant-facing name, description, and resource links.
+- Hackathon and Build events can define ordered tracks with a participant-facing name, markdown description, and resource links.
 
 Rules:
 
@@ -144,7 +144,7 @@ An ordered participant-facing category belonging to one Hackathon or Build event
 Rules:
 
 - Each track belongs to exactly one Hackathon or Build event.
-- A track has a name and a description.
+- A track has a name and a participant-facing markdown description.
 - A track can include zero or more resources.
 - Each track resource has a title, an `http` or `https` link, and an optional description.
 - Tracks are ordered for admin editing and public display.

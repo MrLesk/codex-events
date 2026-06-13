@@ -84,6 +84,7 @@ function submitForm() {
       :luma-webhook-error="initialEvent?.lumaWebhookError ?? null"
       :luma-webhook-registered-at="initialEvent?.lumaWebhookRegisteredAt ?? null"
       :is-retrying-luma-configuration="isRetryingLumaConfiguration"
+      track-description-field-type="markdown"
       @submit="submitForm"
       @upload-background-image="emit('uploadBackgroundImage', $event)"
       @remove-background-image="emit('removeBackgroundImage')"

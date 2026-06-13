@@ -41,6 +41,7 @@ const emit = defineEmits<{
 
 type AgendaFormItem = EventFormState['agendaItems'][number]
 type TrackFormItem = EventFormState['tracks'][number]
+type DescriptionFieldType = 'textarea' | 'markdown'
 type SortableInstance = Sortable
 type SortableConstructor = typeof Sortable
 
@@ -63,6 +64,7 @@ const props = defineProps<{
   lumaWebhookError?: string | null
   lumaWebhookRegisteredAt?: string | null
   isRetryingLumaConfiguration?: boolean
+  trackDescriptionFieldType?: DescriptionFieldType
 }>()
 
 const toast = useToast()
@@ -125,6 +127,7 @@ const trackSectionDescription = computed(() => isHackathon.value
   ? 'Add the submission tracks participants can choose from. Add resource links when a track needs supporting material.'
   : 'Add build tracks and resource links participants can use before or during the event.'
 )
+const trackDescriptionFieldType = computed(() => props.trackDescriptionFieldType ?? 'textarea')
 const showLumaRetryButton = computed(() =>
   Boolean(
     props.lumaWebhookUrl
@@ -938,12 +941,27 @@ const submitConfigForm = handleSubmit(() => {
                       />
                     </label>
 
-                    <label class="grid gap-2">
+                    <LazyAdminMarkdownEditorField
+                      v-if="trackDescriptionFieldType === 'markdown'"
+                      v-model="track.description"
+                      :name="`event-track-${track.id}-description`"
+                      :editor-id="`event-track-${track.id}-description-editor`"
+                      label="Description"
+                      placeholder="Describe what belongs in this track."
+                      height="260px"
+                      required
+                    />
+
+                    <label
+                      v-else
+                      class="grid gap-2"
+                    >
                       <span class="text-xs font-medium text-toned">Description</span>
                       <AppTextarea
                         v-model="track.description"
                         rows="1"
                         placeholder="Describe what belongs in this track."
+                        required
                       />
                     </label>
 

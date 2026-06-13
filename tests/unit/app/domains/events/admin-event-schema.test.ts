@@ -98,14 +98,14 @@ describe('event config form schema', () => {
     })
   })
 
-  test('accepts configured submission tracks with name and description', () => {
+  test('accepts configured submission tracks with markdown descriptions', () => {
     const result = eventConfigFormSchema.safeParse({
       ...createValidEventFormState(),
       tracks: [
         {
           id: 'track-1',
           name: 'Best AI Agent',
-          description: 'Projects focused on autonomous workflows.',
+          description: '  **Projects** focused on autonomous workflows.\n\n- Agents\n- Tools  ',
           resources: [{
             id: 'resource-1',
             title: 'Starter guide',
@@ -119,6 +119,12 @@ describe('event config form schema', () => {
     })
 
     expect(result.success).toBe(true)
+
+    if (!result.success) {
+      return
+    }
+
+    expect(result.data.tracks[0]?.description).toBe('**Projects** focused on autonomous workflows.\n\n- Agents\n- Tools')
   })
 
   test('ignores hidden hackathon fields for non-hackathon events', () => {

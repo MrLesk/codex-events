@@ -85,9 +85,10 @@ defineProps<{
             <p class="mt-1 text-[15px] font-semibold text-highlighted dark:text-white">
               {{ assignment.pitchSubmission.track.name }}
             </p>
-            <p class="mt-1 text-sm text-toned">
-              {{ assignment.pitchSubmission.track.description }}
-            </p>
+            <AppMarkdownRenderer
+              :source="assignment.pitchSubmission.track.description"
+              class="mt-1"
+            />
           </div>
         </div>
       </div>

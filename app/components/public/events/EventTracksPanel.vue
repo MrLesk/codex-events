@@ -76,9 +76,10 @@ const panelDescription = computed(() => {
               </h3>
             </div>
 
-            <p class="max-w-[62ch] text-[14px] leading-relaxed text-neutral-500 dark:text-[#A3A3A3]">
-              {{ track.description }}
-            </p>
+            <AppMarkdownRenderer
+              :source="track.description"
+              class="max-w-[62ch]"
+            />
 
             <div
               v-if="track.resources.length > 0"
