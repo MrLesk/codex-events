@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import AccountEventDashboardList from '~/components/account/AccountEventDashboardList.vue'
-import { formatEventLocation } from '~/domains/events/presentation'
+import {
+  formatEventDateWithWeekday,
+  formatEventLocation,
+  formatEventTypeLabel,
+  getEventDashboardTeamSizeMetaItems
+} from '~/domains/events/presentation'
 import { filterStaffAccessibleEvents } from '~/domains/events/staff-dashboard'
 
 definePageMeta({
@@ -32,9 +37,15 @@ const listItems = computed(() =>
     actionLabel: 'Open staff view',
     sortAt: event.startsAt,
     overline: 'Staff',
+    externalAction: {
+      label: 'Public page',
+      to: `/events/${event.slug}`
+    },
     meta: [
+      `Type: ${formatEventTypeLabel(event.eventType)}`,
+      `Date: ${formatEventDateWithWeekday(event.startsAt)}`,
       formatEventLocation(event),
-      'Participant and team visibility'
+      ...getEventDashboardTeamSizeMetaItems(event)
     ]
   }))
 )

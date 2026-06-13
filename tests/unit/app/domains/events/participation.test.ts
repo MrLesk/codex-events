@@ -19,6 +19,7 @@ function buildRecord(
   return {
     event: {
       id: 'event-vienna',
+      eventType: 'hackathon',
       name: 'Codex Community Event - Vienna',
       slug: 'vienna',
       city: 'Vienna',
@@ -27,7 +28,8 @@ function buildRecord(
       startsAt: '2026-03-28T09:00:00Z',
       registrationOpensAt: '2026-03-01T09:00:00Z',
       registrationClosesAt: '2026-03-15T09:00:00Z',
-      submissionClosesAt: '2026-04-18T18:00:00Z'
+      submissionClosesAt: '2026-04-18T18:00:00Z',
+      maxTeamMembers: 4
     },
     isPast: false,
     lastActivityAt: '2026-03-10T09:00:00Z',

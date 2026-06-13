@@ -498,8 +498,10 @@ describe('TASK-3.5 actor-facing API routes', () => {
         current: [
           {
             id: 'event_current',
+            eventType: 'hackathon',
             slug: 'current-event',
             startsAt: '2026-03-23T12:00:00.000Z',
+            maxTeamMembers: 5,
             applicationStatus: 'approved',
             team: {
               id: 'team_current',
@@ -513,8 +515,10 @@ describe('TASK-3.5 actor-facing API routes', () => {
         past: [
           {
             id: 'event_past',
+            eventType: 'hackathon',
             slug: 'past-event',
             startsAt: '2026-01-13T12:00:00.000Z',
+            maxTeamMembers: 4,
             applicationStatus: 'approved',
             team: null,
             submissionStatus: null,

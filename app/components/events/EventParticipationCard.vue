@@ -3,23 +3,30 @@ import type { EventParticipationRecord } from '~/domains/events/participation'
 
 import EventStateBadge from '~/components/public/events/EventStateBadge.vue'
 import {
+  formatEventDateWithWeekday,
+  formatEventLocation,
+  formatEventTypeLabel,
+  getEventDashboardTeamSizeMetaItems
+} from '~/domains/events/presentation'
+import {
   formatParticipationStageLabel,
   formatParticipationStatusLabel,
   getEventParticipationPrimaryAction,
   getParticipationStageColor,
   getParticipationStatusColor
 } from '~/domains/events/participation'
-import { formatEventDateWithWeekday, formatEventLocation } from '~/domains/events/presentation'
 
 const props = defineProps<{
   record: EventParticipationRecord
 }>()
 
 const primaryAction = computed(() => getEventParticipationPrimaryAction(props.record))
-const eventMetaLabel = computed(() => [
-  formatEventDateWithWeekday(props.record.event.startsAt),
-  formatEventLocation(props.record.event)
-].filter(Boolean).join(' - '))
+const eventMetaItems = computed(() => [
+  `Type: ${formatEventTypeLabel(props.record.event.eventType)}`,
+  `Date: ${formatEventDateWithWeekday(props.record.event.startsAt)}`,
+  formatEventLocation(props.record.event),
+  ...getEventDashboardTeamSizeMetaItems(props.record.event)
+])
 const participationStageLabel = computed(() => formatParticipationStageLabel(props.record))
 const participationStageColor = computed(() => getParticipationStageColor(props.record))
 const participationStatusLabel = computed(() => formatParticipationStatusLabel(props.record))
@@ -40,9 +47,14 @@ const showParticipationStageBadge = computed(() =>
           <h2 class="text-[24px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
             {{ props.record.event.name }}
           </h2>
-          <p class="text-[14px] text-neutral-500 dark:text-[#A3A3A3]">
-            {{ eventMetaLabel }}
-          </p>
+          <div class="flex flex-wrap items-center gap-3 text-[13px] text-neutral-500 dark:text-[#A3A3A3]">
+            <span
+              v-for="metaItem in eventMetaItems"
+              :key="metaItem"
+            >
+              {{ metaItem }}
+            </span>
+          </div>
         </div>
 
         <EventStateBadge

@@ -92,6 +92,7 @@ function serializeEventParticipation(
     registrationClosesAt: event.registrationClosesAt,
     submissionOpensAt: event.submissionOpensAt,
     submissionClosesAt: event.submissionClosesAt,
+    maxTeamMembers: event.maxTeamMembers,
     applicationStatus: application?.status ?? null,
     team: team && membership
       ? {

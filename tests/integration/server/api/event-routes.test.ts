@@ -988,8 +988,10 @@ describe('TASK-3.5 event CRUD routes', () => {
           {
             event: {
               id: 'event_current',
+              eventType: 'hackathon',
               slug: 'current-event',
-              state: 'submission_open'
+              state: 'submission_open',
+              maxTeamMembers: 5
             },
             isPast: false,
             application: {
@@ -1015,8 +1017,10 @@ describe('TASK-3.5 event CRUD routes', () => {
           {
             event: {
               id: 'event_past',
+              eventType: 'hackathon',
               slug: 'past-event',
-              state: 'completed'
+              state: 'completed',
+              maxTeamMembers: 4
             },
             isPast: true,
             application: {

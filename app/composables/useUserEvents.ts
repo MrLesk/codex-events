@@ -1,4 +1,4 @@
-import type { PublicEventState } from '~/domains/events/presentation'
+import type { PublicEventState, PublicEventType } from '~/domains/events/presentation'
 
 export type UserApplicationStatus = 'submitted' | 'approved' | 'rejected' | 'withdrawn'
 export type UserSubmissionStatus = 'draft' | 'submitted' | 'withdrawn' | 'locked' | 'disqualified' | null
@@ -7,6 +7,7 @@ export type UserEventPrimaryActionIcon = 'i-lucide-arrow-up-right' | 'i-lucide-u
 
 export interface UserEventEntry {
   id: string
+  eventType: PublicEventType
   slug: string
   name: string
   description: string
@@ -22,6 +23,7 @@ export interface UserEventEntry {
   registrationClosesAt: string
   submissionOpensAt: string | null
   submissionClosesAt: string | null
+  maxTeamMembers: number
   applicationStatus: UserApplicationStatus | null
   team: {
     id: string

@@ -49,7 +49,7 @@ const shouldShowDescriptionToggle = computed(() =>
 
 <template>
   <article class="rounded-xl border border-black/8 bg-white p-5 transition-colors hover:border-black/20 dark:border-white/[0.08] dark:bg-[#111111] dark:hover:border-white/[0.2]">
-    <div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="flex flex-wrap items-center justify-between gap-4">
       <div class="min-w-0 space-y-2">
         <p
           v-if="props.item.overline"
@@ -97,9 +97,10 @@ const shouldShowDescriptionToggle = computed(() =>
         <AppButton
           :to="props.item.to"
           color="neutral"
-          variant="ghost"
+          variant="solid"
           size="sm"
           trailing-icon="i-lucide-arrow-right"
+          class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
         >
           {{ props.item.actionLabel ?? 'Open' }}
         </AppButton>
@@ -108,12 +109,13 @@ const shouldShowDescriptionToggle = computed(() =>
           v-if="props.item.externalAction"
           :to="props.item.externalAction.to"
           color="neutral"
-          variant="soft"
+          variant="outline"
           size="sm"
           external
           target="_blank"
           rel="noopener noreferrer"
           trailing-icon="i-lucide-external-link"
+          class="rounded-lg px-4 py-2"
         >
           {{ props.item.externalAction.label }}
         </AppButton>

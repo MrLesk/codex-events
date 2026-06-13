@@ -74,6 +74,7 @@ function getEventStartsAt(event: EventRecord) {
 function serializeEventSummary(event: EventRecord) {
   return {
     id: event.id,
+    eventType: event.eventType,
     name: event.name,
     slug: event.slug,
     city: event.city,
@@ -82,7 +83,8 @@ function serializeEventSummary(event: EventRecord) {
     startsAt: getEventStartsAt(event),
     registrationOpensAt: event.registrationOpensAt,
     registrationClosesAt: event.registrationClosesAt,
-    submissionClosesAt: event.submissionClosesAt
+    submissionClosesAt: event.submissionClosesAt,
+    maxTeamMembers: event.maxTeamMembers
   }
 }
 

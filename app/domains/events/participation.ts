@@ -1,4 +1,4 @@
-import type { PublicEventState } from '~/domains/events/presentation'
+import type { PublicEventState, PublicEventType } from '~/domains/events/presentation'
 import type { ParticipantApplicationLumaSyncStatus } from '~/domains/applications/participant-application'
 import type { TeamSubmissionRecord } from '~/domains/submissions/team-submission'
 
@@ -6,6 +6,7 @@ import { normalizeApiError } from '~/lib/api'
 
 export interface EventParticipationEventSummary {
   id: string
+  eventType: PublicEventType
   name: string
   slug: string
   city: string
@@ -15,6 +16,7 @@ export interface EventParticipationEventSummary {
   registrationOpensAt: string
   registrationClosesAt: string
   submissionClosesAt: string | null
+  maxTeamMembers: number
 }
 
 export interface EventParticipationApplicationSummary {
