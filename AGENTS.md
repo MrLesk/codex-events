@@ -164,6 +164,33 @@ current source of truth and flag the mismatch.
   approval/rejection sync, and attendance webhooks. Core event participation
   should remain understandable without exposing Luma mechanics to participants.
 
+## Interface Component Ownership
+
+Prevent component entropy by reusing the existing interface system before
+creating new Vue components.
+
+- Before creating any component, search `app/components/`, the target route,
+  and the nearest domain directory for an existing visual or behavioral analog.
+  Identify the closest analog and prefer adapting that pattern.
+- Generated `shadcn-vue` primitives under `app/components/ui/` are the
+  primitive layer. They are not app-level components to copy from in feature
+  work. Use them directly only when extending primitives or maintaining the
+  App wrapper layer.
+- Root `App*` components under `app/components/` are shared interface
+  primitives for application styling, controls, icons, layout, and feedback.
+  Feature work should use these wrappers before importing generated primitives.
+- Domain and shared components under directories such as `admin`, `events`,
+  `public/events`, `account`, `applications`, `judging`, `shell`, and `teams`
+  are the next reuse layer. Reuse or extend them before creating another domain
+  panel, card, row, form, or status presentation.
+- Large page and panel components should compose existing App and domain
+  components. They must not invent local row, card, filter, roster, editor,
+  or form patterns when a shared pattern already exists.
+- Create a new component only when the closest existing component cannot express
+  the current behavior through props, slots, composition, or a focused
+  extension. Document the closest existing analog and why extension is not
+  enough in the Backlog task or implementation notes.
+
 ## Working Style
 
 - Keep domain language stable and intentional.

@@ -179,6 +179,18 @@ The interface layer uses `shadcn-vue` primitives plus Tailwind CSS.
 Generated `shadcn-vue` primitives live under `app/components/ui/`.
 Project-owned shared interface components live under `app/components/`.
 
+Before adding an interface component, search the existing component tree for
+the closest visual or behavioral analog. Use root `App*` wrappers for
+application-level controls and surfaces instead of copying generated
+`shadcn-vue` primitives into feature work. Reuse or extend domain/shared
+components under `app/components/admin`, `app/components/events`,
+`app/components/public/events`, `app/components/account`,
+`app/components/applications`, `app/components/judging`,
+`app/components/shell`, and `app/components/teams` before creating new panels,
+rows, cards, forms, or status displays. New component files should note the
+closest existing analog in the task or implementation notes and explain why
+props, slots, composition, or a focused extension are not sufficient.
+
 The built-in Auth0 Nuxt routes are mounted at:
 
 - `/auth/login`
