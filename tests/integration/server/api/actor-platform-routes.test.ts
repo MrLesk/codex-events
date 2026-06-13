@@ -499,6 +499,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
           {
             id: 'event_current',
             slug: 'current-event',
+            startsAt: '2026-03-23T12:00:00.000Z',
             applicationStatus: 'approved',
             team: {
               id: 'team_current',
@@ -513,6 +514,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
           {
             id: 'event_past',
             slug: 'past-event',
+            startsAt: '2026-01-13T12:00:00.000Z',
             applicationStatus: 'approved',
             team: null,
             submissionStatus: null,

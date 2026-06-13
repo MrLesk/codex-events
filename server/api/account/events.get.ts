@@ -10,6 +10,7 @@ import {
   teams,
   userApplications
 } from '#server/database/schema'
+import { parseEventAgendaItems } from '#server/domains/events'
 import {
   getEventDisplayImageOptions,
   resolveEventDisplayBackgroundImageUrl,
@@ -17,6 +18,7 @@ import {
 } from '#server/domains/platform/settings'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
+import { resolveEventCertificateDateIso } from '#shared/domains/events/certificates'
 
 type UserApplicationRecord = typeof userApplications.$inferSelect
 type TeamMembershipRecord = typeof teamMembers.$inferSelect
@@ -41,6 +43,13 @@ function sortEventsByFreshness(items: EventRecord[]) {
 
     return new Date(rightClosesAt).getTime() - new Date(leftClosesAt).getTime()
   })
+}
+
+function getEventStartsAt(event: EventRecord) {
+  return resolveEventCertificateDateIso(
+    parseEventAgendaItems(event.agendaItemsJson),
+    event.submissionOpensAt ?? event.registrationClosesAt
+  )
 }
 
 function isActiveSubmission(record: SubmissionRecord) {
@@ -78,6 +87,7 @@ function serializeEventParticipation(
     bannerImageUrl: event.bannerImageUrl,
     backgroundImageUrl: event.backgroundImageUrl,
     displayBackgroundImageUrl: resolveEventDisplayBackgroundImageUrl(event, imageOptions),
+    startsAt: getEventStartsAt(event),
     registrationOpensAt: event.registrationOpensAt,
     registrationClosesAt: event.registrationClosesAt,
     submissionOpensAt: event.submissionOpensAt,

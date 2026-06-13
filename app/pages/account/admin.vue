@@ -63,6 +63,7 @@ const listItems = computed(() =>
     registrationClosesAt: event.registrationClosesAt,
     to: `/account/events/${event.slug}?tab=operations`,
     actionLabel: 'Open operations',
+    sortAt: getEventEarliestStartAt(event),
     externalAction: {
       label: 'Public page',
       to: `/events/${event.slug}`

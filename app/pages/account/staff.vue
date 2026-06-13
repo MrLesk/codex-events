@@ -30,6 +30,7 @@ const listItems = computed(() =>
     registrationClosesAt: event.registrationClosesAt,
     to: `/account/events/${event.slug}?tab=participants`,
     actionLabel: 'Open staff view',
+    sortAt: event.startsAt,
     overline: 'Staff',
     meta: [
       formatEventLocation(event),

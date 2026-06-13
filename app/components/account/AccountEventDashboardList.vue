@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import type { PublicEventState } from '~/domains/events/presentation'
 import type { EventState } from '~/domains/events/states'
-import { collapseMarkdownToPlainText } from '~/domains/events/description'
-
-import EventStateBadge from '~/components/public/events/EventStateBadge.vue'
 
 export interface AccountEventDashboardListItem {
   id: string
@@ -16,6 +13,7 @@ export interface AccountEventDashboardListItem {
   actionLabel?: string
   overline?: string
   meta: string[]
+  sortAt?: string
   externalAction?: {
     label: string
     to: string
@@ -30,8 +28,34 @@ const props = defineProps<{
   emptyDescription: string
 }>()
 
-const descriptionPreviewCharacterLimit = 280
 const expandedIds = ref(new Set<string>())
+const sortedItems = computed(() =>
+  props.items
+    .map((item, index) => ({
+      item,
+      index,
+      sortTimestamp: Date.parse(item.sortAt ?? '')
+    }))
+    .sort((left, right) => {
+      const leftHasSort = !Number.isNaN(left.sortTimestamp)
+      const rightHasSort = !Number.isNaN(right.sortTimestamp)
+
+      if (!leftHasSort && !rightHasSort) {
+        return left.index - right.index
+      }
+
+      if (!leftHasSort) {
+        return 1
+      }
+
+      if (!rightHasSort) {
+        return -1
+      }
+
+      return left.sortTimestamp - right.sortTimestamp || left.index - right.index
+    })
+    .map(({ item }) => item)
+)
 
 function isExpanded(id: string) {
   return expandedIds.value.has(id)
@@ -47,24 +71,6 @@ function toggleExpanded(id: string) {
   }
 
   expandedIds.value = nextExpandedIds
-}
-
-function getNormalizedDescription(value: string) {
-  return collapseMarkdownToPlainText(value)
-}
-
-function getDescriptionPreview(item: AccountEventDashboardListItem) {
-  const normalizedDescription = getNormalizedDescription(item.description)
-
-  if (isExpanded(item.id) || normalizedDescription.length <= descriptionPreviewCharacterLimit) {
-    return normalizedDescription
-  }
-
-  return `${normalizedDescription.slice(0, descriptionPreviewCharacterLimit).trimEnd()}…`
-}
-
-function shouldShowDescriptionToggle(item: AccountEventDashboardListItem) {
-  return getNormalizedDescription(item.description).length > descriptionPreviewCharacterLimit
 }
 </script>
 
@@ -95,82 +101,13 @@ function shouldShowDescriptionToggle(item: AccountEventDashboardListItem) {
       v-else
       class="grid gap-4"
     >
-      <article
-        v-for="item in props.items"
+      <AccountEventDashboardCard
+        v-for="item in sortedItems"
         :key="item.id"
-        class="rounded-xl border border-black/8 bg-white p-5 transition-colors hover:border-black/20 dark:border-white/[0.08] dark:bg-[#111111] dark:hover:border-white/[0.2]"
-      >
-        <div class="flex flex-wrap items-start justify-between gap-3">
-          <div class="min-w-0 space-y-2">
-            <p
-              v-if="item.overline"
-              class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted"
-            >
-              {{ item.overline }}
-            </p>
-
-            <div class="flex flex-wrap items-center gap-2">
-              <p class="text-[18px] font-semibold text-highlighted dark:text-white">
-                {{ item.name }}
-              </p>
-              <EventStateBadge
-                :state="item.state"
-                :registration-opens-at="item.registrationOpensAt"
-                :registration-closes-at="item.registrationClosesAt"
-              />
-            </div>
-
-            <p class="max-w-3xl break-words text-[14px] text-neutral-600 dark:text-[#B0B0B0]">
-              {{ getDescriptionPreview(item) }}
-            </p>
-
-            <button
-              v-if="shouldShowDescriptionToggle(item)"
-              type="button"
-              class="inline-flex text-[13px] font-medium text-highlighted transition-colors hover:text-neutral-700 dark:text-white dark:hover:text-[#D9D9D9]"
-              @click.stop.prevent="toggleExpanded(item.id)"
-            >
-              {{ isExpanded(item.id) ? 'Show less' : 'Load more' }}
-            </button>
-
-            <div class="flex flex-wrap items-center gap-3 text-[12px] text-muted">
-              <span
-                v-for="metaItem in item.meta"
-                :key="metaItem"
-                class="min-w-0"
-              >
-                {{ metaItem }}
-              </span>
-            </div>
-          </div>
-
-          <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            <AppButton
-              :to="item.to"
-              color="neutral"
-              variant="ghost"
-              size="sm"
-              trailing-icon="i-lucide-arrow-right"
-            >
-              {{ item.actionLabel ?? 'Open' }}
-            </AppButton>
-
-            <AppButton
-              v-if="item.externalAction"
-              :to="item.externalAction.to"
-              color="neutral"
-              variant="soft"
-              size="sm"
-              external
-              target="_blank"
-              rel="noopener noreferrer"
-              trailing-icon="i-lucide-external-link"
-            >
-              {{ item.externalAction.label }}
-            </AppButton>
-          </div>
-        </div>
-      </article>
+        :item="item"
+        :expanded="isExpanded(item.id)"
+        @toggle-expanded="toggleExpanded(item.id)"
+      />
     </div>
   </section>
 </template>
