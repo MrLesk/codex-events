@@ -2941,6 +2941,125 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
+  test('staff can page through complete participant lists with mixed statuses', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/events/:eventId/applications', handler: applicationsListHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|staff',
+        email: 'staff@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness)
+
+    const participantUsers = Array.from({ length: 29 }, (_, index) => ({
+      id: `staff_visible_participant_${index + 1}`,
+      auth0Subject: `auth0|staff_visible_participant_${index + 1}`,
+      email: `staff-visible-participant-${index + 1}@example.com`,
+      displayName: `Staff Visible Participant ${index + 1}`
+    }))
+    const submittedApplications = Array.from({ length: 25 }, (_, index) => ({
+      id: `staff_visible_submitted_application_${index + 1}`,
+      eventId: 'event_1',
+      userId: `staff_visible_participant_${index + 1}`,
+      status: 'submitted' as const,
+      submittedAt: `2026-03-28T12:${String(59 - index).padStart(2, '0')}:00.000Z`,
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+      createdAt: `2026-03-28T12:${String(59 - index).padStart(2, '0')}:00.000Z`,
+      updatedAt: `2026-03-28T12:${String(59 - index).padStart(2, '0')}:00.000Z`
+    }))
+    const reviewedApplications = [
+      {
+        id: 'staff_visible_approved_application',
+        eventId: 'event_1',
+        userId: 'staff_visible_participant_26',
+        status: 'approved' as const,
+        submittedAt: '2026-03-20T12:00:00.000Z',
+        reviewedAt: '2026-03-21T12:00:00.000Z',
+        applicationTermsDocumentId: 'terms_app_2',
+        applicationTermsAcceptedAt: '2026-03-20T12:00:00.000Z',
+        createdAt: '2026-03-20T12:00:00.000Z',
+        updatedAt: '2026-03-21T12:00:00.000Z'
+      },
+      {
+        id: 'staff_visible_rejected_application',
+        eventId: 'event_1',
+        userId: 'staff_visible_participant_27',
+        status: 'rejected' as const,
+        submittedAt: '2026-03-20T11:00:00.000Z',
+        reviewedAt: '2026-03-21T11:00:00.000Z',
+        applicationTermsDocumentId: 'terms_app_2',
+        applicationTermsAcceptedAt: '2026-03-20T11:00:00.000Z',
+        createdAt: '2026-03-20T11:00:00.000Z',
+        updatedAt: '2026-03-21T11:00:00.000Z'
+      },
+      {
+        id: 'staff_visible_withdrawn_application',
+        eventId: 'event_1',
+        userId: 'staff_visible_participant_28',
+        status: 'withdrawn' as const,
+        submittedAt: '2026-03-20T10:00:00.000Z',
+        withdrawnAt: '2026-03-21T10:00:00.000Z',
+        applicationTermsDocumentId: 'terms_app_2',
+        applicationTermsAcceptedAt: '2026-03-20T10:00:00.000Z',
+        createdAt: '2026-03-20T10:00:00.000Z',
+        updatedAt: '2026-03-21T10:00:00.000Z'
+      },
+      {
+        id: 'staff_visible_older_submitted_application',
+        eventId: 'event_1',
+        userId: 'staff_visible_participant_29',
+        status: 'submitted' as const,
+        submittedAt: '2026-03-20T09:00:00.000Z',
+        applicationTermsDocumentId: 'terms_app_2',
+        applicationTermsAcceptedAt: '2026-03-20T09:00:00.000Z',
+        createdAt: '2026-03-20T09:00:00.000Z',
+        updatedAt: '2026-03-20T09:00:00.000Z'
+      }
+    ]
+
+    await harness.database.insert(users).values(participantUsers)
+    await harness.database.insert(userApplications).values([
+      ...submittedApplications,
+      ...reviewedApplications
+    ])
+
+    const firstPageResponse = await harness.request('/api/events/event_1/applications?page=1&page_size=20')
+    expect(firstPageResponse.status).toBe(200)
+    const firstPagePayload = await firstPageResponse.json()
+    expect(firstPagePayload.data).toHaveLength(20)
+    expect(firstPagePayload.data.every((application: { status: string }) => application.status === 'submitted')).toBe(true)
+    expect(firstPagePayload.meta).toMatchObject({
+      page: 1,
+      pageSize: 20,
+      total: 29,
+      statusCounts: {
+        submitted: 26,
+        approved: 1,
+        rejected: 1,
+        withdrawn: 1
+      }
+    })
+
+    const secondPageResponse = await harness.request('/api/events/event_1/applications?page=2&page_size=20')
+    expect(secondPageResponse.status).toBe(200)
+    const secondPagePayload = await secondPageResponse.json()
+    expect(secondPagePayload.data.map((application: { status: string }) => application.status)).toEqual([
+      'submitted',
+      'submitted',
+      'submitted',
+      'submitted',
+      'submitted',
+      'approved',
+      'rejected',
+      'withdrawn',
+      'submitted'
+    ])
+  })
+
   test('GET /api/events/:eventId/applications returns bounded pages for large participant sets', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
