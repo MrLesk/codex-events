@@ -270,7 +270,7 @@ describe('public certificate routes', () => {
     expect(response.status).toBe(200)
   })
 
-  test('returns 404 when the participant hid their certificate', async () => {
+  test('returns 404 when the participant disabled certificate generation', async () => {
     const harness = createHarness()
     await seedCertificateContext(harness)
     await harness.database.update(userApplications).set({ certificateHiddenAt: '2026-06-21T08:00:00.000Z' })

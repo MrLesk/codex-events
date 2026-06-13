@@ -111,7 +111,7 @@ This document defines the canonical permissions for the Codex event platform.
 | Approve application | No | No | No | Yes | Yes |
 | Reject application | No | No | No | Yes | Yes |
 | Override participant attendance (joined / not joined) for certificates | No | No | No | Yes, approved applications only; the override wins over the Luma check-in and repeating the active decision clears it | Yes, approved applications only; the override wins over the Luma check-in and repeating the active decision clears it |
-| Hide or re-publish own participation certificate | No | Yes | No | No | No |
+| Disable or enable own certificate generation | No | Yes | No | No | No |
 
 For Meetup and Build events, an approved application is the participation record. Team permissions below do not apply.
 
@@ -250,7 +250,7 @@ Event credit permissions apply to every event type.
 - Approved participants can view event photo galleries for events where they are approved.
 - Judges, staff, event admins, and platform admins can manage event photo galleries for events where they hold that access.
 - Public event detail pages expose a Gallery tab only when the event has one or more gallery photos marked public.
-- Participation certificates at `/events/:slug/:userId` are publicly viewable for approved, effectively checked-in participants with active accounts who have not hidden their certificate, including the participant's name, the event, the certificate date, the Hackathon submission track when one applies, and the single configured Build track when unambiguous. Image and PDF downloads are public, matching the shareable certificate link.
+- Participation certificates at `/events/:slug/:userId` are publicly viewable for approved, effectively checked-in participants with active accounts who have not disabled certificate generation, including the participant's name, the event, the certificate date, the Hackathon submission track when one applies, and the single configured Build track when unambiguous. Image and PDF downloads are public, matching the shareable certificate link.
 - The public event feedback route is unlinked and available only after the event reaches `completed`.
 - Participants can see shortlist status only for their own team, and only from `pitch` onward when that team advanced.
 - Winner-project visibility and opt-in published-project visibility are delayed until `completed`; before completion, public and account detail pages keep the `Prizes` surface and participant overview or workspace views do not expose completed project showcase snippets.

@@ -120,7 +120,7 @@ describe('application certificate visibility routes', () => {
     expect(response.status).toBe(409)
   })
 
-  test('participant hides and re-publishes the own certificate with audit logging', async () => {
+  test('participant disables and enables certificate generation with audit logging', async () => {
     const harness = createHarness({ sub: 'auth0|participant_user', email: 'participant@example.com' })
     await seedVisibilityContext(harness)
 

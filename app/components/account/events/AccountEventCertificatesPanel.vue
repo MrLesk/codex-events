@@ -199,7 +199,7 @@ onMounted(loadApplications)
           Certificates
         </h2>
         <p class="text-sm text-muted">
-          Confirm who actually joined this event. Luma check-ins are the default, your decisions override them, and only joined participants have a public certificate.
+          Confirm who actually joined this event. Luma check-ins are the default, your decisions override them, and joined participants can generate certificates unless they disable generation.
         </p>
       </div>
     </template>
@@ -321,7 +321,7 @@ onMounted(loadApplications)
                       color="neutral"
                       variant="outline"
                     >
-                      Hidden by participant
+                      Certificate generation disabled
                     </AppBadge>
                     <span
                       v-if="formatCheckedInTimestamp(application)"

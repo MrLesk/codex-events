@@ -45,7 +45,7 @@ export default defineApiHandler(async (h3Event) => {
     throw new ApiError({
       statusCode: 409,
       code: 'application_not_approved',
-      message: 'Certificate visibility can only be changed for approved participation.'
+      message: 'Certificate generation can only be changed for approved participation.'
     })
   }
 

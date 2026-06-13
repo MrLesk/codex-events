@@ -382,7 +382,7 @@ Key characteristics:
 - The certificate ID is derived from the event type, city, certificate date, and participant name, with the user application identifier as the fallback for names without usable characters.
 - The certificate page at `/events/:slug/:userId` and all of its reads — JSON, social-preview image, and PDF — are public, matching the shareable nature of the certificate link.
 - The certificate page is the live verification record for the certificate. The PDF embeds a QR code that resolves back to that page, and the page exposes schema.org structured data describing the credential.
-- A participant can hide their own certificate from their account event workspace and make it public again. Hidden certificates respond not found on every public certificate read, and the admin Certificates tab marks them as hidden by the participant.
+- A participant can disable certificate generation from their account event workspace and enable it again. Disabled certificates respond not found on every public certificate read, account surfaces do not show the certificate link to the participant, and the admin Certificates tab marks certificate generation as disabled.
 - A certificate preview at `/events/:slug/preview` renders a synthetic certificate from query parameters for design review. Previews state that they are samples, are excluded from search indexing, and never represent issued certificates.
 
 ### Team

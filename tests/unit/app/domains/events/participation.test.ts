@@ -1,10 +1,14 @@
 import { describe, expect, test } from 'vitest'
 
-import type { EventParticipationRecord } from '../../../../../app/domains/events/participation'
+import type {
+  EventParticipationApplicationSummary,
+  EventParticipationRecord
+} from '../../../../../app/domains/events/participation'
 
 import {
   formatParticipationStageLabel,
   formatParticipationStatusLabel,
+  getEventParticipationCertificateAction,
   getEventParticipationOutcomeNotice,
   getEventParticipationRankNotice,
   getEventParticipationPrimaryAction,
@@ -12,6 +16,25 @@ import {
   getParticipationStatusColor,
   isEventParticipationUpcoming
 } from '../../../../../app/domains/events/participation'
+
+function buildApplication(
+  overrides: Partial<EventParticipationApplicationSummary> = {}
+): EventParticipationApplicationSummary {
+  return {
+    id: 'application-1',
+    userId: 'user-1',
+    status: 'submitted',
+    lumaSyncStatus: null,
+    submittedAt: '2026-03-09T09:00:00Z',
+    withdrawnAt: null,
+    reviewedAt: null,
+    checkedInAt: null,
+    isCheckedIn: false,
+    certificateHiddenAt: null,
+    updatedAt: '2026-03-10T09:00:00Z',
+    ...overrides
+  }
+}
 
 function buildRecord(
   overrides: Partial<EventParticipationRecord> = {}
@@ -33,15 +56,7 @@ function buildRecord(
     },
     isPast: false,
     lastActivityAt: '2026-03-10T09:00:00Z',
-    application: {
-      id: 'application-1',
-      status: 'submitted',
-      lumaSyncStatus: null,
-      submittedAt: '2026-03-09T09:00:00Z',
-      withdrawnAt: null,
-      reviewedAt: null,
-      updatedAt: '2026-03-10T09:00:00Z'
-    },
+    application: buildApplication(),
     activeTeam: null,
     latestTeam: null,
     latestSubmission: null,
@@ -75,15 +90,11 @@ describe('event participation badge helpers', () => {
 
   test('uses approved when the application was accepted', () => {
     const record = buildRecord({
-      application: {
-        id: 'application-1',
+      application: buildApplication({
         status: 'approved',
-        lumaSyncStatus: null,
-        submittedAt: '2026-03-09T09:00:00Z',
-        withdrawnAt: null,
         reviewedAt: '2026-03-12T09:00:00Z',
         updatedAt: '2026-03-12T09:00:00Z'
-      }
+      })
     })
 
     expect(formatParticipationStageLabel(record)).toBe('Application submitted')
@@ -93,15 +104,11 @@ describe('event participation badge helpers', () => {
 
   test('uses not approved when the application was rejected', () => {
     const record = buildRecord({
-      application: {
-        id: 'application-1',
+      application: buildApplication({
         status: 'rejected',
-        lumaSyncStatus: null,
-        submittedAt: '2026-03-09T09:00:00Z',
-        withdrawnAt: null,
         reviewedAt: '2026-03-12T09:00:00Z',
         updatedAt: '2026-03-12T09:00:00Z'
-      }
+      })
     })
 
     expect(formatParticipationStageLabel(record)).toBe('Application submitted')
@@ -137,14 +144,11 @@ describe('event participation badge helpers', () => {
 
   test('always routes participation cards to the overview workspace', () => {
     const record = buildRecord({
-      application: {
-        id: 'application-1',
+      application: buildApplication({
         status: 'approved',
-        submittedAt: '2026-03-09T09:00:00Z',
-        withdrawnAt: null,
         reviewedAt: '2026-03-12T09:00:00Z',
         updatedAt: '2026-03-12T09:00:00Z'
-      },
+      }),
       activeTeam: {
         id: 'team-1',
         name: 'North Star Builders',
@@ -161,6 +165,58 @@ describe('event participation badge helpers', () => {
       href: '/account/events/vienna',
       label: 'Open overview'
     })
+  })
+
+  test('links to the certificate for completed checked-in approved participation', () => {
+    const record = buildRecord({
+      event: {
+        ...buildRecord().event,
+        state: 'completed'
+      },
+      application: buildApplication({
+        status: 'approved',
+        checkedInAt: '2026-03-28T09:30:00Z',
+        isCheckedIn: true
+      })
+    })
+
+    expect(getEventParticipationCertificateAction(record)).toEqual({
+      href: '/events/vienna/user-1',
+      label: 'View certificate'
+    })
+  })
+
+  test('hides the certificate action when generation is disabled', () => {
+    const record = buildRecord({
+      event: {
+        ...buildRecord().event,
+        state: 'completed'
+      },
+      application: buildApplication({
+        status: 'approved',
+        checkedInAt: '2026-03-28T09:30:00Z',
+        isCheckedIn: true,
+        certificateHiddenAt: '2026-03-29T10:00:00Z'
+      })
+    })
+
+    expect(getEventParticipationCertificateAction(record)).toBeNull()
+  })
+
+  test('hides the certificate action before completion', () => {
+    const record = buildRecord({
+      event: {
+        ...buildRecord().event,
+        state: 'winners_announced'
+      },
+      application: buildApplication({
+        status: 'approved',
+        checkedInAt: '2026-03-28T09:30:00Z',
+        isCheckedIn: true
+      })
+    })
+
+    expect(getEventParticipationCertificateAction(record)).toBeNull()
   })
 
   test('returns a shortlist notice only after the team advances', () => {

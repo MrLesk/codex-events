@@ -2,6 +2,7 @@ import type { PublicEventState, PublicEventType } from '~/domains/events/present
 import type { ParticipantApplicationLumaSyncStatus } from '~/domains/applications/participant-application'
 import type { TeamSubmissionRecord } from '~/domains/submissions/team-submission'
 
+import { buildEventCertificatePath } from '#shared/domains/events/certificates'
 import { normalizeApiError } from '~/lib/api'
 
 export interface EventParticipationEventSummary {
@@ -21,6 +22,7 @@ export interface EventParticipationEventSummary {
 
 export interface EventParticipationApplicationSummary {
   id: string
+  userId: string
   status: 'submitted' | 'approved' | 'rejected' | 'withdrawn'
   lumaSyncStatus: ParticipantApplicationLumaSyncStatus
   submittedAt: string
@@ -175,6 +177,26 @@ export function getEventParticipationPrimaryAction(
   return {
     href: `/account/events/${record.event.slug}`,
     label: 'Open overview'
+  }
+}
+
+export function getEventParticipationCertificateAction(
+  record: Pick<EventParticipationRecord, 'event' | 'application'>
+): EventParticipationPrimaryAction | null {
+  const application = record.application
+
+  if (
+    record.event.state !== 'completed'
+    || application?.status !== 'approved'
+    || !application.isCheckedIn
+    || application.certificateHiddenAt
+  ) {
+    return null
+  }
+
+  return {
+    href: buildEventCertificatePath(record.event.slug, application.userId),
+    label: 'View certificate'
   }
 }
 

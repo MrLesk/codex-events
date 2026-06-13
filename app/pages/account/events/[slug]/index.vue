@@ -32,6 +32,7 @@ import type {
 } from '~/domains/outcomes/published-outcomes'
 import type { Ref } from 'vue'
 
+import { Switch as UiSwitch } from '~/components/ui/switch'
 import {
   LazyAccountEventsAccountEventAdminOperationsPanel as LazyAccountEventAdminOperationsPanel,
   LazyAccountEventsAccountEventAdminSettingsPanel as LazyAccountEventAdminSettingsPanel,
@@ -319,19 +320,29 @@ watch(accountLumaEmail, (nextEmail) => {
 }, {
   immediate: true
 })
-const participantCertificatePath = computed(() => {
+const canManageParticipantCertificateGeneration = computed(() => {
   const application = participationRecord.value?.application
 
-  if (actor.value.kind !== 'platform_user' || application?.status !== 'approved' || !application.isCheckedIn) {
+  return actor.value.kind === 'platform_user'
+    && event.value.state === 'completed'
+    && application?.status === 'approved'
+    && application.isCheckedIn
+})
+const isCertificateGenerationDisabled = computed(() => Boolean(participationRecord.value?.application?.certificateHiddenAt))
+const participantCertificatePath = computed(() => {
+  if (
+    actor.value.kind !== 'platform_user'
+    || !canManageParticipantCertificateGeneration.value
+    || isCertificateGenerationDisabled.value
+  ) {
     return null
   }
 
   return buildEventCertificatePath(slug.value, actor.value.platformUser.id)
 })
-const isCertificateHidden = computed(() => Boolean(participationRecord.value?.application?.certificateHiddenAt))
 const isCertificateVisibilityPending = ref(false)
 
-async function toggleCertificateVisibility() {
+async function setCertificateGenerationDisabled(disabled: boolean) {
   const application = participationRecord.value?.application
 
   if (!application || isCertificateVisibilityPending.value) {
@@ -345,20 +356,20 @@ async function toggleCertificateVisibility() {
       `/api/events/${workspaceEventId.value}/applications/me/actions/set-certificate-visibility`,
       {
         method: 'POST',
-        body: { hidden: !isCertificateHidden.value }
+        body: { hidden: disabled }
       }
     )
 
     updateParticipationRecordApplication(response.data)
     toast.add({
       title: response.data.certificateHiddenAt
-        ? 'Your certificate is now hidden from the public'
-        : 'Your certificate is public again',
+        ? 'Certificate generation disabled'
+        : 'Certificate generation enabled',
       color: 'success'
     })
   } catch (error) {
     toast.add({
-      title: 'Certificate visibility could not be changed',
+      title: 'Certificate generation could not be changed',
       description: normalizeParticipantApiError(error).message,
       color: 'error'
     })
@@ -778,6 +789,7 @@ function updateParticipationRecordApplication(nextApplication: ParticipantApplic
           ...record,
           application: {
             id: nextApplication.id,
+            userId: nextApplication.userId,
             status: nextApplication.status,
             lumaSyncStatus: nextApplication.lumaSyncStatus,
             submittedAt: nextApplication.submittedAt,
@@ -1119,7 +1131,7 @@ useSeoMeta({
         />
 
         <section
-          v-if="participantCertificatePath"
+          v-if="canManageParticipantCertificateGeneration"
           data-testid="account-event-certificate-panel"
           class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5"
         >
@@ -1129,27 +1141,37 @@ useSeoMeta({
                 Your participation certificate
               </h2>
               <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                {{ isCertificateHidden
-                  ? 'Your certificate is hidden. Visitors who open your certificate link see nothing until you make it public again.'
+                {{ isCertificateGenerationDisabled
+                  ? 'Certificate generation is disabled. Nobody can view this certificate until you enable generation again.'
                   : 'You checked in at this event. View, share, or download your certificate.' }}
               </p>
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
-              <AppButton
-                color="neutral"
-                variant="outline"
-                :icon="isCertificateHidden ? 'i-lucide-eye' : 'i-lucide-eye-off'"
-                :loading="isCertificateVisibilityPending"
-                data-testid="certificate-visibility-toggle"
-                class="rounded-lg px-4 py-2"
-                @click="toggleCertificateVisibility"
-              >
-                {{ isCertificateHidden ? 'Make public' : 'Hide from public' }}
-              </AppButton>
+              <div class="flex items-start gap-3 rounded-xl border border-black/8 bg-black/[0.02] px-4 py-3 dark:border-white/[0.08] dark:bg-white/[0.03]">
+                <UiSwitch
+                  id="certificate-generation-toggle"
+                  :model-value="isCertificateGenerationDisabled"
+                  :disabled="isCertificateVisibilityPending"
+                  data-testid="certificate-generation-toggle"
+                  class="data-[state=checked]:bg-red-500 dark:data-[state=checked]:bg-red-500"
+                  @update:model-value="setCertificateGenerationDisabled(Boolean($event))"
+                />
+                <div class="space-y-1">
+                  <label
+                    for="certificate-generation-toggle"
+                    class="block text-sm font-medium text-highlighted dark:text-white"
+                  >
+                    Disable certificate generation
+                  </label>
+                  <p class="text-xs font-medium uppercase tracking-[0.14em] text-muted">
+                    {{ isCertificateGenerationDisabled ? 'Certificate generation disabled' : 'Certificate generation enabled' }}
+                  </p>
+                </div>
+              </div>
 
               <AppButton
-                v-if="!isCertificateHidden"
+                v-if="participantCertificatePath"
                 :to="participantCertificatePath"
                 color="neutral"
                 variant="solid"

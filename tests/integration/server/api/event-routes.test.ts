@@ -815,6 +815,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         status: 'approved',
         submittedAt: '2026-01-10T13:00:00.000Z',
         reviewedAt: '2026-01-10T15:00:00.000Z',
+        checkedInAt: '2026-01-15T18:05:00.000Z',
         applicationTermsDocumentId: 'terms_past',
         applicationTermsAcceptedAt: '2026-01-10T13:00:00.000Z',
         updatedAt: '2026-01-10T15:00:00.000Z'
@@ -1025,7 +1026,10 @@ describe('TASK-3.5 event CRUD routes', () => {
             isPast: true,
             application: {
               id: 'application_past',
-              status: 'approved'
+              userId: 'participant_1',
+              status: 'approved',
+              isCheckedIn: true,
+              certificateHiddenAt: null
             },
             activeTeam: null,
             latestTeam: {

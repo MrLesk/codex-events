@@ -11,6 +11,7 @@ import {
 import {
   formatParticipationStageLabel,
   formatParticipationStatusLabel,
+  getEventParticipationCertificateAction,
   getEventParticipationPrimaryAction,
   getParticipationStageColor,
   getParticipationStatusColor
@@ -21,6 +22,7 @@ const props = defineProps<{
 }>()
 
 const primaryAction = computed(() => getEventParticipationPrimaryAction(props.record))
+const certificateAction = computed(() => getEventParticipationCertificateAction(props.record))
 const eventMetaItems = computed(() => [
   `Type: ${formatEventTypeLabel(props.record.event.eventType)}`,
   `Date: ${formatEventDateWithWeekday(props.record.event.startsAt)}`,
@@ -84,15 +86,29 @@ const showParticipationStageBadge = computed(() =>
           </AppBadge>
         </div>
 
-        <AppButton
-          :to="primaryAction.href"
-          color="neutral"
-          variant="solid"
-          trailing-icon="i-lucide-arrow-up-right"
-          class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-        >
-          {{ primaryAction.label }}
-        </AppButton>
+        <div class="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+          <AppButton
+            :to="primaryAction.href"
+            color="neutral"
+            variant="solid"
+            trailing-icon="i-lucide-arrow-up-right"
+            class="w-full justify-center rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 sm:w-auto dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+          >
+            {{ primaryAction.label }}
+          </AppButton>
+
+          <AppButton
+            v-if="certificateAction"
+            :to="certificateAction.href"
+            color="neutral"
+            variant="outline"
+            trailing-icon="i-lucide-award"
+            :data-testid="`event-participation-certificate-${props.record.event.slug}`"
+            class="w-full justify-center rounded-lg px-4 py-2 sm:w-auto"
+          >
+            {{ certificateAction.label }}
+          </AppButton>
+        </div>
       </div>
     </div>
   </article>

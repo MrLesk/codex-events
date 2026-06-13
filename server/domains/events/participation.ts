@@ -91,6 +91,7 @@ function serializeEventSummary(event: EventRecord) {
 function serializeApplicationSummary(application: ApplicationRecord) {
   return {
     id: application.id,
+    userId: application.userId,
     status: application.status,
     lumaSyncStatus: application.lumaSyncStatus,
     submittedAt: application.submittedAt,
