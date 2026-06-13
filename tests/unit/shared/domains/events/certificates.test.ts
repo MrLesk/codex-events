@@ -80,8 +80,8 @@ describe('event certificate helpers', () => {
       .toBe('Maria Novák has participated in Codex Community Build - Vienna on June 20, 2026. Track: Agents & Automation.')
     expect(buildEventCertificateSummary({ ...base, trackName: 'Agents & Automation', placement: 1, prizes: ['OpenAI API Credits'] }))
       .toBe('Maria Novák has participated in Codex Community Build - Vienna on June 20, 2026. Finished 1st Place and won OpenAI API Credits. Track: Agents & Automation.')
-    expect(buildEventCertificateSummary({ ...base, trackName: null, placement: 1, prizes: ['OpenAI API Credits ($15,000)', 'Top 5 Teams Member Benefit (1 year ChatGPT Pro)'] }))
-      .toBe('Maria Novák has participated in Codex Community Build - Vienna on June 20, 2026. Finished 1st Place and won OpenAI API Credits ($15,000), Top 5 Teams Member Benefit (1 year ChatGPT Pro).')
+    expect(buildEventCertificateSummary({ ...base, trackName: null, placement: 1, prizes: ['$15,000 API Credits', '1 year ChatGPT Pro'] }))
+      .toBe('Maria Novák has participated in Codex Community Build - Vienna on June 20, 2026. Finished 1st Place and won $15,000 API Credits, 1 year ChatGPT Pro.')
   })
 
   test('builds public verification copy for issued certificates', () => {

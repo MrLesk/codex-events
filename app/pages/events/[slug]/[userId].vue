@@ -342,7 +342,7 @@ useHead({
         />
       </div>
 
-      <div class="mx-auto mt-7 flex max-w-[46rem] flex-col items-center gap-1 text-center">
+      <div class="mx-auto mt-7 flex w-full max-w-[64rem] flex-col items-center gap-1 text-center">
         <p
           v-if="isPreview"
           class="inline-flex items-center gap-1.5 text-[13px] text-neutral-600 dark:text-white/60"

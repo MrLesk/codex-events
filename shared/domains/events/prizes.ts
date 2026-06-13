@@ -5,6 +5,7 @@ export interface EventPrizeReward {
 
 export interface EventPrizeAward extends EventPrizeReward {
   name: string
+  rewardType: 'api_credits' | 'subscription' | 'physical' | 'other'
 }
 
 const prizeNumberFormatter = new Intl.NumberFormat(undefined, {
@@ -47,5 +48,9 @@ export function formatPrizeReward(prize: EventPrizeReward) {
 }
 
 export function formatPrizeAwardLabel(prize: EventPrizeAward) {
-  return `${prize.name} (${formatPrizeReward(prize)})`
+  const rewardLabel = formatPrizeReward(prize)
+
+  return prize.rewardType === 'api_credits'
+    ? `${rewardLabel} API Credits`
+    : rewardLabel
 }

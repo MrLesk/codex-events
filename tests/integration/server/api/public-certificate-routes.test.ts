@@ -356,7 +356,7 @@ describe('public certificate routes', () => {
       teamName: 'Night Shift',
       projectName: 'Deploy Pilot',
       placement: 1,
-      prizes: ['OpenAI API Credits ($500)']
+      prizes: ['$500 API Credits']
     })
   })
 

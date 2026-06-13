@@ -43,22 +43,24 @@ describe('event prize helpers', () => {
     }).format(1200)} USDT`)
   })
 
-  test('formats public award labels with the prize name and reward', () => {
+  test('formats public award labels as concise reward labels', () => {
     expect(formatPrizeAwardLabel({
       name: '1st Place API Credits',
+      rewardType: 'api_credits',
       rewardValue: '15000',
       rewardCurrency: 'USD'
-    })).toBe(`1st Place API Credits (${new Intl.NumberFormat(undefined, {
+    })).toBe(`${new Intl.NumberFormat(undefined, {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 20
-    }).format(15000)})`)
+    }).format(15000)} API Credits`)
 
     expect(formatPrizeAwardLabel({
       name: 'Top 5 Teams Member Benefit',
+      rewardType: 'subscription',
       rewardValue: '1 year ChatGPT Pro',
       rewardCurrency: null
-    })).toBe('Top 5 Teams Member Benefit (1 year ChatGPT Pro)')
+    })).toBe('1 year ChatGPT Pro')
   })
 })
