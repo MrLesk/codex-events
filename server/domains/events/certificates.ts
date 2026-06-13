@@ -29,6 +29,7 @@ import {
   formatEventCertificateDate,
   resolveEventCertificateDateIso
 } from '#shared/domains/events/certificates'
+import { formatPrizeAwardLabel } from '#shared/domains/events/prizes'
 
 export const certificatePreviewQuerySchema = z.object({
   name: z.string().trim().min(1).max(80).default('Sara Novak'),
@@ -149,7 +150,7 @@ export async function getEventCertificateOrThrow(
     teamName: showCompetitionOutcome ? teamContext?.teamName ?? null : null,
     projectName: showCompetitionOutcome ? teamContext?.projectName ?? null : null,
     placement: outcome?.finalRank ?? null,
-    prizes: outcome?.prizes.map(prize => prize.name) ?? [],
+    prizes: outcome?.prizes.map(formatPrizeAwardLabel) ?? [],
     certificateId: buildEventCertificateId({
       eventType: event.eventType,
       city: event.city,

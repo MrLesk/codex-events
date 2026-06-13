@@ -339,6 +339,7 @@ describe('public certificate routes', () => {
       description: 'API credits for the winning team',
       rewardType: 'api_credits',
       rewardValue: '500',
+      rewardCurrency: 'USD',
       awardScope: 'team',
       rankStart: 1,
       rankEnd: 1,
@@ -355,7 +356,7 @@ describe('public certificate routes', () => {
       teamName: 'Night Shift',
       projectName: 'Deploy Pilot',
       placement: 1,
-      prizes: ['OpenAI API Credits']
+      prizes: ['OpenAI API Credits ($500)']
     })
   })
 

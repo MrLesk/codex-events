@@ -363,7 +363,9 @@ describe('public event agenda presentation helpers', () => {
       rewardCurrency: 'USD'
     })).toBe(new Intl.NumberFormat(undefined, {
       style: 'currency',
-      currency: 'USD'
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 20
     }).format(1200))
   })
 

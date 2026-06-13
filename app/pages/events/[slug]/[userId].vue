@@ -3,6 +3,7 @@ import type { EventCertificate } from '#shared/domains/events/certificates'
 import {
   buildEventCertificatePath,
   buildEventCertificateSummary,
+  buildEventCertificateVerificationText,
   eventCertificatePreviewUserId,
   eventCertificateTypeLabels,
   formatEventCertificatePlacement
@@ -91,7 +92,7 @@ const shareCertificateUrl = computed(() => {
 const certificateApiBasePath = computed(() => `/api/public/events/${slug.value}/participants/${userId.value}`)
 const certificateImageUrl = computed(() => new URL(`${certificateApiBasePath.value}/certificate.png${previewSearch.value}`, requestUrl.origin).toString())
 const certificateSummary = computed(() => buildEventCertificateSummary(certificate.value))
-const certificateHost = computed(() => requestUrl.host)
+const certificateVerificationText = computed(() => buildEventCertificateVerificationText(certificate.value.certificateId))
 const shouldCelebrate = ref(false)
 const isCertificateOwner = computed(() => accountActor.value.platformUser?.id === userId.value)
 
@@ -315,12 +316,12 @@ useHead({
         </p>
         <p
           v-if="placementLine"
-          class="mt-2 inline-flex items-center gap-1.5 text-[16px] font-semibold text-amber-700 dark:text-amber-300 sm:text-[18px]"
+          class="mt-2 inline-flex items-start gap-1.5 text-[16px] font-semibold text-amber-700 dark:text-amber-300 sm:text-[18px]"
           data-testid="certificate-placement"
         >
           <AppIcon
             name="i-lucide-trophy"
-            class="size-4.5"
+            class="mt-1 size-4.5 shrink-0"
           />
           {{ placementLine }}
         </p>
@@ -354,20 +355,12 @@ useHead({
           This is a design preview with sample data, not an issued certificate.
         </p>
         <template v-else>
-          <p class="inline-flex items-center gap-1.5 text-[13px] text-neutral-600 dark:text-white/60">
+          <p class="inline-flex items-start gap-1.5 text-[13px] text-neutral-600 dark:text-white/60">
             <AppIcon
               name="i-lucide-lock"
-              class="size-3.5"
+              class="mt-0.5 size-3.5 shrink-0"
             />
-            This certificate is issued by the Codex Community Events Platform.
-          </p>
-          <p class="text-[13px] text-neutral-600 dark:text-white/60">
-            This page at
-            <a
-              :href="certificateUrl"
-              class="font-medium text-indigo-600 transition-colors hover:text-neutral-950 dark:text-[#8b9bff] dark:hover:text-white"
-            >{{ certificateHost }}</a>
-            is the live verification record for certificate {{ certificate.certificateId }}.
+            {{ certificateVerificationText }}
           </p>
         </template>
       </div>

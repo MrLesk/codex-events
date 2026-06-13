@@ -129,6 +129,10 @@ export function buildEventCertificatePath(eventSlug: string, userId: string) {
   return `/events/${eventSlug}/${userId}`
 }
 
+export function buildEventCertificateVerificationText(certificateId: string) {
+  return `This certificate is issued by the Codex Community Events Platform and can be verified here as certificate ${certificateId}.`
+}
+
 export function buildEventCertificateSummary(certificate: Pick<EventCertificate, 'participantName' | 'eventName' | 'eventDateLabel' | 'trackName' | 'placement' | 'prizes'>) {
   const parts = [`${certificate.participantName} has participated in ${certificate.eventName} on ${certificate.eventDateLabel}.`]
 

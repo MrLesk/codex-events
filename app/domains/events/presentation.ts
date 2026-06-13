@@ -1,6 +1,8 @@
 import type { EventState } from '~/domains/events/states'
 import { resolveEventCertificateDateIso } from '#shared/domains/events/certificates'
 
+export { formatPrizeReward } from '#shared/domains/events/prizes'
+
 export type PublicEventState = EventState
 export type PublicEventType = 'hackathon' | 'meetup' | 'build'
 
@@ -266,20 +268,6 @@ const timeFormatter = new Intl.DateTimeFormat('en-US', {
   hour: '2-digit',
   minute: '2-digit'
 })
-
-const prizeNumberFormatter = new Intl.NumberFormat(undefined, {
-  maximumFractionDigits: 20
-})
-
-function parseNumericPrizeRewardValue(value: string) {
-  if (!/^-?\d+(?:\.\d+)?$/.test(value)) {
-    return null
-  }
-
-  const numericValue = Number(value)
-
-  return Number.isFinite(numericValue) ? numericValue : null
-}
 
 function isSameLocalDay(left: Date, right: Date) {
   return left.getFullYear() === right.getFullYear()
@@ -588,29 +576,6 @@ export function formatPrizeRank(prize: Pick<PublicPrize, 'rankStart' | 'rankEnd'
   return prize.rankStart === prize.rankEnd
     ? `Rank ${prize.rankStart}`
     : `Ranks ${prize.rankStart}-${prize.rankEnd}`
-}
-
-export function formatPrizeReward(prize: Pick<PublicPrize, 'rewardValue' | 'rewardCurrency'>) {
-  const numericRewardValue = parseNumericPrizeRewardValue(prize.rewardValue)
-
-  if (numericRewardValue === null) {
-    return prize.rewardValue
-  }
-
-  if (!prize.rewardCurrency) {
-    return prizeNumberFormatter.format(numericRewardValue)
-  }
-
-  const currency = prize.rewardCurrency.toUpperCase()
-
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency
-    }).format(numericRewardValue)
-  } catch {
-    return `${prizeNumberFormatter.format(numericRewardValue)} ${currency}`
-  }
 }
 
 export function formatPrizeScope(scope: PublicPrize['awardScope']) {
