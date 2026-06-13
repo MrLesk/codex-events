@@ -47,7 +47,7 @@ Affected paths:
 
 - `server/api/events/[eventId]/teams/[teamId]/index.get.ts`
 - `server/domains/teams/index.ts`
-- `app/components/teams/ParticipantTeamMembershipPanel.vue`
+- `app/components/teams/ParticipantTeamWorkspacePanel.vue`
 
 What happens:
 
