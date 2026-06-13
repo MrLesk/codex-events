@@ -14,7 +14,7 @@ import type {
   PublishedEventRosterRole
 } from '~/domains/events/published-roster'
 
-import { buildApiCacheKey, getApiSubjectKey, normalizeApiError } from '~/lib/api'
+import { buildApiCacheKey, getApiSubjectKey } from '~/lib/api'
 import {
   buildAssignedRoleRosterRows,
   buildRoleRosterRows,
@@ -43,27 +43,16 @@ const props = defineProps<{
   managementEventId?: string | null
 }>()
 
-const toast = useToast()
 const authenticatedUser = useUser()
 const { actor } = useSessionActor()
 const roleCandidatePageSize = 20
-type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 
 const rosterState = ref(props.roster)
-const mutationError = ref('')
-const pendingActionKey = ref<string | null>(null)
-const candidateSearchInput = ref('')
-const appliedCandidateSearch = ref('')
-const candidateUsers = ref<EventRoleUserSummary[]>([])
-const candidateUsersTotal = ref(0)
-const currentCandidatePage = ref(1)
-const candidateUsersStatus = ref<LoadStatus>('pending')
-const candidateUsersErrorMessage = ref('')
-const isLoadingMoreCandidates = ref(false)
-const loadMoreCandidatesErrorMessage = ref('')
-const initializedRosterKey = ref<string | null>(null)
-const candidateRequestSequence = ref(0)
-let pendingCandidateSearchTimeout: ReturnType<typeof setTimeout> | null = null
+const {
+  mutationError,
+  pendingActionKey,
+  runRosterMutation
+} = useRosterMutationRunner()
 
 watch(() => props.roster, (value) => {
   rosterState.value = value
@@ -90,6 +79,35 @@ const errorMessage = computed(() => rosterState.value.errorMessage?.trim() ?? ''
 const managementEventId = computed(() => props.managementEventId?.trim() ?? '')
 const canManageRoster = computed(() => managementEventId.value.length > 0)
 const subjectKey = computed(() => getApiSubjectKey(authenticatedUser.value?.sub))
+const {
+  candidateSearchInput,
+  appliedCandidateSearch,
+  candidateUsers,
+  candidateUsersStatus,
+  candidateUsersErrorMessage,
+  isLoadingMoreCandidates,
+  loadMoreCandidatesErrorMessage,
+  hasMoreCandidates,
+  loadMoreCandidates
+} = useRosterCandidateSearch<EventRoleUserSummary>({
+  pageSize: roleCandidatePageSize,
+  resetKey: managementEventId,
+  enabled: canManageRoster,
+  loadPage: async ({ page, pageSize, search }) => await $fetch<ApiListResponse<EventRoleUserSummary>>(
+    `/api/events/${managementEventId.value}/roles/candidates`,
+    {
+      query: {
+        page,
+        page_size: pageSize,
+        ...(search.length > 0
+          ? {
+              search
+            }
+          : {})
+      }
+    }
+  )
+})
 const roleAssignmentsResponse = useFetch<ApiListResponse<EventRoleAssignment>>(
   () => `/api/events/${managementEventId.value}/roles`,
   {
@@ -132,7 +150,6 @@ const addSectionDescription = computed(() =>
     ? 'Search by name, email, or user ID. Admins can also review submissions when judging is enabled for their admin assignment.'
     : 'Search by name, email, or user ID. Staff and judge access stay separate unless the person is already an event admin.'
 )
-const hasMoreCandidates = computed(() => candidateUsers.value.length < candidateUsersTotal.value)
 const emptyCandidateMessage = computed(() =>
   appliedCandidateSearch.value.length > 0
     ? 'No people match this search.'
@@ -207,17 +224,6 @@ function isAdminLikeAssignment(assignment: EventRoleAssignment | null) {
   return isAdminCapableEventUser(assignment, assignment?.user)
 }
 
-function resetCandidateState() {
-  candidateRequestSequence.value += 1
-  candidateUsers.value = []
-  candidateUsersTotal.value = 0
-  currentCandidatePage.value = 1
-  candidateUsersStatus.value = 'idle'
-  candidateUsersErrorMessage.value = ''
-  isLoadingMoreCandidates.value = false
-  loadMoreCandidatesErrorMessage.value = ''
-}
-
 async function refreshPublishedRoster() {
   rosterState.value = await loadPublishedEventRoster(
     path => $fetch<ApiListResponse<PublishedEventRosterMember>>(path),
@@ -228,179 +234,22 @@ async function refreshPublishedRoster() {
   )
 }
 
-async function fetchCandidatePage(page: number) {
-  return await $fetch<ApiListResponse<EventRoleUserSummary>>(
-    `/api/events/${managementEventId.value}/roles/candidates`,
-    {
-      query: {
-        page,
-        page_size: roleCandidatePageSize,
-        ...(appliedCandidateSearch.value.length > 0
-          ? {
-              search: appliedCandidateSearch.value
-            }
-          : {})
-      }
-    }
-  )
-}
-
-async function loadCandidateUsers() {
-  if (!canManageRoster.value) {
-    return
-  }
-
-  const requestId = ++candidateRequestSequence.value
-
-  candidateUsersStatus.value = 'pending'
-  candidateUsersErrorMessage.value = ''
-  loadMoreCandidatesErrorMessage.value = ''
-
-  try {
-    const response = await fetchCandidatePage(1)
-
-    if (requestId !== candidateRequestSequence.value) {
-      return
-    }
-
-    candidateUsers.value = response.data
-    candidateUsersTotal.value = response.meta?.total ?? response.data.length
-    currentCandidatePage.value = 1
-    candidateUsersStatus.value = 'success'
-  } catch (error) {
-    if (requestId !== candidateRequestSequence.value) {
-      return
-    }
-
-    candidateUsers.value = []
-    candidateUsersTotal.value = 0
-    currentCandidatePage.value = 1
-    candidateUsersStatus.value = 'error'
-    candidateUsersErrorMessage.value = normalizeApiError(error).message
-  }
-}
-
-async function loadMoreCandidates() {
-  if (
-    !canManageRoster.value
-    || candidateUsersStatus.value === 'pending'
-    || isLoadingMoreCandidates.value
-    || !hasMoreCandidates.value
-  ) {
-    return
-  }
-
-  const requestId = ++candidateRequestSequence.value
-  const nextPage = currentCandidatePage.value + 1
-
-  isLoadingMoreCandidates.value = true
-  loadMoreCandidatesErrorMessage.value = ''
-
-  try {
-    const response = await fetchCandidatePage(nextPage)
-
-    if (requestId !== candidateRequestSequence.value) {
-      return
-    }
-
-    const nextUsers = [...candidateUsers.value, ...response.data].filter((user, index, items) =>
-      items.findIndex(candidate => candidate.id === user.id) === index
-    )
-
-    candidateUsers.value = nextUsers
-    candidateUsersTotal.value = response.meta?.total ?? nextUsers.length
-    currentCandidatePage.value = nextPage
-  } catch (error) {
-    if (requestId !== candidateRequestSequence.value) {
-      return
-    }
-
-    loadMoreCandidatesErrorMessage.value = normalizeApiError(error).message
-  } finally {
-    if (requestId === candidateRequestSequence.value) {
-      isLoadingMoreCandidates.value = false
-    }
-  }
-}
-
-function cancelPendingCandidateSearch() {
-  if (pendingCandidateSearchTimeout) {
-    clearTimeout(pendingCandidateSearchTimeout)
-    pendingCandidateSearchTimeout = null
-  }
-}
-
-function scheduleCandidateSearch(value: string) {
-  cancelPendingCandidateSearch()
-
-  pendingCandidateSearchTimeout = setTimeout(async () => {
-    pendingCandidateSearchTimeout = null
-    appliedCandidateSearch.value = value
-
-    await loadCandidateUsers()
-  }, 250)
-}
-
-watch(candidateSearchInput, (value) => {
-  const normalizedValue = value.trim()
-
-  if (!canManageRoster.value || normalizedValue === appliedCandidateSearch.value) {
-    return
-  }
-
-  loadMoreCandidatesErrorMessage.value = ''
-  scheduleCandidateSearch(normalizedValue)
-})
-
-watch([managementEventId, canManageRoster], async ([eventId, canManage]) => {
-  const nextRosterKey = canManage ? eventId : null
-
-  if (initializedRosterKey.value === nextRosterKey) {
-    return
-  }
-
-  cancelPendingCandidateSearch()
-  initializedRosterKey.value = nextRosterKey
-  appliedCandidateSearch.value = ''
-  candidateSearchInput.value = ''
-  resetCandidateState()
-
-  if (!canManage) {
-    return
-  }
-
-  await loadCandidateUsers()
-}, {
-  immediate: import.meta.client
-})
-
-onBeforeUnmount(() => {
-  cancelPendingCandidateSearch()
-})
-
 async function runMutation(
   actionKey: string,
   action: () => Promise<void>,
   successTitle: string,
   successDescription: string
 ) {
-  mutationError.value = ''
-  pendingActionKey.value = actionKey
-
-  try {
-    await action()
-    toast.add({
-      title: successTitle,
-      description: successDescription,
-      color: 'success'
-    })
-    await roleAssignmentsResponse.refresh()
-    await refreshPublishedRoster()
-  } catch (error) {
-    mutationError.value = normalizeApiError(error).message
-  } finally {
-    pendingActionKey.value = null
-  }
+  await runRosterMutation({
+    actionKey,
+    action,
+    successTitle,
+    successDescription,
+    afterSuccess: async () => {
+      await roleAssignmentsResponse.refresh()
+      await refreshPublishedRoster()
+    }
+  })
 }
 
 async function putRoleAssignment(
@@ -940,66 +789,53 @@ async function removePublishedRosterMember(userId: string) {
             class="grid gap-3"
           >
             <template v-if="candidateUsersStatus === 'pending' && candidateUsers.length === 0">
-              <div
+              <AccountRosterUserRowSkeleton
                 v-for="index in candidateSkeletonRowCount"
                 :key="`candidate-skeleton-${index}`"
-                class="min-h-[4.75rem] flex flex-col gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 md:flex-row md:items-center md:justify-between dark:border-white/[0.08] dark:bg-[#111111]"
-                aria-hidden="true"
-              >
-                <div class="space-y-1.5">
-                  <div class="h-5 w-36 animate-pulse rounded-full bg-black/8 dark:bg-white/[0.08]" />
-                  <div class="h-4 w-52 animate-pulse rounded-full bg-black/6 dark:bg-white/[0.06]" />
-                </div>
-
-                <div class="h-8 w-24 rounded-lg bg-black/6 dark:bg-white/[0.06] md:self-auto" />
-              </div>
+              />
             </template>
 
             <template v-else>
-              <div
+              <AccountRosterUserRow
                 v-for="row in candidateRows"
                 :key="row.id"
-                class="min-h-[4.75rem] flex flex-col gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 md:flex-row md:items-center md:justify-between dark:border-white/[0.08] dark:bg-[#111111]"
+                :display-name="row.displayName"
+                :email="row.email"
+                name-class="mr-1"
               >
-                <div class="min-w-0 flex-1 space-y-0.5">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <p class="mr-1 font-semibold text-highlighted">
-                      {{ row.displayName }}
-                    </p>
-                    <AppBadge
-                      v-for="badge in getRoleBadges(row)"
-                      :key="`${row.id}-${badge}`"
-                      color="primary"
-                      variant="soft"
-                      class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
-                    >
-                      {{ roleBadgeLabels[badge] }}
-                    </AppBadge>
-                    <AppBadge
-                      v-if="isCurrentPlatformUser(row.id)"
-                      color="info"
-                      variant="soft"
-                    >
-                      You
-                    </AppBadge>
-                  </div>
-                  <p class="text-sm text-muted">
-                    {{ row.email }}
-                  </p>
-                </div>
+                <template #badges>
+                  <AppBadge
+                    v-for="badge in getRoleBadges(row)"
+                    :key="`${row.id}-${badge}`"
+                    color="primary"
+                    variant="soft"
+                    class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                  >
+                    {{ roleBadgeLabels[badge] }}
+                  </AppBadge>
+                  <AppBadge
+                    v-if="isCurrentPlatformUser(row.id)"
+                    color="info"
+                    variant="soft"
+                  >
+                    You
+                  </AppBadge>
+                </template>
 
-                <AppButton
-                  size="sm"
-                  color="neutral"
-                  variant="soft"
-                  class="shrink-0 self-start md:self-auto"
-                  :disabled="isCandidateActionDisabled(row)"
-                  :loading="!isCandidateActionDisabled(row) && isPendingAction(row.id)"
-                  @click="isCandidateActionDisabled(row) ? undefined : assignRosterAccess(row.id)"
-                >
-                  {{ getCandidateActionLabel(row) }}
-                </AppButton>
-              </div>
+                <template #actions>
+                  <AppButton
+                    size="sm"
+                    color="neutral"
+                    variant="soft"
+                    class="shrink-0 self-start md:self-auto"
+                    :disabled="isCandidateActionDisabled(row)"
+                    :loading="!isCandidateActionDisabled(row) && isPendingAction(row.id)"
+                    @click="isCandidateActionDisabled(row) ? undefined : assignRosterAccess(row.id)"
+                  >
+                    {{ getCandidateActionLabel(row) }}
+                  </AppButton>
+                </template>
+              </AccountRosterUserRow>
 
               <p
                 v-if="candidateRows.length === 0"

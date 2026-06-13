@@ -2,12 +2,10 @@
 import type { ApiListResponse } from '~/lib/api'
 import type { EventRoleUserSummary } from '~/domains/events/access'
 
-import { buildApiCacheKey, getApiSubjectKey, normalizeApiError } from '~/lib/api'
+import { buildApiCacheKey, getApiSubjectKey } from '~/lib/api'
 
-const toast = useToast()
 const authenticatedUser = useUser()
 const eventOrganizerCandidatePageSize = 20
-type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 
 const subjectKey = computed(() => getApiSubjectKey(authenticatedUser.value?.sub))
 const currentOrganizers = useFetch<ApiListResponse<EventRoleUserSummary>>('/api/event-organizers', {
@@ -15,27 +13,46 @@ const currentOrganizers = useFetch<ApiListResponse<EventRoleUserSummary>>('/api/
   watch: [subjectKey]
 })
 
-const mutationError = ref('')
-const pendingActionUserId = ref<string | null>(null)
-const candidateSearchInput = ref('')
-const appliedCandidateSearch = ref('')
-const candidateUsers = ref<EventRoleUserSummary[]>([])
-const candidateUsersTotal = ref(0)
-const currentCandidatePage = ref(1)
-const candidateUsersStatus = ref<LoadStatus>('pending')
-const candidateUsersErrorMessage = ref('')
-const isLoadingMoreCandidates = ref(false)
-const loadMoreCandidatesErrorMessage = ref('')
-const initializedSubjectKey = ref<string | null>(null)
-const candidateRequestSequence = ref(0)
-let pendingCandidateSearchTimeout: ReturnType<typeof setTimeout> | null = null
+const {
+  mutationError,
+  runRosterMutation,
+  isPendingAction
+} = useRosterMutationRunner()
+const {
+  candidateSearchInput,
+  appliedCandidateSearch,
+  candidateUsers,
+  candidateUsersStatus,
+  candidateUsersErrorMessage,
+  isLoadingMoreCandidates,
+  loadMoreCandidatesErrorMessage,
+  hasMoreCandidates,
+  loadCandidateUsers,
+  loadMoreCandidates
+} = useRosterCandidateSearch<EventRoleUserSummary>({
+  pageSize: eventOrganizerCandidatePageSize,
+  resetKey: subjectKey,
+  loadPage: async ({ page, pageSize, search }) => await $fetch<ApiListResponse<EventRoleUserSummary>>(
+    '/api/event-organizers/candidates',
+    {
+      query: {
+        page,
+        page_size: pageSize,
+        ...(search.length > 0
+          ? {
+              search
+            }
+          : {})
+      }
+    }
+  )
+})
 
 const currentEventOrganizers = computed(() => currentOrganizers.data.value?.data ?? [])
 const currentEventOrganizerCount = computed(() => currentEventOrganizers.value.length)
 const candidateRows = computed(() =>
   candidateUsers.value.filter(user => appliedCandidateSearch.value.length > 0 || !user.isEventOrganizer)
 )
-const hasMoreCandidates = computed(() => candidateUsers.value.length < candidateUsersTotal.value)
 const candidateSkeletonRowCount = 3
 const emptyCandidateMessage = computed(() =>
   appliedCandidateSearch.value.length > 0
@@ -44,152 +61,6 @@ const emptyCandidateMessage = computed(() =>
       ? 'No new people are in this batch. Load more to keep looking.'
       : 'No more active users are available to add right now.'
 )
-
-function resetCandidateState() {
-  candidateRequestSequence.value += 1
-  candidateUsers.value = []
-  candidateUsersTotal.value = 0
-  currentCandidatePage.value = 1
-  candidateUsersStatus.value = 'idle'
-  candidateUsersErrorMessage.value = ''
-  isLoadingMoreCandidates.value = false
-  loadMoreCandidatesErrorMessage.value = ''
-}
-
-async function fetchCandidatePage(page: number) {
-  return await $fetch<ApiListResponse<EventRoleUserSummary>>('/api/event-organizers/candidates', {
-    query: {
-      page,
-      page_size: eventOrganizerCandidatePageSize,
-      ...(appliedCandidateSearch.value.length > 0
-        ? {
-            search: appliedCandidateSearch.value
-          }
-        : {})
-    }
-  })
-}
-
-async function loadCandidateUsers() {
-  const requestId = ++candidateRequestSequence.value
-
-  candidateUsersStatus.value = 'pending'
-  candidateUsersErrorMessage.value = ''
-  loadMoreCandidatesErrorMessage.value = ''
-
-  try {
-    const response = await fetchCandidatePage(1)
-
-    if (requestId !== candidateRequestSequence.value) {
-      return
-    }
-
-    candidateUsers.value = response.data
-    candidateUsersTotal.value = response.meta?.total ?? response.data.length
-    currentCandidatePage.value = 1
-    candidateUsersStatus.value = 'success'
-  } catch (error) {
-    if (requestId !== candidateRequestSequence.value) {
-      return
-    }
-
-    candidateUsers.value = []
-    candidateUsersTotal.value = 0
-    currentCandidatePage.value = 1
-    candidateUsersStatus.value = 'error'
-    candidateUsersErrorMessage.value = normalizeApiError(error).message
-  }
-}
-
-async function loadMoreCandidates() {
-  if (candidateUsersStatus.value === 'pending' || isLoadingMoreCandidates.value || !hasMoreCandidates.value) {
-    return
-  }
-
-  const requestId = ++candidateRequestSequence.value
-  const nextPage = currentCandidatePage.value + 1
-
-  isLoadingMoreCandidates.value = true
-  loadMoreCandidatesErrorMessage.value = ''
-
-  try {
-    const response = await fetchCandidatePage(nextPage)
-
-    if (requestId !== candidateRequestSequence.value) {
-      return
-    }
-
-    const nextUsers = [...candidateUsers.value, ...response.data].filter((user, index, items) =>
-      items.findIndex(candidate => candidate.id === user.id) === index
-    )
-
-    candidateUsers.value = nextUsers
-    candidateUsersTotal.value = response.meta?.total ?? nextUsers.length
-    currentCandidatePage.value = nextPage
-  } catch (error) {
-    if (requestId !== candidateRequestSequence.value) {
-      return
-    }
-
-    loadMoreCandidatesErrorMessage.value = normalizeApiError(error).message
-  } finally {
-    if (requestId === candidateRequestSequence.value) {
-      isLoadingMoreCandidates.value = false
-    }
-  }
-}
-
-function cancelPendingCandidateSearch() {
-  if (pendingCandidateSearchTimeout) {
-    clearTimeout(pendingCandidateSearchTimeout)
-    pendingCandidateSearchTimeout = null
-  }
-}
-
-function scheduleCandidateSearch(value: string) {
-  cancelPendingCandidateSearch()
-
-  pendingCandidateSearchTimeout = setTimeout(async () => {
-    pendingCandidateSearchTimeout = null
-    appliedCandidateSearch.value = value
-
-    await loadCandidateUsers()
-  }, 250)
-}
-
-watch(candidateSearchInput, (value) => {
-  const normalizedValue = value.trim()
-
-  if (normalizedValue === appliedCandidateSearch.value) {
-    return
-  }
-
-  loadMoreCandidatesErrorMessage.value = ''
-  scheduleCandidateSearch(normalizedValue)
-})
-
-watch(subjectKey, async (nextSubjectKey) => {
-  if (initializedSubjectKey.value === nextSubjectKey) {
-    return
-  }
-
-  cancelPendingCandidateSearch()
-  initializedSubjectKey.value = nextSubjectKey
-  appliedCandidateSearch.value = ''
-  candidateSearchInput.value = ''
-  resetCandidateState()
-  await loadCandidateUsers()
-}, {
-  immediate: import.meta.client
-})
-
-onBeforeUnmount(() => {
-  cancelPendingCandidateSearch()
-})
-
-function isPendingAction(userId: string) {
-  return pendingActionUserId.value === userId
-}
 
 function isCandidateActionDisabled(user: EventRoleUserSummary) {
   return user.isEventOrganizer
@@ -200,27 +71,22 @@ function getCandidateActionLabel(user: EventRoleUserSummary) {
 }
 
 async function addEventOrganizer(user: EventRoleUserSummary) {
-  mutationError.value = ''
-  pendingActionUserId.value = user.id
-
-  try {
-    await $fetch(`/api/event-organizers/${user.id}`, {
-      method: 'PUT'
-    })
-    toast.add({
-      title: 'Event organizer added',
-      description: `${user.displayName} can now create events and manage the events they create.`,
-      color: 'success'
-    })
-    await Promise.all([
-      currentOrganizers.refresh(),
-      loadCandidateUsers()
-    ])
-  } catch (error) {
-    mutationError.value = normalizeApiError(error).message
-  } finally {
-    pendingActionUserId.value = null
-  }
+  await runRosterMutation({
+    actionKey: user.id,
+    action: async () => {
+      await $fetch(`/api/event-organizers/${user.id}`, {
+        method: 'PUT'
+      })
+    },
+    successTitle: 'Event organizer added',
+    successDescription: `${user.displayName} can now create events and manage the events they create.`,
+    afterSuccess: async () => {
+      await Promise.all([
+        currentOrganizers.refresh(),
+        loadCandidateUsers()
+      ])
+    }
+  })
 }
 
 async function removeEventOrganizer(user: EventRoleUserSummary) {
@@ -230,29 +96,24 @@ async function removeEventOrganizer(user: EventRoleUserSummary) {
     return
   }
 
-  mutationError.value = ''
-  pendingActionUserId.value = user.id
-
-  try {
-    await $fetch(`/api/event-organizers/${user.id}`, {
-      method: 'DELETE'
-    })
-    toast.add({
-      title: 'Event organizer removed',
-      description: user.isPlatformAdmin
-        ? `${user.displayName} still has platform admin access.`
-        : `${user.displayName} can no longer create events as an event organizer.`,
-      color: 'success'
-    })
-    await Promise.all([
-      currentOrganizers.refresh(),
-      loadCandidateUsers()
-    ])
-  } catch (error) {
-    mutationError.value = normalizeApiError(error).message
-  } finally {
-    pendingActionUserId.value = null
-  }
+  await runRosterMutation({
+    actionKey: user.id,
+    action: async () => {
+      await $fetch(`/api/event-organizers/${user.id}`, {
+        method: 'DELETE'
+      })
+    },
+    successTitle: 'Event organizer removed',
+    successDescription: user.isPlatformAdmin
+      ? `${user.displayName} still has platform admin access.`
+      : `${user.displayName} can no longer create events as an event organizer.`,
+    afterSuccess: async () => {
+      await Promise.all([
+        currentOrganizers.refresh(),
+        loadCandidateUsers()
+      ])
+    }
+  })
 }
 </script>
 
@@ -308,48 +169,43 @@ async function removeEventOrganizer(user: EventRoleUserSummary) {
           v-else-if="currentEventOrganizers.length > 0"
           class="grid gap-3"
         >
-          <div
+          <AccountRosterUserRow
             v-for="user in currentEventOrganizers"
             :key="user.id"
-            class="min-h-[4.75rem] flex flex-col gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 md:flex-row md:items-center md:justify-between dark:border-white/[0.08] dark:bg-[#111111]"
+            :display-name="user.displayName"
+            :email="user.email"
           >
-            <div class="min-w-0 flex-1 space-y-0.5">
-              <div class="flex flex-wrap items-center gap-2">
-                <p class="font-semibold text-highlighted">
-                  {{ user.displayName }}
-                </p>
-                <AppBadge
-                  color="primary"
-                  variant="soft"
-                  class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
-                >
-                  Event organizer
-                </AppBadge>
-                <AppBadge
-                  v-if="user.isPlatformAdmin"
-                  color="neutral"
-                  variant="soft"
-                  class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
-                >
-                  Platform admin
-                </AppBadge>
-              </div>
-              <p class="text-sm text-muted">
-                {{ user.email }}
-              </p>
-            </div>
+            <template #badges>
+              <AppBadge
+                color="primary"
+                variant="soft"
+                class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+              >
+                Event organizer
+              </AppBadge>
+              <AppBadge
+                v-if="user.isPlatformAdmin"
+                color="neutral"
+                variant="soft"
+                class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+              >
+                Platform admin
+              </AppBadge>
+            </template>
 
-            <AppButton
-              size="sm"
-              color="error"
-              variant="soft"
-              class="shrink-0 self-start md:self-auto"
-              :loading="isPendingAction(user.id)"
-              @click="removeEventOrganizer(user)"
-            >
-              Remove access
-            </AppButton>
-          </div>
+            <template #actions>
+              <AppButton
+                size="sm"
+                color="error"
+                variant="soft"
+                class="shrink-0 self-start md:self-auto"
+                :loading="isPendingAction(user.id)"
+                @click="removeEventOrganizer(user)"
+              >
+                Remove access
+              </AppButton>
+            </template>
+          </AccountRosterUserRow>
         </div>
 
         <p
@@ -397,66 +253,54 @@ async function removeEventOrganizer(user: EventRoleUserSummary) {
           class="grid gap-3"
         >
           <template v-if="candidateUsersStatus === 'pending' && candidateUsers.length === 0">
-            <div
+            <AccountRosterUserRowSkeleton
               v-for="index in candidateSkeletonRowCount"
               :key="`event-organizer-candidate-skeleton-${index}`"
-              class="min-h-[4.75rem] flex flex-col gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 md:flex-row md:items-center md:justify-between dark:border-white/[0.08] dark:bg-[#111111]"
-              aria-hidden="true"
-            >
-              <div class="space-y-1.5">
-                <div class="h-5 w-36 animate-pulse rounded-full bg-black/8 dark:bg-white/[0.08]" />
-                <div class="h-4 w-52 animate-pulse rounded-full bg-black/6 dark:bg-white/[0.06]" />
-              </div>
-
-              <div class="h-8 w-32 animate-pulse rounded-lg bg-black/6 dark:bg-white/[0.06] md:self-auto" />
-            </div>
+              action-width-class="w-32"
+            />
           </template>
 
           <template v-else>
-            <div
+            <AccountRosterUserRow
               v-for="user in candidateRows"
               :key="user.id"
-              class="min-h-[4.75rem] flex flex-col gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 md:flex-row md:items-center md:justify-between dark:border-white/[0.08] dark:bg-[#111111]"
+              :display-name="user.displayName"
+              :email="user.email"
+              name-class="mr-1"
             >
-              <div class="min-w-0 flex-1 space-y-0.5">
-                <div class="flex flex-wrap items-center gap-2">
-                  <p class="mr-1 font-semibold text-highlighted">
-                    {{ user.displayName }}
-                  </p>
-                  <AppBadge
-                    v-if="user.isEventOrganizer"
-                    color="primary"
-                    variant="soft"
-                    class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
-                  >
-                    Event organizer
-                  </AppBadge>
-                  <AppBadge
-                    v-if="user.isPlatformAdmin"
-                    color="neutral"
-                    variant="soft"
-                    class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
-                  >
-                    Platform admin
-                  </AppBadge>
-                </div>
-                <p class="text-sm text-muted">
-                  {{ user.email }}
-                </p>
-              </div>
+              <template #badges>
+                <AppBadge
+                  v-if="user.isEventOrganizer"
+                  color="primary"
+                  variant="soft"
+                  class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                >
+                  Event organizer
+                </AppBadge>
+                <AppBadge
+                  v-if="user.isPlatformAdmin"
+                  color="neutral"
+                  variant="soft"
+                  class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                >
+                  Platform admin
+                </AppBadge>
+              </template>
 
-              <AppButton
-                size="sm"
-                color="neutral"
-                variant="soft"
-                class="shrink-0 self-start md:self-auto"
-                :disabled="isCandidateActionDisabled(user)"
-                :loading="!isCandidateActionDisabled(user) && isPendingAction(user.id)"
-                @click="isCandidateActionDisabled(user) ? undefined : addEventOrganizer(user)"
-              >
-                {{ getCandidateActionLabel(user) }}
-              </AppButton>
-            </div>
+              <template #actions>
+                <AppButton
+                  size="sm"
+                  color="neutral"
+                  variant="soft"
+                  class="shrink-0 self-start md:self-auto"
+                  :disabled="isCandidateActionDisabled(user)"
+                  :loading="!isCandidateActionDisabled(user) && isPendingAction(user.id)"
+                  @click="isCandidateActionDisabled(user) ? undefined : addEventOrganizer(user)"
+                >
+                  {{ getCandidateActionLabel(user) }}
+                </AppButton>
+              </template>
+            </AccountRosterUserRow>
 
             <p
               v-if="candidateRows.length === 0"

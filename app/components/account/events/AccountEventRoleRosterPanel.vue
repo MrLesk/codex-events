@@ -10,7 +10,6 @@ import type {
   EventRosterRole
 } from '~/domains/events/role-roster'
 
-import { normalizeApiError } from '~/lib/api'
 import {
   buildAssignedRoleRosterRows,
   buildRoleRosterRows,
@@ -27,26 +26,43 @@ const props = defineProps<{
   emptyAssignedMessage: string
 }>()
 
-const toast = useToast()
 const { actor } = useSessionActor()
 const workspace = useEventRoleRosterWorkspace(toRef(props, 'eventId'))
 const roleCandidatePageSize = 20
-type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 
-const mutationError = ref('')
-const pendingActionKey = ref<string | null>(null)
-const candidateSearchInput = ref('')
-const appliedCandidateSearch = ref('')
-const candidateUsers = ref<EventRoleUserSummary[]>([])
-const candidateUsersTotal = ref(0)
-const currentCandidatePage = ref(1)
-const candidateUsersStatus = ref<LoadStatus>('pending')
-const candidateUsersErrorMessage = ref('')
-const isLoadingMoreCandidates = ref(false)
-const loadMoreCandidatesErrorMessage = ref('')
-const initializedRosterKey = ref<string | null>(null)
-const candidateRequestSequence = ref(0)
-let pendingCandidateSearchTimeout: ReturnType<typeof setTimeout> | null = null
+const {
+  mutationError,
+  pendingActionKey,
+  runRosterMutation
+} = useRosterMutationRunner()
+const {
+  candidateSearchInput,
+  appliedCandidateSearch,
+  candidateUsers,
+  candidateUsersStatus,
+  candidateUsersErrorMessage,
+  isLoadingMoreCandidates,
+  loadMoreCandidatesErrorMessage,
+  hasMoreCandidates,
+  loadMoreCandidates
+} = useRosterCandidateSearch<EventRoleUserSummary>({
+  pageSize: roleCandidatePageSize,
+  resetKey: () => `${props.eventId}:${props.role}`,
+  loadPage: async ({ page, pageSize, search }) => await $fetch<ApiListResponse<EventRoleUserSummary>>(
+    `/api/events/${props.eventId}/roles/candidates`,
+    {
+      query: {
+        page,
+        page_size: pageSize,
+        ...(search.length > 0
+          ? {
+              search
+            }
+          : {})
+      }
+    }
+  )
+})
 
 const roleAssignments = computed(() => workspace.roleAssignments.data.value?.data ?? [])
 const assignedRows = computed(() =>
@@ -60,7 +76,6 @@ const candidateRows = computed(() =>
     ''
   ).filter(row => appliedCandidateSearch.value.length > 0 || !row.isAssigned)
 )
-const hasMoreCandidates = computed(() => candidateUsers.value.length < candidateUsersTotal.value)
 const adminJudgeRows = computed(() =>
   props.role === 'judge'
     ? assignedRows.value.filter(row => row.isEventAdmin)
@@ -246,175 +261,19 @@ function isPendingAction(
   return prefixes.some(prefix => pendingActionKey.value === getAssignmentActionKey(prefix, userId))
 }
 
-function resetCandidateState() {
-  candidateRequestSequence.value += 1
-  candidateUsers.value = []
-  candidateUsersTotal.value = 0
-  currentCandidatePage.value = 1
-  candidateUsersStatus.value = 'idle'
-  candidateUsersErrorMessage.value = ''
-  isLoadingMoreCandidates.value = false
-  loadMoreCandidatesErrorMessage.value = ''
-}
-
-async function fetchCandidatePage(page: number) {
-  return await $fetch<ApiListResponse<EventRoleUserSummary>>(
-    `/api/events/${props.eventId}/roles/candidates`,
-    {
-      query: {
-        page,
-        page_size: roleCandidatePageSize,
-        ...(appliedCandidateSearch.value.length > 0
-          ? {
-              search: appliedCandidateSearch.value
-            }
-          : {})
-      }
-    }
-  )
-}
-
-async function loadCandidateUsers() {
-  const requestId = ++candidateRequestSequence.value
-
-  candidateUsersStatus.value = 'pending'
-  candidateUsersErrorMessage.value = ''
-  loadMoreCandidatesErrorMessage.value = ''
-
-  try {
-    const response = await fetchCandidatePage(1)
-
-    if (requestId !== candidateRequestSequence.value) {
-      return
-    }
-
-    candidateUsers.value = response.data
-    candidateUsersTotal.value = response.meta?.total ?? response.data.length
-    currentCandidatePage.value = 1
-    candidateUsersStatus.value = 'success'
-  } catch (error) {
-    if (requestId !== candidateRequestSequence.value) {
-      return
-    }
-
-    candidateUsers.value = []
-    candidateUsersTotal.value = 0
-    currentCandidatePage.value = 1
-    candidateUsersStatus.value = 'error'
-    candidateUsersErrorMessage.value = normalizeApiError(error).message
-  }
-}
-
-async function loadMoreCandidates() {
-  if (candidateUsersStatus.value === 'pending' || isLoadingMoreCandidates.value || !hasMoreCandidates.value) {
-    return
-  }
-
-  const requestId = ++candidateRequestSequence.value
-  const nextPage = currentCandidatePage.value + 1
-
-  isLoadingMoreCandidates.value = true
-  loadMoreCandidatesErrorMessage.value = ''
-
-  try {
-    const response = await fetchCandidatePage(nextPage)
-
-    if (requestId !== candidateRequestSequence.value) {
-      return
-    }
-
-    const nextUsers = [...candidateUsers.value, ...response.data].filter((user, index, items) =>
-      items.findIndex(candidate => candidate.id === user.id) === index
-    )
-
-    candidateUsers.value = nextUsers
-    candidateUsersTotal.value = response.meta?.total ?? nextUsers.length
-    currentCandidatePage.value = nextPage
-  } catch (error) {
-    if (requestId !== candidateRequestSequence.value) {
-      return
-    }
-
-    loadMoreCandidatesErrorMessage.value = normalizeApiError(error).message
-  } finally {
-    if (requestId === candidateRequestSequence.value) {
-      isLoadingMoreCandidates.value = false
-    }
-  }
-}
-
-function cancelPendingCandidateSearch() {
-  if (pendingCandidateSearchTimeout) {
-    clearTimeout(pendingCandidateSearchTimeout)
-    pendingCandidateSearchTimeout = null
-  }
-}
-
-function scheduleCandidateSearch(value: string) {
-  cancelPendingCandidateSearch()
-
-  pendingCandidateSearchTimeout = setTimeout(async () => {
-    pendingCandidateSearchTimeout = null
-    appliedCandidateSearch.value = value
-
-    await loadCandidateUsers()
-  }, 250)
-}
-
-watch(candidateSearchInput, (value) => {
-  const normalizedValue = value.trim()
-
-  if (normalizedValue === appliedCandidateSearch.value) {
-    return
-  }
-
-  loadMoreCandidatesErrorMessage.value = ''
-  scheduleCandidateSearch(normalizedValue)
-})
-
-watch([() => props.eventId, () => props.role], async ([eventId, role]) => {
-  const nextRosterKey = `${eventId}:${role}`
-
-  if (initializedRosterKey.value === nextRosterKey) {
-    return
-  }
-
-  cancelPendingCandidateSearch()
-  initializedRosterKey.value = nextRosterKey
-  appliedCandidateSearch.value = ''
-  candidateSearchInput.value = ''
-  resetCandidateState()
-  await loadCandidateUsers()
-}, {
-  immediate: import.meta.client
-})
-
-onBeforeUnmount(() => {
-  cancelPendingCandidateSearch()
-})
-
 async function runMutation(
   actionKey: string,
   action: () => Promise<void>,
   successTitle: string,
   successDescription: string
 ) {
-  mutationError.value = ''
-  pendingActionKey.value = actionKey
-
-  try {
-    await action()
-    toast.add({
-      title: successTitle,
-      description: successDescription,
-      color: 'success'
-    })
-    await workspace.refreshRoleRoster()
-  } catch (error) {
-    mutationError.value = normalizeApiError(error).message
-  } finally {
-    pendingActionKey.value = null
-  }
+  await runRosterMutation({
+    actionKey,
+    action,
+    successTitle,
+    successDescription,
+    afterSuccess: workspace.refreshRoleRoster
+  })
 }
 
 async function putRoleAssignment(
@@ -735,124 +594,14 @@ async function removeRoleAssignment(assignment: EventRoleAssignment) {
               Admins who judge
             </p>
 
-            <div
+            <AccountRosterUserRow
               v-for="row in adminJudgeRows"
               :key="row.id"
-              class="min-h-[4.75rem] flex flex-col gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 md:flex-row md:items-center md:justify-between dark:border-white/[0.08] dark:bg-[#111111]"
+              :display-name="row.displayName"
+              :email="row.email"
+              name-class="mr-1"
             >
-              <div class="min-w-0 flex-1 space-y-0.5">
-                <div class="flex flex-wrap items-center gap-2">
-                  <p class="mr-1 font-semibold text-highlighted">
-                    {{ row.displayName }}
-                  </p>
-                  <AppBadge
-                    v-for="badge in getRoleBadges(row)"
-                    :key="`${row.id}-${badge}`"
-                    color="primary"
-                    variant="soft"
-                    class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
-                  >
-                    {{ roleBadgeLabels[badge] }}
-                  </AppBadge>
-                  <AppBadge
-                    v-if="isCurrentPlatformUser(row.id)"
-                    color="info"
-                    variant="soft"
-                  >
-                    You
-                  </AppBadge>
-                </div>
-                <p class="text-sm text-muted">
-                  {{ row.email }}
-                </p>
-              </div>
-
-              <AppButton
-                size="sm"
-                color="neutral"
-                variant="soft"
-                class="shrink-0 self-start md:self-auto"
-                :loading="isPendingAction(row.id)"
-                @click="row.assignment ? removeRoleAssignment(row.assignment) : undefined"
-              >
-                {{ getAssignedActionLabel(row) }}
-              </AppButton>
-            </div>
-          </div>
-
-          <div
-            v-if="adminJudgeRows.length > 0 && reviewOnlyJudgeRows.length > 0"
-            class="border-t border-black/8 pt-5 dark:border-white/[0.08]"
-          />
-
-          <div
-            v-if="reviewOnlyJudgeRows.length > 0"
-            class="space-y-3"
-          >
-            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
-              Review-only judges
-            </p>
-
-            <div
-              v-for="row in reviewOnlyJudgeRows"
-              :key="row.id"
-              class="min-h-[4.75rem] flex flex-col gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 md:flex-row md:items-center md:justify-between dark:border-white/[0.08] dark:bg-[#111111]"
-            >
-              <div class="min-w-0 flex-1 space-y-0.5">
-                <div class="flex flex-wrap items-center gap-2">
-                  <p class="font-semibold text-highlighted">
-                    {{ row.displayName }}
-                  </p>
-                  <AppBadge
-                    v-for="badge in getRoleBadges(row)"
-                    :key="`${row.id}-${badge}`"
-                    color="primary"
-                    variant="soft"
-                    class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
-                  >
-                    {{ roleBadgeLabels[badge] }}
-                  </AppBadge>
-                  <AppBadge
-                    v-if="isCurrentPlatformUser(row.id)"
-                    color="info"
-                    variant="soft"
-                  >
-                    You
-                  </AppBadge>
-                </div>
-                <p class="text-sm text-muted">
-                  {{ row.email }}
-                </p>
-              </div>
-
-              <AppButton
-                size="sm"
-                color="error"
-                variant="soft"
-                class="shrink-0 self-start md:self-auto"
-                :loading="isPendingAction(row.id)"
-                @click="row.assignment ? removeRoleAssignment(row.assignment) : undefined"
-              >
-                {{ getAssignedActionLabel(row) }}
-              </AppButton>
-            </div>
-          </div>
-        </div>
-
-        <div
-          v-else-if="assignedRows.length > 0"
-          class="grid gap-3"
-        >
-          <div
-            v-for="row in assignedRows"
-            :key="row.id"
-            class="min-h-[4.75rem] flex flex-col gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 md:flex-row md:items-center md:justify-between dark:border-white/[0.08] dark:bg-[#111111]"
-          >
-            <div class="min-w-0 flex-1 space-y-0.5">
-              <div class="flex flex-wrap items-center gap-2">
-                <p class="font-semibold text-highlighted">
-                  {{ row.displayName }}
-                </p>
+              <template #badges>
                 <AppBadge
                   v-for="badge in getRoleBadges(row)"
                   :key="`${row.id}-${badge}`"
@@ -869,13 +618,107 @@ async function removeRoleAssignment(assignment: EventRoleAssignment) {
                 >
                   You
                 </AppBadge>
-              </div>
-              <p class="text-sm text-muted">
-                {{ row.email }}
-              </p>
-            </div>
+              </template>
 
-            <div class="flex flex-wrap items-center gap-2">
+              <template #actions>
+                <AppButton
+                  size="sm"
+                  color="neutral"
+                  variant="soft"
+                  class="shrink-0 self-start md:self-auto"
+                  :loading="isPendingAction(row.id)"
+                  @click="row.assignment ? removeRoleAssignment(row.assignment) : undefined"
+                >
+                  {{ getAssignedActionLabel(row) }}
+                </AppButton>
+              </template>
+            </AccountRosterUserRow>
+          </div>
+
+          <div
+            v-if="adminJudgeRows.length > 0 && reviewOnlyJudgeRows.length > 0"
+            class="border-t border-black/8 pt-5 dark:border-white/[0.08]"
+          />
+
+          <div
+            v-if="reviewOnlyJudgeRows.length > 0"
+            class="space-y-3"
+          >
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
+              Review-only judges
+            </p>
+
+            <AccountRosterUserRow
+              v-for="row in reviewOnlyJudgeRows"
+              :key="row.id"
+              :display-name="row.displayName"
+              :email="row.email"
+            >
+              <template #badges>
+                <AppBadge
+                  v-for="badge in getRoleBadges(row)"
+                  :key="`${row.id}-${badge}`"
+                  color="primary"
+                  variant="soft"
+                  class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                >
+                  {{ roleBadgeLabels[badge] }}
+                </AppBadge>
+                <AppBadge
+                  v-if="isCurrentPlatformUser(row.id)"
+                  color="info"
+                  variant="soft"
+                >
+                  You
+                </AppBadge>
+              </template>
+
+              <template #actions>
+                <AppButton
+                  size="sm"
+                  color="error"
+                  variant="soft"
+                  class="shrink-0 self-start md:self-auto"
+                  :loading="isPendingAction(row.id)"
+                  @click="row.assignment ? removeRoleAssignment(row.assignment) : undefined"
+                >
+                  {{ getAssignedActionLabel(row) }}
+                </AppButton>
+              </template>
+            </AccountRosterUserRow>
+          </div>
+        </div>
+
+        <div
+          v-else-if="assignedRows.length > 0"
+          class="grid gap-3"
+        >
+          <AccountRosterUserRow
+            v-for="row in assignedRows"
+            :key="row.id"
+            :display-name="row.displayName"
+            :email="row.email"
+          >
+            <template #badges>
+              <AppBadge
+                v-for="badge in getRoleBadges(row)"
+                :key="`${row.id}-${badge}`"
+                color="primary"
+                variant="soft"
+                class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+              >
+                {{ roleBadgeLabels[badge] }}
+              </AppBadge>
+              <AppBadge
+                v-if="isCurrentPlatformUser(row.id)"
+                color="info"
+                variant="soft"
+              >
+                You
+              </AppBadge>
+            </template>
+
+            <template #actions>
               <AppButton
                 size="sm"
                 color="error"
@@ -887,8 +730,8 @@ async function removeRoleAssignment(assignment: EventRoleAssignment) {
               >
                 {{ getAssignedActionLabel(row) }}
               </AppButton>
-            </div>
-          </div>
+            </template>
+          </AccountRosterUserRow>
         </div>
 
         <p
@@ -936,66 +779,53 @@ async function removeRoleAssignment(assignment: EventRoleAssignment) {
           class="grid gap-3"
         >
           <template v-if="candidateUsersStatus === 'pending' && candidateUsers.length === 0">
-            <div
+            <AccountRosterUserRowSkeleton
               v-for="index in candidateSkeletonRowCount"
               :key="`candidate-skeleton-${index}`"
-              class="min-h-[4.75rem] flex flex-col gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 md:flex-row md:items-center md:justify-between dark:border-white/[0.08] dark:bg-[#111111]"
-              aria-hidden="true"
-            >
-              <div class="space-y-1.5">
-                <div class="h-5 w-36 rounded-full bg-black/8 dark:bg-white/[0.08] animate-pulse" />
-                <div class="h-4 w-52 rounded-full bg-black/6 dark:bg-white/[0.06] animate-pulse" />
-              </div>
-
-              <div class="h-8 w-24 rounded-lg bg-black/6 dark:bg-white/[0.06] animate-pulse md:self-auto" />
-            </div>
+            />
           </template>
 
           <template v-else>
-            <div
+            <AccountRosterUserRow
               v-for="row in candidateRows"
               :key="row.id"
-              class="min-h-[4.75rem] flex flex-col gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 md:flex-row md:items-center md:justify-between dark:border-white/[0.08] dark:bg-[#111111]"
+              :display-name="row.displayName"
+              :email="row.email"
+              name-class="mr-1"
             >
-              <div class="min-w-0 flex-1 space-y-0.5">
-                <div class="flex flex-wrap items-center gap-2">
-                  <p class="mr-1 font-semibold text-highlighted">
-                    {{ row.displayName }}
-                  </p>
-                  <AppBadge
-                    v-for="badge in getRoleBadges(row)"
-                    :key="`${row.id}-${badge}`"
-                    color="primary"
-                    variant="soft"
-                    class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
-                  >
-                    {{ roleBadgeLabels[badge] }}
-                  </AppBadge>
-                  <AppBadge
-                    v-if="isCurrentPlatformUser(row.id)"
-                    color="info"
-                    variant="soft"
-                  >
-                    You
-                  </AppBadge>
-                </div>
-                <p class="text-sm text-muted">
-                  {{ row.email }}
-                </p>
-              </div>
+              <template #badges>
+                <AppBadge
+                  v-for="badge in getRoleBadges(row)"
+                  :key="`${row.id}-${badge}`"
+                  color="primary"
+                  variant="soft"
+                  class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                >
+                  {{ roleBadgeLabels[badge] }}
+                </AppBadge>
+                <AppBadge
+                  v-if="isCurrentPlatformUser(row.id)"
+                  color="info"
+                  variant="soft"
+                >
+                  You
+                </AppBadge>
+              </template>
 
-              <AppButton
-                size="sm"
-                color="neutral"
-                variant="soft"
-                class="shrink-0 self-start md:self-auto"
-                :disabled="isCandidateActionDisabled(row)"
-                :loading="!isCandidateActionDisabled(row) && isPendingAction(row.id)"
-                @click="isCandidateActionDisabled(row) ? undefined : assignRole(row.id)"
-              >
-                {{ getCandidateActionLabel(row) }}
-              </AppButton>
-            </div>
+              <template #actions>
+                <AppButton
+                  size="sm"
+                  color="neutral"
+                  variant="soft"
+                  class="shrink-0 self-start md:self-auto"
+                  :disabled="isCandidateActionDisabled(row)"
+                  :loading="!isCandidateActionDisabled(row) && isPendingAction(row.id)"
+                  @click="isCandidateActionDisabled(row) ? undefined : assignRole(row.id)"
+                >
+                  {{ getCandidateActionLabel(row) }}
+                </AppButton>
+              </template>
+            </AccountRosterUserRow>
 
             <p
               v-if="candidateRows.length === 0"
