@@ -763,95 +763,102 @@ async function removePublishedRosterMember(userId: string) {
 
       <div
         v-else
-        class="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+        class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3"
       >
         <article
           v-for="member in members"
           :key="member.id"
-          class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex h-full flex-col gap-4 rounded-xl p-5"
+          class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex h-full flex-col gap-5 rounded-xl p-5"
         >
-          <div class="flex items-start gap-4">
-            <AppAvatar
-              size="3xl"
-              :src="getMemberProfileIconHref(member)"
-              :alt="member.fullName"
-              class="shrink-0"
-            />
+          <div class="flex items-start justify-between gap-4">
+            <div class="min-w-0 flex items-start gap-4">
+              <AppAvatar
+                size="3xl"
+                :src="getMemberProfileIconHref(member)"
+                :alt="member.fullName"
+                class="shrink-0"
+              />
 
-            <div class="min-w-0 flex-1">
-              <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0 space-y-1">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <h3 class="text-base font-semibold text-highlighted dark:text-white">
-                      {{ member.fullName }}
-                    </h3>
-                    <AppBadge
-                      v-if="isCurrentPlatformUser(member.id)"
-                      color="info"
-                      variant="soft"
-                    >
-                      You
-                    </AppBadge>
-                    <AppBadge
-                      v-if="props.role === 'staff'"
-                      color="neutral"
-                      variant="soft"
-                    >
-                      {{ getStaffTrackScopeLabel(member) }}
-                    </AppBadge>
-                  </div>
-
-                  <p
-                    v-if="member.company"
-                    class="text-sm text-muted"
+              <div class="min-w-0 space-y-1.5 pt-0.5">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h3 class="text-base font-semibold leading-6 text-highlighted dark:text-white">
+                    {{ member.fullName }}
+                  </h3>
+                  <AppBadge
+                    v-if="isCurrentPlatformUser(member.id)"
+                    color="info"
+                    variant="soft"
                   >
-                    {{ member.company }}
-                  </p>
-
-                  <label
-                    v-if="canSetStaffTrackScope && getAssignedRosterAssignment(member.id)"
-                    class="mt-3 grid max-w-xs gap-1"
-                  >
-                    <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">
-                      Shown to participants
-                    </span>
-                    <AppSelect
-                      :model-value="getAssignedRosterAssignment(member.id)?.staffTrackId ?? ''"
-                      :disabled="isPendingAction(member.id)"
-                      @update:model-value="updateMemberStaffTrackScope(member.id, $event)"
-                    >
-                      <option value="">
-                        Whole event
-                      </option>
-                      <option
-                        v-for="track in sortedTracks"
-                        :key="track.id"
-                        :value="track.id"
-                      >
-                        {{ track.name }}
-                      </option>
-                    </AppSelect>
-                  </label>
+                    You
+                  </AppBadge>
                 </div>
 
-                <AppButton
-                  v-if="canManageRoster && findAssignedRosterRow(member.id)?.assignment"
-                  size="sm"
-                  color="error"
-                  variant="soft"
-                  class="shrink-0"
-                  :loading="isPendingAction(member.id)"
-                  @click="removePublishedRosterMember(member.id)"
+                <p
+                  v-if="member.company"
+                  class="text-sm text-muted"
+                >
+                  {{ member.company }}
+                </p>
+
+                <p
+                  v-if="props.role === 'staff' && !canSetStaffTrackScope"
+                  class="inline-flex items-center gap-1.5 text-sm text-muted"
                 >
                   <AppIcon
-                    name="i-lucide-trash-2"
-                    class="size-4"
+                    name="i-lucide-map-pin"
+                    class="size-3.5 text-toned"
                   />
-                  Remove
-                </AppButton>
+                  <span>{{ getStaffTrackScopeLabel(member) }}</span>
+                </p>
               </div>
             </div>
+
+            <AppButton
+              v-if="canManageRoster && findAssignedRosterRow(member.id)?.assignment"
+              size="sm"
+              color="error"
+              variant="soft"
+              class="shrink-0"
+              :loading="isPendingAction(member.id)"
+              @click="removePublishedRosterMember(member.id)"
+            >
+              <AppIcon
+                name="i-lucide-trash-2"
+                class="size-4"
+              />
+              Remove
+            </AppButton>
           </div>
+
+          <label
+            v-if="canSetStaffTrackScope && getAssignedRosterAssignment(member.id)"
+            class="flex flex-col gap-2 border-t border-black/8 pt-4 dark:border-white/[0.08] lg:flex-row lg:items-center lg:justify-between"
+          >
+            <span class="inline-flex items-center gap-2 text-sm text-muted">
+              <AppIcon
+                name="i-lucide-map-pin"
+                class="size-4 text-toned"
+              />
+              <span>Participants see this person for</span>
+            </span>
+            <AppSelect
+              :model-value="getAssignedRosterAssignment(member.id)?.staffTrackId ?? ''"
+              :disabled="isPendingAction(member.id)"
+              class="w-full lg:w-44"
+              @update:model-value="updateMemberStaffTrackScope(member.id, $event)"
+            >
+              <option value="">
+                Whole event
+              </option>
+              <option
+                v-for="track in sortedTracks"
+                :key="track.id"
+                :value="track.id"
+              >
+                {{ track.name }}
+              </option>
+            </AppSelect>
+          </label>
 
           <p
             v-if="member.bio"
