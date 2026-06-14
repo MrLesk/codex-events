@@ -10,6 +10,13 @@ interface AccountRegistrationMissingDocumentsOptions {
   canOpenLegalSettingsForSetup: boolean
 }
 
+export interface AccountRegistrationCompletedTransition {
+  eyebrow: string
+  title: string
+  description: string
+  to: string
+}
+
 export const missingIdentityEmailMessage = 'This sign-in method did not share an email address. Codex Events needs an email address to create your account. Sign in with a login method that shares your email address, then try again.'
 export const identityEmailVerificationResentMessage = 'Check your inbox for a new confirmation email, then return to this page to finish creating your account.'
 
@@ -21,6 +28,15 @@ export function getAccountRegistrationIntro() {
   return {
     title: 'Finish account registration',
     description: 'Review the current platform Privacy Policy and Platform Terms, then accept both to continue into your account and event workspaces.'
+  }
+}
+
+export function resolveAccountRegistrationCompletedTransition(returnTo: string): AccountRegistrationCompletedTransition {
+  return {
+    eyebrow: 'Account ready',
+    title: 'Account registration complete',
+    description: 'Opening the page you requested. This can take a moment.',
+    to: returnTo
   }
 }
 

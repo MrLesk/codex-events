@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ApiErrorShape } from '~/lib/api'
+import type { AccountRegistrationCompletedTransition } from '~/domains/accounts/registration'
 
 import { normalizeApiError } from '~/lib/api'
 import {
@@ -9,7 +10,8 @@ import {
   getIdentityEmailVerificationResendErrorMessage,
   getUnverifiedIdentityEmailMessage,
   identityEmailVerificationResentMessage,
-  missingIdentityEmailMessage
+  missingIdentityEmailMessage,
+  resolveAccountRegistrationCompletedTransition
 } from '~/domains/accounts/registration'
 import { accountDashboardHref, normalizeAuthReturnTo } from '#shared/domains/accounts/auth-navigation'
 
@@ -33,6 +35,7 @@ const platformLegalSettingsHref = '/account/platform-settings?tab=legal'
 const privacyAccepted = ref(false)
 const termsAccepted = ref(false)
 const submitAttempted = ref(false)
+const registrationCompletedTransition = ref<AccountRegistrationCompletedTransition | null>(null)
 const submitState = reactive({
   pending: false,
   error: ''
@@ -88,6 +91,9 @@ const isReadyToSubmit = computed(() =>
   && privacyAccepted.value
   && termsAccepted.value
 )
+const isSubmitLocked = computed(() =>
+  submitState.pending || Boolean(registrationCompletedTransition.value)
+)
 const accountRegistrationIntro = computed(() => platformDocumentsUnavailable.value
   ? missingDocumentsCopy.value.intro
   : getAccountRegistrationIntro()
@@ -141,6 +147,7 @@ async function submitInitialPlatformSetupAccount() {
     return
   }
 
+  registrationCompletedTransition.value = null
   submitState.pending = true
 
   try {
@@ -150,15 +157,25 @@ async function submitInitialPlatformSetupAccount() {
         returnTo: platformLegalSettingsHref
       }
     })
-
-    await refresh()
-    await navigateTo(platformLegalSettingsHref, { replace: true })
   } catch (error) {
     const apiError = normalizeApiError(error)
 
     submitState.error = getAccountRegistrationSubmitErrorMessage(apiError)
-  } finally {
     submitState.pending = false
+    return
+  }
+
+  const nextTransition = resolveAccountRegistrationCompletedTransition(platformLegalSettingsHref)
+
+  registrationCompletedTransition.value = nextTransition
+  submitState.pending = false
+  await nextTick()
+
+  try {
+    await refresh()
+    await navigateTo(nextTransition.to, { replace: true })
+  } catch {
+    // Keep the completed handoff visible if navigation fails after account creation.
   }
 }
 
@@ -189,6 +206,7 @@ async function resendIdentityEmailVerification() {
 
 async function submitPlatformConsent() {
   submitAttempted.value = true
+  registrationCompletedTransition.value = null
   submitState.error = ''
 
   if (platformDocumentsUnavailable.value) {
@@ -236,16 +254,29 @@ async function submitPlatformConsent() {
           }
         })
       ])
+    } else {
+      submitState.pending = false
+      return
     }
-
-    await refresh()
-    await navigateTo(returnTo.value, { replace: true })
   } catch (error) {
     const apiError = normalizeApiError(error)
 
     submitState.error = getAccountRegistrationSubmitErrorMessage(apiError)
-  } finally {
     submitState.pending = false
+    return
+  }
+
+  const nextTransition = resolveAccountRegistrationCompletedTransition(returnTo.value)
+
+  registrationCompletedTransition.value = nextTransition
+  submitState.pending = false
+  await nextTick()
+
+  try {
+    await refresh()
+    await navigateTo(nextTransition.to, { replace: true })
+  } catch {
+    // Keep the completed handoff visible if navigation fails after consent is recorded.
   }
 }
 
@@ -273,8 +304,35 @@ useSeoMeta({
     </section>
 
     <AppContainer class="max-w-[68rem] space-y-6 pt-6">
+      <article
+        v-if="registrationCompletedTransition"
+        aria-live="polite"
+        class="rounded-xl border border-success/30 bg-success/10 px-6 py-6 shadow-[0_24px_54px_-42px_rgba(16,110,66,0.45)]"
+      >
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <div class="flex size-12 shrink-0 items-center justify-center rounded-full border border-success/30 bg-white/80 text-success-700 dark:bg-black/20 dark:text-success-300">
+            <AppIcon
+              name="i-lucide-loader-circle"
+              class="size-5 animate-spin"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-success-700 dark:text-success-300">
+              {{ registrationCompletedTransition.eyebrow }}
+            </p>
+            <h2 class="text-[24px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
+              {{ registrationCompletedTransition.title }}
+            </h2>
+            <p class="max-w-2xl text-[14px] leading-6 text-neutral-700 dark:text-[#B4B4B4]">
+              {{ registrationCompletedTransition.description }}
+            </p>
+          </div>
+        </div>
+      </article>
+
       <AppAlert
-        v-if="status === 'pending' || documentsStatus === 'pending'"
+        v-else-if="status === 'pending' || documentsStatus === 'pending'"
         color="neutral"
         variant="soft"
         title="Loading account registration"
@@ -371,7 +429,7 @@ useSeoMeta({
               color="neutral"
               variant="solid"
               :loading="submitState.pending"
-              :disabled="submitState.pending || accountRegistrationBlocked"
+              :disabled="isSubmitLocked || accountRegistrationBlocked"
               class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
             >
               {{ missingDocumentsCopy.submitButtonLabel }}
@@ -429,7 +487,7 @@ useSeoMeta({
 
             <AppCheckbox
               v-model="privacyAccepted"
-              :disabled="submitState.pending"
+              :disabled="isSubmitLocked"
             >
               I accept the current Privacy Policy.
             </AppCheckbox>
@@ -463,7 +521,7 @@ useSeoMeta({
 
             <AppCheckbox
               v-model="termsAccepted"
-              :disabled="submitState.pending"
+              :disabled="isSubmitLocked"
             >
               I accept the current Platform Terms.
             </AppCheckbox>
@@ -491,7 +549,7 @@ useSeoMeta({
               color="neutral"
               variant="solid"
               :loading="submitState.pending"
-              :disabled="submitState.pending || accountRegistrationBlocked"
+              :disabled="isSubmitLocked || accountRegistrationBlocked"
               class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
             >
               Continue

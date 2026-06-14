@@ -7,7 +7,8 @@ import {
   getIdentityEmailVerificationResendErrorMessage,
   getUnverifiedIdentityEmailMessage,
   identityEmailVerificationResentMessage,
-  missingIdentityEmailMessage
+  missingIdentityEmailMessage,
+  resolveAccountRegistrationCompletedTransition
 } from '../../../../../app/domains/accounts/registration'
 import { buildAuthenticatedIdentitySessionActor } from '../../../../../app/domains/accounts/session-actor'
 
@@ -16,6 +17,15 @@ describe('account registration helpers', () => {
     expect(getAccountRegistrationIntro()).toEqual({
       title: 'Finish account registration',
       description: 'Review the current platform Privacy Policy and Platform Terms, then accept both to continue into your account and event workspaces.'
+    })
+  })
+
+  test('resolves the completed registration handoff target', () => {
+    expect(resolveAccountRegistrationCompletedTransition('/events/spring/register')).toEqual({
+      eyebrow: 'Account ready',
+      title: 'Account registration complete',
+      description: 'Opening the page you requested. This can take a moment.',
+      to: '/events/spring/register'
     })
   })
 
