@@ -1784,6 +1784,99 @@ describe('TASK-3.6 application routes', () => {
     }
   )
 
+  test('POST /api/events/:eventId/applications/me/actions/select-track rejects completed Build event changes', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/events/:eventId/applications/me/actions/select-track',
+          handler: selectOwnApplicationTrackHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness)
+
+    await harness.database
+      .update(events)
+      .set({
+        eventType: 'build',
+        maxTeamMembers: 1,
+        submissionOpensAt: null,
+        submissionClosesAt: null
+      })
+      .where(eq(events.id, 'event_1'))
+    await harness.database.insert(eventTracks).values([
+      {
+        id: 'track_agents',
+        eventId: 'event_1',
+        name: 'Agents',
+        shortDescription: 'Build agent projects.',
+        fullDescription: '',
+        staffInstructions: '',
+        displayOrder: 1,
+        createdAt: '2026-03-22T12:08:00.000Z'
+      },
+      {
+        id: 'track_tools',
+        eventId: 'event_1',
+        name: 'Tools',
+        shortDescription: 'Build tool projects.',
+        fullDescription: '',
+        staffInstructions: '',
+        displayOrder: 2,
+        createdAt: '2026-03-22T12:08:00.000Z'
+      }
+    ])
+    await harness.database.insert(userApplications).values({
+      id: 'application_1',
+      eventId: 'event_1',
+      userId: 'regular_user',
+      status: 'approved',
+      submittedAt: '2026-03-22T12:10:00.000Z',
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+      createdAt: '2026-03-22T12:10:00.000Z',
+      updatedAt: '2026-03-22T12:10:00.000Z'
+    })
+
+    const activeEventResponse = await harness.request('/api/events/event_1/applications/me/actions/select-track', {
+      method: 'POST',
+      body: JSON.stringify({
+        trackId: 'track_agents'
+      })
+    })
+    expect(activeEventResponse.status).toBe(200)
+
+    await harness.database
+      .update(events)
+      .set({ state: 'completed' })
+      .where(eq(events.id, 'event_1'))
+
+    const completedEventResponse = await harness.request('/api/events/event_1/applications/me/actions/select-track', {
+      method: 'POST',
+      body: JSON.stringify({
+        trackId: 'track_tools'
+      })
+    })
+
+    expect(completedEventResponse.status).toBe(409)
+    expect(await completedEventResponse.json()).toMatchObject({
+      error: {
+        code: 'application_track_selection_unavailable'
+      }
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: eq(userApplications.id, 'application_1')
+    })
+    expect(storedApplication?.selectedTrackId).toBe('track_agents')
+  })
+
   test('POST /api/events/:eventId/applications/me/actions/select-track rejects ineligible applications and tracks from other events', async () => {
     const harness = createApiRouteTestHarness({
       routes: [

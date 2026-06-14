@@ -103,7 +103,7 @@ This document defines the canonical permissions for the Codex event platform.
 | --- | --- | --- | --- | --- | --- |
 | Submit `UserApplication` | Yes, if no application exists for the event and the event is `registration_open` | No | No | No | No |
 | View own application | Yes | Yes | No | No | No |
-| Select own event track | Yes, if the application is `submitted` and the selected track belongs to the same Hackathon or Build event | Yes, if the selected track belongs to the same Hackathon or Build event | No | No | No |
+| Select own event track | Yes, if the application is `submitted`, the event is not `completed`, and the selected track belongs to the same Hackathon or Build event | Yes, if the event is not `completed` and the selected track belongs to the same Hackathon or Build event | No | No | No |
 | Verify own Luma email | No | Yes, when Luma sync is enabled for the event | No | No | No |
 | Withdraw own application | Yes, if the application is still `submitted` and the user has no active team membership in the event | Yes, if the application is `approved` and the user has no active team membership in the event | No | No | No |
 | View event application records | No | No | Yes | Yes | Yes |

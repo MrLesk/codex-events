@@ -56,6 +56,14 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
+  if (event.state === 'completed') {
+    throw new ApiError({
+      statusCode: 409,
+      code: 'application_track_selection_unavailable',
+      message: 'Track selection is no longer available because this event is complete.'
+    })
+  }
+
   const selectedTrack = await database.query.eventTracks.findFirst({
     columns: {
       id: true

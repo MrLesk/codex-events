@@ -152,7 +152,7 @@ Rules:
 - Tracks are ordered for admin editing and public display.
 - Public event pages show track names and short descriptions by default. Public event detail links with `tracks=full` also show participant-facing full guidelines and resource links.
 - Account-scoped event detail pages show every track name and short description to eligible participants before track selection.
-- Build applicants select a track during registration when the Build event has configured tracks. Submitted and approved participants can choose or change their event track from the account-scoped event detail page.
+- Build applicants select a track during registration when the Build event has configured tracks. Submitted and approved participants can choose or change their event track from the account-scoped event detail page until the event is completed.
 - A participant's selected track is stored on that participant's `UserApplication` for the event.
 - Event admins and platform admins can filter approved participant review by selected track. The all-track view includes approved participants without a selected track, and per-track counts include only approved participants who selected that track.
 - After a participant selects a track, the selected track appears first in the account-scoped event detail page and shows its full guidelines and resources.
@@ -349,7 +349,7 @@ Rules:
 - Platform admins can run an event-scoped operational backfill route to resolve stored legacy Luma usernames into canonical Luma emails for already-registered users.
 - In Hackathon events, a user must be approved before creating or joining a team in that event.
 - In Meetup and Build events, an approved application is the participant's event access record.
-- In Hackathon and Build events with tracks, submitted and approved applicants can store one selected track on their application.
+- In Hackathon and Build events with tracks, submitted and approved applicants can store one selected track on their application until the event is completed.
 - In Build events with tracks, application submission stores the selected track and does not require an AI Knowledge response for that application.
 - A participant's selected track can prefill a new Hackathon submission draft when the selected track is valid for the event, but team admins can change the submission track.
 - Withdrawal ends participation eligibility for the event, including in-person attendance eligibility when applicable.

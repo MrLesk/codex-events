@@ -358,6 +358,7 @@ const accountEventTracks = computed(() => event.value.tracks ?? [])
 const canSelectParticipantTrack = computed(() =>
   accountTrackViewerMode.value === 'participant'
   && (applicationStatus.value === 'submitted' || applicationStatus.value === 'approved')
+  && event.value.state !== 'completed'
   && accountEventTracks.value.length > 0
 )
 const showTrackSelectionOverviewPrompt = computed(() =>
