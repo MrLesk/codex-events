@@ -2,6 +2,13 @@ import { normalizeApiError } from '~/lib/api'
 
 export type PublishedEventRosterRole = 'judge' | 'staff'
 
+export interface PublishedEventStaffTrack {
+  id: string
+  name: string
+  shortDescription: string
+  displayOrder: number
+}
+
 export interface PublishedEventRosterMember {
   id: string
   fullName: string
@@ -11,12 +18,7 @@ export interface PublishedEventRosterMember {
   linkedinProfileUrl: string | null
   githubProfileUrl: string | null
   profileIconUpdatedAt: string | null
-  staffTrack?: {
-    id: string
-    name: string
-    shortDescription: string
-    displayOrder: number
-  } | null
+  staffTrack?: PublishedEventStaffTrack | null
 }
 
 export interface PublishedEventRosterLink {
@@ -28,6 +30,14 @@ export interface PublishedEventRosterLink {
 export interface PublishedEventRosterLoadState {
   members: PublishedEventRosterMember[]
   errorMessage: string | null
+}
+
+export interface PublishedStaffRosterSection {
+  id: string
+  title: string
+  description: string | null
+  members: PublishedEventRosterMember[]
+  isSelectedTrack: boolean
 }
 
 export function getPublishedEventRosterEndpoint(role: PublishedEventRosterRole) {
@@ -65,10 +75,103 @@ export async function loadPublishedEventRoster(
   }
 }
 
+export function buildPublishedStaffRosterSections(input: {
+  members: PublishedEventRosterMember[]
+  tracks?: PublishedEventStaffTrack[]
+  selectedTrackId?: string | null
+}): PublishedStaffRosterSection[] {
+  const sections: PublishedStaffRosterSection[] = []
+  const generalMembers: PublishedEventRosterMember[] = []
+  const membersByTrackId = new Map<string, PublishedEventRosterMember[]>()
+  const tracksById = new Map<string, PublishedEventStaffTrack>()
+  const selectedTrackId = input.selectedTrackId?.trim() || null
+  const sortedTracks = [...(input.tracks ?? [])].sort(compareStaffTracks)
+
+  for (const track of sortedTracks) {
+    tracksById.set(track.id, track)
+  }
+
+  for (const member of input.members) {
+    const track = member.staffTrack
+
+    if (!track) {
+      generalMembers.push(member)
+      continue
+    }
+
+    const trackMembers = membersByTrackId.get(track.id) ?? []
+    trackMembers.push(member)
+    membersByTrackId.set(track.id, trackMembers)
+    tracksById.set(track.id, track)
+  }
+
+  if (generalMembers.length > 0) {
+    sections.push({
+      id: 'general',
+      title: 'General Event Staff',
+      description: 'Available across the whole event.',
+      members: generalMembers,
+      isSelectedTrack: false
+    })
+  }
+
+  for (const track of sortedTracks) {
+    const trackMembers = membersByTrackId.get(track.id)
+
+    if (!trackMembers?.length) {
+      continue
+    }
+
+    sections.push(createStaffTrackSection(track, trackMembers, selectedTrackId))
+    membersByTrackId.delete(track.id)
+  }
+
+  const remainingTracks = [...membersByTrackId.keys()]
+    .map(trackId => tracksById.get(trackId))
+    .filter((track): track is PublishedEventStaffTrack => Boolean(track))
+    .sort(compareStaffTracks)
+
+  for (const track of remainingTracks) {
+    const trackMembers = membersByTrackId.get(track.id)
+
+    if (!trackMembers?.length) {
+      continue
+    }
+
+    sections.push(createStaffTrackSection(track, trackMembers, selectedTrackId))
+  }
+
+  return sections
+}
+
+export function formatPublishedStaffRosterSectionCount(count: number) {
+  return count === 1 ? '1 person' : `${count} people`
+}
+
 function normalizeUrl(value: string | null | undefined) {
   const normalized = value?.trim()
 
   return normalized ? normalized : null
+}
+
+function compareStaffTracks(left: PublishedEventStaffTrack, right: PublishedEventStaffTrack) {
+  return left.displayOrder - right.displayOrder
+    || left.name.localeCompare(right.name)
+    || left.id.localeCompare(right.id)
+}
+
+function createStaffTrackSection(
+  track: PublishedEventStaffTrack,
+  members: PublishedEventRosterMember[],
+  selectedTrackId: string | null
+): PublishedStaffRosterSection {
+  return {
+    id: `track:${track.id}`,
+    title: track.name,
+    description: track.shortDescription.trim() || null,
+    members,
+    isSelectedTrack: selectedTrackId === track.id
+  }
 }
 
 export function getPublishedEventRosterLinks(member: Pick<

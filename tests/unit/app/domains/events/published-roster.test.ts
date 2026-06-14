@@ -1,7 +1,13 @@
 import { describe, expect, test } from 'vitest'
 
+import type {
+  PublishedEventRosterMember,
+  PublishedEventStaffTrack
+} from '../../../../../app/domains/events/published-roster'
 import {
+  buildPublishedStaffRosterSections,
   createEmptyPublishedEventRosterLoadState,
+  formatPublishedStaffRosterSectionCount,
   getPublishedEventRosterEndpoint,
   getPublishedEventRosterLinks,
   loadPublishedEventRoster
@@ -53,6 +59,71 @@ describe('published event roster helpers', () => {
   test('derives the published roster endpoint from the requested role', () => {
     expect(getPublishedEventRosterEndpoint('judge')).toBe('judges')
     expect(getPublishedEventRosterEndpoint('staff')).toBe('staff')
+  })
+
+  test('groups staff roster members by whole-event staff and populated tracks', () => {
+    const tracks: PublishedEventStaffTrack[] = [{
+      id: 'track_design',
+      name: 'Design Systems',
+      shortDescription: 'Design tooling and workflows.',
+      displayOrder: 1
+    }, {
+      id: 'track_agents',
+      name: 'Agents',
+      shortDescription: 'Agentic products.',
+      displayOrder: 2
+    }]
+    const createMember = (
+      id: string,
+      fullName: string,
+      staffTrack: PublishedEventStaffTrack | null = null
+    ): PublishedEventRosterMember => ({
+      id,
+      fullName,
+      company: null,
+      bio: null,
+      xProfileUrl: null,
+      linkedinProfileUrl: null,
+      githubProfileUrl: null,
+      profileIconUpdatedAt: null,
+      staffTrack
+    })
+    const members = [
+      createMember('user_general', 'General Staff'),
+      createMember('user_agents', 'Agents Staff', tracks[1]),
+      createMember('user_agents_2', 'Second Agents Staff', tracks[1])
+    ]
+
+    const sections = buildPublishedStaffRosterSections({
+      members,
+      tracks,
+      selectedTrackId: ' track_agents '
+    })
+
+    expect(sections.map(section => ({
+      id: section.id,
+      title: section.title,
+      description: section.description,
+      memberIds: section.members.map(member => member.id),
+      isSelectedTrack: section.isSelectedTrack
+    }))).toEqual([{
+      id: 'general',
+      title: 'General Event Staff',
+      description: 'Available across the whole event.',
+      memberIds: ['user_general'],
+      isSelectedTrack: false
+    }, {
+      id: 'track:track_agents',
+      title: 'Agents',
+      description: 'Agentic products.',
+      memberIds: ['user_agents', 'user_agents_2'],
+      isSelectedTrack: true
+    }])
+  })
+
+  test('formats staff roster section counts for compact row headers', () => {
+    expect(formatPublishedStaffRosterSectionCount(1)).toBe('1 person')
+    expect(formatPublishedStaffRosterSectionCount(2)).toBe('2 people')
   })
 
   test('loads the published roster members through the provided request function', async () => {
