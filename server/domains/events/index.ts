@@ -99,6 +99,10 @@ export const eventListQuerySchema = z.object({
   slug: z.string().trim().min(1).optional()
 })
 
+export const publicEventDetailQuerySchema = z.object({
+  tracks: z.enum(['full']).optional()
+})
+
 export const listEventRoleCandidatesQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   page_size: z.coerce.number().int().min(1).max(100).default(20),
@@ -761,11 +765,29 @@ export function serializeEventTrack(
   }
 }
 
-export function serializePublicEventTrack(track: EventTrackRecord) {
+export function serializePublicEventTrackResource(resource: EventTrackResourceInput) {
+  return {
+    title: resource.title,
+    url: resource.url,
+    description: resource.description,
+    displayOrder: resource.displayOrder
+  }
+}
+
+export function serializePublicEventTrack(
+  track: EventTrackRecord,
+  options: { includeFullDetails?: boolean } = {}
+) {
   return {
     name: track.name,
     shortDescription: track.shortDescription,
-    displayOrder: track.displayOrder
+    displayOrder: track.displayOrder,
+    ...(options.includeFullDetails
+      ? {
+          fullDescription: track.fullDescription,
+          resources: parseEventTrackResources(track.resourcesJson).map(serializePublicEventTrackResource)
+        }
+      : {})
   }
 }
 
@@ -1908,7 +1930,7 @@ export function serializePublicEvent(
     winnerTerms: EventTermsDocumentRecord | null
   },
   tracks?: EventTrackRecord[],
-  options: EventDisplayImageOptions = {}
+  options: EventDisplayImageOptions & { includeFullTrackDetails?: boolean } = {}
 ) {
   return {
     eventType: event.eventType,
@@ -1957,7 +1979,11 @@ export function serializePublicEvent(
     requireSubmissionDemoUrl: event.requireSubmissionDemoUrl,
     ...(tracks
       ? {
-          tracks: eventTypeSupportsTracks(event.eventType) ? tracks.map(serializePublicEventTrack) : []
+          tracks: eventTypeSupportsTracks(event.eventType)
+            ? tracks.map(track => serializePublicEventTrack(track, {
+                includeFullDetails: options.includeFullTrackDetails
+              }))
+            : []
         }
       : {}),
     ...(currentTerms

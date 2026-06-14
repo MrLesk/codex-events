@@ -1898,6 +1898,31 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect(payload.data.tracks[0]).not.toHaveProperty('fullDescription')
     expect(payload.data.tracks[0]).not.toHaveProperty('staffInstructions')
     expect(payload.data.tracks[0]).not.toHaveProperty('resources')
+
+    const fullTracksResponse = await harness.request('/api/public/events/public-event?tracks=full')
+    expect(fullTracksResponse.status).toBe(200)
+    const fullTracksPayload = await fullTracksResponse.json()
+
+    expect(fullTracksPayload.data.address).toBe('')
+    expect(fullTracksPayload.data).not.toHaveProperty('discordServerUrl')
+    expect(fullTracksPayload.data.tracks).toEqual([
+      {
+        name: 'Agents',
+        shortDescription: 'Build with agents.',
+        fullDescription: 'Internal participant guidelines.',
+        resources: [{
+          title: 'Starter guide',
+          url: 'https://example.com/agents',
+          description: 'Private until selected.',
+          displayOrder: 1
+        }],
+        displayOrder: 1
+      }
+    ])
+    expect(fullTracksPayload.data.tracks[0]).not.toHaveProperty('id')
+    expect(fullTracksPayload.data.tracks[0]).not.toHaveProperty('eventId')
+    expect(fullTracksPayload.data.tracks[0]).not.toHaveProperty('staffInstructions')
+    expect(fullTracksPayload.data.tracks[0].resources[0]).not.toHaveProperty('id')
   })
 
   test('GET /api/events/:eventId gates track staff instructions by event role', async () => {

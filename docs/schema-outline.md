@@ -251,7 +251,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - A track stores a participant-facing name, short markdown description, full participant guideline markdown, and staff-only instruction markdown.
 - `resources_json` stores a validated ordered JSON array of track resources (`id`, `title`, `url`, optional `description`, `displayOrder`).
 - Hackathon and Build events can define tracks. Meetup events do not use tracks.
-- Public event payloads expose only track name, short description, and display order.
+- Public event payloads expose track name, short description, and display order by default. Public event detail payloads with `tracks=full` also expose participant-facing full descriptions and resource links without track IDs, resource IDs, or staff instructions.
 - Account event payloads expose full descriptions and resources. Staff instructions are included only for platform admins, event admins, whole-event staff, and staff assigned to that track.
 - Hackathon tracks are submission choices. Build tracks are participant-visible resource groups after selection.
 - Tracks do not control judge assignment in this version.

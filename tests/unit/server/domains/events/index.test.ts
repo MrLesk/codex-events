@@ -647,7 +647,7 @@ describe('event management utilities', () => {
     })).toThrowError(ApiError)
   })
 
-  test('serializes track guidelines internally and keeps public tracks short-only', () => {
+  test('serializes track guidelines internally and keeps public tracks short-only by default', () => {
     const tracks = [{
       id: 'track_1',
       eventId: 'event_1',
@@ -700,6 +700,29 @@ describe('event management utilities', () => {
         resources: expect.any(Array)
       }]
     })
+
+    const fullPublicTrack = serializePublicEvent(buildEventRecord({
+      eventType: 'build'
+    }), undefined, tracks, {
+      includeFullTrackDetails: true
+    }).tracks?.[0]
+
+    expect(fullPublicTrack).toEqual({
+      name: 'Agents',
+      shortDescription: 'Build with agents.',
+      fullDescription: 'Read the full track guidelines.',
+      resources: [{
+        title: 'Starter guide',
+        url: 'https://example.com/guide',
+        description: 'Read this before the event.',
+        displayOrder: 1
+      }],
+      displayOrder: 1
+    })
+    expect(fullPublicTrack).not.toHaveProperty('id')
+    expect(fullPublicTrack).not.toHaveProperty('eventId')
+    expect(fullPublicTrack).not.toHaveProperty('staffInstructions')
+    expect(fullPublicTrack?.resources[0]).not.toHaveProperty('id')
   })
 
   test('serializes configurable judging fields for internal event responses', () => {

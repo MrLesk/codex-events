@@ -150,13 +150,13 @@ Rules:
 - A track can include zero or more resources.
 - Each track resource has a title, an `http` or `https` link, and an optional description.
 - Tracks are ordered for admin editing and public display.
-- Public event pages show only track names and short descriptions.
+- Public event pages show track names and short descriptions by default. Public event detail links with `tracks=full` also show participant-facing full guidelines and resource links.
 - Account-scoped event detail pages show every track name and short description to eligible participants before track selection.
 - Build applicants select a track during registration when the Build event has configured tracks. Submitted and approved participants can choose or change their event track from the account-scoped event detail page.
 - A participant's selected track is stored on that participant's `UserApplication` for the event.
 - Event admins and platform admins can filter approved participant review by selected track. The all-track view includes approved participants without a selected track, and per-track counts include only approved participants who selected that track.
 - After a participant selects a track, the selected track appears first in the account-scoped event detail page and shows its full guidelines and resources.
-- Track resources are hidden from public event pages and from participant account pages until the participant selects that track.
+- Track resources are hidden from default public event pages and from participant account pages until the participant selects that track.
 - Staff instructions are visible only to platform admins, event admins, whole-event staff, and staff members assigned to that track.
 - Hackathon tracks are available as submission choices.
 - Build tracks are resource groups for participants.

@@ -46,6 +46,10 @@ interface AccountEventsResponse {
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
+const includeFullTrackDetails = computed(() => normalizeTabQueryValue(route.query.tracks) === 'full')
+const publicEventDetailPath = computed(() =>
+  `/api/public/events/${slug.value}${includeFullTrackDetails.value ? '?tracks=full' : ''}`
+)
 const { actor: accountActor } = await useAccountLifecycleActor()
 
 if (!slug.value) {
@@ -56,10 +60,10 @@ if (!slug.value) {
 }
 
 const { data: eventData, error: eventError } = await useApiResponse<PublicEvent>(
-  () => `public-event-detail:${slug.value}`,
-  () => `/api/public/events/${slug.value}`,
+  () => `public-event-detail:${slug.value}:${includeFullTrackDetails.value ? 'full-tracks' : 'short-tracks'}`,
+  () => publicEventDetailPath.value,
   {
-    watch: [slug]
+    watch: [slug, includeFullTrackDetails]
   }
 )
 

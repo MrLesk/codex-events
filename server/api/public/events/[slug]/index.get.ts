@@ -5,14 +5,16 @@ import {
   getCurrentEventTerms,
   listEventTracks,
   getPublicEventBySlugOrThrow,
+  publicEventDetailQuerySchema,
   routeSlugParamsSchema,
   serializePublicEvent
 } from '#server/domains/events'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
-import { parseValidatedParams } from '#server/http/validation'
+import { parseValidatedParams, parseValidatedQuery } from '#server/http/validation'
 
 export default defineApiHandler(async (h3Event) => {
   const { slug } = parseValidatedParams(h3Event, routeSlugParamsSchema)
+  const query = parseValidatedQuery(h3Event, publicEventDetailQuerySchema)
   const database = getDatabase(h3Event)
   const event = await getPublicEventBySlugOrThrow(database, slug)
   const [currentTerms, tracks, imageOptions] = await Promise.all([
@@ -22,6 +24,9 @@ export default defineApiHandler(async (h3Event) => {
   ])
 
   return apiData({
-    ...serializePublicEvent(event, currentTerms, tracks, imageOptions)
+    ...serializePublicEvent(event, currentTerms, tracks, {
+      ...imageOptions,
+      includeFullTrackDetails: query.tracks === 'full'
+    })
   })
 })
