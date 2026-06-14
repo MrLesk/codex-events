@@ -180,7 +180,9 @@ describe('auth0 bootstrap config', () => {
 
     const template = buildUniversalLoginPageTemplate(config)
 
-    expect(template).toContain('body._widget-auto-layout a { color: #030213 !important; }')
+    expect(template).toContain(':where(body._widget-auto-layout a) { color: #030213; }')
+    expect(template).not.toContain('body._widget-auto-layout a { color: #030213 !important; }')
+    expect(template).toContain('body._widget-auto-layout a[role="button"],')
     expect(template).toContain('color: #ffffff !important; -webkit-text-fill-color: #ffffff !important;')
     expect(template).toContain('body._widget-auto-layout #prompt-logo-center {')
     expect(template).toContain('{%- auth0:widget -%}')
