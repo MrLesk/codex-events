@@ -75,6 +75,13 @@ export interface ParticipantRegistrationDetails {
   aiKnowledgeLevel: ParticipantAiKnowledgeLevelInput
 }
 
+export interface ParticipantRegistrationTrackOption {
+  id: string
+  name: string
+  shortDescription: string
+  displayOrder: number
+}
+
 export type ParticipantApplicationLumaSyncStatus
   = 'not_synced'
     | 'approve_synced'
@@ -105,8 +112,9 @@ export interface ParticipantApplicationRecord {
   applicationTermsDocument?: ParticipantApplicationTermsDocument
 }
 
-export interface VisibleEventRecord extends PublicEvent {
+export interface VisibleEventRecord extends Omit<PublicEvent, 'tracks'> {
   id: string
+  tracks?: ParticipantRegistrationTrackOption[]
 }
 
 export interface ParticipantCurrentTermsResponse {

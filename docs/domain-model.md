@@ -134,6 +134,8 @@ Meetup and Build rules:
 - Meetups and Builds can approve, reject, and withdraw applications through the shared `UserApplication` model.
 - Approved applications represent participation directly.
 - Build tracks organize selected-track resource links and do not create submission, judging, or outcome workflows.
+- Build registration asks the applicant to choose a track when the Build event has configured tracks.
+- Build registration keeps the AI Knowledge question as the applicant-routing fallback when the Build event has no configured tracks and AI Knowledge is visible.
 - Meetups and Builds do not create teams, submissions, judging assignments, prizes, winner records, or completed competition outcomes.
 - Competition-only APIs and UI surfaces are unavailable for Meetups and Builds.
 
@@ -150,7 +152,7 @@ Rules:
 - Tracks are ordered for admin editing and public display.
 - Public event pages show only track names and short descriptions.
 - Account-scoped event detail pages show every track name and short description to eligible participants before track selection.
-- Submitted and approved participants can choose or change their event track from the account-scoped event detail page.
+- Build applicants select a track during registration when the Build event has configured tracks. Submitted and approved participants can choose or change their event track from the account-scoped event detail page.
 - A participant's selected track is stored on that participant's `UserApplication` for the event.
 - After a participant selects a track, the selected track appears first in the account-scoped event detail page and shows its full guidelines and resources.
 - Track resources are hidden from public event pages and from participant account pages until the participant selects that track.
@@ -347,6 +349,7 @@ Rules:
 - In Hackathon events, a user must be approved before creating or joining a team in that event.
 - In Meetup and Build events, an approved application is the participant's event access record.
 - In Hackathon and Build events with tracks, submitted and approved applicants can store one selected track on their application.
+- In Build events with tracks, application submission stores the selected track and does not require an AI Knowledge response for that application.
 - A participant's selected track can prefill a new Hackathon submission draft when the selected track is valid for the event, but team admins can change the submission track.
 - Withdrawal ends participation eligibility for the event, including in-person attendance eligibility when applicable.
 - Withdrawal retains the application record for auditability, event-terms acceptance when present, and operational history. It does not hard-delete the application.
@@ -362,7 +365,7 @@ Rules:
 - When participation mode is visible and the registration team-intent hint is `team`, the user application can include free-form teammate hints captured during application (name/family-name and/or email per hinted member).
 - A user application can include a free-form `why this event` response only when that field is visible.
 - A user application can include one or more proof-of-execution links only when that field is visible.
-- A user application can include an AI Knowledge level only when that field is visible.
+- A user application can include an AI Knowledge level only when that field is visible. For Build events with configured tracks, track selection replaces AI Knowledge during registration.
 - If visible participation mode is required, the user must choose `solo` or `team`.
 - If visible motivation is required, the `why this event` response must be non-empty.
 - If visible proof of execution is required, at least one proof-of-execution link must be non-empty and every provided link must use `http` or `https`.

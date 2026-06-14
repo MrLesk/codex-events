@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
-import { userApplications } from '#server/database/schema'
+import { eventTracks, userApplications } from '#server/database/schema'
 import { defineApiHandler } from '#server/http/api-handler'
 import { ApiError } from '#server/http/api-error'
 import { apiData } from '#server/http/api-response'
@@ -70,7 +70,67 @@ export default defineApiHandler(async (h3Event) => {
     }
   }
 
-  const registrationDetailsJson = serializeRegistrationDetailsJson(event, {
+  const requestedSelectedTrackId = body.selectedTrackId.trim()
+  let selectedTrackId: string | null = null
+  let useBuildTrackSelection = false
+
+  if (event.eventType === 'hackathon' || event.eventType === 'build') {
+    const trackRows = await database.query.eventTracks.findMany({
+      columns: {
+        id: true
+      },
+      where: eq(eventTracks.eventId, eventId)
+    })
+    const eventTrackIds = new Set(trackRows.map((track: { id: string }) => track.id))
+    useBuildTrackSelection = event.eventType === 'build' && eventTrackIds.size > 0
+
+    if (useBuildTrackSelection && !requestedSelectedTrackId) {
+      throw new ApiError({
+        statusCode: 409,
+        code: 'event_track_required',
+        message: 'Choose a track before submitting this application.',
+        details: {
+          eventId
+        }
+      })
+    }
+
+    if (requestedSelectedTrackId) {
+      if (!eventTrackIds.has(requestedSelectedTrackId)) {
+        throw new ApiError({
+          statusCode: 400,
+          code: 'event_track_invalid',
+          message: 'The selected track is not valid for this event.',
+          details: {
+            eventId,
+            trackId: requestedSelectedTrackId
+          }
+        })
+      }
+
+      selectedTrackId = requestedSelectedTrackId
+    }
+  } else if (requestedSelectedTrackId) {
+    throw new ApiError({
+      statusCode: 400,
+      code: 'event_track_invalid',
+      message: 'The selected track is not valid for this event.',
+      details: {
+        eventId,
+        trackId: requestedSelectedTrackId
+      }
+    })
+  }
+
+  const registrationDetailsEvent = useBuildTrackSelection
+    ? {
+        ...event,
+        applicationAiKnowledgeVisible: false,
+        requireAiKnowledge: false
+      }
+    : event
+
+  const registrationDetailsJson = serializeRegistrationDetailsJson(registrationDetailsEvent, {
     registrationTeamIntent: body.registrationTeamIntent,
     registrationTeamMembers: body.registrationTeamMembers,
     inPersonAttendanceCommitment: body.inPersonAttendanceCommitment,
@@ -90,6 +150,7 @@ export default defineApiHandler(async (h3Event) => {
     status: 'submitted',
     preApprovalStatus: null,
     lumaSyncStatus,
+    selectedTrackId,
     submittedAt,
     reviewedAt: null,
     reviewedByUserId: null,

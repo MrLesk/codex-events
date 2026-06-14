@@ -9,6 +9,7 @@ import type {
   ParticipantApplicationSubmissionPolicy,
   ParticipantApplicationTermsDocument,
   ParticipantAiKnowledgeLevelInput,
+  ParticipantRegistrationTrackOption,
   ParticipantRegistrationTeamIntent,
   ParticipantRegistrationTeamMemberHint
 } from '~/domains/applications/participant-application'
@@ -41,6 +42,9 @@ const proofOfExecutionUrl = defineModel<string>('proofOfExecutionUrl', {
 const aiKnowledgeLevel = defineModel<ParticipantAiKnowledgeLevelInput>('aiKnowledgeLevel', {
   required: true
 })
+const selectedTrackId = defineModel<string>('selectedTrackId', {
+  required: true
+})
 const teamIntent = defineModel<ParticipantRegistrationTeamIntent>('teamIntent', {
   required: true
 })
@@ -53,6 +57,7 @@ const profileForm = defineModel<ParticipantRegistrationProfileForm>('profileForm
 
 const props = defineProps<{
   event: Pick<PublicEvent, 'eventType' | 'slug' | 'state' | 'city' | 'country' | 'autoApproveApplications' | 'inPersonEvent' | 'applicationWhyThisEventVisible' | 'applicationProofOfExecutionVisible' | 'applicationTeamIntentVisible' | 'applicationAiKnowledgeVisible' | 'requireWhyThisEvent' | 'requireProofOfExecution' | 'requireTeamIntent' | 'requireAiKnowledge'>
+  trackOptions?: ParticipantRegistrationTrackOption[]
   currentApplicationTerms: ParticipantApplicationTermsDocument | null
   profileFields: EventProfileField[]
   submissionPolicy: ParticipantApplicationSubmissionPolicy
@@ -109,11 +114,22 @@ const eventCreditProfileFields = computed(() =>
 
 const maxTeamMemberHints = computed(() => Math.max(0, props.maxTeamMembers - 1))
 const applicationTermsPageHref = computed(() => `/events/${props.event.slug}/application-terms`)
+const sortedTrackOptions = computed(() =>
+  [...(props.trackOptions ?? [])].sort((left, right) =>
+    left.displayOrder - right.displayOrder || left.name.localeCompare(right.name) || left.id.localeCompare(right.id)
+  )
+)
+const selectedTrackOption = computed(() =>
+  sortedTrackOptions.value.find(track => track.id === selectedTrackId.value) ?? null
+)
 const showWhyThisEvent = computed(() => props.event.applicationWhyThisEventVisible)
 const showProofOfExecution = computed(() => props.event.applicationProofOfExecutionVisible)
 const showTeamIntent = computed(() => props.event.applicationTeamIntentVisible)
-const showAiKnowledge = computed(() => props.event.applicationAiKnowledgeVisible)
-const showApplicationQuestions = computed(() => showWhyThisEvent.value || showProofOfExecution.value || showAiKnowledge.value)
+const showTrackSelection = computed(() => props.event.eventType === 'build' && sortedTrackOptions.value.length > 0)
+const showAiKnowledge = computed(() => props.event.applicationAiKnowledgeVisible && !showTrackSelection.value)
+const showApplicationQuestions = computed(() =>
+  showWhyThisEvent.value || showProofOfExecution.value || showTrackSelection.value || showAiKnowledge.value
+)
 const showLinksAndAccountsSection = computed(() => primaryProfileFields.value.length > 0 || eventCreditProfileFields.value.length > 0)
 const teamIntentHelperText = computed(() =>
   props.event.eventType === 'hackathon'
@@ -148,7 +164,9 @@ const registrationSchema = computed(() => buildParticipantRegistrationFormSchema
   showTeamIntent: showTeamIntent.value,
   requireTeamIntent: props.event.requireTeamIntent,
   showAiKnowledge: showAiKnowledge.value,
-  requireAiKnowledge: props.event.requireAiKnowledge
+  requireAiKnowledge: props.event.requireAiKnowledge,
+  showTrackSelection: showTrackSelection.value,
+  trackIds: sortedTrackOptions.value.map(track => track.id)
 }))
 
 const {
@@ -165,6 +183,7 @@ const {
     whyThisEvent: whyThisEvent.value,
     proofOfExecutionUrl: proofOfExecutionUrl.value,
     aiKnowledgeLevel: aiKnowledgeLevel.value,
+    selectedTrackId: selectedTrackId.value,
     teamIntent: teamIntent.value,
     teamMemberHints: cloneFormValues(teamMemberHints.value),
     profileForm: normalizeParticipantRegistrationProfileForm(profileForm.value)
@@ -177,6 +196,7 @@ watch([
   whyThisEvent,
   proofOfExecutionUrl,
   aiKnowledgeLevel,
+  selectedTrackId,
   teamIntent,
   teamMemberHints,
   profileForm,
@@ -188,6 +208,7 @@ watch([
   () => props.event.applicationProofOfExecutionVisible,
   () => props.event.applicationTeamIntentVisible,
   () => props.event.applicationAiKnowledgeVisible,
+  () => props.trackOptions,
   () => props.event.requireWhyThisEvent,
   () => props.event.requireProofOfExecution,
   () => props.event.requireTeamIntent,
@@ -200,6 +221,7 @@ watch([
     whyThisEvent: whyThisEvent.value,
     proofOfExecutionUrl: proofOfExecutionUrl.value,
     aiKnowledgeLevel: aiKnowledgeLevel.value,
+    selectedTrackId: selectedTrackId.value,
     teamIntent: teamIntent.value,
     teamMemberHints: cloneFormValues(teamMemberHints.value),
     profileForm: normalizeParticipantRegistrationProfileForm(profileForm.value)
@@ -220,6 +242,7 @@ watch(values, (nextValues) => {
   whyThisEvent.value = nextValues.whyThisEvent ?? ''
   proofOfExecutionUrl.value = nextValues.proofOfExecutionUrl ?? ''
   aiKnowledgeLevel.value = normalizeAiKnowledgeLevel(nextValues.aiKnowledgeLevel)
+  selectedTrackId.value = nextValues.selectedTrackId ?? ''
   teamIntent.value = nextValues.teamIntent ?? 'unknown'
 
   const nextTeamMemberHints = cloneFormValues(nextValues.teamMemberHints ?? [])
@@ -287,6 +310,11 @@ const proofOfExecutionUrlError = computed(() => {
 const aiKnowledgeLevelError = computed(() => {
   const currentErrors = errors.value as Record<string, string | undefined>
   return currentErrors.aiKnowledgeLevel ?? ''
+})
+
+const selectedTrackIdError = computed(() => {
+  const currentErrors = errors.value as Record<string, string | undefined>
+  return currentErrors.selectedTrackId ?? ''
 })
 
 const teamIntentError = computed(() => {
@@ -358,6 +386,10 @@ const missingRequiredFieldCount = computed(() => {
     count += 1
   }
 
+  if (showTrackSelection.value && !selectedTrackId.value) {
+    count += 1
+  }
+
   if (showAiKnowledge.value && props.event.requireAiKnowledge && !aiKnowledgeLevel.value) {
     count += 1
   }
@@ -396,6 +428,10 @@ const invalidFieldCount = computed(() => {
     requiredKeys.add('teamIntent')
   }
 
+  if (showTrackSelection.value) {
+    requiredKeys.add('selectedTrackId')
+  }
+
   if (showAiKnowledge.value && props.event.requireAiKnowledge) {
     requiredKeys.add('aiKnowledgeLevel')
   }
@@ -409,6 +445,10 @@ const invalidFieldCount = computed(() => {
   }
 
   if (teamIntentError.value && !requiredKeys.has('teamIntent')) {
+    invalidCount += 1
+  }
+
+  if (selectedTrackIdError.value) {
     invalidCount += 1
   }
 
@@ -738,6 +778,47 @@ function getProfileFieldPlaceholder(key: EventProfileField['key']) {
                 </div>
 
                 <div :class="inlineSectionBodyClass">
+                  <label
+                    v-if="showTrackSelection"
+                    class="space-y-1"
+                  >
+                    <span class="inline-flex items-center gap-1.5 text-[12px] font-medium text-neutral-600 dark:text-[#A3A3A3]">
+                      <span>Track</span>
+                      <span :class="requiredChipClass">
+                        Required
+                      </span>
+                    </span>
+                    <AppSelect
+                      v-model="selectedTrackId"
+                      :disabled="isSubmitting || isSavingProfile"
+                      :class="submitAttempted && selectedTrackIdError
+                        ? 'border-error/45 focus:border-error dark:border-error/50'
+                        : 'focus:border-primary'"
+                    >
+                      <option value="">
+                        Choose your track
+                      </option>
+                      <option
+                        v-for="track in sortedTrackOptions"
+                        :key="track.id"
+                        :value="track.id"
+                      >
+                        {{ track.name }}
+                      </option>
+                    </AppSelect>
+                    <p
+                      v-if="submitAttempted && selectedTrackIdError"
+                      class="text-[11px] text-error"
+                    >
+                      {{ selectedTrackIdError }}
+                    </p>
+                    <AppMarkdownRenderer
+                      v-else-if="selectedTrackOption"
+                      :source="selectedTrackOption.shortDescription"
+                      class="max-w-[68ch] text-[12px] text-neutral-500 dark:text-[#8C8C8C]"
+                    />
+                  </label>
+
                   <label
                     v-if="showAiKnowledge"
                     class="space-y-1"

@@ -81,15 +81,20 @@ export function buildParticipantRegistrationFormSchema(options: {
   requireTeamIntent: boolean
   showAiKnowledge: boolean
   requireAiKnowledge: boolean
+  showTrackSelection?: boolean
+  trackIds?: string[]
 }) {
   const visibleProfileKeys = new Set(options.profileFields
     .filter(field => field.visible)
     .map(field => field.key))
   const isProfileFieldVisible = (key: EventProfileField['key']) => visibleProfileKeys.has(key)
+  const trackIds = new Set(options.trackIds ?? [])
+  const showTrackSelection = options.showTrackSelection ?? false
 
   return z.object({
     termsAccepted: z.boolean(),
     inPersonAttendanceCommitment: z.boolean(),
+    selectedTrackId: showTrackSelection ? z.string().trim().min(1, 'Choose a track.') : z.string(),
     teamIntent: z.enum(['solo', 'team', 'unknown'] as [ParticipantRegistrationTeamIntent, ParticipantRegistrationTeamIntent, ParticipantRegistrationTeamIntent]),
     teamMemberHints: z.array(z.object({
       fullName: z.string(),
@@ -154,6 +159,14 @@ export function buildParticipantRegistrationFormSchema(options: {
         code: z.ZodIssueCode.custom,
         path: ['inPersonAttendanceCommitment'],
         message: 'Confirm in-person attendance commitment to submit.'
+      })
+    }
+
+    if (showTrackSelection && input.selectedTrackId.length > 0 && !trackIds.has(input.selectedTrackId)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['selectedTrackId'],
+        message: 'Choose a track.'
       })
     }
 

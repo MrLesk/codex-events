@@ -82,7 +82,8 @@ export const submitApplicationBodySchema = z.object({
   inPersonAttendanceCommitment: z.boolean().default(false),
   whyThisEvent: z.string().trim().max(4000).default(''),
   proofOfExecutionUrl: z.string().trim().max(2048).default(''),
-  aiKnowledgeLevel: z.string().trim().max(32).default('')
+  aiKnowledgeLevel: z.string().trim().max(32).default(''),
+  selectedTrackId: z.string().trim().max(120).default('')
 })
 
 type UserApplicationRecord = typeof userApplications.$inferSelect

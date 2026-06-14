@@ -15,6 +15,7 @@ import type {
   ParticipantApplicationTermsDocument,
   ParticipantApplicationSubmittedTransition,
   ParticipantAiKnowledgeLevelInput,
+  ParticipantRegistrationTrackOption,
   ParticipantRegistrationTeamMemberHint,
   VisibleEventRecord
 } from '~/domains/applications/participant-application'
@@ -80,6 +81,7 @@ const inPersonAttendanceCommitment = ref(false)
 const whyThisEvent = ref('')
 const proofOfExecutionUrl = ref('')
 const aiKnowledgeLevel = ref<ParticipantAiKnowledgeLevelInput>('')
+const selectedTrackId = ref('')
 const registrationTeamIntent = ref<'solo' | 'team' | 'unknown'>('unknown')
 const registrationTeamMembers = ref<ParticipantRegistrationTeamMemberHint[]>([])
 const profileFields = computed(() => listEventProfileFields(event.value))
@@ -112,15 +114,30 @@ const submissionError = ref('')
 const isSubmitting = ref(false)
 const submissionTransition = ref<ParticipantApplicationSubmittedTransition | null>(null)
 const visibleEventId = ref<string | null>(null)
+const registrationTrackOptions = ref<ParticipantRegistrationTrackOption[]>([])
 
 function createDefaultRegistrationRouteState() {
   return {
     visibleEventId: null,
     hasExistingApplication: false,
     currentApplicationTerms: null,
+    trackOptions: [],
     workspaceErrorMessage: '',
     redirectTo: null
   }
+}
+
+function listRegistrationTrackOptions(event: VisibleEventRecord): ParticipantRegistrationTrackOption[] {
+  return [...(event.tracks ?? [])]
+    .map(track => ({
+      id: track.id,
+      name: track.name,
+      shortDescription: track.shortDescription,
+      displayOrder: track.displayOrder
+    }))
+    .sort((left, right) =>
+      left.displayOrder - right.displayOrder || left.name.localeCompare(right.name) || left.id.localeCompare(right.id)
+    )
 }
 
 watch(() => accountActor.value, (actor) => {
@@ -173,6 +190,7 @@ const registrationRouteState = await useApiData<{
   visibleEventId: string | null
   hasExistingApplication: boolean
   currentApplicationTerms: ParticipantApplicationTermsDocument | null
+  trackOptions: ParticipantRegistrationTrackOption[]
   workspaceErrorMessage: string
   redirectTo: {
     to: string
@@ -186,6 +204,7 @@ const registrationRouteState = await useApiData<{
         visibleEventId: null,
         hasExistingApplication: false,
         currentApplicationTerms: null,
+        trackOptions: [],
         workspaceErrorMessage: '',
         redirectTo: null
       }
@@ -221,6 +240,7 @@ const registrationRouteState = await useApiData<{
           visibleEventId: resolvedVisibleEventId,
           hasExistingApplication: resolvedHasExistingApplication,
           currentApplicationTerms: null,
+          trackOptions: [],
           workspaceErrorMessage: '',
           redirectTo: {
             to: routeResolution.to,
@@ -240,6 +260,7 @@ const registrationRouteState = await useApiData<{
         visibleEventId: resolvedVisibleEventId,
         hasExistingApplication: resolvedHasExistingApplication,
         currentApplicationTerms: currentTermsResponse.data.application_terms,
+        trackOptions: listRegistrationTrackOptions(visibleEventResponse.data),
         workspaceErrorMessage: '',
         redirectTo: null
       }
@@ -252,6 +273,7 @@ const registrationRouteState = await useApiData<{
         visibleEventId: null,
         hasExistingApplication: false,
         currentApplicationTerms: null,
+        trackOptions: [],
         workspaceErrorMessage: normalizeParticipantApiError(error).message,
         redirectTo: null
       }
@@ -297,8 +319,15 @@ watch(() => registrationRouteState.data.value, (state) => {
   visibleEventId.value = state.visibleEventId
   hasExistingApplication.value = state.hasExistingApplication
   currentApplicationTerms.value = state.currentApplicationTerms
+  registrationTrackOptions.value = state.trackOptions
   workspaceErrorMessage.value = state.workspaceErrorMessage
 }, { immediate: true })
+
+watch(registrationTrackOptions, (trackOptions) => {
+  if (selectedTrackId.value && !trackOptions.some(track => track.id === selectedTrackId.value)) {
+    selectedTrackId.value = ''
+  }
+})
 
 watch(() => registrationRouteState.data.value.redirectTo, async (redirectTo) => {
   await navigateToRegistrationRedirect(redirectTo)
@@ -316,6 +345,9 @@ const participantSubmissionPolicy = computed(() =>
     requiresInPersonAttendanceCommitment: event.value.inPersonEvent,
     hasAcceptedInPersonAttendanceCommitment: inPersonAttendanceCommitment.value
   })
+)
+const showRegistrationTrackSelection = computed(() =>
+  event.value.eventType === 'build' && registrationTrackOptions.value.length > 0
 )
 
 const missingRequiredProfileFields = computed(() =>
@@ -412,7 +444,9 @@ async function submitParticipantApplication() {
       applicationPayload.proofOfExecutionUrl = proofOfExecutionUrl.value
     }
 
-    if (event.value.applicationAiKnowledgeVisible) {
+    if (showRegistrationTrackSelection.value) {
+      applicationPayload.selectedTrackId = selectedTrackId.value
+    } else if (event.value.applicationAiKnowledgeVisible) {
       applicationPayload.aiKnowledgeLevel = aiKnowledgeLevel.value
     }
 
@@ -544,10 +578,12 @@ useSeoMeta({
           v-model:why-this-event="whyThisEvent"
           v-model:proof-of-execution-url="proofOfExecutionUrl"
           v-model:ai-knowledge-level="aiKnowledgeLevel"
+          v-model:selected-track-id="selectedTrackId"
           v-model:team-intent="registrationTeamIntent"
           v-model:team-member-hints="registrationTeamMembers"
           v-model:profile-form="profileForm"
           :event="event"
+          :track-options="registrationTrackOptions"
           :in-person-commitment-date-label="inPersonCommitmentDateLabel"
           :current-application-terms="currentApplicationTerms"
           :profile-fields="visibleProfileFields"

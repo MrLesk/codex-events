@@ -957,6 +957,155 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
+  test('POST /api/events/:eventId/applications stores selected tracks for Build registration instead of requiring AI Knowledge', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      requireAiKnowledge: true
+    })
+    await harness.database
+      .update(events)
+      .set({
+        eventType: 'build',
+        maxTeamMembers: 1,
+        submissionOpensAt: null,
+        submissionClosesAt: null
+      })
+      .where(eq(events.id, 'event_1'))
+    await harness.database.insert(eventTracks).values({
+      id: 'track_agents',
+      eventId: 'event_1',
+      name: 'Agents',
+      shortDescription: 'Build agent projects.',
+      fullDescription: '',
+      staffInstructions: '',
+      displayOrder: 1,
+      createdAt: '2026-03-22T12:08:00.000Z'
+    })
+
+    const missingTrackResponse = await harness.request('/api/events/event_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2'
+      })
+    })
+    expect(missingTrackResponse.status).toBe(409)
+    expect(await missingTrackResponse.json()).toMatchObject({
+      error: {
+        code: 'event_track_required'
+      }
+    })
+
+    const invalidTrackResponse = await harness.request('/api/events/event_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2',
+        selectedTrackId: 'track_other'
+      })
+    })
+    expect(invalidTrackResponse.status).toBe(400)
+    expect(await invalidTrackResponse.json()).toMatchObject({
+      error: {
+        code: 'event_track_invalid'
+      }
+    })
+
+    const successResponse = await harness.request('/api/events/event_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2',
+        selectedTrackId: 'track_agents'
+      })
+    })
+    expect(successResponse.status).toBe(200)
+    expect(await successResponse.json()).toMatchObject({
+      data: {
+        selectedTrackId: 'track_agents'
+      }
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: and(
+        eq(userApplications.eventId, 'event_1'),
+        eq(userApplications.userId, 'regular_user')
+      )
+    })
+    expect(storedApplication).toMatchObject({
+      selectedTrackId: 'track_agents'
+    })
+    expect(JSON.parse(storedApplication?.registrationDetailsJson ?? '{}')).toMatchObject({
+      aiKnowledgeLevel: ''
+    })
+  })
+
+  test('POST /api/events/:eventId/applications keeps AI Knowledge as Build registration fallback without tracks', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      requireAiKnowledge: true
+    })
+    await harness.database
+      .update(events)
+      .set({
+        eventType: 'build',
+        maxTeamMembers: 1,
+        submissionOpensAt: null,
+        submissionClosesAt: null
+      })
+      .where(eq(events.id, 'event_1'))
+
+    const missingAiKnowledgeResponse = await harness.request('/api/events/event_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2'
+      })
+    })
+    expect(missingAiKnowledgeResponse.status).toBe(409)
+    expect(await missingAiKnowledgeResponse.json()).toMatchObject({
+      error: {
+        code: 'ai_knowledge_level_required'
+      }
+    })
+
+    const successResponse = await harness.request('/api/events/event_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2',
+        aiKnowledgeLevel: 'advanced'
+      })
+    })
+    expect(successResponse.status).toBe(200)
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: and(
+        eq(userApplications.eventId, 'event_1'),
+        eq(userApplications.userId, 'regular_user')
+      )
+    })
+    expect(storedApplication).toMatchObject({
+      selectedTrackId: null
+    })
+    expect(JSON.parse(storedApplication?.registrationDetailsJson ?? '{}')).toMatchObject({
+      aiKnowledgeLevel: 'advanced'
+    })
+  })
+
   test('POST /api/events/:eventId/applications rejects users missing required profile fields', async () => {
     const harness = createApiRouteTestHarness({
       routes: [

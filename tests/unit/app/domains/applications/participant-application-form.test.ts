@@ -30,6 +30,7 @@ describe('participant registration form schema', () => {
       whyThisEvent: '',
       proofOfExecutionUrl: '',
       aiKnowledgeLevel: '',
+      selectedTrackId: '',
       profileForm: {
         firstName: 'Ada',
         familyName: 'Lovelace',
@@ -233,5 +234,61 @@ describe('participant registration form schema', () => {
     expect(requiredResult.error?.flatten().fieldErrors.aiKnowledgeLevel).toEqual([
       'Choose your AI Knowledge level.'
     ])
+  })
+
+  test('requires a valid selected track only when track selection is shown', () => {
+    const hiddenSchema = buildParticipantRegistrationFormSchema({
+      profileFields: [],
+      maxTeamMembers: 4,
+      hasCurrentApplicationTerms: false,
+      isInPersonEvent: false,
+      showWhyThisEvent: false,
+      requireWhyThisEvent: false,
+      showProofOfExecution: false,
+      requireProofOfExecution: false,
+      showTeamIntent: false,
+      requireTeamIntent: false,
+      showAiKnowledge: false,
+      requireAiKnowledge: false,
+      showTrackSelection: false,
+      trackIds: ['track_agents']
+    })
+    const visibleSchema = buildParticipantRegistrationFormSchema({
+      profileFields: [],
+      maxTeamMembers: 4,
+      hasCurrentApplicationTerms: false,
+      isInPersonEvent: false,
+      showWhyThisEvent: false,
+      requireWhyThisEvent: false,
+      showProofOfExecution: false,
+      requireProofOfExecution: false,
+      showTeamIntent: false,
+      requireTeamIntent: false,
+      showAiKnowledge: false,
+      requireAiKnowledge: false,
+      showTrackSelection: true,
+      trackIds: ['track_agents']
+    })
+
+    expect(hiddenSchema.safeParse({
+      ...createValidRegistrationFormState(),
+      selectedTrackId: 'unknown_track'
+    }).success).toBe(true)
+
+    const missingResult = visibleSchema.safeParse(createValidRegistrationFormState())
+    expect(missingResult.success).toBe(false)
+    expect(missingResult.error?.flatten().fieldErrors.selectedTrackId).toEqual([
+      'Choose a track.'
+    ])
+
+    expect(visibleSchema.safeParse({
+      ...createValidRegistrationFormState(),
+      selectedTrackId: 'unknown_track'
+    }).success).toBe(false)
+
+    expect(visibleSchema.safeParse({
+      ...createValidRegistrationFormState(),
+      selectedTrackId: 'track_agents'
+    }).success).toBe(true)
   })
 })
