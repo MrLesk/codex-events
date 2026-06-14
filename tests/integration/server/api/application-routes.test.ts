@@ -1497,6 +1497,90 @@ describe('TASK-3.6 application routes', () => {
     ]))
   })
 
+  test('POST /api/events/:eventId/applications/me/actions/verify-luma-email rejects a Luma email used by another participant', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/events/:eventId/applications/me/actions/verify-luma-email',
+          handler: verifyOwnApplicationLumaEmailHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      },
+      runtimeConfig: {}
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      requireLumaEmail: true,
+      lumaEventUrl: 'https://luma.com/codex',
+      lumaEventApiId: 'evt-123'
+    })
+
+    await harness.database.insert(users).values({
+      id: 'other_user',
+      auth0Subject: 'auth0|other_user',
+      email: 'other@example.com',
+      displayName: 'Other User',
+      lumaEmail: 'duplicate@luma.example'
+    })
+
+    await harness.database.insert(userApplications).values([
+      {
+        id: 'application_1',
+        eventId: 'event_1',
+        userId: 'regular_user',
+        status: 'approved',
+        lumaSyncStatus: 'approve_failed',
+        submittedAt: '2026-03-22T12:10:00.000Z',
+        reviewedAt: '2026-03-22T12:20:00.000Z',
+        reviewedByUserId: 'event_admin',
+        applicationTermsDocumentId: 'terms_app_2',
+        applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+        createdAt: '2026-03-22T12:10:00.000Z',
+        updatedAt: '2026-03-22T12:20:00.000Z'
+      },
+      {
+        id: 'application_2',
+        eventId: 'event_1',
+        userId: 'other_user',
+        status: 'approved',
+        lumaSyncStatus: 'approve_synced',
+        submittedAt: '2026-03-22T12:11:00.000Z',
+        reviewedAt: '2026-03-22T12:21:00.000Z',
+        reviewedByUserId: 'event_admin',
+        applicationTermsDocumentId: 'terms_app_2',
+        applicationTermsAcceptedAt: '2026-03-22T12:11:00.000Z',
+        createdAt: '2026-03-22T12:11:00.000Z',
+        updatedAt: '2026-03-22T12:21:00.000Z'
+      }
+    ])
+
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await harness.request('/api/events/event_1/applications/me/actions/verify-luma-email', {
+      method: 'POST',
+      body: JSON.stringify({
+        lumaEmail: 'Duplicate@Luma.example'
+      })
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'luma_email_already_used',
+        message: 'This Luma email is already connected to another participant for this event.',
+        details: {
+          eventId: 'event_1'
+        }
+      }
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   test('POST /api/events/:eventId/applications/me/actions/verify-luma-email keeps failed sync state when the Luma email is not found', async () => {
     const harness = createApiRouteTestHarness({
       routes: [

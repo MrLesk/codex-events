@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { and, eq, ne, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { requirePlatformActor } from '#server/auth/actor'
@@ -90,6 +90,28 @@ export default defineApiHandler(async (h3Event) => {
       statusCode: 409,
       code: 'luma_sync_not_enabled',
       message: 'Luma sync is not enabled for this event.',
+      details: {
+        eventId
+      }
+    })
+  }
+
+  const existingLumaEmailApplication = await database
+    .select({ id: userApplications.id })
+    .from(userApplications)
+    .innerJoin(users, eq(users.id, userApplications.userId))
+    .where(and(
+      eq(userApplications.eventId, eventId),
+      ne(userApplications.userId, actor.platformUser.id),
+      sql`lower(${users.lumaEmail}) = lower(${body.lumaEmail})`
+    ))
+    .limit(1)
+
+  if (existingLumaEmailApplication.length > 0) {
+    throw new ApiError({
+      statusCode: 409,
+      code: 'luma_email_already_used',
+      message: 'This Luma email is already connected to another participant for this event.',
       details: {
         eventId
       }

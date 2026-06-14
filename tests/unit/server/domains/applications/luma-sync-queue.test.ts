@@ -473,6 +473,31 @@ describe('application luma sync queue utilities', () => {
     })
   })
 
+  test('lookupLumaEventGuestByEmail returns not_found when Luma returns a guest not found response', async () => {
+    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
+
+      if (url.pathname === '/v1/event/get-guest') {
+        return createJsonResponse({
+          message: 'Guest not found.'
+        }, 404)
+      }
+
+      throw new Error(`Unexpected fetch URL: ${url.toString()}`)
+    })
+
+    await expect(lookupLumaEventGuestByEmail({
+      lumaEventApiId: 'evt-123',
+      lumaApiKey: 'luma_test_key',
+      lumaEmail: 'missing@example.com'
+    }, {
+      runtimeConfig: {},
+      fetchImpl
+    })).resolves.toEqual({
+      status: 'not_found'
+    })
+  })
+
   test('lookupLumaEventGuestByEmail returns lookup_failed when the lookup cannot be completed', async () => {
     await expect(lookupLumaEventGuestByEmail({
       lumaEventApiId: 'evt-123',

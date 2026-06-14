@@ -481,6 +481,18 @@ function findLumaUserApiId(value: unknown, normalizedUsername: string): string |
   return null
 }
 
+function isLumaGuestNotFoundError(error: unknown) {
+  return error instanceof PermanentLumaSyncError
+    && (
+      error.message === 'luma_event_guest_not_found'
+      || (
+        error.message === 'luma_request_failed'
+        && error.details?.path === '/v1/event/get-guest'
+        && error.details?.statusCode === 404
+      )
+    )
+}
+
 async function resolveLumaUserApiId(
   username: string,
   options: {
@@ -665,7 +677,7 @@ export async function lookupLumaEventGuestByEmail(
       guestEmail
     }
   } catch (error) {
-    if (error instanceof PermanentLumaSyncError && error.message === 'luma_event_guest_not_found') {
+    if (isLumaGuestNotFoundError(error)) {
       return {
         status: 'not_found'
       }
