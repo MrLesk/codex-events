@@ -103,11 +103,17 @@ const sortedTrackOptions = computed(() =>
 const tracksById = computed(() =>
   new Map(sortedTrackOptions.value.map(track => [track.id, track]))
 )
+const hasTrackOptions = computed(() =>
+  sortedTrackOptions.value.length > 0
+)
 const showTrackFilter = computed(() =>
-  props.view === 'approved' && sortedTrackOptions.value.length > 0
+  props.view === 'approved' && hasTrackOptions.value
+)
+const showAiKnowledgeDetails = computed(() =>
+  props.showAiKnowledge && !hasTrackOptions.value
 )
 const showAiKnowledgeFilter = computed(() =>
-  props.showAiKnowledge && !showTrackFilter.value
+  showAiKnowledgeDetails.value
 )
 const approvedTrackCounts = computed(() =>
   countApprovedAdminApplicationsBySelectedTrack(props.applications)
@@ -217,7 +223,7 @@ watch(
 )
 
 watch(
-  () => props.showAiKnowledge,
+  showAiKnowledgeFilter,
   (isVisible) => {
     if (!isVisible) {
       aiKnowledgeFilter.value = 'all'
@@ -321,7 +327,7 @@ function shouldShowApplicantMetadata(applicant: AdminApplicationReviewGroup['app
     || applicant.application.user?.openaiOrgId
     || applicant.application.user?.linkedinProfileUrl
     || applicant.application.user?.xProfileUrl
-    || props.showAiKnowledge
+    || showAiKnowledgeDetails.value
   )
 }
 
@@ -1028,7 +1034,7 @@ const emptyState = computed(() => {
                         />
                       </a>
                       <span
-                        v-if="showAiKnowledge"
+                        v-if="showAiKnowledgeDetails"
                         class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
                       >
                         AI Knowledge: {{ formatAiKnowledgeLevel(applicant.registrationDetails.aiKnowledgeLevel) }}
