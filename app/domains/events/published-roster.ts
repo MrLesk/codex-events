@@ -168,7 +168,7 @@ function createStaffTrackSection(
   return {
     id: `track:${track.id}`,
     title: track.name,
-    description: track.shortDescription.trim() || null,
+    description: null,
     members,
     isSelectedTrack: selectedTrackId === track.id
   }

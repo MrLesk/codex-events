@@ -115,7 +115,7 @@ describe('published event roster helpers', () => {
     }, {
       id: 'track:track_agents',
       title: 'Agents',
-      description: 'Agentic products.',
+      description: null,
       memberIds: ['user_agents', 'user_agents_2'],
       isSelectedTrack: true
     }])
