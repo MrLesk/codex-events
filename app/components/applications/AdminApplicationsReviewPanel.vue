@@ -737,7 +737,7 @@ const emptyState = computed(() => {
 
         <div
           v-if="!showAutoApproveApplicationsNotice && (searchEnabled || showApprovedAttendance || showTrackFilter || showAiKnowledgeFilter)"
-          class="flex flex-col gap-3 md:flex-row md:items-center"
+          class="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center"
         >
           <AppInput
             v-if="searchEnabled"
@@ -752,25 +752,37 @@ const emptyState = computed(() => {
             data-lpignore="true"
             data-bwignore="true"
             placeholder="Search participants by name, email, user ID, or teammate hint"
-            class="min-w-0 flex-1"
+            class="min-w-0 flex-1 md:min-w-[28rem]"
           />
 
           <button
             v-if="showApprovedAttendance"
             type="button"
             data-testid="admin-approved-checked-in-filter"
-            class="inline-flex min-w-max items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium transition"
+            :aria-pressed="checkedInOnly"
+            class="inline-flex h-[46px] min-w-max shrink-0 items-center justify-center gap-2 rounded-lg border px-3 py-0 text-sm font-medium transition"
             :class="checkedInOnly
               ? 'border-success/30 bg-success/12 text-success hover:bg-success/16'
               : 'border-black/8 bg-transparent text-toned hover:border-black/20 hover:text-highlighted dark:border-white/[0.08] dark:hover:border-white/[0.18] dark:hover:text-white'"
             @click="checkedInOnly = !checkedInOnly"
           >
-            Checked in
+            <span
+              aria-hidden="true"
+              class="inline-flex size-4 shrink-0 items-center justify-center rounded border transition"
+              :class="checkedInOnly ? 'border-success bg-success text-white' : 'border-current/40 text-transparent'"
+            >
+              <AppIcon
+                v-if="checkedInOnly"
+                name="i-lucide-check"
+                class="size-3"
+              />
+            </span>
+            <span>Checked in</span>
           </button>
 
           <div
             v-if="showTrackFilter"
-            class="flex min-w-0 w-fit max-w-full flex-nowrap items-center gap-2 overflow-hidden rounded-xl border border-black/8 bg-black/4 p-1 md:max-w-[17.5rem] dark:border-white/[0.08] dark:bg-white/[0.04]"
+            class="flex w-full max-w-full flex-wrap items-center gap-2 rounded-xl border border-black/8 bg-black/4 p-1 dark:border-white/[0.08] dark:bg-white/[0.04]"
             aria-label="Approved participant track filter"
           >
             <button
@@ -793,13 +805,13 @@ const emptyState = computed(() => {
               :key="track.id"
               type="button"
               :data-testid="`admin-approved-track-filter-${track.id}`"
-              class="inline-flex min-w-0 max-w-44 shrink-0 items-center justify-between gap-2 overflow-hidden rounded-lg px-4 py-2 text-[13px] transition-colors"
+              class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-2 text-[13px] transition-colors sm:grow-0 sm:basis-auto"
               :class="activeSelectedTrackId === track.id ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
               @click="selectTrackFilter(track.filterValue)"
             >
-              <span class="min-w-0 truncate">{{ track.name }}</span>
+              <span class="truncate">{{ track.name }}</span>
               <span
-                class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
+                class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
                 :class="activeSelectedTrackId === track.id ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
               >
                 {{ track.count }}
