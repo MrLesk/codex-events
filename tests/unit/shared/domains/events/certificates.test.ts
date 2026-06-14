@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 
 import {
   buildEventCertificateId,
+  buildEventCertificateLinkedInAddToProfileUrl,
   buildEventCertificatePath,
   buildEventCertificateSummary,
   buildEventCertificateVerificationText,
@@ -63,6 +64,27 @@ describe('event certificate helpers', () => {
 
   test('builds the public certificate path', () => {
     expect(buildEventCertificatePath('codex-build-vienna', 'user_1')).toBe('/events/codex-build-vienna/user_1')
+  })
+
+  test('builds the LinkedIn Add to Profile URL for certificates', () => {
+    const addToProfileUrl = buildEventCertificateLinkedInAddToProfileUrl({
+      eventName: 'Codex Community Hackathon - Vienna',
+      eventDateIso: '2026-04-18T06:45:00.000Z',
+      certificateId: 'HCK-VIE-2026-0418-JSCHMIDT'
+    }, 'https://codex-events.com/events/codex-vienna-2026-04-18/6fb9f6d0-52c2-4752-9c9f-54de51de7b88')
+    const url = new URL(addToProfileUrl)
+
+    expect(url.origin).toBe('https://www.linkedin.com')
+    expect(url.pathname).toBe('/profile/add')
+    expect(Object.fromEntries(url.searchParams.entries())).toEqual({
+      startTask: 'CERTIFICATION_NAME',
+      name: 'Certificate of Participation - Codex Community Hackathon - Vienna',
+      organizationName: 'Codex Community Events',
+      issueYear: '2026',
+      issueMonth: '4',
+      certId: 'HCK-VIE-2026-0418-JSCHMIDT',
+      certUrl: 'https://codex-events.com/events/codex-vienna-2026-04-18/6fb9f6d0-52c2-4752-9c9f-54de51de7b88'
+    })
   })
 
   test('summarizes participation with track, placement, and prizes', () => {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { EventCertificate } from '#shared/domains/events/certificates'
 import {
+  buildEventCertificateLinkedInAddToProfileUrl,
   buildEventCertificatePath,
   buildEventCertificateSummary,
   buildEventCertificateVerificationText,
@@ -80,6 +81,7 @@ const metaLine = computed(() => [
 const requestUrl = useRequestURL()
 const certificatePath = computed(() => buildEventCertificatePath(slug.value, userId.value))
 const certificateUrl = computed(() => new URL(`${certificatePath.value}${previewSearch.value}`, requestUrl.origin).toString())
+const linkedInAddToProfileUrl = computed(() => buildEventCertificateLinkedInAddToProfileUrl(certificate.value, certificateUrl.value))
 const shareCertificateUrl = computed(() => {
   if (certificateVariant.value !== 'normal') {
     return certificateUrl.value
@@ -290,6 +292,22 @@ useHead({
               class="size-4"
             />
             <span class="hidden sm:inline">Image</span>
+          </a>
+
+          <a
+            :href="linkedInAddToProfileUrl"
+            class="certificate-action-button"
+            data-testid="certificate-add-linkedin"
+            aria-label="Add certificate to LinkedIn profile"
+            title="Add to LinkedIn"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <AppIcon
+              name="i-lucide-linkedin"
+              class="size-4"
+            />
+            <span class="hidden sm:inline">Add to LinkedIn</span>
           </a>
         </div>
       </div>

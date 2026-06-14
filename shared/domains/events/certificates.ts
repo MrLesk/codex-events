@@ -129,6 +129,24 @@ export function buildEventCertificatePath(eventSlug: string, userId: string) {
   return `/events/${eventSlug}/${userId}`
 }
 
+export function buildEventCertificateLinkedInAddToProfileUrl(
+  certificate: Pick<EventCertificate, 'eventName' | 'eventDateIso' | 'certificateId'>,
+  certificateUrl: string
+) {
+  const eventDate = new Date(certificate.eventDateIso)
+  const params = new URLSearchParams({
+    startTask: 'CERTIFICATION_NAME',
+    name: `Certificate of Participation - ${certificate.eventName}`,
+    organizationName: 'Codex Community Events',
+    issueYear: String(eventDate.getUTCFullYear()),
+    issueMonth: String(eventDate.getUTCMonth() + 1),
+    certId: certificate.certificateId,
+    certUrl: certificateUrl
+  })
+
+  return `https://www.linkedin.com/profile/add?${params.toString()}`
+}
+
 export function buildEventCertificateVerificationText(certificateId: string) {
   return `This certificate is issued by the Codex Community Events Platform and can be verified here as certificate ${certificateId}.`
 }
