@@ -10,6 +10,7 @@ export interface PublicHomepageEventView {
   activeEventCount: number
   effectiveTab: PublicHomepageTab
   showFilters: boolean
+  showTimelineRail: boolean
   useSingleEventLayout: boolean
 }
 
@@ -55,16 +56,21 @@ export function getPublicHomepageEventView(
     : useSingleEventLayout
       ? 'active'
       : null
+  const effectiveTab = resolvePublicHomepageEffectiveTab(
+    requestedTab,
+    activeEventCount,
+    pastEventCount,
+    singleEventTab
+  )
+  const effectiveTabEventCount = effectiveTab === 'past'
+    ? pastEventCount
+    : activeEventCount
 
   return {
     activeEventCount,
-    effectiveTab: resolvePublicHomepageEffectiveTab(
-      requestedTab,
-      activeEventCount,
-      pastEventCount,
-      singleEventTab
-    ),
+    effectiveTab,
     showFilters: !useSingleEventLayout,
+    showTimelineRail: effectiveTabEventCount > 1,
     useSingleEventLayout
   }
 }

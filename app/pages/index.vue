@@ -226,14 +226,14 @@ useSeoMeta({
         class="relative space-y-16 pt-6"
       >
         <div
-          v-if="!homepageEventView.useSingleEventLayout"
+          v-if="homepageEventView.showTimelineRail"
           class="absolute bottom-0 left-0 top-0 hidden w-1 bg-black/16 dark:bg-white/[0.2] lg:block"
         />
         <EventCard
           v-for="event in filteredEvents"
           :key="event.slug"
           :event="event"
-          :show-timeline-rail="!homepageEventView.useSingleEventLayout"
+          :show-timeline-rail="homepageEventView.showTimelineRail"
         />
       </div>
     </template>

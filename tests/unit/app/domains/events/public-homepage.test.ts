@@ -19,6 +19,17 @@ describe('public homepage event view helpers', () => {
       activeEventCount: 1,
       effectiveTab: 'past',
       showFilters: true,
+      showTimelineRail: true,
+      useSingleEventLayout: false
+    })
+  })
+
+  test('keeps filters visible but hides the timeline rail when the active tab has one event', () => {
+    expect(getPublicHomepageEventView('active', 5, 4, 1)).toEqual({
+      activeEventCount: 1,
+      effectiveTab: 'active',
+      showFilters: true,
+      showTimelineRail: false,
       useSingleEventLayout: false
     })
   })
@@ -28,6 +39,7 @@ describe('public homepage event view helpers', () => {
       activeEventCount: 1,
       effectiveTab: 'active',
       showFilters: false,
+      showTimelineRail: false,
       useSingleEventLayout: true
     })
   })
@@ -37,6 +49,7 @@ describe('public homepage event view helpers', () => {
       activeEventCount: 2,
       effectiveTab: 'past',
       showFilters: true,
+      showTimelineRail: true,
       useSingleEventLayout: false
     })
   })
@@ -46,6 +59,17 @@ describe('public homepage event view helpers', () => {
       activeEventCount: 2,
       effectiveTab: 'active',
       showFilters: true,
+      showTimelineRail: true,
+      useSingleEventLayout: false
+    })
+  })
+
+  test('keeps filters visible but hides the timeline rail when the past tab has one event', () => {
+    expect(getPublicHomepageEventView('past', 2, 1, 2)).toEqual({
+      activeEventCount: 1,
+      effectiveTab: 'past',
+      showFilters: true,
+      showTimelineRail: false,
       useSingleEventLayout: false
     })
   })
@@ -55,6 +79,7 @@ describe('public homepage event view helpers', () => {
       activeEventCount: 0,
       effectiveTab: 'past',
       showFilters: false,
+      showTimelineRail: false,
       useSingleEventLayout: true
     })
   })
@@ -64,6 +89,7 @@ describe('public homepage event view helpers', () => {
       activeEventCount: 0,
       effectiveTab: 'active',
       showFilters: true,
+      showTimelineRail: false,
       useSingleEventLayout: false
     })
   })
@@ -73,6 +99,7 @@ describe('public homepage event view helpers', () => {
       activeEventCount: 0,
       effectiveTab: 'past',
       showFilters: true,
+      showTimelineRail: false,
       useSingleEventLayout: false
     })
   })
