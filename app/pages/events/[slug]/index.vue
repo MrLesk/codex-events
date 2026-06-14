@@ -7,6 +7,7 @@ import type {
 import {
   formatEventDateWithWeekday,
   formatEventLocation,
+  formatEventTypeLabel,
   getEventEarliestStartAt,
   resolveEventDetailBackgroundImageUrl
 } from '~/domains/events/presentation'
@@ -211,6 +212,7 @@ const detailSummary = computed(() => [
   formatEventDateWithWeekday(getEventEarliestStartAt(event.value)),
   formatEventLocation(event.value)
 ].filter(Boolean).join(' - '))
+const eventTypeLabel = computed(() => formatEventTypeLabel(event.value.eventType))
 const primaryAction = computed(() =>
   resolvePublicEventPrimaryAction({
     actorKind: accountActor.value.kind,
@@ -328,6 +330,14 @@ useSeoMeta({
                   :registration-opens-at="event.registrationOpensAt"
                   :registration-closes-at="event.registrationClosesAt"
                 />
+                <AppBadge
+                  color="neutral"
+                  variant="subtle"
+                  class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
+                  data-testid="public-event-detail-type"
+                >
+                  {{ eventTypeLabel }}
+                </AppBadge>
               </div>
 
               <div

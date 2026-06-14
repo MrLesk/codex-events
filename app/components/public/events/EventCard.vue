@@ -3,6 +3,7 @@ import {
   formatEventCompactDate,
   formatEventDateWithWeekday,
   formatEventLocation,
+  formatEventTypeLabel,
   getEventEarliestStartAt,
   resolveEventCardHeroImageUrl,
   type PublicEvent
@@ -21,6 +22,7 @@ const heroImage = computed(() => resolveEventCardHeroImageUrl(props.event))
 const earliestStartAt = computed(() => getEventEarliestStartAt(props.event))
 const timelineDateLabel = computed(() => formatEventCompactDate(earliestStartAt.value))
 const eventDayLabel = computed(() => formatEventDateWithWeekday(earliestStartAt.value))
+const eventTypeLabel = computed(() => formatEventTypeLabel(props.event.eventType))
 const locationLabel = computed(() => formatEventLocation(props.event))
 const registrationOpensAtTimestamp = computed(() => new Date(props.event.registrationOpensAt).getTime())
 const registrationClosesAtTimestamp = computed(() => new Date(props.event.registrationClosesAt).getTime())
@@ -84,6 +86,12 @@ const ctaLabel = computed(() => {
           />
 
           <div class="absolute left-6 top-6 z-20 flex flex-wrap gap-2">
+            <span
+              class="rounded-full border border-white/25 bg-black/55 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-md"
+              :data-testid="`public-event-type-${event.slug}`"
+            >
+              {{ eventTypeLabel }}
+            </span>
             <EventStateBadge
               :state="event.state"
               :registration-opens-at="event.registrationOpensAt"

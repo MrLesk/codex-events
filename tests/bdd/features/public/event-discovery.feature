@@ -4,6 +4,7 @@ Feature: Public event discovery
   Scenario: Viewing the public event list
     Given I am on the public events page
     Then I should see the public event titled "E2E Fixture Event"
+    And the public event card for "E2E Fixture Event" should show event type "Hackathon"
     And the public event card for "E2E Fixture Event" should link to "/events/e2e-fixture-event"
 
   Scenario: Viewing the public event list with the saved platform-admin session
@@ -21,6 +22,7 @@ Feature: Public event discovery
   Scenario: Viewing the public event detail
     Given I am on the public event detail page for the fixture event
     Then I should see the public event detail title "E2E Fixture Event"
+    And I should see the public event detail type "Hackathon"
     And I should see the public prize "Launch Award"
     And I should see the text "Vienna, Austria"
     And I should not see the admin control "Configure"

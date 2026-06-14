@@ -107,6 +107,16 @@ Then('the public event card for {string} should show lifecycle state {string}', 
   await expect(card.getByText(stateLabel)).toBeVisible()
 })
 
+Then('the public event card for {string} should show event type {string}', async ({ page }, title: string, eventType: string) => {
+  const card = page
+    .locator('[data-testid^="public-event-card-"]')
+    .filter({ has: page.getByRole('heading', { name: title }) })
+    .first()
+
+  await expect(card).toBeVisible()
+  await expect(card.locator('[data-testid^="public-event-type-"]')).toHaveText(eventType)
+})
+
 Then('the public event card for {string} should link to {string}', async ({ page }, title: string, href: string) => {
   const card = page
     .locator('[data-testid^="public-event-card-"]')
@@ -149,6 +159,10 @@ Given('I am on the public event detail page for the fixture event', async ({ pag
 
 Then('I should see the public event detail title {string}', async ({ page }, title: string) => {
   await expect(page.getByTestId('public-event-detail-title')).toHaveText(title)
+})
+
+Then('I should see the public event detail type {string}', async ({ page }, eventType: string) => {
+  await expect(page.getByTestId('public-event-detail-type')).toHaveText(eventType)
 })
 
 Then('I should see the public evaluation criterion {string}', async ({ page }, criterionName: string) => {
