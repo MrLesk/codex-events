@@ -719,6 +719,7 @@ export function serializeUserApplication(
     checkInOverrideStatus: application.checkInOverrideStatus,
     checkInOverrideAt: application.checkInOverrideAt,
     certificateHiddenAt: application.certificateHiddenAt,
+    certificateRevokedAt: application.certificateRevokedAt,
     selectedTrackId: application.selectedTrackId,
     reviewedAt: application.reviewedAt,
     reviewedByUserId: application.reviewedByUserId,

@@ -24,6 +24,12 @@ describe('application utilities', () => {
       submittedAt: '2026-03-22T12:10:00.000Z',
       withdrawnAt: null,
       checkedInAt: '2026-03-28T09:00:00.000Z',
+      checkInOverrideStatus: null,
+      checkInOverrideAt: null,
+      checkInOverrideByUserId: null,
+      certificateHiddenAt: null,
+      certificateRevokedAt: '2026-03-29T09:00:00.000Z',
+      certificateRevokedByUserId: 'admin_1',
       selectedTrackId: 'track_agents',
       reviewedAt: null,
       reviewedByUserId: null,
@@ -57,6 +63,7 @@ describe('application utilities', () => {
       }
     })).toMatchObject({
       checkedInAt: '2026-03-28T09:00:00.000Z',
+      certificateRevokedAt: '2026-03-29T09:00:00.000Z',
       selectedTrackId: 'track_agents',
       user: {
         id: 'user_1',

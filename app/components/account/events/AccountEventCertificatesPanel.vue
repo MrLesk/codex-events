@@ -134,12 +134,53 @@ async function overrideCheckIn(application: AdminApplicationRecord, status: Appl
   }
 }
 
+async function setCertificateRevoked(application: AdminApplicationRecord, revoked: boolean) {
+  if (pendingActionKey.value) {
+    return
+  }
+
+  pendingActionKey.value = getCertificateRevocationActionKey(application, revoked)
+
+  try {
+    const response = await $fetch<ApiDataResponse<AdminApplicationRecord>>(
+      `/api/events/${eventId.value}/applications/${application.id}/actions/set-certificate-revocation`,
+      {
+        method: 'POST',
+        body: { revoked }
+      }
+    )
+
+    applications.value = applications.value.map(record => record.id === application.id
+      ? { ...record, ...response.data, user: record.user }
+      : record)
+
+    toast.add({
+      title: revoked ? 'Certificate revoked' : 'Certificate restored',
+      color: 'success'
+    })
+  } catch (error) {
+    toast.add({
+      title: revoked ? 'Certificate could not be revoked' : 'Certificate could not be restored',
+      description: normalizeApiError(error).message,
+      color: 'error'
+    })
+  } finally {
+    pendingActionKey.value = ''
+  }
+}
+
 function certificateHref(application: AdminApplicationRecord) {
   return buildEventCertificatePath(props.eventSlug, application.userId)
 }
 
+function canViewCertificate(application: AdminApplicationRecord) {
+  return isApplicationCheckedIn(application)
+    && !application.certificateHiddenAt
+    && !application.certificateRevokedAt
+}
+
 function getCheckInActionKey(application: AdminApplicationRecord, status: ApplicationCheckInOverrideStatus) {
-  return `${application.id}:${status}`
+  return `${application.id}:check-in:${status}`
 }
 
 function isCheckInActionPending(application: AdminApplicationRecord, status: ApplicationCheckInOverrideStatus) {
@@ -148,6 +189,18 @@ function isCheckInActionPending(application: AdminApplicationRecord, status: App
 
 function isCheckInActionDisabled(application: AdminApplicationRecord, status: ApplicationCheckInOverrideStatus) {
   return pendingActionKey.value.length > 0 && !isCheckInActionPending(application, status)
+}
+
+function getCertificateRevocationActionKey(application: AdminApplicationRecord, revoked: boolean) {
+  return `${application.id}:certificate:${revoked ? 'revoke' : 'restore'}`
+}
+
+function isCertificateRevocationActionPending(application: AdminApplicationRecord, revoked: boolean) {
+  return pendingActionKey.value === getCertificateRevocationActionKey(application, revoked)
+}
+
+function isCertificateRevocationActionDisabled(application: AdminApplicationRecord, revoked: boolean) {
+  return pendingActionKey.value.length > 0 && !isCertificateRevocationActionPending(application, revoked)
 }
 
 function getCertificateDecisionButtonClass(status: ApplicationCheckInOverrideStatus, isActive: boolean) {
@@ -199,7 +252,7 @@ onMounted(loadApplications)
           Certificates
         </h2>
         <p class="text-sm text-muted">
-          Confirm who actually joined this event. Luma check-ins are the default, your decisions override them, and joined participants can generate certificates unless they disable generation.
+          Confirm who actually joined this event. Luma check-ins are the default, your decisions override them, and joined participants can generate certificates unless generation is disabled or revoked.
         </p>
       </div>
     </template>
@@ -323,6 +376,13 @@ onMounted(loadApplications)
                     >
                       Certificate generation disabled
                     </AppBadge>
+                    <AppBadge
+                      v-if="application.certificateRevokedAt"
+                      color="error"
+                      variant="soft"
+                    >
+                      Certificate revoked
+                    </AppBadge>
                     <span
                       v-if="formatCheckedInTimestamp(application)"
                       class="rounded-full border border-black/10 px-3 py-1 text-xs text-highlighted dark:border-white/[0.12]"
@@ -392,7 +452,7 @@ onMounted(loadApplications)
                 />
               </button>
               <AppButton
-                v-if="isApplicationCheckedIn(application) && !application.certificateHiddenAt"
+                v-if="canViewCertificate(application)"
                 color="neutral"
                 variant="outline"
                 trailing-icon="i-lucide-arrow-up-right"
@@ -401,6 +461,32 @@ onMounted(loadApplications)
                 :data-testid="`certificates-view-${application.userId}`"
               >
                 Certificate
+              </AppButton>
+              <AppButton
+                v-if="canViewCertificate(application)"
+                color="error"
+                variant="outline"
+                icon="i-lucide-ban"
+                class="w-full justify-between rounded-xl"
+                :loading="isCertificateRevocationActionPending(application, true)"
+                :disabled="isCertificateRevocationActionDisabled(application, true)"
+                :data-testid="`certificates-revoke-${application.userId}`"
+                @click="setCertificateRevoked(application, true)"
+              >
+                Revoke certificate
+              </AppButton>
+              <AppButton
+                v-else-if="application.certificateRevokedAt"
+                color="neutral"
+                variant="outline"
+                icon="i-lucide-rotate-ccw"
+                class="w-full justify-between rounded-xl"
+                :loading="isCertificateRevocationActionPending(application, false)"
+                :disabled="isCertificateRevocationActionDisabled(application, false)"
+                :data-testid="`certificates-restore-${application.userId}`"
+                @click="setCertificateRevoked(application, false)"
+              >
+                Restore certificate
               </AppButton>
             </div>
           </article>

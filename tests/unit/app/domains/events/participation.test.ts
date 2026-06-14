@@ -31,6 +31,7 @@ function buildApplication(
     checkedInAt: null,
     isCheckedIn: false,
     certificateHiddenAt: null,
+    certificateRevokedAt: null,
     updatedAt: '2026-03-10T09:00:00Z',
     ...overrides
   }
@@ -197,6 +198,23 @@ describe('event participation badge helpers', () => {
         checkedInAt: '2026-03-28T09:30:00Z',
         isCheckedIn: true,
         certificateHiddenAt: '2026-03-29T10:00:00Z'
+      })
+    })
+
+    expect(getEventParticipationCertificateAction(record)).toBeNull()
+  })
+
+  test('hides the certificate action when an admin revoked access', () => {
+    const record = buildRecord({
+      event: {
+        ...buildRecord().event,
+        state: 'completed'
+      },
+      application: buildApplication({
+        status: 'approved',
+        checkedInAt: '2026-03-28T09:30:00Z',
+        isCheckedIn: true,
+        certificateRevokedAt: '2026-03-29T10:00:00Z'
       })
     })
 

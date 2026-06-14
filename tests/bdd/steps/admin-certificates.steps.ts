@@ -52,3 +52,36 @@ Then('the certificates row for participant {string} should link to their certifi
   await expect(link).toBeVisible()
   await expect(link).toHaveAttribute('href', new RegExp(`/events/[^/]+/${userId}$`))
 })
+
+When('I revoke the certificates participant {string} certificate', async ({ page }, userId: string) => {
+  const button = page.getByTestId(`certificates-revoke-${userId}`)
+
+  await expect(button).toBeEnabled()
+
+  await Promise.all([
+    page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/actions/set-certificate-revocation') && response.ok()),
+    button.click()
+  ])
+})
+
+When('I restore the certificates participant {string} certificate', async ({ page }, userId: string) => {
+  const button = page.getByTestId(`certificates-restore-${userId}`)
+
+  await expect(button).toBeEnabled()
+
+  await Promise.all([
+    page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/actions/set-certificate-revocation') && response.ok()),
+    button.click()
+  ])
+})
+
+Then('I should see the certificates row for participant {string} with certificate status {string}', async ({ page }, userId: string, status: string) => {
+  const row = page.getByTestId(`certificates-row-${userId}`)
+
+  await expect(row).toBeVisible()
+  await expect(row.getByText(status, { exact: true })).toBeVisible()
+})
+
+Then('the certificates row for participant {string} should not link to their certificate', async ({ page }, userId: string) => {
+  await expect(page.getByTestId(`certificates-view-${userId}`)).toHaveCount(0)
+})

@@ -1029,7 +1029,8 @@ describe('TASK-3.5 event CRUD routes', () => {
               userId: 'participant_1',
               status: 'approved',
               isCheckedIn: true,
-              certificateHiddenAt: null
+              certificateHiddenAt: null,
+              certificateRevokedAt: null
             },
             activeTeam: null,
             latestTeam: {

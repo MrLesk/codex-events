@@ -20,6 +20,7 @@ export interface AdminApplicationRecord {
   checkInOverrideStatus?: ApplicationCheckInOverrideStatus | null
   checkInOverrideAt?: string | null
   certificateHiddenAt?: string | null
+  certificateRevokedAt?: string | null
   selectedTrackId: string | null
   submittedAt: string
   withdrawnAt: string | null

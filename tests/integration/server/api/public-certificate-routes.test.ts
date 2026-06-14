@@ -42,6 +42,7 @@ async function seedCertificateContext(
     eventState?: 'draft' | 'registration_open' | 'completed'
     applicationStatus?: typeof userApplications.$inferInsert['status']
     checkedInAt?: string | null
+    certificateRevokedAt?: string | null
     submissionStatus?: typeof submissions.$inferInsert['status'] | null
     submissionTrackId?: string | null
     participantDeletedAt?: string | null
@@ -100,7 +101,9 @@ async function seedCertificateContext(
     eventId: 'event_1',
     userId: 'participant_user',
     status: options?.applicationStatus ?? 'approved',
-    checkedInAt: options?.checkedInAt === undefined ? '2026-06-20T08:05:00.000Z' : options.checkedInAt
+    checkedInAt: options?.checkedInAt === undefined ? '2026-06-20T08:05:00.000Z' : options.checkedInAt,
+    certificateRevokedAt: options?.certificateRevokedAt ?? null,
+    certificateRevokedByUserId: options?.certificateRevokedAt ? 'admin_user' : null
   })
 
   if (eventType === 'build' && options?.buildTrackCount) {
@@ -281,6 +284,15 @@ describe('public certificate routes', () => {
 
     expect((await harness.request(certificatePath)).status).toBe(404)
     expect((await harness.request(`${certificatePath}.png`)).status).toBe(404)
+  })
+
+  test('returns 404 when an admin revoked the certificate', async () => {
+    const harness = createHarness()
+    await seedCertificateContext(harness, { certificateRevokedAt: '2026-06-21T08:00:00.000Z' })
+
+    expect((await harness.request(certificatePath)).status).toBe(404)
+    expect((await harness.request(`${certificatePath}.png`)).status).toBe(404)
+    expect((await harness.request(`${certificatePath}.pdf`)).status).toBe(404)
   })
 
   test('an admin not-joined override hides the certificate despite a Luma check-in', async () => {

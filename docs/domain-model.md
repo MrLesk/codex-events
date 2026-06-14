@@ -378,6 +378,7 @@ Rules:
 - Luma attendance sync is sticky in this version. Once `checkedInAt` is recorded, later Luma uncheck changes do not clear it.
 - An event admin or platform admin can override attendance for an approved application by marking the participant joined or not joined. The override records the acting admin and time, wins over the Luma check-in in both directions, and repeating the active decision clears it back to the Luma default.
 - Effective attendance is the admin override when present, otherwise the recorded Luma check-in.
+- An event admin or platform admin can revoke certificate access for an approved participant who currently has certificate access. Revocation is independent of attendance, records the acting admin and time, and can be restored by an event admin or platform admin.
 
 ### Participation Certificate
 
@@ -385,7 +386,7 @@ A public, shareable record that an approved participant attended an event.
 
 Key characteristics:
 
-- A participation certificate exists for every approved user application with effective attendance on a publicly visible event whose participant account is active.
+- A participation certificate exists for every approved user application with effective attendance on a publicly visible event whose participant account is active, certificate generation is not disabled by the participant, and certificate access is not revoked by an admin.
 - The certificate is derived state computed from the event, user, application, and Hackathon submission records. It is not stored as a separate entity.
 - The certificate names the participant using the canonical first and family name, with the display name used while canonical name fields are empty.
 - The certificate date is the earliest agenda item start when the event has agenda items, otherwise the submission window start, formatted in UTC.
@@ -396,6 +397,7 @@ Key characteristics:
 - The certificate page at `/events/:slug/:userId` and all of its reads — JSON, social-preview image, and PDF — are public, matching the shareable nature of the certificate link.
 - The certificate page is the live verification record for the certificate. The PDF embeds a QR code that resolves back to that page, and the page exposes schema.org structured data describing the credential.
 - A participant can disable certificate generation from their account event workspace and enable it again. Disabled certificates respond not found on every public certificate read, account surfaces do not show the certificate link to the participant, and the admin Certificates tab marks certificate generation as disabled.
+- An event admin or platform admin can revoke certificate access from the admin Certificates tab and restore it again. Revoked certificates respond not found on every public certificate read, account surfaces do not show the certificate link or generation controls to the participant, and the admin Certificates tab marks the certificate as revoked.
 - A certificate preview at `/events/:slug/preview` renders a synthetic certificate from query parameters for design review. Previews state that they are samples, are excluded from search indexing, and never represent issued certificates.
 
 ### Team

@@ -517,6 +517,8 @@ export const userApplications = sqliteTable(
     checkInOverrideAt: text('check_in_override_at'),
     checkInOverrideByUserId: text('check_in_override_by_user_id').references(() => users.id),
     certificateHiddenAt: text('certificate_hidden_at'),
+    certificateRevokedAt: text('certificate_revoked_at'),
+    certificateRevokedByUserId: text('certificate_revoked_by_user_id').references(() => users.id),
     selectedTrackId: text('selected_track_id').references(() => eventTracks.id, { onDelete: 'set null' }),
     reviewedAt: text('reviewed_at'),
     reviewedByUserId: text('reviewed_by_user_id').references(() => users.id),

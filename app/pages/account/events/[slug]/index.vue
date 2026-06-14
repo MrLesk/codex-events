@@ -351,6 +351,7 @@ const canManageParticipantCertificateGeneration = computed(() => {
     && event.value.state === 'completed'
     && application?.status === 'approved'
     && application.isCheckedIn
+    && !application.certificateRevokedAt
 })
 const isCertificateGenerationDisabled = computed(() => Boolean(participationRecord.value?.application?.certificateHiddenAt))
 const selectedTrackId = computed(() => participationRecord.value?.application?.selectedTrackId ?? null)
@@ -834,6 +835,7 @@ function updateParticipationRecordApplication(nextApplication: ParticipantApplic
             checkedInAt: nextApplication.checkedInAt,
             isCheckedIn: isApplicationEffectivelyCheckedIn(nextApplication),
             certificateHiddenAt: nextApplication.certificateHiddenAt,
+            certificateRevokedAt: nextApplication.certificateRevokedAt,
             selectedTrackId: nextApplication.selectedTrackId,
             updatedAt: nextApplication.updatedAt
           }

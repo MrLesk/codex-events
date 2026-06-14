@@ -100,6 +100,7 @@ function serializeApplicationSummary(application: ApplicationRecord) {
     checkedInAt: application.checkedInAt,
     isCheckedIn: isApplicationEffectivelyCheckedIn(application),
     certificateHiddenAt: application.certificateHiddenAt,
+    certificateRevokedAt: application.certificateRevokedAt,
     selectedTrackId: application.selectedTrackId,
     updatedAt: application.updatedAt
   }

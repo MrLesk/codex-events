@@ -31,6 +31,7 @@ export interface EventParticipationApplicationSummary {
   checkedInAt: string | null
   isCheckedIn: boolean
   certificateHiddenAt: string | null
+  certificateRevokedAt: string | null
   selectedTrackId: string | null
   updatedAt: string
 }
@@ -191,6 +192,7 @@ export function getEventParticipationCertificateAction(
     || application?.status !== 'approved'
     || !application.isCheckedIn
     || application.certificateHiddenAt
+    || application.certificateRevokedAt
   ) {
     return null
   }
