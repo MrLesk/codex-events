@@ -770,7 +770,7 @@ const emptyState = computed(() => {
 
           <div
             v-if="showTrackFilter"
-            class="flex min-w-0 flex-1 flex-wrap items-center gap-2 rounded-xl border border-black/8 bg-black/4 p-1 dark:border-white/[0.08] dark:bg-white/[0.04]"
+            class="flex w-fit max-w-full flex-wrap items-center gap-2 rounded-xl border border-black/8 bg-black/4 p-1 dark:border-white/[0.08] dark:bg-white/[0.04]"
             aria-label="Approved participant track filter"
           >
             <button
