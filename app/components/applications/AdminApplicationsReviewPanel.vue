@@ -6,14 +6,16 @@ import type {
   AdminApplicationReviewPendingTeammate,
   AdminApplicationReviewView
 } from '~/domains/applications/admin-application-review'
-import type { EventRecord } from '~/domains/events/records'
+import type { EventRecord, EventTrack } from '~/domains/events/records'
 
 import {
   buildAdminApplicationReviewGroups,
   canApproveAdminApplicationReviewGroup,
+  countApprovedAdminApplicationsBySelectedTrack,
   filterAdminApplicationReviewGroups,
   filterAdminApplicationReviewGroupsByAiKnowledge,
   filterAdminApplicationReviewGroupsByApplicant,
+  filterAdminApplicationReviewGroupsBySelectedTrack,
   hasAdminApplicationReviewApplicantApprovalSelected,
   hasAdminApplicationReviewGroupApprovalSelected,
   searchAdminApplicationReviewGroups,
@@ -50,6 +52,7 @@ const props = withDefaults(defineProps<{
   searchEnabled?: boolean
   showAttendance?: boolean
   showAiKnowledge?: boolean
+  tracks?: Pick<EventTrack, 'id' | 'name' | 'displayOrder'>[]
   autoApproveApplications?: boolean
   eventState?: EventRecord['state']
 }>(), {
@@ -60,6 +63,7 @@ const props = withDefaults(defineProps<{
   searchEnabled: false,
   showAttendance: false,
   showAiKnowledge: false,
+  tracks: () => [],
   autoApproveApplications: false,
   eventState: 'draft'
 })
@@ -86,11 +90,51 @@ const isFailedLumaSyncAlertExpanded = ref(false)
 const searchQuery = ref('')
 const checkedInOnly = ref(false)
 const aiKnowledgeFilter = ref<AdminApplicationAiKnowledgeFilter>('all')
+const allSelectedTrackFilterValue = 'all'
+const selectedTrackFilter = ref(allSelectedTrackFilterValue)
 const showApprovedAttendance = computed(() =>
   props.showAttendance && props.view === 'approved'
 )
+const sortedTrackOptions = computed(() =>
+  [...props.tracks].sort((left, right) =>
+    left.displayOrder - right.displayOrder || left.name.localeCompare(right.name) || left.id.localeCompare(right.id)
+  )
+)
+const tracksById = computed(() =>
+  new Map(sortedTrackOptions.value.map(track => [track.id, track]))
+)
+const showTrackFilter = computed(() =>
+  props.view === 'approved' && sortedTrackOptions.value.length > 0
+)
+const showAiKnowledgeFilter = computed(() =>
+  props.showAiKnowledge && !showTrackFilter.value
+)
+const approvedTrackCounts = computed(() =>
+  countApprovedAdminApplicationsBySelectedTrack(props.applications)
+)
+const approvedTrackAllCount = computed(() =>
+  props.applications.filter(application => application.status === 'approved').length
+)
+const approvedTrackFilterOptions = computed(() =>
+  sortedTrackOptions.value.map(track => ({
+    ...track,
+    filterValue: `track:${track.id}`,
+    count: approvedTrackCounts.value.get(track.id) ?? 0
+  }))
+)
+const activeSelectedTrackId = computed(() => {
+  if (!showTrackFilter.value || !selectedTrackFilter.value.startsWith('track:')) {
+    return null
+  }
+
+  const trackId = selectedTrackFilter.value.slice('track:'.length)
+  return tracksById.value.has(trackId) ? trackId : null
+})
+const hasTrackFilter = computed(() =>
+  activeSelectedTrackId.value !== null
+)
 const hasAiKnowledgeFilter = computed(() =>
-  props.showAiKnowledge && aiKnowledgeFilter.value !== 'all'
+  showAiKnowledgeFilter.value && aiKnowledgeFilter.value !== 'all'
 )
 const showAutoApproveApplicationsNotice = computed(() =>
   props.view === 'applications' && !props.readOnly && props.autoApproveApplications && !hasSubmittedApplications.value
@@ -113,6 +157,10 @@ const filteredReviewGroups = computed(() => {
 
   if (hasAiKnowledgeFilter.value) {
     groups = filterAdminApplicationReviewGroupsByAiKnowledge(groups, aiKnowledgeFilter.value)
+  }
+
+  if (activeSelectedTrackId.value) {
+    groups = filterAdminApplicationReviewGroupsBySelectedTrack(groups, activeSelectedTrackId.value)
   }
 
   return groups
@@ -176,6 +224,16 @@ watch(
     }
   }
 )
+
+function selectTrackFilter(filterValue: string) {
+  selectedTrackFilter.value = filterValue
+}
+
+function getSelectedTrackName(application: AdminApplicationRecord) {
+  return application.selectedTrackId
+    ? tracksById.value.get(application.selectedTrackId)?.name ?? null
+    : null
+}
 
 function toggleFailedLumaSyncAlertExpanded() {
   isFailedLumaSyncAlertExpanded.value = !isFailedLumaSyncAlertExpanded.value
@@ -471,6 +529,20 @@ const emptyState = computed(() => {
     }
   }
 
+  if (hasTrackFilter.value && hasSearchQuery.value) {
+    return {
+      title: 'No approved participants match this search and track filter',
+      description: 'Try a different search, choose another track, or show all approved participants.'
+    }
+  }
+
+  if (hasTrackFilter.value) {
+    return {
+      title: 'No approved participants selected this track',
+      description: 'Choose another track or show all approved participants.'
+    }
+  }
+
   if (hasSearchQuery.value) {
     if (props.view === 'approved') {
       return {
@@ -664,7 +736,7 @@ const emptyState = computed(() => {
         />
 
         <div
-          v-if="!showAutoApproveApplicationsNotice && (searchEnabled || showApprovedAttendance || showAiKnowledge)"
+          v-if="!showAutoApproveApplicationsNotice && (searchEnabled || showApprovedAttendance || showTrackFilter || showAiKnowledgeFilter)"
           class="flex flex-col gap-3 md:flex-row md:items-center"
         >
           <AppInput
@@ -696,8 +768,47 @@ const emptyState = computed(() => {
             Checked in only
           </button>
 
+          <div
+            v-if="showTrackFilter"
+            class="flex min-w-0 flex-1 flex-wrap items-center gap-2 rounded-xl border border-black/8 bg-black/4 p-1 dark:border-white/[0.08] dark:bg-white/[0.04]"
+            aria-label="Approved participant track filter"
+          >
+            <button
+              type="button"
+              data-testid="admin-approved-track-filter-all"
+              class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-2 text-[13px] transition-colors sm:grow-0 sm:basis-auto"
+              :class="!hasTrackFilter ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
+              @click="selectTrackFilter(allSelectedTrackFilterValue)"
+            >
+              <span>All</span>
+              <span
+                class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
+                :class="!hasTrackFilter ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
+              >
+                {{ approvedTrackAllCount }}
+              </span>
+            </button>
+            <button
+              v-for="track in approvedTrackFilterOptions"
+              :key="track.id"
+              type="button"
+              :data-testid="`admin-approved-track-filter-${track.id}`"
+              class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-2 text-[13px] transition-colors sm:grow-0 sm:basis-auto"
+              :class="activeSelectedTrackId === track.id ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
+              @click="selectTrackFilter(track.filterValue)"
+            >
+              <span class="truncate">{{ track.name }}</span>
+              <span
+                class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
+                :class="activeSelectedTrackId === track.id ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
+              >
+                {{ track.count }}
+              </span>
+            </button>
+          </div>
+
           <label
-            v-if="showAiKnowledge"
+            v-if="showAiKnowledgeFilter"
             class="min-w-0 md:w-64"
           >
             <span class="sr-only">AI Knowledge</span>
@@ -780,6 +891,14 @@ const emptyState = computed(() => {
                               variant="soft"
                             >
                               Approved
+                            </AppBadge>
+                            <AppBadge
+                              v-if="getSelectedTrackName(applicant.application)"
+                              color="primary"
+                              variant="soft"
+                              :data-testid="`admin-application-track-badge-${applicant.application.id}`"
+                            >
+                              {{ getSelectedTrackName(applicant.application) }}
                             </AppBadge>
                             <AppBadge
                               v-if="showApprovedAttendance && applicant.application.status === 'approved'"

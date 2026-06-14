@@ -3,9 +3,11 @@ import { describe, expect, test } from 'vitest'
 import {
   buildAdminApplicationReviewGroups,
   canApproveAdminApplicationReviewGroup,
+  countApprovedAdminApplicationsBySelectedTrack,
   filterAdminApplicationReviewGroups,
   filterAdminApplicationReviewGroupsByAiKnowledge,
   filterAdminApplicationReviewGroupsByApplicant,
+  filterAdminApplicationReviewGroupsBySelectedTrack,
   hasAdminApplicationReviewApplicantApprovalSelected,
   hasAdminApplicationReviewGroupApprovalSelected,
   searchAdminApplicationReviewGroups,
@@ -24,6 +26,7 @@ function createApplication(options: {
   teamIntent?: 'solo' | 'team' | 'unknown'
   teamMembers?: Array<{ fullName?: string, email?: string }>
   aiKnowledgeLevel?: '' | 'beginner' | 'intermediate' | 'advanced'
+  selectedTrackId?: string | null
 }) {
   return {
     id: options.id,
@@ -32,6 +35,7 @@ function createApplication(options: {
     status: options.status ?? 'submitted',
     preApprovalStatus: options.preApprovalStatus ?? null,
     checkedInAt: options.checkedInAt ?? null,
+    selectedTrackId: options.selectedTrackId ?? null,
     submittedAt: options.submittedAt ?? '2026-03-29T10:00:00.000Z',
     withdrawnAt: options.status === 'withdrawn' ? '2026-03-30T10:00:00.000Z' : null,
     reviewedAt: null,
@@ -540,6 +544,107 @@ describe('buildAdminApplicationReviewGroups', () => {
         fullName: 'Dave Example',
         email: 'dave@example.com',
         mentionedByApplicationIds: ['application-2']
+      }]
+    })])
+  })
+
+  test('counts approved applications by selected track only', () => {
+    const counts = countApprovedAdminApplicationsBySelectedTrack([
+      createApplication({
+        id: 'application-1',
+        displayName: 'Alice Example',
+        email: 'alice@example.com',
+        status: 'approved',
+        selectedTrackId: 'track-agents'
+      }),
+      createApplication({
+        id: 'application-2',
+        displayName: 'Bob Example',
+        email: 'bob@example.com',
+        status: 'approved',
+        selectedTrackId: 'track-agents'
+      }),
+      createApplication({
+        id: 'application-3',
+        displayName: 'Carol Example',
+        email: 'carol@example.com',
+        status: 'approved',
+        selectedTrackId: 'track-tools'
+      }),
+      createApplication({
+        id: 'application-4',
+        displayName: 'Dave Example',
+        email: 'dave@example.com',
+        status: 'approved',
+        selectedTrackId: null
+      }),
+      createApplication({
+        id: 'application-5',
+        displayName: 'Eve Example',
+        email: 'eve@example.com',
+        status: 'submitted',
+        selectedTrackId: 'track-agents'
+      })
+    ])
+
+    expect(counts.get('track-agents')).toBe(2)
+    expect(counts.get('track-tools')).toBe(1)
+    expect(counts.has('track-unknown')).toBe(false)
+  })
+
+  test('filters groups by selected track without leaking hidden teammate hints', () => {
+    const applications = [
+      createApplication({
+        id: 'application-1',
+        displayName: 'Alice Example',
+        email: 'alice@example.com',
+        status: 'approved',
+        selectedTrackId: 'track-agents',
+        teamIntent: 'team',
+        teamMembers: [{
+          fullName: 'Carol Example',
+          email: 'carol@example.com'
+        }]
+      }),
+      createApplication({
+        id: 'application-2',
+        displayName: 'Bob Example',
+        email: 'bob@example.com',
+        status: 'approved',
+        selectedTrackId: 'track-tools',
+        teamIntent: 'team',
+        teamMembers: [{
+          fullName: 'Dave Example',
+          email: 'dave@example.com'
+        }]
+      }),
+      createApplication({
+        id: 'application-3',
+        displayName: 'Eve Example',
+        email: 'eve@example.com',
+        status: 'approved',
+        selectedTrackId: null,
+        teamIntent: 'team',
+        teamMembers: [{
+          fullName: 'Frank Example',
+          email: 'frank@example.com'
+        }]
+      })
+    ]
+    const groups = filterAdminApplicationReviewGroups(
+      buildAdminApplicationReviewGroups(applications),
+      'approved'
+    )
+
+    expect(filterAdminApplicationReviewGroupsBySelectedTrack(groups, 'track-agents')).toEqual([expect.objectContaining({
+      applicants: [expect.objectContaining({
+        application: applications[0]
+      })],
+      pendingTeammates: [{
+        id: 'email:carol@example.com',
+        fullName: 'Carol Example',
+        email: 'carol@example.com',
+        mentionedByApplicationIds: ['application-1']
       }]
     })])
   })

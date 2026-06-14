@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AdminApplicationReviewView } from '~/domains/applications/admin-application-review'
 import type { AdminApplicationRecord } from '~/domains/applications/admin-application-record'
-import type { EventRecord } from '~/domains/events/records'
+import type { EventRecord, EventTrack } from '~/domains/events/records'
 
 import { LazyApplicationsAdminApplicationsReviewPanel as LazyAdminApplicationsReviewPanel } from '#components'
 import {
@@ -20,6 +20,7 @@ const props = withDefaults(defineProps<{
   readOnly?: boolean
   showAttendance?: boolean
   showAiKnowledge?: boolean
+  tracks?: Pick<EventTrack, 'id' | 'name' | 'displayOrder'>[]
   participantsLimit?: number | null
   autoApproveApplications?: boolean
   eventState?: EventRecord['state']
@@ -30,6 +31,7 @@ const props = withDefaults(defineProps<{
   readOnly: false,
   showAttendance: false,
   showAiKnowledge: false,
+  tracks: () => [],
   participantsLimit: null,
   autoApproveApplications: false,
   eventState: 'draft'
@@ -248,6 +250,7 @@ function selectParticipantView(nextView: AdminApplicationReviewView) {
       search-enabled
       :show-attendance="showAttendance"
       :show-ai-knowledge="showAiKnowledge"
+      :tracks="tracks"
       :auto-approve-applications="autoApproveApplications"
       :event-state="eventState"
       @approve="emit('approve', $event)"

@@ -623,6 +623,30 @@ export function filterAdminApplicationReviewGroupsByAiKnowledge(
   )
 }
 
+export function filterAdminApplicationReviewGroupsBySelectedTrack(
+  groups: AdminApplicationReviewGroup[],
+  trackId: string
+): AdminApplicationReviewGroup[] {
+  return filterAdminApplicationReviewGroupsByApplicant(
+    groups,
+    applicant => applicant.application.selectedTrackId === trackId
+  )
+}
+
+export function countApprovedAdminApplicationsBySelectedTrack(applications: AdminApplicationRecord[]) {
+  const counts = new Map<string, number>()
+
+  for (const application of applications) {
+    if (application.status !== 'approved' || !application.selectedTrackId) {
+      continue
+    }
+
+    counts.set(application.selectedTrackId, (counts.get(application.selectedTrackId) ?? 0) + 1)
+  }
+
+  return counts
+}
+
 export function filterAdminApplicationReviewGroupsByApplicant(
   groups: AdminApplicationReviewGroup[],
   predicate: (applicant: AdminApplicationReviewApplicant) => boolean

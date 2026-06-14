@@ -2299,6 +2299,7 @@ async function runLifecycleAction() {
           :pending-action-key="pendingActionKey"
           :show-attendance="showCheckedInParticipantSummary"
           :show-ai-knowledge="currentEvent.applicationAiKnowledgeVisible"
+          :tracks="currentEvent.tracks ?? []"
           :participants-limit="currentEvent.participantsLimit ?? null"
           :auto-approve-applications="currentEvent.autoApproveApplications"
           :event-state="currentEvent.state"

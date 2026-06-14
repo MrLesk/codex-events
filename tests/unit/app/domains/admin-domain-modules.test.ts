@@ -185,6 +185,7 @@ function createApplication(overrides: Partial<AdminApplicationRecord> = {}): Adm
     status: 'submitted',
     preApprovalStatus: null,
     checkedInAt: null,
+    selectedTrackId: null,
     submittedAt: '2026-03-22T12:00:00.000Z',
     withdrawnAt: null,
     reviewedAt: null,
