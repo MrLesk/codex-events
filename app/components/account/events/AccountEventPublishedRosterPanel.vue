@@ -652,11 +652,11 @@ async function removePublishedRosterMember(userId: string) {
             </p>
           </div>
 
-          <div class="flex snap-x gap-4 overflow-x-auto pb-2">
+          <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <article
               v-for="member in section.members"
               :key="member.id"
-              class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl flex w-72 shrink-0 snap-start flex-col gap-4 rounded-lg p-4 transition sm:w-80 dark:!border-white/[0.10] dark:!bg-[#151515]/64"
+              class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl flex min-w-0 flex-col gap-4 rounded-lg p-4 transition dark:!border-white/[0.10] dark:!bg-[#151515]/64"
             >
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0 flex items-start gap-3">
