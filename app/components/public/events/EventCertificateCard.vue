@@ -8,7 +8,7 @@ import {
   resolveEventCertificatePlacementTier
 } from '#shared/domains/events/certificates'
 
-import codexMarkWhite from '~/assets/images/codex-mark-white.png'
+import platformMarkWhite from '~/assets/images/platform-mark-white.png'
 
 const props = defineProps<{
   certificate: EventCertificate
@@ -234,7 +234,7 @@ const participantNameSize = computed(() => {
 
         <img
           v-if="isHolo"
-          :src="codexMarkWhite"
+          :src="platformMarkWhite"
           alt=""
           aria-hidden="true"
           class="certificate-card__mark absolute right-[4.5cqw] top-[9%] z-0 w-[max(44px,13cqw)]"
