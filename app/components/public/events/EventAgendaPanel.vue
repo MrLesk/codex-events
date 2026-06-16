@@ -158,7 +158,7 @@ const agendaTimeChipClasses = 'flex min-w-0 items-center justify-center rounded-
                   agendaTimeChipClasses,
                   'shrink-0',
                   item.presentation.timeLines[1]
-                    ? 'hidden sm:inline-flex'
+                    ? 'hidden sm:inline-flex lg:hidden'
                     : item.presentation.dayLabel ? 'inline-flex' : 'inline-flex lg:hidden'
                 ]"
                 :title="item.presentation.metaLabel"
