@@ -91,9 +91,16 @@ function sortedResources(track: PublicEventTrack) {
               </div>
 
               <div class="flex min-w-0 flex-1 items-center justify-between gap-3">
-                <h3 class="text-[16px] font-semibold text-highlighted dark:text-white">
-                  {{ track.name }}
-                </h3>
+                <div class="flex min-w-0 items-center gap-2">
+                  <AppIcon
+                    name="i-lucide-arrow-right"
+                    class="size-3.5 shrink-0 text-sky-700 dark:text-sky-300 sm:hidden"
+                    aria-hidden="true"
+                  />
+                  <h3 class="min-w-0 text-[16px] font-semibold text-highlighted dark:text-white">
+                    {{ track.name }}
+                  </h3>
+                </div>
                 <AppIcon
                   name="i-lucide-chevron-down"
                   class="size-4 shrink-0 text-neutral-500 transition-transform group-open:rotate-180 dark:text-[#A3A3A3]"
