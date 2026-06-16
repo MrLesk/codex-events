@@ -75,8 +75,8 @@ function sortedResources(track: PublicEventTrack) {
         :key="track.displayOrder"
         class="py-5 first:pt-0 last:pb-0"
       >
-        <div class="flex items-start gap-4">
-          <div class="flex w-20 shrink-0 items-start justify-center pt-0.5">
+        <div class="sm:flex sm:items-start sm:gap-4">
+          <div class="hidden w-20 shrink-0 items-start justify-center pt-0.5 sm:flex">
             <span class="flex size-11 items-center justify-center rounded-full border border-black/8 bg-white/80 text-sky-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-sky-300">
               <AppIcon
                 name="i-lucide-arrow-right"
