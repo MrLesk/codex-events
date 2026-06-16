@@ -68,7 +68,7 @@ const ctaLabel = computed(() => {
     <NuxtLink
       :to="eventHref"
       class="group block"
-      :class="props.showTimelineRail ? 'lg:ml-8' : ''"
+      :class="props.showTimelineRail ? 'lg:mx-8' : ''"
       :data-testid="`public-event-card-${event.slug}`"
     >
       <div class="!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 overflow-hidden rounded-3xl transition-colors group-hover:border-black/20 dark:group-hover:border-white/[0.2]">
