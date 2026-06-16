@@ -75,23 +75,34 @@ function sortedResources(track: PublicEventTrack) {
         :key="track.displayOrder"
         class="py-5 first:pt-0 last:pb-0"
       >
-        <div class="sm:flex sm:items-start sm:gap-4">
-          <div class="hidden w-20 shrink-0 items-start justify-center pt-0.5 sm:flex">
-            <span class="flex size-11 items-center justify-center rounded-full border border-black/8 bg-white/80 text-sky-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-sky-300">
-              <AppIcon
-                name="i-lucide-arrow-right"
-                class="size-4"
-              />
-            </span>
-          </div>
+        <details
+          open
+          class="group"
+        >
+          <summary class="list-none cursor-pointer">
+            <div class="sm:flex sm:items-start sm:gap-4">
+              <div class="hidden w-20 shrink-0 items-start justify-center pt-0.5 sm:flex">
+                <span class="flex size-11 items-center justify-center rounded-full border border-black/8 bg-white/80 text-sky-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-sky-300">
+                  <AppIcon
+                    name="i-lucide-arrow-right"
+                    class="size-4"
+                  />
+                </span>
+              </div>
 
-          <div class="min-w-0 flex-1 space-y-2">
-            <div class="flex flex-wrap items-center gap-3">
-              <h3 class="text-[16px] font-semibold text-highlighted dark:text-white">
-                {{ track.name }}
-              </h3>
+              <div class="flex min-w-0 flex-1 items-center justify-between gap-3">
+                <h3 class="text-[16px] font-semibold text-highlighted dark:text-white">
+                  {{ track.name }}
+                </h3>
+                <AppIcon
+                  name="i-lucide-chevron-down"
+                  class="size-4 shrink-0 text-neutral-500 transition-transform group-open:rotate-180 dark:text-[#A3A3A3]"
+                />
+              </div>
             </div>
+          </summary>
 
+          <div class="mt-2 min-w-0 space-y-2 sm:ml-24">
             <AppMarkdownRenderer
               :source="track.shortDescription"
               class="max-w-[62ch]"
@@ -154,7 +165,7 @@ function sortedResources(track: PublicEventTrack) {
               </div>
             </div>
           </div>
-        </div>
+        </details>
       </article>
     </div>
   </section>
