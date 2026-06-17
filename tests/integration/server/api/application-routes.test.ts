@@ -3418,32 +3418,90 @@ describe('TASK-3.6 application routes', () => {
     harnesses.push(harness)
     await seedApplicationContext(harness)
 
-    await harness.database.insert(userApplications).values({
-      id: 'application_1',
-      eventId: 'event_1',
-      userId: 'regular_user',
-      status: 'submitted',
-      submittedAt: '2026-03-22T12:10:00.000Z',
-      applicationTermsDocumentId: 'terms_app_2',
-      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
-      createdAt: '2026-03-22T12:10:00.000Z',
-      updatedAt: '2026-03-22T12:10:00.000Z'
-    })
+    await harness.database.insert(userApplications).values([
+      {
+        id: 'application_1',
+        eventId: 'event_1',
+        userId: 'regular_user',
+        status: 'submitted',
+        submittedAt: '2026-03-22T12:10:00.000Z',
+        applicationTermsDocumentId: 'terms_app_2',
+        applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+        createdAt: '2026-03-22T12:10:00.000Z',
+        updatedAt: '2026-03-22T12:10:00.000Z'
+      },
+      {
+        id: 'application_staff',
+        eventId: 'event_1',
+        userId: 'staff_user',
+        status: 'approved',
+        submittedAt: '2026-03-22T12:05:00.000Z',
+        applicationTermsDocumentId: 'terms_app_2',
+        applicationTermsAcceptedAt: '2026-03-22T12:05:00.000Z',
+        createdAt: '2026-03-22T12:05:00.000Z',
+        updatedAt: '2026-03-22T12:05:00.000Z'
+      }
+    ])
 
     const listResponse = await harness.request('/api/events/event_1/applications')
     expect(listResponse.status).toBe(200)
-    expect(await listResponse.json()).toMatchObject({
-      data: [
+    const listPayload = await listResponse.json()
+    expect(listPayload).toMatchObject({
+      data: expect.arrayContaining([
         expect.objectContaining({
           id: 'application_1',
+          isEventStaff: false,
           user: expect.objectContaining({
             id: 'regular_user'
           })
+        }),
+        expect.objectContaining({
+          id: 'application_staff',
+          isEventStaff: true,
+          user: expect.objectContaining({
+            id: 'staff_user'
+          })
         })
-      ],
+      ]),
       meta: {
-        total: 1
+        total: 2
       }
+    })
+
+    await harness.database.insert(eventRoleAssignments).values({
+      id: 'role_regular_staff',
+      eventId: 'event_1',
+      userId: 'regular_user',
+      role: 'staff',
+      isInJudgePool: false,
+      isStaff: true,
+      createdAt: '2026-03-22T12:02:00.000Z'
+    })
+
+    const staffDesignatedResponse = await harness.request('/api/events/event_1/applications?status=submitted')
+    expect(staffDesignatedResponse.status).toBe(200)
+    expect(await staffDesignatedResponse.json()).toMatchObject({
+      data: [
+        expect.objectContaining({
+          id: 'application_1',
+          isEventStaff: true
+        })
+      ]
+    })
+
+    await harness.database
+      .delete(eventRoleAssignments)
+      .where(eq(eventRoleAssignments.id, 'role_regular_staff'))
+
+    const fallbackResponse = await harness.request('/api/events/event_1/applications?status=submitted')
+    expect(fallbackResponse.status).toBe(200)
+    expect(await fallbackResponse.json()).toMatchObject({
+      data: [
+        expect.objectContaining({
+          id: 'application_1',
+          isEventStaff: false
+        })
+      ]
     })
 
     const approveResponse = await harness.request('/api/events/event_1/applications/application_1/actions/approve', {

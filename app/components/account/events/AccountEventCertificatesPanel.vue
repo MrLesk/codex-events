@@ -6,7 +6,8 @@ import {
   formatApplicationAttendanceSource,
   formatApplicationAttendanceStatus,
   getApplicationAttendanceStatusColor,
-  isApplicationCheckedIn
+  isApplicationCheckedIn,
+  listParticipantRosterApplications
 } from '~/domains/applications/admin-application-record'
 import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
 import { formatTimestamp } from '~/lib/date-formatting'
@@ -40,7 +41,8 @@ type AttendanceFilter = (typeof attendanceFilters)[number]['id']
 const activeAttendanceFilter = ref<AttendanceFilter>('all')
 
 const approvedApplications = computed(() =>
-  applications.value.filter(application => application.status === 'approved')
+  listParticipantRosterApplications(applications.value)
+    .filter(application => application.status === 'approved')
 )
 
 const visibleApplications = computed(() => {

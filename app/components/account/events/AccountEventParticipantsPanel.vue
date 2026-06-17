@@ -8,7 +8,8 @@ import {
   formatApprovedParticipantRegistrationSummary,
   getApprovedParticipantAttendanceSummary,
   getParticipantApplicationStatusSummary,
-  getParticipantsLimitSummary
+  getParticipantsLimitSummary,
+  listParticipantRosterApplications
 } from '~/domains/applications/admin-application-record'
 
 const props = withDefaults(defineProps<{
@@ -60,8 +61,12 @@ function formatParticipantMetricValue(value: string | number) {
   return `${value}`
 }
 
+const participantRosterApplications = computed(() =>
+  listParticipantRosterApplications(props.applications)
+)
+
 const participantStatusSummary = computed(() =>
-  getParticipantApplicationStatusSummary(props.applications)
+  getParticipantApplicationStatusSummary(participantRosterApplications.value)
 )
 
 const submittedParticipantSummaryValue = computed(() =>
@@ -73,11 +78,11 @@ const approvedParticipantSummaryValue = computed(() =>
 )
 
 const approvedParticipantRegistrationSummaryValue = computed(() =>
-  formatParticipantMetricValue(formatApprovedParticipantRegistrationSummary(props.applications))
+  formatParticipantMetricValue(formatApprovedParticipantRegistrationSummary(participantRosterApplications.value))
 )
 
 const checkedInParticipantSummaryValue = computed(() =>
-  formatParticipantMetricValue(getApprovedParticipantAttendanceSummary(props.applications).value)
+  formatParticipantMetricValue(getApprovedParticipantAttendanceSummary(participantRosterApplications.value).value)
 )
 
 const rejectedParticipantSummaryValue = computed(() =>
@@ -89,7 +94,7 @@ const withdrawnParticipantSummaryValue = computed(() =>
 )
 
 const participantsLimitSummary = computed(() =>
-  getParticipantsLimitSummary(props.applications, props.participantsLimit)
+  getParticipantsLimitSummary(participantRosterApplications.value, props.participantsLimit)
 )
 
 const participantSummaryGridClass = computed(() => {
@@ -241,7 +246,7 @@ function selectParticipantView(nextView: AdminApplicationReviewView) {
 
     <LazyAdminApplicationsReviewPanel
       :event-id="eventId"
-      :applications="applications"
+      :applications="participantRosterApplications"
       :view="participantView"
       :is-loading="isLoading"
       :error-message="errorMessage"

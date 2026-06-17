@@ -18,6 +18,7 @@ import {
 } from '#server/auth/authorization'
 import { getDatabase, type AppDatabase } from '#server/database/client'
 import {
+  eventRoleAssignments,
   submissions,
   teamJoinRequests,
   teamMembers,
@@ -704,6 +705,7 @@ export function serializeUserApplication(
     user?: UserRecord | null
     applicationTermsDocument?: EventTermsDocumentRecord | null
     adminWithdrawal?: AdminApplicationWithdrawalAvailability
+    isEventStaff?: boolean
   }
 ) {
   return {
@@ -720,6 +722,9 @@ export function serializeUserApplication(
     checkInOverrideAt: application.checkInOverrideAt,
     certificateHiddenAt: application.certificateHiddenAt,
     certificateRevokedAt: application.certificateRevokedAt,
+    ...(typeof options?.isEventStaff === 'boolean'
+      ? { isEventStaff: options.isEventStaff }
+      : {}),
     selectedTrackId: application.selectedTrackId,
     reviewedAt: application.reviewedAt,
     reviewedByUserId: application.reviewedByUserId,
@@ -1058,12 +1063,26 @@ export async function listEventApplications(
     eventId,
     applications
   )
+  const staffUserIds = new Set(
+    applications.length > 0
+      ? (await database
+          .select({ userId: eventRoleAssignments.userId })
+          .from(eventRoleAssignments)
+          .where(and(
+            eq(eventRoleAssignments.eventId, eventId),
+            eq(eventRoleAssignments.isStaff, true),
+            inArray(eventRoleAssignments.userId, applications.map(application => application.userId))
+          )))
+          .map(row => row.userId)
+      : []
+  )
 
   return {
     data: applications.map(application =>
       serializeUserApplication(application, {
         user: usersById.get(application.userId) ?? null,
-        adminWithdrawal: adminWithdrawalByApplicationId.get(application.id)
+        adminWithdrawal: adminWithdrawalByApplicationId.get(application.id),
+        isEventStaff: staffUserIds.has(application.userId)
       })
     ),
     total: totalRows[0]?.total ?? 0,

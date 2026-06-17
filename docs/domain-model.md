@@ -310,6 +310,7 @@ Rules:
 - Only a user with role `event_admin` can combine admin access with judging participation and/or staff designation.
 - A staff track is display-only. It tells participants whether a staff member supports the whole event or a specific track, and it does not change authorization.
 - A staff assignment without a staff track is shown as whole-event staff.
+- Account workspace participant roster and certificate-management surfaces omit users who currently have staff designation for that event. The application record remains unchanged, so removing staff designation makes the user appear through participant surfaces again.
 - The account-scoped event workspace publishes a judge roster and a staff roster derived from `EventRoleAssignment`.
 - The published judge roster includes explicit `judge` assignments plus `event_admin` assignments with `is_in_judge_pool = true`.
 - The published staff roster includes explicit `staff` assignments plus `event_admin` assignments with `is_staff = true`.

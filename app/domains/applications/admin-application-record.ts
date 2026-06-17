@@ -21,6 +21,7 @@ export interface AdminApplicationRecord {
   checkInOverrideAt?: string | null
   certificateHiddenAt?: string | null
   certificateRevokedAt?: string | null
+  isEventStaff?: boolean
   selectedTrackId: string | null
   submittedAt: string
   withdrawnAt: string | null
@@ -85,6 +86,12 @@ export function isApplicationCheckedIn(
     checkedInAt: application.checkedInAt ?? null,
     checkInOverrideStatus: application.checkInOverrideStatus ?? null
   })
+}
+
+export function listParticipantRosterApplications<T extends Pick<AdminApplicationRecord, 'isEventStaff'>>(
+  applications: T[]
+) {
+  return applications.filter(application => !application.isEventStaff)
 }
 
 export function formatApplicationAttendanceStatus(

@@ -51,6 +51,7 @@ import {
   getParticipantApplicationStatusSummary,
   getParticipantsLimitSummary,
   isApplicationCheckedIn,
+  listParticipantRosterApplications,
   listFailedApplicationLumaSyncApplications,
   shouldShowApplicationLumaSyncStatus,
   shouldShowApprovedParticipantAttendanceSummary
@@ -1460,6 +1461,36 @@ describe('domain admin operational helpers', () => {
       rejectedCount: 1,
       withdrawnCount: 1
     })
+  })
+
+  test('removes current staff-designated applications from participant roster surfaces', () => {
+    const participantApplication = createApplication({
+      id: 'participant-application',
+      userId: 'participant-user',
+      status: 'approved',
+      isEventStaff: false
+    })
+    const staffApplication = createApplication({
+      id: 'staff-application',
+      userId: 'staff-user',
+      status: 'approved',
+      isEventStaff: true
+    })
+
+    expect(listParticipantRosterApplications([
+      participantApplication,
+      staffApplication
+    ])).toEqual([participantApplication])
+
+    expect(listParticipantRosterApplications([
+      {
+        ...staffApplication,
+        isEventStaff: false
+      }
+    ])).toEqual([{
+      ...staffApplication,
+      isEventStaff: false
+    }])
   })
 
   test('formats approved participants relative to total registrations', () => {
