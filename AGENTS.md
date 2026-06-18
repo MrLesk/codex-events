@@ -172,6 +172,10 @@ current source of truth and flag the mismatch.
   per-row point operations instead.
 - For small fixed enum filters, use explicit `or(eq(...), eq(...))`
   predicates.
+- Ignore or suppress this rule only for static/configuration tables whose rows
+  cannot be added at runtime. Never ignore it for tables containing dynamic
+  product data such as users, events, applications, teams, submissions, judging,
+  credits, audit logs, or other participant/admin-created records.
 - Tests may use `inArray` when useful, but runtime source must not import it.
 
 ## Interface Component Ownership
