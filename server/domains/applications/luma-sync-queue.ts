@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
+import { and, asc, eq, isNotNull, isNull, or } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { writeAuditLog } from '#server/database/audit-log'
@@ -891,7 +891,11 @@ export async function enqueueMissingEventApplicationLumaSyncMessages(options: {
     where: and(
       eq(userApplications.eventId, options.event.id),
       isNull(userApplications.lumaSyncStatus),
-      inArray(userApplications.status, ['approved', 'rejected', 'withdrawn'])
+      or(
+        eq(userApplications.status, 'approved'),
+        eq(userApplications.status, 'rejected'),
+        eq(userApplications.status, 'withdrawn')
+      )
     )
   })
   const decidedApplications = applications as DecidedApplicationRecord[]

@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, count, eq, getTableColumns, inArray, isNull, sql } from 'drizzle-orm'
+import { and, asc, count, eq, getTableColumns, isNull, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { requirePlatformActor } from '#server/auth/actor'
@@ -35,10 +35,16 @@ type JudgeAssignmentInsert = typeof judgeAssignments.$inferInsert
 type EvaluationCriterionRecord = typeof evaluationCriteria.$inferSelect
 type JudgeCriterionScoreRecord = typeof judgeCriterionScores.$inferSelect
 
-const activeJudgeAssignmentStatuses = ['assigned', 'judge_started'] as const
 const minimumJudgeScore = 1
 const maximumJudgeScore = 5
 const d1MaxBoundParametersPerStatement = 100
+
+function buildActiveJudgeAssignmentStatusWhere() {
+  return or(
+    eq(judgeAssignments.status, 'assigned'),
+    eq(judgeAssignments.status, 'judge_started')
+  )
+}
 
 const criterionScoreInputSchema = z.object({
   evaluationCriterionId: z.string().trim().min(1),
@@ -231,7 +237,7 @@ export async function getJudgingAssignmentSummary(
       .from(judgeAssignments)
       .where(and(
         eq(judgeAssignments.eventId, event.id),
-        inArray(judgeAssignments.status, [...activeJudgeAssignmentStatuses])
+        buildActiveJudgeAssignmentStatusWhere()
       )),
     database
       .select({ total: count() })
@@ -257,7 +263,7 @@ export async function listActiveJudgeAssignmentSummaries(
 ) {
   const activeAssignmentWhere = and(
     eq(judgeAssignments.eventId, eventId),
-    inArray(judgeAssignments.status, [...activeJudgeAssignmentStatuses])
+    buildActiveJudgeAssignmentStatusWhere()
   )
   const [rows, totalRows] = await Promise.all([
     database
@@ -1381,7 +1387,7 @@ export async function pickReplacementJudgeUserId(
     where: and(
       eq(judgeAssignments.eventId, eventId),
       eq(judgeAssignments.reviewStage, options?.reviewStage ?? 'blind_review'),
-      inArray(judgeAssignments.status, [...activeJudgeAssignmentStatuses])
+      buildActiveJudgeAssignmentStatusWhere()
     )
   })
   const eligibleJudgeUserIds = new Set(eligibleJudges.map(judge => judge.userId))

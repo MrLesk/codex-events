@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull } from 'drizzle-orm'
+import { and, eq, isNull, or } from 'drizzle-orm'
 import { z } from 'zod'
 
 import type { AppDatabase } from '#server/database/client'
@@ -73,7 +73,10 @@ async function resolveParticipantTeamContext(database: AppDatabase, eventId: str
       eq(teamMembers.userId, userId),
       isNull(teamMembers.leftAt),
       eq(teams.eventId, eventId),
-      inArray(submissions.status, ['submitted', 'locked'])
+      or(
+        eq(submissions.status, 'submitted'),
+        eq(submissions.status, 'locked')
+      )
     ))
     .limit(1)
 

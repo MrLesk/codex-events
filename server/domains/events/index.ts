@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, count, desc, eq, exists, getTableColumns, inArray, isNull, like, or, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, exists, getTableColumns, isNull, like, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { getRequestActor, requirePlatformActor } from '#server/auth/actor'
@@ -875,22 +875,24 @@ export async function assertRemovedEventTracksAreUnreferenced(
     return
   }
 
-  const referencedSubmission = await database.query.submissions.findFirst({
-    where: inArray(submissions.trackId, trackIds)
-  })
+  for (const trackId of trackIds) {
+    const referencedSubmission = await database.query.submissions.findFirst({
+      where: eq(submissions.trackId, trackId)
+    })
 
-  if (!referencedSubmission) {
-    return
-  }
-
-  throw new ApiError({
-    statusCode: 409,
-    code: 'event_track_has_submissions',
-    message: 'This track cannot be removed because existing submissions still reference it.',
-    details: {
-      trackIds
+    if (!referencedSubmission) {
+      continue
     }
-  })
+
+    throw new ApiError({
+      statusCode: 409,
+      code: 'event_track_has_submissions',
+      message: 'This track cannot be removed because existing submissions still reference it.',
+      details: {
+        trackIds
+      }
+    })
+  }
 }
 
 export async function replaceEventTracks(
@@ -919,7 +921,9 @@ export async function replaceEventTracks(
     .sort((left, right) => left.displayOrder - right.displayOrder || left.id.localeCompare(right.id))
 
   if (removedTrackIds.length > 0) {
-    await database.delete(eventTracks).where(inArray(eventTracks.id, removedTrackIds))
+    for (const trackId of removedTrackIds) {
+      await database.delete(eventTracks).where(eq(eventTracks.id, trackId))
+    }
   }
 
   for (const track of normalizedTracks) {
@@ -1355,7 +1359,10 @@ async function getActorEventAccessIds(
     },
     where: and(
       eq(eventRoleAssignments.userId, actor.platformUser.id),
-      inArray(eventRoleAssignments.role, ['event_admin', 'staff'])
+      or(
+        eq(eventRoleAssignments.role, 'event_admin'),
+        eq(eventRoleAssignments.role, 'staff')
+      )
     )
   })
 
@@ -1606,7 +1613,10 @@ export async function listVisibleEvents(
           .where(and(
             eq(eventRoleAssignments.eventId, events.id),
             eq(eventRoleAssignments.userId, actor.platformUser.id),
-            inArray(eventRoleAssignments.role, ['event_admin', 'staff'])
+            or(
+              eq(eventRoleAssignments.role, 'event_admin'),
+              eq(eventRoleAssignments.role, 'staff')
+            )
           ))
       )
     : undefined
@@ -1721,13 +1731,11 @@ export async function listPublishedEventRosterMembers(
         .map(row => row.assignment.staffTrackId)
         .filter((trackId): trackId is string => Boolean(trackId)))]
     : []
+  const staffTrackIdSet = new Set(staffTrackIds)
   const staffTrackRows = staffTrackIds.length > 0
-    ? await database.query.eventTracks.findMany({
-        where: and(
-          eq(eventTracks.eventId, eventId),
-          inArray(eventTracks.id, staffTrackIds)
-        )
-      })
+    ? (await database.query.eventTracks.findMany({
+        where: eq(eventTracks.eventId, eventId)
+      })).filter(track => staffTrackIdSet.has(track.id))
     : []
   const staffTracksById = new Map(staffTrackRows.map(track => [track.id, track]))
 
@@ -1781,7 +1789,7 @@ export async function getCurrentEventTerms(
   }
 
   const documents = await database.query.eventTermsDocuments.findMany({
-    where: inArray(eventTermsDocuments.id, documentIds)
+    where: or(...documentIds.map(documentId => eq(eventTermsDocuments.id, documentId)))
   })
 
   return {

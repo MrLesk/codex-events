@@ -3683,6 +3683,16 @@ describe('TASK-3.6 application routes', () => {
       await harness.database.insert(users).values(participantUsers.slice(index, index + 40))
     }
 
+    await harness.database.insert(eventRoleAssignments).values({
+      id: 'role_participant_100_staff',
+      eventId: 'event_1',
+      userId: 'participant_100',
+      role: 'staff',
+      isInJudgePool: false,
+      isStaff: true,
+      createdAt: '2026-03-22T12:02:00.000Z'
+    })
+
     for (let index = 0; index < participantApplications.length; index += 40) {
       await harness.database.insert(userApplications).values(participantApplications.slice(index, index + 40))
     }
@@ -3726,6 +3736,7 @@ describe('TASK-3.6 application routes', () => {
             id: 'participant_100',
             email: 'participant_100@example.com'
           }),
+          isEventStaff: true,
           adminWithdrawal: expect.objectContaining({
             isAllowed: true,
             activeTeamId: 'team_100',

@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, count, eq, getTableColumns, inArray, isNull, like, or, sql } from 'drizzle-orm'
+import { and, asc, count, eq, getTableColumns, isNull, like, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { requirePlatformActor } from '#server/auth/actor'
@@ -23,7 +23,6 @@ import { assertCompetitionEvent, getVisibleEventOrThrow, routeIdParamsSchema } f
 
 const teamNameSchema = z.string().trim().min(1)
 const teamBioSchema = z.string().trim().max(4000)
-const d1LookupBatchSize = 75
 
 export const teamParamsSchema = routeIdParamsSchema.extend({
   teamId: z.string().trim().min(1)
@@ -252,30 +251,18 @@ export async function getUsersByIds(database: AppDatabase, userIds: string[]) {
     return new Map<string, UserRecord>()
   }
 
-  const relatedUsers = (
-    await Promise.all(
-      chunkValues(uniqueUserIds, d1LookupBatchSize).map(userIdBatch =>
-        database.query.users.findMany({
-          where: and(
-            inArray(users.id, userIdBatch),
-            isNull(users.deletedAt)
-          )
-        })
-      )
+  const relatedUsers = (await Promise.all(
+    uniqueUserIds.map(userId =>
+      database.query.users.findFirst({
+        where: and(
+          eq(users.id, userId),
+          isNull(users.deletedAt)
+        )
+      })
     )
-  ).flat()
+  )).filter((user): user is UserRecord => Boolean(user))
 
   return new Map(relatedUsers.map(user => [user.id, user]))
-}
-
-function chunkValues<T>(values: T[], size: number) {
-  const chunks: T[][] = []
-
-  for (let index = 0; index < values.length; index += size) {
-    chunks.push(values.slice(index, index + size))
-  }
-
-  return chunks
 }
 
 export async function getTeamOrThrow(database: AppDatabase, eventId: string, teamId: string) {
@@ -319,7 +306,11 @@ export async function getActiveSubmissionForTeam(database: AppDatabase, teamId: 
   return await database.query.submissions.findFirst({
     where: and(
       eq(submissions.teamId, teamId),
-      inArray(submissions.status, ['draft', 'submitted', 'locked'])
+      or(
+        eq(submissions.status, 'draft'),
+        eq(submissions.status, 'submitted'),
+        eq(submissions.status, 'locked')
+      )
     )
   })
 }

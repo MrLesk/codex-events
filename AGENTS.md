@@ -164,6 +164,16 @@ current source of truth and flag the mismatch.
   approval/rejection sync, and attendance webhooks. Core event participation
   should remain understandable without exposing Luma mechanics to participants.
 
+## Database Query Guardrails
+
+- Runtime database queries in `server/` and `app/` must not use SQL
+  `WHERE IN` or Drizzle `inArray`.
+- Use joins, `exists`-style predicates, direct equality predicates, or explicit
+  per-row point operations instead.
+- For small fixed enum filters, use explicit `or(eq(...), eq(...))`
+  predicates.
+- Tests may use `inArray` when useful, but runtime source must not import it.
+
 ## Interface Component Ownership
 
 Prevent component entropy by reusing the existing interface system before

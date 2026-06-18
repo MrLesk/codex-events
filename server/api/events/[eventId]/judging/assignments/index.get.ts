@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, or } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { resolveEventAuthorization } from '#server/auth/authorization'
@@ -50,7 +50,10 @@ export default defineApiHandler(async (h3Event) => {
     where: and(
       eq(judgeAssignments.eventId, eventId),
       eq(judgeAssignments.judgeUserId, actor.platformUser.id),
-      inArray(judgeAssignments.status, ['assigned', 'judge_started'])
+      or(
+        eq(judgeAssignments.status, 'assigned'),
+        eq(judgeAssignments.status, 'judge_started')
+      )
     )
   })
 

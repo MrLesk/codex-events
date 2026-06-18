@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from 'drizzle-orm'
+import { and, desc, eq, or } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { writeAuditLog } from '#server/database/audit-log'
@@ -112,7 +112,7 @@ export async function getCurrentPlatformDocuments(database: AppDatabase) {
   ) as Record<PlatformDocumentType, PlatformDocumentRecord | null>
   const unresolvedDocumentTypes = new Set(platformDocumentTypes)
   const documents = await database.query.platformDocuments.findMany({
-    where: inArray(platformDocuments.documentType, platformDocumentTypes),
+    where: or(...platformDocumentTypes.map(documentType => eq(platformDocuments.documentType, documentType))),
     orderBy: [desc(platformDocuments.version)]
   })
 
@@ -148,10 +148,9 @@ export async function hasAcceptedCurrentPlatformDocuments(
   const acceptances = await database.query.userPlatformDocumentAcceptances.findMany({
     where: and(
       eq(userPlatformDocumentAcceptances.userId, userId),
-      inArray(
-        userPlatformDocumentAcceptances.platformDocumentId,
-        requiredDocuments.map(document => document.id)
-      )
+      or(...requiredDocuments.map(document =>
+        eq(userPlatformDocumentAcceptances.platformDocumentId, document.id)
+      ))
     )
   })
 

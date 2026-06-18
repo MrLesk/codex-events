@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, count, desc, eq, getTableColumns, inArray, isNull, ne } from 'drizzle-orm'
+import { and, asc, count, desc, eq, getTableColumns, isNull, ne, or } from 'drizzle-orm'
 import { z } from 'zod'
 
 import {
@@ -293,7 +293,11 @@ export async function getAdminApplicationWithdrawalPlan(
     ? (await database.query.submissions.findFirst({
         where: and(
           eq(submissions.teamId, activeTeam.id),
-          inArray(submissions.status, ['draft', 'submitted', 'locked'])
+          or(
+            eq(submissions.status, 'draft'),
+            eq(submissions.status, 'submitted'),
+            eq(submissions.status, 'locked')
+          )
         )
       })) ?? null
     : null
@@ -554,7 +558,11 @@ async function listAdminApplicationWithdrawalAvailabilityByApplicationId(
       .innerJoin(teams, eq(teams.id, submissions.teamId))
       .where(and(
         eq(teams.eventId, eventId),
-        inArray(submissions.status, ['draft', 'submitted', 'locked'])
+        or(
+          eq(submissions.status, 'draft'),
+          eq(submissions.status, 'submitted'),
+          eq(submissions.status, 'locked')
+        )
       ))
       .orderBy(desc(submissions.createdAt))
   ])
@@ -1015,10 +1023,16 @@ export async function listEventApplications(
     database
       .select({
         application: getTableColumns(userApplications),
-        user: getTableColumns(users)
+        user: getTableColumns(users),
+        staffRoleId: eventRoleAssignments.id
       })
       .from(userApplications)
       .innerJoin(users, eq(users.id, userApplications.userId))
+      .leftJoin(eventRoleAssignments, and(
+        eq(eventRoleAssignments.eventId, eventId),
+        eq(eventRoleAssignments.userId, userApplications.userId),
+        eq(eventRoleAssignments.isStaff, true)
+      ))
       .where(and(
         whereClause,
         isNull(users.deletedAt)
@@ -1057,24 +1071,15 @@ export async function listEventApplications(
       statusCountRows.find(row => row.status === status)?.total ?? 0
     ])
   ) as Record<UserApplicationRecord['status'], number>
-
+  const staffUserIds = new Set(
+    applicationRows
+      .filter(row => Boolean(row.staffRoleId))
+      .map(row => row.application.userId)
+  )
   const adminWithdrawalByApplicationId = await listAdminApplicationWithdrawalAvailabilityByApplicationId(
     database,
     eventId,
     applications
-  )
-  const staffUserIds = new Set(
-    applications.length > 0
-      ? (await database
-          .select({ userId: eventRoleAssignments.userId })
-          .from(eventRoleAssignments)
-          .where(and(
-            eq(eventRoleAssignments.eventId, eventId),
-            eq(eventRoleAssignments.isStaff, true),
-            inArray(eventRoleAssignments.userId, applications.map(application => application.userId))
-          )))
-          .map(row => row.userId)
-      : []
   )
 
   return {
