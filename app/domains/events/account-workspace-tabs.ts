@@ -140,7 +140,7 @@ export function getAccountEventTabAccess(
   const isCompetitionEvent = eventType === 'hackathon'
   const availableTabs: AccountEventWorkspaceTab[] = ['overview']
 
-  if (canManage || (hasApprovedParticipantAccess && hasCreditInventory)) {
+  if (canManage || ((hasApprovedParticipantAccess || canViewParticipantsAndTeams) && hasCreditInventory)) {
     availableTabs.push('credits')
   }
 

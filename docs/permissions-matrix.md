@@ -215,14 +215,14 @@ Prize redemption permissions apply only to Hackathon events.
 
 Event credit permissions apply to every event type.
 
-| Action | Approved User | Event Admin | Platform Admin |
-| --- | --- | --- | --- |
-| View event credits in the account event workspace | Yes, when uploaded inventory exists | Yes | Yes |
-| Claim an available credit from an offer | Yes | No | No |
-| View own claimed credit values | Yes | No | No |
-| View credit inventory and claim records | No | Yes | Yes |
-| Create or update credit offers | No | Yes | Yes |
-| Upload additional credit inventory to an offer | No | Yes | Yes |
+| Action | Approved User | Staff | Event Admin | Platform Admin |
+| --- | --- | --- | --- | --- |
+| View event credits in the account event workspace | Yes, when uploaded inventory exists | Yes, when uploaded inventory exists | Yes | Yes |
+| Claim an available credit from an offer | Yes | Yes | No | No |
+| View own claimed credit values | Yes | Yes | No | No |
+| View credit inventory and claim records | No | No | Yes | Yes |
+| Create or update credit offers | No | No | Yes | Yes |
+| Upload additional credit inventory to an offer | No | No | Yes | Yes |
 
 ## Event Photo Gallery
 
@@ -264,7 +264,7 @@ Event credit permissions apply to every event type.
 - Event admins and platform admins can view event-wide operational data.
 - The completed published-projects section includes only opted-in locked non-winning submissions and remains visually separate from the winners section.
 - The participant-facing teams directory remains visible to workspace users after team formation closes, but join actions remain state-gated.
-- Approved participants can view only their own claimed credit values.
+- Approved participants and event staff can view only their own claimed credit values.
 - Event admins and platform admins can view credit inventory and claim records for their events.
 - Event feedback results are visible only to judges, staff, event admins, and platform admins.
 

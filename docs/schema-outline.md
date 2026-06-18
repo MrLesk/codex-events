@@ -855,8 +855,8 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - Each row stores one uploaded redeemable value, which can be a code or a URL.
 - Unclaimed rows are available inventory for the credit offer.
-- Claiming permanently assigns one uploaded value to one participant.
-- Only approved participants can claim from a credit offer.
+- Claiming permanently assigns one uploaded value to one claiming user.
+- Only approved participants and event staff can claim from a credit offer.
 
 ## PrizeEligibilitySnapshot
 

@@ -113,6 +113,30 @@ describe('getAccountEventTabAccess', () => {
     })
   })
 
+  test('shows credits to staff only when inventory exists', () => {
+    expect(getAccountEventTabAccess({
+      ...hackathonOptions,
+      hasCreditInventory: true,
+      hasApprovedParticipantAccess: false,
+      hasGallery: false,
+      hasPublishedPrizes: false,
+      canJudge: false,
+      canManage: false,
+      canViewParticipantsAndTeams: true
+    }).availableTabs).toContain('credits')
+
+    expect(getAccountEventTabAccess({
+      ...hackathonOptions,
+      hasCreditInventory: false,
+      hasApprovedParticipantAccess: false,
+      hasGallery: false,
+      hasPublishedPrizes: false,
+      canJudge: false,
+      canManage: false,
+      canViewParticipantsAndTeams: true
+    }).availableTabs).not.toContain('credits')
+  })
+
   test('shows the feedback tab to judges, staff, and admins only', () => {
     expect(getAccountEventTabAccess({
       ...hackathonOptions,
@@ -338,7 +362,7 @@ describe('getAccountEventTabAccess', () => {
       canManage: false,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'details', 'gallery', 'judges', 'staff', 'feedback', 'participants', 'teams'],
+      availableTabs: ['overview', 'credits', 'details', 'gallery', 'judges', 'staff', 'feedback', 'participants', 'teams'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: false
     })

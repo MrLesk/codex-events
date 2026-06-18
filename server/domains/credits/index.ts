@@ -172,12 +172,13 @@ export async function requireEventCreditsViewAccess(h3Event: H3Event, eventId: s
   const event = await getVisibleEventOrThrow(h3Event, eventId)
   const authorization = await resolveEventAuthorization(h3Event, eventId)
   const approvedApplication = await getApprovedUserApplication(database, eventId, actor.platformUser.id)
+  const canClaimCredits = Boolean(approvedApplication) || authorization.isStaff
 
-  if (!authorization.isEventAdmin && !approvedApplication) {
+  if (!authorization.isEventAdmin && !canClaimCredits) {
     throw new ApiError({
       statusCode: 403,
       code: 'event_credit_access_denied',
-      message: 'This operation requires approved participant access or event admin access.',
+      message: 'This operation requires approved participant, event staff, or event admin access.',
       details: {
         eventId,
         userId: actor.platformUser.id
@@ -190,7 +191,8 @@ export async function requireEventCreditsViewAccess(h3Event: H3Event, eventId: s
     database,
     event,
     authorization,
-    approvedApplication
+    approvedApplication,
+    canClaimCredits
   }
 }
 
@@ -199,13 +201,14 @@ export async function requireEventCreditClaimAccess(h3Event: H3Event, eventId: s
   const database = getDatabase(h3Event)
   const event = await getVisibleEventOrThrow(h3Event, eventId)
   const offer = await getEventCreditOfferOrThrow(database, eventId, creditId)
+  const authorization = await resolveEventAuthorization(h3Event, eventId)
   const approvedApplication = await getApprovedUserApplication(database, eventId, actor.platformUser.id)
 
-  if (!approvedApplication) {
+  if (!approvedApplication && !authorization.isStaff) {
     throw new ApiError({
       statusCode: 403,
       code: 'event_credit_claim_denied',
-      message: 'Only approved participants can claim event credits.',
+      message: 'Only approved participants and event staff can claim event credits.',
       details: {
         eventId,
         creditId,
@@ -219,6 +222,7 @@ export async function requireEventCreditClaimAccess(h3Event: H3Event, eventId: s
     database,
     event,
     offer,
+    authorization,
     approvedApplication
   }
 }

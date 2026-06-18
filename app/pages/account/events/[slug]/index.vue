@@ -237,7 +237,10 @@ const initialParticipationRecord = [
 const initialApplicationStatus = initialParticipationRecord?.application?.status
   ?? initialAccessRecord?.applicationStatus
   ?? null
-const initialParticipantCreditsResponse = initialApplicationStatus === 'approved'
+const initialHasStaffCreditAccess = actor.value.kind === 'platform_user'
+  && actor.value.eventRoles.some(role => role.eventId === initialEvent.id && role.isStaff)
+const initialCanClaimCredits = initialApplicationStatus === 'approved' || initialHasStaffCreditAccess
+const initialParticipantCreditsResponse = initialCanClaimCredits
   ? await requestFetch<EventCreditApiListResponse<ParticipantEventCreditOffer>>(`/api/events/${initialEvent.id}/credits`)
   : { data: [] }
 const toast = useToast()
@@ -321,6 +324,7 @@ const currentEventRole = computed(() => {
 const currentStaffTrackId = computed(() =>
   currentEventRole.value?.isStaff ? currentEventRole.value.staffTrackId : null
 )
+const hasStaffCreditAccess = computed(() => currentEventRole.value?.isStaff === true)
 const accountTrackViewerMode = computed<'participant' | 'all-staff' | 'track-staff'>(() => {
   if (canAdmin.value) {
     return 'all-staff'
@@ -414,7 +418,7 @@ async function setCertificateGenerationDisabled(disabled: boolean) {
     isCertificateVisibilityPending.value = false
   }
 }
-const canClaimCredits = computed(() => applicationStatus.value === 'approved')
+const canClaimCredits = computed(() => applicationStatus.value === 'approved' || hasStaffCreditAccess.value)
 const hasCreditInventory = computed(() =>
   participantCreditOffers.value.some(offer => offer.totalCount > 0)
 )

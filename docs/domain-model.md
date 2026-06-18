@@ -102,7 +102,7 @@ Key characteristics:
 - The current application field configuration applies when a participant views or submits the form. Changing the configuration does not rewrite existing application records.
 - Each event can optionally reference event-specific application terms.
 - A configured Discord server URL is visible only in the account-scoped event workspace for approved participants, judges, staff, event admins, and platform admins.
-- Each event can define credit offers with uploaded redeemable values for approved participants.
+- Each event can define credit offers with uploaded redeemable values for approved participants and event staff.
 - Hackathon and Build events can define ordered tracks with a participant-facing name, short description, full participant guidelines, staff instructions, and resource links.
 
 Rules:
@@ -548,7 +548,7 @@ Operational rules:
 
 ### EventCreditOffer
 
-An event-scoped credit offer that approved participants can claim.
+An event-scoped credit offer that approved participants and event staff can claim.
 
 Examples:
 
@@ -573,10 +573,10 @@ Rules:
 
 - Each credit code belongs to exactly one credit offer.
 - A credit code stores one redeemable value, which can be a code or a URL.
-- A credit code is either unclaimed or permanently assigned to one participant.
-- Only approved participants can claim event credits.
-- A participant can claim at most one credit code from a given credit offer.
-- Claiming a credit code permanently reveals that assigned value to the participant on later visits.
+- A credit code is either unclaimed or permanently assigned to one claiming user.
+- Only approved participants and event staff can claim event credits.
+- A claiming user can claim at most one credit code from a given credit offer.
+- Claiming a credit code permanently reveals that assigned value to the claiming user on later visits.
 
 ### Prize
 
@@ -709,12 +709,12 @@ Judging applies only to Hackathon events.
 
 ### Event Credits
 
-- Event credits are participant benefits, not winner prizes.
+- Event credits are account benefits, not winner prizes.
 - Event credits do not depend on winner announcement or prize-redemption workflow.
 - Event admins and platform admins can manage event credits for any event type.
-- Only approved participants can claim event credits.
-- Approved participants see event credits in the account event workspace only when uploaded credit inventory exists for the event.
-- A participant can claim at most one uploaded value from each credit offer.
+- Only approved participants and event staff can claim event credits.
+- Approved participants and event staff see event credits in the account event workspace only when uploaded credit inventory exists for the event.
+- A claiming user can claim at most one uploaded value from each credit offer.
 
 ## Compliance
 

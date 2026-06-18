@@ -19,7 +19,7 @@ type EventCreditCodeRecord = typeof eventCreditCodes.$inferSelect
 
 export default defineApiHandler(async (h3Event) => {
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
-  const { actor, database, approvedApplication } = await requireEventCreditsViewAccess(h3Event, eventId)
+  const { actor, database, canClaimCredits } = await requireEventCreditsViewAccess(h3Event, eventId)
   const offers: EventCreditOfferRecord[] = await listEventCreditOffers(database, eventId)
   const codes: EventCreditCodeRecord[] = await listEventCreditCodesForEvent(database, eventId)
   const codesByOfferId = new Map<string, EventCreditCodeRecord[]>()
@@ -34,7 +34,7 @@ export default defineApiHandler(async (h3Event) => {
     offers.map(offer => serializeParticipantEventCreditOffer(
       offer,
       codesByOfferId.get(offer.id) ?? [],
-      approvedApplication ? actor.platformUser.id : null
+      canClaimCredits ? actor.platformUser.id : null
     )),
     {
       total: offers.length

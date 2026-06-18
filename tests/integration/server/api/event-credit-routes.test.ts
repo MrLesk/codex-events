@@ -11,6 +11,7 @@ import {
   auditLogs,
   eventCreditCodes,
   eventCreditOffers,
+  eventRoleAssignments,
   events,
   eventTermsDocuments,
   platformDocuments,
@@ -80,6 +81,7 @@ describe('TASK-220 event credit routes', () => {
       eventType?: 'hackathon' | 'meetup' | 'build'
       includeApprovedApplicationFor?: string[]
       includeSubmittedApplicationFor?: string[]
+      includeStaffRoleFor?: string[]
     }
   ) {
     const eventType = options?.eventType ?? 'hackathon'
@@ -109,10 +111,16 @@ describe('TASK-220 event credit routes', () => {
         auth0Subject: 'auth0|submitted_user',
         email: 'submitted@example.com',
         displayName: 'Submitted User'
+      },
+      {
+        id: 'staff_user',
+        auth0Subject: 'auth0|staff_user',
+        email: 'staff@example.com',
+        displayName: 'Staff User'
       }
     ])
 
-    for (const userId of ['platform_admin', 'regular_user', 'other_user', 'submitted_user']) {
+    for (const userId of ['platform_admin', 'regular_user', 'other_user', 'submitted_user', 'staff_user']) {
       await seedCurrentPlatformConsent(harness, userId)
     }
 
@@ -181,6 +189,21 @@ describe('TASK-220 event credit routes', () => {
 
     if (applicationRows.length > 0) {
       await harness.database.insert(userApplications).values(applicationRows)
+    }
+
+    const staffRows = (options?.includeStaffRoleFor ?? []).map(userId => ({
+      id: `staff_role_${userId}`,
+      eventId: 'event_1',
+      userId,
+      role: 'staff' as const,
+      isInJudgePool: false,
+      isStaff: true,
+      staffTrackId: null,
+      createdAt: '2026-03-22T09:00:00.000Z'
+    }))
+
+    if (staffRows.length > 0) {
+      await harness.database.insert(eventRoleAssignments).values(staffRows)
     }
   }
 
@@ -533,6 +556,105 @@ describe('TASK-220 event credit routes', () => {
     })
   })
 
+  test('staff can list and claim credits without admin inventory access', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/events/:eventId/credits', handler: creditsGetHandler },
+        { method: 'post', path: '/api/events/:eventId/credits', handler: creditsPostHandler },
+        { method: 'get', path: '/api/events/:eventId/admin/credits', handler: adminCreditsGetHandler },
+        { method: 'post', path: '/api/events/:eventId/credits/:creditId/actions/claim', handler: creditClaimPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|staff_user',
+        email: 'staff@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedCreditsContext(harness, {
+      includeStaffRoleFor: ['staff_user']
+    })
+
+    await harness.database.insert(eventCreditOffers).values({
+      id: 'credit_offer_1',
+      eventId: 'event_1',
+      name: 'Staff-accessible credits',
+      description: 'Redeem this code after the event.',
+      displayOrder: 1,
+      createdAt: '2026-03-22T12:00:00.000Z',
+      updatedAt: '2026-03-22T12:00:00.000Z'
+    })
+    await harness.database.insert(eventCreditCodes).values([
+      {
+        id: 'credit_code_1',
+        creditOfferId: 'credit_offer_1',
+        value: 'STAFF-1',
+        createdAt: '2026-03-22T12:01:00.000Z'
+      },
+      {
+        id: 'credit_code_2',
+        creditOfferId: 'credit_offer_1',
+        value: 'STAFF-2',
+        createdAt: '2026-03-22T12:02:00.000Z'
+      }
+    ])
+
+    const listResponse = await harness.request('/api/events/event_1/credits')
+    expect(listResponse.status).toBe(200)
+    expect(await listResponse.json()).toMatchObject({
+      data: [
+        {
+          id: 'credit_offer_1',
+          availableCount: 2,
+          totalCount: 2,
+          claimedCode: null
+        }
+      ]
+    })
+
+    const adminInventoryResponse = await harness.request('/api/events/event_1/admin/credits')
+    expect(adminInventoryResponse.status).toBe(403)
+
+    const createResponse = await harness.request('/api/events/event_1/credits', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Blocked offer',
+        description: 'Staff cannot manage credit offers.'
+      })
+    })
+    expect(createResponse.status).toBe(403)
+
+    const claimResponse = await harness.request('/api/events/event_1/credits/credit_offer_1/actions/claim', {
+      method: 'POST'
+    })
+    expect(claimResponse.status).toBe(200)
+    expect(await claimResponse.json()).toMatchObject({
+      data: {
+        id: 'credit_offer_1',
+        availableCount: 1,
+        claimedCode: {
+          value: 'STAFF-1'
+        }
+      }
+    })
+
+    const secondClaimResponse = await harness.request('/api/events/event_1/credits/credit_offer_1/actions/claim', {
+      method: 'POST'
+    })
+    expect(secondClaimResponse.status).toBe(200)
+    expect(await secondClaimResponse.json()).toMatchObject({
+      data: {
+        claimedCode: {
+          value: 'STAFF-1'
+        }
+      }
+    })
+
+    const claimedRows = await harness.database.query.eventCreditCodes.findMany({
+      where: eq(eventCreditCodes.claimedByUserId, 'staff_user')
+    })
+    expect(claimedRows).toHaveLength(1)
+  })
+
   test('claiming credits requires an approved application', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -565,7 +687,7 @@ describe('TASK-220 event credit routes', () => {
     expect(await response.json()).toEqual({
       error: {
         code: 'event_credit_claim_denied',
-        message: 'Only approved participants can claim event credits.',
+        message: 'Only approved participants and event staff can claim event credits.',
         details: {
           eventId: 'event_1',
           creditId: 'credit_offer_1',
