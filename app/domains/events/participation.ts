@@ -92,6 +92,11 @@ export interface EventParticipationPrimaryAction {
   label: string
 }
 
+export interface EventParticipationTrackSummary {
+  id: string
+  name: string
+}
+
 export interface EventParticipationOutcomeNotice {
   color: 'success' | 'info' | 'neutral'
   title: string
@@ -180,6 +185,27 @@ export function getEventParticipationPrimaryAction(
     href: `/account/events/${record.event.slug}`,
     label: 'Open overview'
   }
+}
+
+export function getSelectedBuildTrackOverviewTrack(input: {
+  eventType: PublicEventType
+  applicationStatus: EventParticipationApplicationSummary['status'] | null
+  canSelectTrack: boolean
+  selectedTrackId: string | null | undefined
+  tracks: EventParticipationTrackSummary[]
+}) {
+  const selectedTrackId = input.selectedTrackId?.trim() ?? ''
+
+  if (
+    input.eventType !== 'build'
+    || input.applicationStatus !== 'approved'
+    || !input.canSelectTrack
+    || !selectedTrackId
+  ) {
+    return null
+  }
+
+  return input.tracks.find(track => track.id === selectedTrackId) ?? null
 }
 
 export function getEventParticipationCertificateAction(

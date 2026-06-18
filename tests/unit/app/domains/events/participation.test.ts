@@ -12,6 +12,7 @@ import {
   getEventParticipationOutcomeNotice,
   getEventParticipationRankNotice,
   getEventParticipationPrimaryAction,
+  getSelectedBuildTrackOverviewTrack,
   getParticipationStageColor,
   getParticipationStatusColor,
   isEventParticipationUpcoming
@@ -32,6 +33,7 @@ function buildApplication(
     isCheckedIn: false,
     certificateHiddenAt: null,
     certificateRevokedAt: null,
+    selectedTrackId: null,
     updatedAt: '2026-03-10T09:00:00Z',
     ...overrides
   }
@@ -166,6 +168,74 @@ describe('event participation badge helpers', () => {
       href: '/account/events/vienna',
       label: 'Open overview'
     })
+  })
+
+  test('resolves the selected Build track for the overview notice', () => {
+    const tracks = [
+      { id: 'track-beginner', name: 'Beginner developer' },
+      { id: 'track-advanced', name: 'Advanced power user' }
+    ]
+
+    expect(getSelectedBuildTrackOverviewTrack({
+      eventType: 'build',
+      applicationStatus: 'approved',
+      canSelectTrack: true,
+      selectedTrackId: ' track-advanced ',
+      tracks
+    })).toEqual(tracks[1])
+  })
+
+  test.each([
+    {
+      name: 'non-Build events',
+      input: {
+        eventType: 'hackathon' as const,
+        applicationStatus: 'approved' as const,
+        canSelectTrack: true,
+        selectedTrackId: 'track-beginner'
+      }
+    },
+    {
+      name: 'submitted applications',
+      input: {
+        eventType: 'build' as const,
+        applicationStatus: 'submitted' as const,
+        canSelectTrack: true,
+        selectedTrackId: 'track-beginner'
+      }
+    },
+    {
+      name: 'locked track selection',
+      input: {
+        eventType: 'build' as const,
+        applicationStatus: 'approved' as const,
+        canSelectTrack: false,
+        selectedTrackId: 'track-beginner'
+      }
+    },
+    {
+      name: 'missing track selection',
+      input: {
+        eventType: 'build' as const,
+        applicationStatus: 'approved' as const,
+        canSelectTrack: true,
+        selectedTrackId: null
+      }
+    },
+    {
+      name: 'unknown track selection',
+      input: {
+        eventType: 'build' as const,
+        applicationStatus: 'approved' as const,
+        canSelectTrack: true,
+        selectedTrackId: 'track-missing'
+      }
+    }
+  ])('hides the selected Build track overview notice for $name', ({ input }) => {
+    expect(getSelectedBuildTrackOverviewTrack({
+      ...input,
+      tracks: [{ id: 'track-beginner', name: 'Beginner developer' }]
+    })).toBeNull()
   })
 
   test('links to the certificate for completed checked-in approved participation', () => {

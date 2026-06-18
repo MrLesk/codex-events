@@ -76,7 +76,10 @@ import {
   type PublishedEventRosterLoadState,
   type PublishedEventRosterMember
 } from '~/domains/events/published-roster'
-import { getEventParticipationOutcomeNotice } from '~/domains/events/participation'
+import {
+  getEventParticipationOutcomeNotice,
+  getSelectedBuildTrackOverviewTrack
+} from '~/domains/events/participation'
 import {
   formatParticipantApplicationStatus,
   getParticipantApplicationSubmittedNoticeContent,
@@ -360,6 +363,15 @@ const canManageParticipantCertificateGeneration = computed(() => {
 const isCertificateGenerationDisabled = computed(() => Boolean(participationRecord.value?.application?.certificateHiddenAt))
 const selectedTrackId = computed(() => participationRecord.value?.application?.selectedTrackId ?? null)
 const accountEventTracks = computed(() => event.value.tracks ?? [])
+const selectedParticipantTrack = computed(() => {
+  const normalizedSelectedTrackId = selectedTrackId.value?.trim() ?? ''
+
+  if (!normalizedSelectedTrackId) {
+    return null
+  }
+
+  return accountEventTracks.value.find(track => track.id === normalizedSelectedTrackId) ?? null
+})
 const canSelectParticipantTrack = computed(() =>
   accountTrackViewerMode.value === 'participant'
   && (applicationStatus.value === 'submitted' || applicationStatus.value === 'approved')
@@ -367,7 +379,19 @@ const canSelectParticipantTrack = computed(() =>
   && accountEventTracks.value.length > 0
 )
 const showTrackSelectionOverviewPrompt = computed(() =>
-  canSelectParticipantTrack.value && !selectedTrackId.value
+  canSelectParticipantTrack.value && !selectedParticipantTrack.value
+)
+const selectedBuildTrackOverviewTrack = computed(() =>
+  getSelectedBuildTrackOverviewTrack({
+    eventType: event.value.eventType,
+    applicationStatus: applicationStatus.value,
+    canSelectTrack: canSelectParticipantTrack.value,
+    selectedTrackId: selectedTrackId.value,
+    tracks: accountEventTracks.value
+  })
+)
+const showSelectedBuildTrackOverviewNotice = computed(() =>
+  Boolean(selectedBuildTrackOverviewTrack.value)
 )
 const participantCertificatePath = computed(() => {
   if (
@@ -738,6 +762,7 @@ const lumaSyncNoticeDescription = computed(() =>
 const showOverviewStatusNotices = computed(() =>
   applicationSubmittedNoticeVisible.value
   || showOverviewApplicationStatusBanner.value
+  || showSelectedBuildTrackOverviewNotice.value
   || Boolean(participantOutcomeNotice.value)
   || showLumaSyncNotice.value
 )
@@ -1109,6 +1134,58 @@ useSeoMeta({
             :title="applicationStatusNoticeTitle"
             :description="applicationStatusSummary"
           />
+
+          <section
+            v-if="showSelectedBuildTrackOverviewNotice"
+            data-testid="account-event-selected-track-notice"
+            class="rounded-xl !border !border-sky-500/25 !bg-sky-500/[0.12] px-4 py-4 text-sky-950 !shadow-[0_18px_44px_-34px_rgba(2,132,199,0.7)] !backdrop-blur-xl dark:!border-sky-300/30 dark:!bg-sky-300/[0.10] dark:text-sky-100"
+          >
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div class="flex min-w-0 gap-4">
+                <div
+                  class="grid size-11 shrink-0 place-items-center rounded-xl bg-sky-600 text-white shadow-[0_12px_28px_-18px_rgba(2,132,199,0.9)] dark:bg-sky-400 dark:text-sky-950"
+                  aria-hidden="true"
+                >
+                  <AppIcon
+                    name="i-lucide-map"
+                    class="size-5"
+                  />
+                </div>
+
+                <div class="min-w-0 space-y-2">
+                  <div class="flex flex-wrap items-center gap-3">
+                    <h2 class="text-base font-semibold text-current">
+                      Your selected track
+                    </h2>
+                    <AppBadge
+                      color="info"
+                      variant="outline"
+                      class="rounded-full bg-white/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] dark:bg-black/20"
+                    >
+                      Track selected
+                    </AppBadge>
+                  </div>
+
+                  <p class="text-2xl font-semibold tracking-normal text-current">
+                    {{ selectedBuildTrackOverviewTrack?.name }}
+                  </p>
+                  <p class="max-w-[56rem] text-sm leading-6 text-current/85">
+                    This is the track you'll follow for this Build event. Open Details to review track resources or choose another track.
+                  </p>
+                </div>
+              </div>
+
+              <AppButton
+                :to="detailsTabHref"
+                color="neutral"
+                variant="solid"
+                trailing-icon="i-lucide-arrow-up-right"
+                class="w-fit shrink-0 rounded-lg bg-white px-4 py-2 text-sky-950 hover:bg-white/90 dark:bg-white dark:text-sky-950 dark:hover:bg-sky-50"
+              >
+                Change track
+              </AppButton>
+            </div>
+          </section>
 
           <section
             v-if="showLumaSyncNotice"
