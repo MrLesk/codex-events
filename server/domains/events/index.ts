@@ -351,6 +351,7 @@ const eventConfigShape = {
   bannerImageUrl: nullableUrlSchema,
   discordServerUrl: nullableHttpUrlSchema,
   lumaEventUrl: nullableHttpUrlSchema,
+  slidesUrl: nullableHttpUrlSchema,
   lumaEventApiId: nullableLumaEventApiIdSchema,
   lumaApiKey: nullableLumaApiKeySchema,
   city: z.string().trim().min(1),
@@ -437,6 +438,7 @@ export const updateEventBodySchema = z.object({
   bannerImageUrl: eventConfigShape.bannerImageUrl.optional(),
   discordServerUrl: eventConfigShape.discordServerUrl.optional(),
   lumaEventUrl: eventConfigShape.lumaEventUrl.optional(),
+  slidesUrl: eventConfigShape.slidesUrl.optional(),
   lumaEventApiId: eventConfigShape.lumaEventApiId.optional(),
   lumaApiKey: eventConfigShape.lumaApiKey.optional(),
   city: eventConfigShape.city.optional(),
@@ -1549,14 +1551,16 @@ export async function canViewRestrictedEventDetails(h3Event: H3Event, eventId: s
 
 export async function resolveVisibleEventRestrictedFields(
   h3Event: H3Event,
-  eventRecord: Pick<EventRecord, 'id' | 'address' | 'discordServerUrl'>
+  eventRecord: Pick<EventRecord, 'id' | 'address' | 'discordServerUrl' | 'slidesUrl'>
 ) {
   const canViewDetails = await canViewRestrictedEventDetails(h3Event, eventRecord.id)
   const configuredDiscordServerUrl = eventRecord.discordServerUrl?.trim()
+  const configuredSlidesUrl = eventRecord.slidesUrl?.trim()
 
   return {
     address: canViewDetails ? eventRecord.address : '',
-    discordServerUrl: canViewDetails && configuredDiscordServerUrl ? configuredDiscordServerUrl : null
+    discordServerUrl: canViewDetails && configuredDiscordServerUrl ? configuredDiscordServerUrl : null,
+    slidesUrl: canViewDetails && configuredSlidesUrl ? configuredSlidesUrl : null
   }
 }
 
@@ -1914,6 +1918,7 @@ export function serializeAdminEvent(
     hiddenAt: event.hiddenAt,
     hiddenByUserId: event.hiddenByUserId,
     hiddenReason: event.hiddenReason,
+    slidesUrl: event.slidesUrl,
     lumaApiKey: event.lumaApiKey,
     lumaWebhookStatus: event.lumaWebhookStatus,
     lumaWebhookError: event.lumaWebhookError,

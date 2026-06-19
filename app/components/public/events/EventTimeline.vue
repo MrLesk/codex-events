@@ -11,6 +11,7 @@ import {
 const props = defineProps<{
   event: PublicEvent
   discordServerUrl?: string | null
+  slidesUrl?: string | null
   showAddress?: boolean
 }>()
 
@@ -70,6 +71,16 @@ const eventDetailRows = computed(() => {
       label: 'Discord server',
       value: 'Open server',
       href: discordServerUrl
+    })
+  }
+
+  const slidesUrl = props.slidesUrl?.trim()
+
+  if (slidesUrl) {
+    rows.push({
+      label: 'Slides',
+      value: 'Open slides',
+      href: slidesUrl
     })
   }
 

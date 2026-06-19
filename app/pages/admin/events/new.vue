@@ -39,6 +39,7 @@ async function createEvent(form: EventFormState) {
         slug: form.slug,
         discordServerUrl: form.discordServerUrl.trim() || null,
         lumaEventUrl: form.lumaEventUrl.trim() || null,
+        slidesUrl: form.slidesUrl.trim() || null,
         lumaEventApiId: form.lumaEventApiId.trim() || null,
         lumaApiKey: form.lumaApiKey.trim() || null,
         description: form.description,

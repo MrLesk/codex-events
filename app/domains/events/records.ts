@@ -58,6 +58,7 @@ export interface EventRecord {
   bannerImageUrl: string | null
   discordServerUrl?: string | null
   lumaEventUrl: string | null
+  slidesUrl?: string | null
   lumaEventApiId: string | null
   lumaApiKey?: string | null
   lumaWebhookStatus?: 'not_configured' | 'configured' | 'failed'

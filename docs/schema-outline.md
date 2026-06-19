@@ -91,6 +91,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `banner_image_url`
 - `discord_server_url`
 - `luma_event_url`
+- `slides_url`
 - `luma_event_api_id`
 - `luma_api_key`
 - `luma_webhook_id`
@@ -218,6 +219,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `require_submission_demo_url` controls whether Hackathon team submissions must include a valid `demo_url`.
 - `address` is always stored for the event, but public serializers suppress it and account-scoped detail reads return it only to approved participants plus judges, staff, event admins, and platform admins.
 - `discord_server_url` is optional because not every event has a dedicated Discord server, and when present it is returned only in account-scoped detail reads for approved participants plus judges, staff, event admins, and platform admins.
+- `slides_url` is optional because not every event has participant-facing slides, and when present it is returned only in account-scoped detail reads for approved participants plus judges, staff, event admins, and platform admins.
 - `background_image_url` stores only the event-specific uploaded background image URL. Event read serializers expose a separate `displayBackgroundImageUrl` derived from this field or from the platform default event background image.
 - `banner_image_url` stores only the event-specific uploaded banner image URL.
 - `luma_event_url` is optional because not every event has a public Luma event page to link.

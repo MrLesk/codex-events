@@ -70,6 +70,16 @@ describe('event config form schema', () => {
     expect(result.error?.issues[0]?.message).toBe('Enter a valid Luma event URL.')
   })
 
+  test('rejects non-http slides URLs', () => {
+    const result = eventConfigFormSchema.safeParse({
+      ...createValidEventFormState(),
+      slidesUrl: 'file:///slides.pdf'
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toBe('Enter a valid slides URL.')
+  })
+
   test('rejects invalid luma event API ids', () => {
     const result = eventConfigFormSchema.safeParse({
       ...createValidEventFormState(),
@@ -95,6 +105,22 @@ describe('event config form schema', () => {
       lumaApiKey: '   '
     }, 'hackathon')).toMatchObject({
       lumaApiKey: null
+    })
+  })
+
+  test('includes the slides URL in configuration patches', () => {
+    expect(buildEventConfigurationPatch({
+      ...createValidEventFormState(),
+      slidesUrl: ' https://example.com/slides '
+    }, 'hackathon')).toMatchObject({
+      slidesUrl: 'https://example.com/slides'
+    })
+
+    expect(buildEventConfigurationPatch({
+      ...createValidEventFormState(),
+      slidesUrl: '   '
+    }, 'hackathon')).toMatchObject({
+      slidesUrl: null
     })
   })
 

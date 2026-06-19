@@ -11,6 +11,7 @@ export interface EventFormState {
   slug: string
   discordServerUrl: string
   lumaEventUrl: string
+  slidesUrl: string
   lumaEventApiId: string
   lumaApiKey: string
   description: string
@@ -327,6 +328,7 @@ const eventConfigFormBaseSchema = z.object({
   slug: slugSchema,
   discordServerUrl: createOptionalHttpUrlSchema('Enter a valid Discord server URL.'),
   lumaEventUrl: createOptionalHttpUrlSchema('Enter a valid Luma event URL.'),
+  slidesUrl: createOptionalHttpUrlSchema('Enter a valid slides URL.'),
   lumaEventApiId: createOptionalLumaEventApiIdSchema('Enter a valid Luma event API ID like evt-123.'),
   lumaApiKey: z.string().trim(),
   description: requiredTextSchema,
@@ -559,6 +561,7 @@ export function createEmptyEventFormState(): EventFormState {
     slug: '',
     discordServerUrl: '',
     lumaEventUrl: '',
+    slidesUrl: '',
     lumaEventApiId: '',
     lumaApiKey: '',
     description: '',
@@ -642,6 +645,7 @@ export function createEventFormState(event: EventRecord): EventFormState {
     slug: event.slug,
     discordServerUrl: event.discordServerUrl ?? '',
     lumaEventUrl: event.lumaEventUrl ?? '',
+    slidesUrl: event.slidesUrl ?? '',
     lumaEventApiId: event.lumaEventApiId ?? '',
     lumaApiKey: event.lumaApiKey ?? '',
     description: event.description,
@@ -727,6 +731,7 @@ export function buildEventConfigurationPatch(configForm: EventFormState, eventTy
     slug: configForm.slug,
     discordServerUrl: configForm.discordServerUrl.trim() || null,
     lumaEventUrl: configForm.lumaEventUrl.trim() || null,
+    slidesUrl: configForm.slidesUrl.trim() || null,
     lumaEventApiId: configForm.lumaEventApiId.trim() || null,
     lumaApiKey: configForm.lumaApiKey.trim() || null,
     description: configForm.description,

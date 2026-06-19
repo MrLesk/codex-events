@@ -84,6 +84,7 @@ Key characteristics:
 - Each event can define structured agenda items for public schedule display and admin editing.
 - Each event can be marked as an in-person event.
 - Each event can optionally reference a public Luma event URL.
+- Each event can optionally reference a slides URL for participants and event operators.
 - Each event can optionally store a Luma event API ID and event-specific Luma API key used for operational sync.
 - Each event stores its Luma webhook ID, signing secret, status, registration time, and concise registration error when webhook setup has been attempted.
 - A configured Luma event API ID maps to at most one event.
@@ -102,6 +103,7 @@ Key characteristics:
 - The current application field configuration applies when a participant views or submits the form. Changing the configuration does not rewrite existing application records.
 - Each event can optionally reference event-specific application terms.
 - A configured Discord server URL is visible only in the account-scoped event workspace for approved participants, judges, staff, event admins, and platform admins.
+- A configured slides URL is visible only in the account-scoped event workspace for approved participants, judges, staff, event admins, and platform admins.
 - Each event can define credit offers with uploaded redeemable values for approved participants and event staff.
 - Hackathon and Build events can define ordered tracks with a participant-facing name, short description, full participant guidelines, staff instructions, and resource links.
 

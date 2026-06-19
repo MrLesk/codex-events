@@ -354,6 +354,22 @@ describe('shared database migration', () => {
     }])
   })
 
+  test('stores the slides URL column on events with a null default', async () => {
+    const now = isoTimestamp(0)
+    await seedUser(database, 'creator_1', now)
+    await seedEvent(database, 'event_1', 'draft', now, 'creator_1')
+
+    const eventRow = await database.prepare(`
+      select slides_url
+      from events
+      where id = ?
+    `).all<{ slides_url: string | null }>('event_1')
+
+    expect(eventRow.results).toEqual([{
+      slides_url: null
+    }])
+  })
+
   test('stores the submission public visibility column with a false default', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'creator_1', now)

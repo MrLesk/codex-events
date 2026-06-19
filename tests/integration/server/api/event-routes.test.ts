@@ -1795,6 +1795,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         slug: 'public-event',
         description: 'Target public detail',
         discordServerUrl: 'https://discord.gg/private-codex',
+        slidesUrl: 'https://example.com/private-slides',
         city: 'Vienna',
         country: 'Austria',
         address: 'Address',
@@ -1886,6 +1887,7 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect(payload.data).not.toHaveProperty('updatedAt')
     expect(payload.data.address).toBe('')
     expect(payload.data).not.toHaveProperty('discordServerUrl')
+    expect(payload.data).not.toHaveProperty('slidesUrl')
     expect(payload.data.currentTerms.applicationTerms).not.toHaveProperty('id')
     expect(payload.data.currentTerms.winnerTerms).not.toHaveProperty('id')
     expect(payload.data.tracks).toEqual([
@@ -1906,6 +1908,7 @@ describe('TASK-3.5 event CRUD routes', () => {
 
     expect(fullTracksPayload.data.address).toBe('')
     expect(fullTracksPayload.data).not.toHaveProperty('discordServerUrl')
+    expect(fullTracksPayload.data).not.toHaveProperty('slidesUrl')
     expect(fullTracksPayload.data.tracks).toEqual([
       {
         name: 'Agents',
@@ -3338,6 +3341,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         address: '',
         state: 'registration_open',
         discordServerUrl: null,
+        slidesUrl: null,
         blindReviewCount: 2,
         pitchReviewEnabled: true,
         blindScoreWeightPercent: 60,
@@ -3390,6 +3394,7 @@ describe('TASK-3.5 event CRUD routes', () => {
       slug: 'private-discord-event',
       description: 'Private Discord Event',
       discordServerUrl: 'https://discord.gg/private-codex',
+      slidesUrl: 'https://example.com/participant-slides',
       city: 'Vienna',
       country: 'Austria',
       address: 'Address',
@@ -3432,6 +3437,7 @@ describe('TASK-3.5 event CRUD routes', () => {
       data: {
         address: 'Address',
         discordServerUrl: 'https://discord.gg/private-codex',
+        slidesUrl: 'https://example.com/participant-slides',
         hasGallery: false
       }
     })
@@ -3469,6 +3475,7 @@ describe('TASK-3.5 event CRUD routes', () => {
       slug: 'private-discord-event',
       description: 'Private Discord Event',
       discordServerUrl: 'https://discord.gg/private-codex',
+      slidesUrl: 'https://example.com/participant-slides',
       city: 'Vienna',
       country: 'Austria',
       address: 'Address',
@@ -3511,7 +3518,8 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect(submittedPayload).toMatchObject({
       data: {
         address: '',
-        discordServerUrl: null
+        discordServerUrl: null,
+        slidesUrl: null
       }
     })
     expect(submittedPayload.data).not.toHaveProperty('hasGallery')
@@ -3551,6 +3559,7 @@ describe('TASK-3.5 event CRUD routes', () => {
       slug: 'private-discord-event',
       description: 'Private Discord Event',
       discordServerUrl: 'https://discord.gg/private-codex',
+      slidesUrl: 'https://example.com/judge-slides',
       city: 'Vienna',
       country: 'Austria',
       address: 'Address',
@@ -3578,6 +3587,7 @@ describe('TASK-3.5 event CRUD routes', () => {
       data: {
         address: 'Address',
         discordServerUrl: 'https://discord.gg/private-codex',
+        slidesUrl: 'https://example.com/judge-slides',
         hasGallery: false
       }
     })
@@ -3699,6 +3709,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         slug: 'new-event',
         discordServerUrl: 'https://discord.gg/new-event',
         lumaEventUrl: 'https://lu.ma/new-event',
+        slidesUrl: 'https://example.com/new-event-slides',
         lumaEventApiId: 'evt-newevent123',
         description: 'New event',
         agendaItems: [
@@ -3750,6 +3761,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         name: 'New Event',
         slug: 'new-event',
         lumaEventUrl: 'https://lu.ma/new-event',
+        slidesUrl: 'https://example.com/new-event-slides',
         lumaEventApiId: 'evt-newevent123',
         state: 'draft',
         autoApproveApplications: true,
@@ -3787,6 +3799,7 @@ describe('TASK-3.5 event CRUD routes', () => {
       eventType: 'hackathon',
       discordServerUrl: 'https://discord.gg/new-event',
       lumaEventUrl: 'https://lu.ma/new-event',
+      slidesUrl: 'https://example.com/new-event-slides',
       lumaEventApiId: 'evt-newevent123',
       autoApproveApplications: true,
       blindReviewCount: 2,
@@ -4173,6 +4186,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         description: 'Updated description',
         discordServerUrl: 'https://discord.gg/patch-event',
         lumaEventUrl: 'https://lu.ma/patch-event',
+        slidesUrl: 'https://example.com/patch-event-slides',
         lumaEventApiId: 'evt-patchevent123',
         agendaItems: [
           {
@@ -4216,6 +4230,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         state: 'registration_open',
         description: 'Updated description',
         lumaEventUrl: 'https://lu.ma/patch-event',
+        slidesUrl: 'https://example.com/patch-event-slides',
         lumaEventApiId: 'evt-patchevent123',
         agendaItems: [
           expect.objectContaining({
@@ -4249,6 +4264,7 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect(updatedEvent).toMatchObject({
       discordServerUrl: 'https://discord.gg/patch-event',
       lumaEventUrl: 'https://lu.ma/patch-event',
+      slidesUrl: 'https://example.com/patch-event-slides',
       lumaEventApiId: 'evt-patchevent123',
       autoApproveApplications: true,
       blindReviewCount: 0,

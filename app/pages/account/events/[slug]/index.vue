@@ -152,6 +152,7 @@ type AccountWorkspaceEvent = Omit<PublicEvent, 'tracks'> & {
   updatedAt: string
   hasGallery?: boolean
   discordServerUrl?: string | null
+  slidesUrl?: string | null
   tracks?: Array<{
     id: string
     name: string
@@ -1608,6 +1609,7 @@ useSeoMeta({
         <LazyEventTimeline
           :event="event"
           :discord-server-url="event.discordServerUrl ?? null"
+          :slides-url="event.slidesUrl ?? null"
           :show-address="canViewRestrictedEventDetails"
         />
 

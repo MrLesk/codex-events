@@ -49,6 +49,7 @@ export default defineApiHandler(async (h3Event) => {
     bannerImageUrl: body.bannerImageUrl ?? null,
     discordServerUrl: body.discordServerUrl ?? null,
     lumaEventUrl: body.lumaEventUrl ?? null,
+    slidesUrl: body.slidesUrl ?? null,
     lumaEventApiId: body.lumaEventApiId ?? null,
     lumaApiKey: body.lumaApiKey ?? null,
     city: body.city,

@@ -100,6 +100,7 @@ describe('shared schema foundation', () => {
 
     expect(eventColumns.lumaEventUrl.name).toBe('luma_event_url')
     expect(eventColumns.discordServerUrl.name).toBe('discord_server_url')
+    expect(eventColumns.slidesUrl.name).toBe('slides_url')
     expect(eventColumns.lumaEventApiId.name).toBe('luma_event_api_id')
     expect(eventColumns.lumaApiKey.name).toBe('luma_api_key')
     expect(eventColumns.lumaWebhookId.name).toBe('luma_webhook_id')

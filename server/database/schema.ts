@@ -119,6 +119,7 @@ export const events = sqliteTable(
     bannerImageUrl: text('banner_image_url'),
     discordServerUrl: text('discord_server_url'),
     lumaEventUrl: text('luma_event_url'),
+    slidesUrl: text('slides_url'),
     lumaEventApiId: text('luma_event_api_id'),
     lumaApiKey: text('luma_api_key'),
     lumaWebhookId: text('luma_webhook_id'),

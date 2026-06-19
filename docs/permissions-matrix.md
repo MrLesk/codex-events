@@ -250,6 +250,7 @@ Event credit permissions apply to every event type.
 - Published judge and staff rosters expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
 - Published staff rosters also show whether each staff member supports the whole event or a specific event track. Track-specific staff roster entries include the track ID, name, short description, and display order so participant account pages can highlight staff connected to the participant's selected track.
 - Public event detail pages show track names and short descriptions by default. Links with `tracks=full` also show participant-facing full guidelines and resource links. Account-scoped participant details show full guidelines and resources only for the participant's selected track.
+- Account-scoped event details show the street address, Discord server URL, and slides URL only to approved participants, judges, staff, event admins, and platform admins.
 - Track staff instructions are visible only to platform admins, event admins, whole-event staff, and staff assigned to that track.
 - Approved participants can view event photo galleries for events where they are approved.
 - Judges, staff, event admins, and platform admins can manage event photo galleries for events where they hold that access.

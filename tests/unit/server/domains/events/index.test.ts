@@ -30,6 +30,7 @@ function buildEventRecord(
     bannerImageUrl: null,
     discordServerUrl: null,
     lumaEventUrl: null,
+    slidesUrl: null,
     lumaEventApiId: null,
     city: 'Vienna',
     country: 'Austria',
@@ -412,6 +413,7 @@ describe('event management utilities', () => {
       agendaItems: [],
       tracks: [],
       discordServerUrl: 'https://discord.gg/codex',
+      slidesUrl: 'https://example.com/slides',
       city: 'Vienna',
       country: 'Austria',
       address: 'Fixture Address',
@@ -427,6 +429,7 @@ describe('event management utilities', () => {
     })).toMatchObject({
       eventType: 'hackathon',
       discordServerUrl: 'https://discord.gg/codex',
+      slidesUrl: 'https://example.com/slides',
       blindReviewCount: 2,
       pitchReviewEnabled: true,
       blindScoreWeightPercent: 60,
@@ -436,6 +439,7 @@ describe('event management utilities', () => {
 
     expect(updateEventBodySchema.parse({
       discordServerUrl: 'https://discord.gg/codex',
+      slidesUrl: 'https://example.com/slides',
       blindReviewCount: '0',
       pitchReviewEnabled: false,
       blindScoreWeightPercent: '100',
@@ -443,6 +447,7 @@ describe('event management utilities', () => {
       shortlistFinalistCount: '8'
     })).toMatchObject({
       discordServerUrl: 'https://discord.gg/codex',
+      slidesUrl: 'https://example.com/slides',
       blindReviewCount: 0,
       pitchReviewEnabled: false,
       blindScoreWeightPercent: 100,

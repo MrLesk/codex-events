@@ -697,6 +697,16 @@ const submitConfigForm = handleSubmit(() => {
               <span class="text-xs text-muted">Optional public Luma link.</span>
             </label>
 
+            <label class="grid gap-2">
+              <span class="text-sm font-medium text-toned">Slides URL</span>
+              <AppInput
+                v-model="form.slidesUrl"
+                type="url"
+                placeholder="https://docs.google.com/presentation/..."
+              />
+              <span class="text-xs text-muted">Shown in the account workspace for approved participants, judges, staff, and admins.</span>
+            </label>
+
             <section class="grid gap-4 border-t border-black/8 pt-5 dark:border-white/[0.08]">
               <div class="space-y-1">
                 <h3 class="text-base font-semibold text-highlighted">
