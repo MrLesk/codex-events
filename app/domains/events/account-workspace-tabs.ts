@@ -162,7 +162,7 @@ export function getAccountEventTabAccess(
     availableTabs.push('staff')
   }
 
-  if (isCompetitionEvent && (canJudge || canManage || canViewParticipantsAndTeams)) {
+  if (canJudge || canManage || canViewParticipantsAndTeams) {
     availableTabs.push('feedback')
   }
 

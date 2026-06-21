@@ -137,9 +137,10 @@ describe('getAccountEventTabAccess', () => {
     }).availableTabs).not.toContain('credits')
   })
 
-  test('shows the feedback tab to judges, staff, and admins only', () => {
+  test.each(['hackathon', 'meetup', 'build'] as const)('shows the feedback tab to judges, staff, and admins only for %s events', (eventType) => {
     expect(getAccountEventTabAccess({
       ...hackathonOptions,
+      eventType,
       hasApprovedParticipantAccess: false,
       hasGallery: false,
       hasPublishedPrizes: false,
@@ -150,6 +151,29 @@ describe('getAccountEventTabAccess', () => {
 
     expect(getAccountEventTabAccess({
       ...hackathonOptions,
+      eventType,
+      hasApprovedParticipantAccess: false,
+      hasGallery: false,
+      hasPublishedPrizes: false,
+      canJudge: false,
+      canManage: false,
+      canViewParticipantsAndTeams: true
+    }).availableTabs).toContain('feedback')
+
+    expect(getAccountEventTabAccess({
+      ...hackathonOptions,
+      eventType,
+      hasApprovedParticipantAccess: false,
+      hasGallery: false,
+      hasPublishedPrizes: false,
+      canJudge: false,
+      canManage: true,
+      canViewParticipantsAndTeams: false
+    }).availableTabs).toContain('feedback')
+
+    expect(getAccountEventTabAccess({
+      ...hackathonOptions,
+      eventType,
       hasApprovedParticipantAccess: true,
       hasGallery: false,
       hasPublishedPrizes: false,
@@ -225,9 +249,9 @@ describe('getAccountEventTabAccess', () => {
     })
   })
 
-  test('hides competition-only tabs for registration-only events', () => {
+  test.each(['meetup', 'build'] as const)('hides competition-only tabs for %s events', (eventType) => {
     expect(getAccountEventTabAccess({
-      eventType: 'meetup',
+      eventType,
       hasCreditInventory: true,
       hasPublishedStaff: true,
       hasApprovedParticipantAccess: true,
@@ -238,7 +262,7 @@ describe('getAccountEventTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'details', 'gallery', 'staff', 'participants', 'certificates', 'operations', 'settings'],
+      availableTabs: ['overview', 'credits', 'details', 'gallery', 'staff', 'feedback', 'participants', 'certificates', 'operations', 'settings'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: true
     })
