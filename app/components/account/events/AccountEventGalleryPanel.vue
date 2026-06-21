@@ -4,7 +4,7 @@ import type { ApiListResponse } from '~/lib/api'
 
 import EventGalleryPanel from '~/components/events/EventGalleryPanel.vue'
 import { normalizeApiError } from '~/lib/api'
-import { createEventGalleryUploadItems } from '~/domains/events/gallery'
+import { createEventGalleryUploadBatches, createEventGalleryUploadItems } from '~/domains/events/gallery'
 
 const props = defineProps<{
   eventId: string
@@ -52,18 +52,26 @@ async function uploadPhotos(files: File[]) {
   mutationErrorMessage.value = ''
   uploadingItems.value = createEventGalleryUploadItems(files)
   isUploading.value = true
+  const targetEventId = eventId.value
+  const uploadBatches = createEventGalleryUploadBatches(files)
+  let uploadedCount = 0
 
   try {
-    const formData = new FormData()
+    for (const batch of uploadBatches) {
+      const formData = new FormData()
 
-    for (const file of files) {
-      formData.append('file', file)
+      for (const file of batch) {
+        formData.append('file', file)
+      }
+
+      await $fetch(`/api/events/${targetEventId}/photos`, {
+        method: 'POST',
+        body: formData
+      })
+
+      uploadedCount += batch.length
+      uploadingItems.value = createEventGalleryUploadItems(files.slice(uploadedCount))
     }
-
-    await $fetch(`/api/events/${eventId.value}/photos`, {
-      method: 'POST',
-      body: formData
-    })
 
     await refreshPhotos()
     toast.add({
@@ -74,7 +82,14 @@ async function uploadPhotos(files: File[]) {
       color: 'success'
     })
   } catch (error) {
-    mutationErrorMessage.value = normalizeApiError(error).message
+    const errorMessage = normalizeApiError(error).message
+    mutationErrorMessage.value = uploadedCount > 0
+      ? `${uploadedCount} ${uploadedCount === 1 ? 'photo was' : 'photos were'} added before the upload stopped. ${errorMessage}`
+      : errorMessage
+
+    if (uploadedCount > 0) {
+      await refreshPhotos()
+    }
   } finally {
     isUploading.value = false
     uploadingItems.value = []

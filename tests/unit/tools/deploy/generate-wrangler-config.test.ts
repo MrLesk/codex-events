@@ -127,6 +127,7 @@ describe('deploy Wrangler config generator', () => {
       '3002',
       '3003'
     ])
+    expect(config.ratelimits.find(rateLimit => rateLimit.name === 'AUTHENTICATED_UPLOAD_RATE_LIMITER')?.simple.limit).toBe(60)
     expect(config.observability).toEqual({
       logs: {
         enabled: true,

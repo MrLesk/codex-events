@@ -5192,6 +5192,113 @@ describe('TASK-3.5 event CRUD routes', () => {
     })
   })
 
+  test('event photo uploads persist metadata in batches below D1 parameter limits', async () => {
+    const eventImagesBucket = new InMemoryR2Bucket()
+    const uploadRateLimiter = createRateLimiter()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/events/:eventId/photos', handler: eventPhotosPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|gallery_admin',
+        email: 'gallery-admin@example.com'
+      },
+      cloudflareEnv: {
+        [eventImagesBindingName]: eventImagesBucket,
+        IMAGES: createImagesBinding(),
+        [authenticatedUploadRateLimitBindingName]: uploadRateLimiter
+      },
+      runtimeConfig: {
+        eventImages: {
+          binding: eventImagesBindingName
+        }
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'gallery_admin',
+        auth0Subject: 'auth0|gallery_admin',
+        email: 'gallery-admin@example.com',
+        displayName: 'Gallery Admin'
+      }
+    ])
+    await seedCurrentPlatformConsent(harness, 'gallery_admin')
+    await harness.database.insert(events).values({
+      id: 'event_photos_bulk',
+      eventType: 'hackathon',
+      name: 'Photo Bulk Event',
+      slug: 'photo-bulk-event',
+      description: 'Event with bulk photo uploads',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+    await harness.database.insert(eventRoleAssignments).values({
+      id: 'role_gallery_admin',
+      eventId: 'event_photos_bulk',
+      userId: 'gallery_admin',
+      role: 'event_admin',
+      isInJudgePool: false,
+      isStaff: false,
+      createdAt: '2026-03-22T12:00:00.000Z'
+    })
+
+    const uploadForm = new FormData()
+
+    for (let index = 0; index < 13; index += 1) {
+      uploadForm.append(
+        'file',
+        new Blob([pngSignatureBytes], { type: 'image/png' }),
+        `bulk-upload-${index + 1}.png`
+      )
+    }
+
+    const uploadResponse = await harness.request('/api/events/event_photos_bulk/photos', {
+      method: 'POST',
+      body: uploadForm
+    })
+
+    expect(uploadResponse.status).toBe(200)
+    const uploadPayload = await uploadResponse.json()
+    expect(uploadPayload.data).toHaveLength(13)
+    expect(uploadPayload.data).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        fileName: 'bulk-upload-1.png',
+        isPubliclyVisible: false,
+        uploadedByUserId: 'gallery_admin'
+      }),
+      expect.objectContaining({
+        fileName: 'bulk-upload-13.png',
+        isPubliclyVisible: false,
+        uploadedByUserId: 'gallery_admin'
+      })
+    ]))
+
+    const storedPhotos = await harness.database
+      .select()
+      .from(eventPhotos)
+      .where(eq(eventPhotos.eventId, 'event_photos_bulk'))
+
+    expect(storedPhotos).toHaveLength(13)
+    expect(storedPhotos.every(photo => photo.isPubliclyVisible === false)).toBe(true)
+    expect(uploadRateLimiter.limit).toHaveBeenCalledTimes(1)
+  })
+
   test('public event photo routes expose only publicly visible gallery images', async () => {
     const eventImagesBucket = new InMemoryR2Bucket()
     const previewBytes = new Uint8Array([7, 8, 9, 10])

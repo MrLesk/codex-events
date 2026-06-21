@@ -29,7 +29,7 @@
 			"name": "AUTHENTICATED_UPLOAD_RATE_LIMITER",
 			"namespace_id": "1002",
 			"simple": {
-				"limit": 10,
+				"limit": 60,
 				"period": 60
 			}
 		},

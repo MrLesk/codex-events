@@ -390,7 +390,7 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
         name: 'AUTHENTICATED_UPLOAD_RATE_LIMITER',
         namespace_id: rateLimitNamespaceIds.authenticatedUpload,
         simple: {
-          limit: 10,
+          limit: 60,
           period: 60
         }
       },

@@ -7,6 +7,7 @@ import { apiList } from '#server/http/api-response'
 import { ApiError } from '#server/http/api-error'
 import {
   assertValidEventPhotoPart,
+  chunkEventPhotoRowsForInsert,
   getEventPhotoDimensions,
   listEventPhotoRecords,
   putEventPhotoObject,
@@ -31,15 +32,17 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  const preparedFiles = await Promise.all(fileParts.map(async (part) => {
+  const preparedFiles = []
+
+  for (const part of fileParts) {
     const validFile = assertValidEventPhotoPart(part)
     const dimensions = await getEventPhotoDimensions(h3Event, validFile.data)
 
-    return {
+    preparedFiles.push({
       ...validFile,
       ...dimensions
-    }
-  }))
+    })
+  }
 
   const createdAt = new Date().toISOString()
   const createdRows = preparedFiles.map(file => ({
@@ -62,7 +65,11 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  await database.insert(eventPhotos).values(createdRows)
+  // D1 allows at most 100 bound parameters per statement. Each event photo row
+  // binds nine values, so keep metadata inserts at 11 rows per query.
+  for (const rowBatch of chunkEventPhotoRowsForInsert(createdRows)) {
+    await database.insert(eventPhotos).values(rowBatch)
+  }
 
   for (const row of createdRows) {
     await writeAuditLog(database, {

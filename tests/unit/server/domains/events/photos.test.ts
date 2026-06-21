@@ -7,9 +7,11 @@ import {
   assertValidEventPhotoPart,
   buildEventPhotoImageUrl,
   buildPublicEventPhotoImageUrl,
+  chunkEventPhotoRowsForInsert,
   createEventPhotoPreviewResponse,
   getEventPhotoDimensions,
   eventPhotoMaxBytes,
+  eventPhotoMaxRowsPerInsert,
   eventPhotoObjectKey,
   putEventPhotoObject
 } from '../../../../../server/domains/events/photos'
@@ -57,6 +59,25 @@ describe('event photo utilities', () => {
 
     expect(result.contentType).toBe('image/png')
     expect(result.fileName).toBe('gallery-photo.png')
+  })
+
+  test('chunks photo metadata rows below the D1 bound-parameter limit', () => {
+    const rows = Array.from({ length: eventPhotoMaxRowsPerInsert + 1 }, (_, index) => ({
+      id: `photo_${index}`,
+      eventId: 'event_1',
+      uploadedByUserId: 'user_1',
+      fileName: `photo-${index}.png`,
+      isPubliclyVisible: false,
+      contentType: 'image/png',
+      width: 1600,
+      height: 900,
+      createdAt: '2026-04-19T10:00:00.000Z'
+    }))
+
+    expect(chunkEventPhotoRowsForInsert(rows).map(chunk => chunk.length)).toEqual([
+      eventPhotoMaxRowsPerInsert,
+      1
+    ])
   })
 
   test('rejects unsupported photo bytes', () => {

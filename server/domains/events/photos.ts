@@ -24,6 +24,7 @@ import { assertGuard } from '#server/domains/lifecycle-guard'
 
 export const eventPhotoMaxBytes = 10 * 1024 * 1024
 export const eventPhotoContentTypes = supportedImageContentTypes
+export const eventPhotoMaxRowsPerInsert = 11
 
 export const eventPhotoParamsSchema = routeIdParamsSchema.extend({
   photoId: z.string().trim().min(1)
@@ -223,6 +224,16 @@ export async function putEventPhotoObject(
       }
     }
   )
+}
+
+export function chunkEventPhotoRowsForInsert(rows: Array<typeof eventPhotos.$inferInsert>) {
+  const chunks: Array<Array<typeof eventPhotos.$inferInsert>> = []
+
+  for (let index = 0; index < rows.length; index += eventPhotoMaxRowsPerInsert) {
+    chunks.push(rows.slice(index, index + eventPhotoMaxRowsPerInsert))
+  }
+
+  return chunks
 }
 
 export async function getEventPhotoObject(
