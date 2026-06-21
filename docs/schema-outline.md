@@ -284,6 +284,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - Each row records one protected gallery photo for an event.
 - Original image bytes are stored in object storage keyed by `event_id` and photo `id`.
 - `file_name` is optional because the upload can succeed even when the client omits a stable file name.
+- `created_at` stores the image creation time when the upload can read it from image metadata, otherwise the upload time.
 - `is_publicly_visible` controls whether a gallery photo appears in the public event Gallery tab.
 - Preview variants are derived at read time from the stored original image and are not stored as separate canonical rows.
 - Approved participants can read gallery rows for their events, while judges, staff, event admins, and platform admins can also create, delete, and mark them public.

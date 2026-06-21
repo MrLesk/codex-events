@@ -74,6 +74,7 @@ import {
   publicEventFeedbackRateLimitBindingName
 } from '../../../../server/utils/rate-limit'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
+import { createExifJpegBytes } from '../../../support/backend/exif-image'
 import { stubAuth0Session } from '../../../support/backend/runtime'
 import { eventImageObjectKey } from '../../../../server/domains/events/images'
 
@@ -5107,8 +5108,9 @@ describe('TASK-3.5 event CRUD routes', () => {
     ])
   })
 
-  test('event photo routes let staff upload gallery photos', async () => {
+  test('event photo routes let staff upload gallery photos with EXIF capture time', async () => {
     const eventImagesBucket = new InMemoryR2Bucket()
+    const capturedAt = '2026-06-20T09:51:20.000Z'
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/api/events/:eventId/photos', handler: eventPhotosPostHandler }
@@ -5173,7 +5175,12 @@ describe('TASK-3.5 event CRUD routes', () => {
     })
 
     const uploadForm = new FormData()
-    uploadForm.append('file', new Blob([pngSignatureBytes], { type: 'image/png' }), 'staff-upload.png')
+    uploadForm.append('file', new Blob([
+      createExifJpegBytes({
+        dateTimeOriginal: '2026:06:20 11:51:20',
+        offsetTimeOriginal: '+02:00'
+      })
+    ], { type: 'image/jpeg' }), 'staff-upload.jpeg')
 
     const uploadResponse = await harness.request('/api/events/event_photos_staff/photos', {
       method: 'POST',
@@ -5184,12 +5191,24 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect(await uploadResponse.json()).toMatchObject({
       data: [
         expect.objectContaining({
-          fileName: 'staff-upload.png',
+          fileName: 'staff-upload.jpeg',
+          contentType: 'image/jpeg',
+          createdAt: capturedAt,
           isPubliclyVisible: false,
-          uploadedByUserId: 'staff_user'
+          uploadedByUserId: 'staff_user',
+          previewUrl: expect.stringContaining(`v=${encodeURIComponent(capturedAt)}`)
         })
       ]
     })
+
+    await expect(harness.database.select().from(eventPhotos).where(eq(eventPhotos.eventId, 'event_photos_staff')))
+      .resolves.toEqual([
+        expect.objectContaining({
+          fileName: 'staff-upload.jpeg',
+          contentType: 'image/jpeg',
+          createdAt: capturedAt
+        })
+      ])
   })
 
   test('event photo uploads persist metadata in batches below D1 parameter limits', async () => {

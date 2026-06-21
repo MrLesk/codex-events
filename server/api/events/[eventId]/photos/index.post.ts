@@ -8,6 +8,7 @@ import { ApiError } from '#server/http/api-error'
 import {
   assertValidEventPhotoPart,
   chunkEventPhotoRowsForInsert,
+  getEventPhotoCapturedAt,
   getEventPhotoDimensions,
   listEventPhotoRecords,
   putEventPhotoObject,
@@ -32,7 +33,11 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  const preparedFiles = []
+  const preparedFiles: Array<ReturnType<typeof assertValidEventPhotoPart> & {
+    width: number
+    height: number
+    capturedAt: string | null
+  }> = []
 
   for (const part of fileParts) {
     const validFile = assertValidEventPhotoPart(part)
@@ -40,11 +45,12 @@ export default defineApiHandler(async (h3Event) => {
 
     preparedFiles.push({
       ...validFile,
-      ...dimensions
+      ...dimensions,
+      capturedAt: getEventPhotoCapturedAt(validFile.data)
     })
   }
 
-  const createdAt = new Date().toISOString()
+  const uploadedAt = new Date().toISOString()
   const createdRows = preparedFiles.map(file => ({
     id: crypto.randomUUID(),
     eventId,
@@ -54,7 +60,7 @@ export default defineApiHandler(async (h3Event) => {
     contentType: file.contentType,
     width: file.width,
     height: file.height,
-    createdAt
+    createdAt: file.capturedAt ?? uploadedAt
   }))
 
   for (const [index, row] of createdRows.entries()) {

@@ -26,6 +26,38 @@ export const eventPhotoMaxBytes = 10 * 1024 * 1024
 export const eventPhotoContentTypes = supportedImageContentTypes
 export const eventPhotoMaxRowsPerInsert = 11
 
+type TiffByteOrder = 'little' | 'big'
+
+interface EventPhotoExifValues {
+  dateTime?: string
+  dateTimeOriginal?: string
+  dateTimeDigitized?: string
+  offsetTime?: string
+  offsetTimeOriginal?: string
+  offsetTimeDigitized?: string
+  exifIfdOffset?: number
+}
+
+const jpegStartOfImageMarker = [0xff, 0xd8] as const
+const jpegApp1Marker = 0xe1
+const jpegStartOfScanMarker = 0xda
+const jpegEndOfImageMarker = 0xd9
+const exifPayloadHeader = [0x45, 0x78, 0x69, 0x66, 0x00, 0x00] as const
+const tiffLittleEndianHeader = [0x49, 0x49] as const
+const tiffBigEndianHeader = [0x4d, 0x4d] as const
+const tiffMagicNumber = 42
+const tiffAsciiType = 2
+const tiffLongType = 4
+const tiffDateTimeTag = 0x0132
+const tiffExifIfdPointerTag = 0x8769
+const exifDateTimeOriginalTag = 0x9003
+const exifDateTimeDigitizedTag = 0x9004
+const exifOffsetTimeTag = 0x9010
+const exifOffsetTimeOriginalTag = 0x9011
+const exifOffsetTimeDigitizedTag = 0x9012
+const exifDateTimePattern = /^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/
+const exifOffsetPattern = /^([+-])(\d{2}):(\d{2})$/
+
 export const eventPhotoParamsSchema = routeIdParamsSchema.extend({
   photoId: z.string().trim().min(1)
 })
@@ -181,6 +213,382 @@ export function assertValidEventPhotoPart(part: {
 function normalizeOptionalFileName(value: string | null | undefined) {
   const normalizedValue = value?.trim() ?? ''
   return normalizedValue.length > 0 ? normalizedValue : null
+}
+
+function matchesByteSequence(data: Uint8Array, offset: number, bytes: readonly number[]) {
+  if (offset < 0 || offset + bytes.length > data.byteLength) {
+    return false
+  }
+
+  return bytes.every((byte, index) => data[offset + index] === byte)
+}
+
+function readByte(data: Uint8Array, offset: number) {
+  return offset < 0 || offset >= data.byteLength ? null : data[offset] ?? null
+}
+
+function readTiffUint16(data: Uint8Array, offset: number, byteOrder: TiffByteOrder) {
+  if (offset < 0 || offset + 2 > data.byteLength) {
+    return null
+  }
+
+  const firstByte = readByte(data, offset)
+  const secondByte = readByte(data, offset + 1)
+
+  if (firstByte === null || secondByte === null) {
+    return null
+  }
+
+  return byteOrder === 'little'
+    ? firstByte + (secondByte * 0x100)
+    : (firstByte * 0x100) + secondByte
+}
+
+function readTiffUint32(data: Uint8Array, offset: number, byteOrder: TiffByteOrder) {
+  if (offset < 0 || offset + 4 > data.byteLength) {
+    return null
+  }
+
+  const firstByte = readByte(data, offset)
+  const secondByte = readByte(data, offset + 1)
+  const thirdByte = readByte(data, offset + 2)
+  const fourthByte = readByte(data, offset + 3)
+
+  if (firstByte === null || secondByte === null || thirdByte === null || fourthByte === null) {
+    return null
+  }
+
+  return byteOrder === 'little'
+    ? firstByte + (secondByte * 0x100) + (thirdByte * 0x10000) + (fourthByte * 0x1000000)
+    : (firstByte * 0x1000000) + (secondByte * 0x10000) + (thirdByte * 0x100) + fourthByte
+}
+
+function readTiffAscii(data: Uint8Array, offset: number, count: number) {
+  if (!Number.isSafeInteger(count) || count <= 0 || count > data.byteLength || offset < 0 || offset + count > data.byteLength) {
+    return null
+  }
+
+  let value = ''
+
+  for (let index = 0; index < count; index += 1) {
+    const byte = readByte(data, offset + index)
+
+    if (byte === null) {
+      return null
+    }
+
+    if (byte === 0) {
+      break
+    }
+
+    value += String.fromCharCode(byte)
+  }
+
+  const normalizedValue = value.trim()
+  return normalizedValue.length > 0 ? normalizedValue : null
+}
+
+function readTiffAsciiEntryValue(
+  data: Uint8Array,
+  entryOffset: number,
+  byteOrder: TiffByteOrder,
+  count: number
+) {
+  const valueOffset = count <= 4
+    ? entryOffset + 8
+    : readTiffUint32(data, entryOffset + 8, byteOrder)
+
+  return valueOffset === null ? null : readTiffAscii(data, valueOffset, count)
+}
+
+function getTiffByteOrder(data: Uint8Array): TiffByteOrder | null {
+  if (matchesByteSequence(data, 0, tiffLittleEndianHeader)) {
+    return 'little'
+  }
+
+  if (matchesByteSequence(data, 0, tiffBigEndianHeader)) {
+    return 'big'
+  }
+
+  return null
+}
+
+function readEventPhotoExifIfd(
+  data: Uint8Array,
+  ifdOffset: number,
+  byteOrder: TiffByteOrder
+) {
+  if (!Number.isSafeInteger(ifdOffset) || ifdOffset < 0 || ifdOffset + 2 > data.byteLength) {
+    return null
+  }
+
+  const entryCount = readTiffUint16(data, ifdOffset, byteOrder)
+
+  if (entryCount === null) {
+    return null
+  }
+
+  const entriesStart = ifdOffset + 2
+  const entriesEnd = entriesStart + (entryCount * 12)
+
+  if (entriesEnd + 4 > data.byteLength) {
+    return null
+  }
+
+  const values: EventPhotoExifValues = {}
+
+  for (let entryOffset = entriesStart; entryOffset < entriesEnd; entryOffset += 12) {
+    const tag = readTiffUint16(data, entryOffset, byteOrder)
+    const type = readTiffUint16(data, entryOffset + 2, byteOrder)
+    const count = readTiffUint32(data, entryOffset + 4, byteOrder)
+
+    if (tag === null || type === null || count === null) {
+      continue
+    }
+
+    if (tag === tiffExifIfdPointerTag && type === tiffLongType && count === 1) {
+      const exifIfdOffset = readTiffUint32(data, entryOffset + 8, byteOrder)
+
+      if (exifIfdOffset !== null && exifIfdOffset < data.byteLength) {
+        values.exifIfdOffset = exifIfdOffset
+      }
+
+      continue
+    }
+
+    if (type !== tiffAsciiType) {
+      continue
+    }
+
+    const value = readTiffAsciiEntryValue(data, entryOffset, byteOrder, count)
+
+    if (!value) {
+      continue
+    }
+
+    if (tag === tiffDateTimeTag) {
+      values.dateTime = value
+    } else if (tag === exifDateTimeOriginalTag) {
+      values.dateTimeOriginal = value
+    } else if (tag === exifDateTimeDigitizedTag) {
+      values.dateTimeDigitized = value
+    } else if (tag === exifOffsetTimeTag) {
+      values.offsetTime = value
+    } else if (tag === exifOffsetTimeOriginalTag) {
+      values.offsetTimeOriginal = value
+    } else if (tag === exifOffsetTimeDigitizedTag) {
+      values.offsetTimeDigitized = value
+    }
+  }
+
+  return values
+}
+
+function hasExactUtcDateTime(
+  date: Date,
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number
+) {
+  return date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day
+    && date.getUTCHours() === hour
+    && date.getUTCMinutes() === minute
+    && date.getUTCSeconds() === second
+}
+
+function normalizeExifOffset(value: string | null | undefined) {
+  const match = exifOffsetPattern.exec(value?.trim() ?? '')
+
+  if (!match) {
+    return null
+  }
+
+  const offsetHours = Number(match[2])
+  const offsetMinutes = Number(match[3])
+
+  if (offsetHours > 23 || offsetMinutes > 59) {
+    return null
+  }
+
+  return `${match[1]}${match[2]}:${match[3]}`
+}
+
+function parseEventPhotoExifDateTime(value: string, offsetValue: string | null | undefined) {
+  const match = exifDateTimePattern.exec(value.trim())
+
+  if (!match) {
+    return null
+  }
+
+  const [, yearValue, monthValue, dayValue, hourValue, minuteValue, secondValue] = match
+  const year = Number(yearValue)
+  const month = Number(monthValue)
+  const day = Number(dayValue)
+  const hour = Number(hourValue)
+  const minute = Number(minuteValue)
+  const second = Number(secondValue)
+
+  if (year < 1000) {
+    return null
+  }
+
+  const utcDate = new Date(Date.UTC(year, month - 1, day, hour, minute, second))
+
+  if (!hasExactUtcDateTime(utcDate, year, month, day, hour, minute, second)) {
+    return null
+  }
+
+  const offset = normalizeExifOffset(offsetValue)
+
+  if (!offset) {
+    return utcDate.toISOString()
+  }
+
+  const offsetDate = new Date(`${yearValue}-${monthValue}-${dayValue}T${hourValue}:${minuteValue}:${secondValue}${offset}`)
+
+  return Number.isNaN(offsetDate.valueOf()) ? null : offsetDate.toISOString()
+}
+
+function parseEventPhotoExifTiff(data: Uint8Array) {
+  const byteOrder = getTiffByteOrder(data)
+
+  if (!byteOrder || readTiffUint16(data, 2, byteOrder) !== tiffMagicNumber) {
+    return null
+  }
+
+  const ifdOffset = readTiffUint32(data, 4, byteOrder)
+
+  if (ifdOffset === null) {
+    return null
+  }
+
+  const ifdValues = readEventPhotoExifIfd(data, ifdOffset, byteOrder)
+
+  if (!ifdValues) {
+    return null
+  }
+
+  const exifValues = ifdValues.exifIfdOffset === undefined
+    ? null
+    : readEventPhotoExifIfd(data, ifdValues.exifIfdOffset, byteOrder)
+  const offsetTime = exifValues?.offsetTime ?? ifdValues.offsetTime
+
+  const timestampCandidates = [
+    {
+      value: exifValues?.dateTimeOriginal,
+      offset: exifValues?.offsetTimeOriginal ?? offsetTime
+    },
+    {
+      value: exifValues?.dateTimeDigitized,
+      offset: exifValues?.offsetTimeDigitized ?? offsetTime
+    },
+    {
+      value: ifdValues.dateTime,
+      offset: offsetTime
+    }
+  ]
+
+  for (const candidate of timestampCandidates) {
+    if (!candidate.value) {
+      continue
+    }
+
+    const parsedTimestamp = parseEventPhotoExifDateTime(candidate.value, candidate.offset)
+
+    if (parsedTimestamp) {
+      return parsedTimestamp
+    }
+  }
+
+  return null
+}
+
+export function getEventPhotoCapturedAt(data: Uint8Array) {
+  if (!matchesByteSequence(data, 0, jpegStartOfImageMarker)) {
+    return null
+  }
+
+  let offset: number = jpegStartOfImageMarker.length
+
+  while (offset + 4 <= data.byteLength) {
+    if (readByte(data, offset) !== 0xff) {
+      return null
+    }
+
+    let markerOffset = offset + 1
+
+    while (readByte(data, markerOffset) === 0xff) {
+      markerOffset += 1
+    }
+
+    if (markerOffset >= data.byteLength) {
+      return null
+    }
+
+    const marker = readByte(data, markerOffset)
+
+    if (marker === null) {
+      return null
+    }
+
+    if (marker === jpegEndOfImageMarker || marker === jpegStartOfScanMarker) {
+      return null
+    }
+
+    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+      offset = markerOffset + 1
+      continue
+    }
+
+    const segmentLengthOffset = markerOffset + 1
+
+    if (segmentLengthOffset + 2 > data.byteLength) {
+      return null
+    }
+
+    const segmentLengthFirstByte = readByte(data, segmentLengthOffset)
+    const segmentLengthSecondByte = readByte(data, segmentLengthOffset + 1)
+
+    if (segmentLengthFirstByte === null || segmentLengthSecondByte === null) {
+      return null
+    }
+
+    const segmentLength = (segmentLengthFirstByte * 0x100) + segmentLengthSecondByte
+
+    if (segmentLength < 2) {
+      return null
+    }
+
+    const payloadStart = segmentLengthOffset + 2
+    const payloadEnd = segmentLengthOffset + segmentLength
+
+    if (payloadEnd > data.byteLength) {
+      return null
+    }
+
+    if (
+      marker === jpegApp1Marker
+      && matchesByteSequence(data, payloadStart, exifPayloadHeader)
+    ) {
+      const parsedTimestamp = parseEventPhotoExifTiff(data.subarray(
+        payloadStart + exifPayloadHeader.length,
+        payloadEnd
+      ))
+
+      if (parsedTimestamp) {
+        return parsedTimestamp
+      }
+    }
+
+    offset = payloadEnd
+  }
+
+  return null
 }
 
 export async function getEventPhotoDimensions(event: H3Event, data: Uint8Array) {

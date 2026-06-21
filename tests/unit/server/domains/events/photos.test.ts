@@ -9,12 +9,14 @@ import {
   buildPublicEventPhotoImageUrl,
   chunkEventPhotoRowsForInsert,
   createEventPhotoPreviewResponse,
+  getEventPhotoCapturedAt,
   getEventPhotoDimensions,
   eventPhotoMaxBytes,
   eventPhotoMaxRowsPerInsert,
   eventPhotoObjectKey,
   putEventPhotoObject
 } from '../../../../../server/domains/events/photos'
+import { createExifJpegBytes } from '../../../../support/backend/exif-image'
 
 const pngSignatureBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 
@@ -78,6 +80,26 @@ describe('event photo utilities', () => {
       eventPhotoMaxRowsPerInsert,
       1
     ])
+  })
+
+  test('reads JPEG EXIF DateTimeOriginal with its timezone offset', () => {
+    expect(getEventPhotoCapturedAt(createExifJpegBytes({
+      dateTimeOriginal: '2026:06:20 11:51:20',
+      offsetTimeOriginal: '+02:00'
+    }))).toBe('2026-06-20T09:51:20.000Z')
+  })
+
+  test('falls back to TIFF DateTime when EXIF original capture time is absent', () => {
+    expect(getEventPhotoCapturedAt(createExifJpegBytes({
+      dateTime: '2026:06:20 11:51:20'
+    }))).toBe('2026-06-20T11:51:20.000Z')
+  })
+
+  test('ignores images without valid EXIF capture metadata', () => {
+    expect(getEventPhotoCapturedAt(pngSignatureBytes)).toBeNull()
+    expect(getEventPhotoCapturedAt(createExifJpegBytes({
+      dateTimeOriginal: '2026:13:20 11:51:20'
+    }))).toBeNull()
   })
 
   test('rejects unsupported photo bytes', () => {
