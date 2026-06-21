@@ -54,7 +54,22 @@ export interface EventOutcomeWinnerEmailInput {
   prizeNames: string[]
 }
 
-export type EventOutcomeEmailInput = EventOutcomeShortlistEmailInput | EventOutcomeWinnerEmailInput
+export interface EventCertificateEmailInput {
+  notificationType: 'certificate'
+  eventId: string
+  eventName: string
+  eventSlug: string
+  applicationId: string
+  recipientUserId: string
+  recipientEmail: string | null
+  recipientDisplayName?: string | null
+  certificateUrl: string
+}
+
+export type EventOutcomeEmailInput
+  = | EventOutcomeShortlistEmailInput
+    | EventOutcomeWinnerEmailInput
+    | EventCertificateEmailInput
 
 export type EventOutcomeEmailDeliveryResult = {
   status: 'sent'
@@ -140,6 +155,33 @@ function buildEventOutcomeEmailContent(
   const firstName = toPreferredFirstName(input.recipientDisplayName)
   const escapedFirstName = escapeHtml(firstName)
   const escapedEventName = escapeHtml(input.eventName)
+
+  if (input.notificationType === 'certificate') {
+    const escapedCertificateUrl = escapeHtml(input.certificateUrl)
+
+    return {
+      subject: `Thank you for joining ${input.eventName}`,
+      text: [
+        `Hi ${firstName},`,
+        '',
+        `Thank you for joining ${input.eventName}.`,
+        '',
+        'Your certificate is ready here:',
+        input.certificateUrl,
+        '',
+        'Best,',
+        'Codex Community Events'
+      ].join('\n'),
+      html: [
+        `<p>Hi ${escapedFirstName},</p>`,
+        `<p>Thank you for joining <strong>${escapedEventName}</strong>.</p>`,
+        `<p>Your certificate is ready here:<br><a href="${escapedCertificateUrl}">View your certificate</a></p>`,
+        '<p>Best,<br>Codex Community Events</p>'
+      ].join('\n'),
+      tagValue: 'event_certificate'
+    }
+  }
+
   const escapedTeamName = escapeHtml(input.teamName)
   const linkText = dashboardUrl
     ? `You can view the latest outcome here: ${dashboardUrl}`
@@ -242,7 +284,9 @@ export async function sendEventOutcomeEmail(
   const dashboardUrl = resolveEventDashboardUrl(runtimeConfig, input.eventSlug)
   const content = buildEventOutcomeEmailContent(input, dashboardUrl)
   const replyTo = getOutboundEmailReplyTo(runtimeConfig)
-  const emailKey = `event-outcome:${input.notificationType}:${input.teamId}:${input.recipientUserId}:${input.announcedAt}`
+  const emailKey = input.notificationType === 'certificate'
+    ? `event-outcome:certificate:${input.applicationId}:${input.recipientUserId}`
+    : `event-outcome:${input.notificationType}:${input.teamId}:${input.recipientUserId}:${input.announcedAt}`
   let response: Awaited<ReturnType<OutboundEmailBindingLike['send']>>
 
   try {

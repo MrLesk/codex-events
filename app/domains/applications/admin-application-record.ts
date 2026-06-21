@@ -21,6 +21,9 @@ export interface AdminApplicationRecord {
   checkInOverrideAt?: string | null
   certificateHiddenAt?: string | null
   certificateRevokedAt?: string | null
+  certificateEmailQueuedAt?: string | null
+  certificateEmailQueuedByUserId?: string | null
+  certificateEmailSentAt?: string | null
   isEventStaff?: boolean
   selectedTrackId: string | null
   submittedAt: string

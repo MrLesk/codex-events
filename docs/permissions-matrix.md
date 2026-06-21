@@ -114,6 +114,7 @@ This document defines the canonical permissions for the Codex event platform.
 | Override participant attendance (joined / not joined) for certificates | No | No | No | Yes, approved applications only; the override wins over the Luma check-in and repeating the active decision clears it | Yes, approved applications only; the override wins over the Luma check-in and repeating the active decision clears it |
 | Disable or enable own certificate generation | No | Yes | No | No | No |
 | Revoke or restore participant certificate access | No | No | No | Yes, approved applications only; revocation is available only while the participant currently has certificate access | Yes, approved applications only; revocation is available only while the participant currently has certificate access |
+| Send certificate emails | No | No | No | Yes, for currently available certificates that have not already had an email queued or sent | Yes, for currently available certificates that have not already had an email queued or sent |
 
 For Meetup and Build events, an approved application is the participation record. Team permissions below do not apply.
 

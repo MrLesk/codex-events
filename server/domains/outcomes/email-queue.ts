@@ -1,11 +1,11 @@
 import type { H3Event } from 'h3'
 
-import { asc, eq, getTableColumns } from 'drizzle-orm'
+import { and, asc, eq, getTableColumns, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { createDatabase, resolveD1Binding, type AppDatabase, type D1DatabaseBinding } from '#server/database/client'
 import { writeAuditLog } from '#server/database/audit-log'
-import { events, prizeEligibilitySnapshots, users } from '#server/database/schema'
+import { events, prizeEligibilitySnapshots, userApplications, users } from '#server/database/schema'
 import { getFinalDeliberationView } from '#server/domains/outcomes'
 import {
   sendEventOutcomeEmail,
@@ -13,6 +13,7 @@ import {
   type EventOutcomeEmailInput
 } from './emails'
 import { isRetryableOutboundEmailProviderError } from '#server/utils/outbound-email'
+import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
 
 export const defaultEventOutcomeEmailQueueBinding = 'EVENT_OUTCOME_EMAIL_QUEUE'
 export const defaultEventOutcomeEmailQueueName = 'codex-events-dev-event-outcome-email-delivery'
@@ -33,24 +34,32 @@ const baseEventOutcomeEmailQueueMessageSchema = z.object({
   eventId: z.string().trim().min(1),
   eventName: z.string().trim().min(1).max(200),
   eventSlug: z.string().trim().min(1).max(200),
-  teamId: z.string().trim().min(1),
-  teamName: z.string().trim().min(1).max(200),
   recipientUserId: z.string().trim().min(1),
   recipientEmail: z.string().trim().email().nullable(),
   recipientDisplayName: z.string().trim().max(160).nullable().optional(),
-  announcedAt: z.string().trim().min(1),
   enqueuedAt: z.string().trim().min(1)
 })
 
 export const eventOutcomeEmailQueueMessageSchema = z.discriminatedUnion('notificationType', [
   baseEventOutcomeEmailQueueMessageSchema.extend({
-    notificationType: z.literal('shortlist')
+    notificationType: z.literal('shortlist'),
+    teamId: z.string().trim().min(1),
+    teamName: z.string().trim().min(1).max(200),
+    announcedAt: z.string().trim().min(1)
   }),
   baseEventOutcomeEmailQueueMessageSchema.extend({
     notificationType: z.literal('winner'),
+    teamId: z.string().trim().min(1),
+    teamName: z.string().trim().min(1).max(200),
+    announcedAt: z.string().trim().min(1),
     finalRank: z.coerce.number().int().positive(),
     rankedTeamCount: z.coerce.number().int().positive(),
     prizeNames: z.array(z.string().trim().min(1)).min(1)
+  }),
+  baseEventOutcomeEmailQueueMessageSchema.extend({
+    notificationType: z.literal('certificate'),
+    applicationId: z.string().trim().min(1),
+    certificateUrl: z.string().trim().url()
   })
 ])
 
@@ -319,6 +328,78 @@ function shouldRetryDeliveryFailure(delivery: EventOutcomeEmailDeliveryResult) {
   return isRetryableOutboundEmailProviderError(delivery.providerError)
 }
 
+async function clearCertificateEmailReservation(database: AppDatabase, applicationId: string) {
+  await database
+    .update(userApplications)
+    .set({
+      certificateEmailQueuedAt: null,
+      certificateEmailQueuedByUserId: null,
+      updatedAt: new Date().toISOString()
+    })
+    .where(and(
+      eq(userApplications.id, applicationId),
+      isNull(userApplications.certificateEmailSentAt)
+    ))
+}
+
+async function markCertificateEmailSent(database: AppDatabase, applicationId: string) {
+  await database
+    .update(userApplications)
+    .set({
+      certificateEmailSentAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    })
+    .where(and(
+      eq(userApplications.id, applicationId),
+      isNull(userApplications.certificateEmailSentAt)
+    ))
+}
+
+async function resolveCertificateEmailDeliveryState(
+  database: AppDatabase,
+  message: Extract<EventOutcomeEmailQueueMessage, { notificationType: 'certificate' }>
+) {
+  const application = await database.query.userApplications.findFirst({
+    where: and(
+      eq(userApplications.id, message.applicationId),
+      eq(userApplications.eventId, message.eventId),
+      eq(userApplications.userId, message.recipientUserId)
+    )
+  })
+
+  if (!application) {
+    return 'application_missing' as const
+  }
+
+  if (application.certificateEmailSentAt) {
+    return 'already_sent' as const
+  }
+
+  if (!application.certificateEmailQueuedAt) {
+    return 'not_queued' as const
+  }
+
+  const participant = await database.query.users.findFirst({
+    where: and(
+      eq(users.id, message.recipientUserId),
+      isNull(users.deletedAt)
+    )
+  })
+
+  if (
+    !participant
+    || application.status !== 'approved'
+    || !isApplicationEffectivelyCheckedIn(application)
+    || application.certificateHiddenAt
+    || application.certificateRevokedAt
+  ) {
+    await clearCertificateEmailReservation(database, message.applicationId)
+    return 'certificate_unavailable' as const
+  }
+
+  return 'ready' as const
+}
+
 async function resolveProcessingDatabase(options: {
   database?: AppDatabase
   cloudflareEnv?: Record<string, unknown>
@@ -376,6 +457,19 @@ export async function processEventOutcomeEmailQueueMessage(
     d1Database: options?.d1Database
   })
 
+  if (parsedMessage.data.notificationType === 'certificate' && !database) {
+    message.retry({
+      delaySeconds: getRetryDelaySeconds(config)
+    })
+
+    return {
+      messageId: message.id,
+      action: 'retry',
+      reason: 'database_missing',
+      delivery: null
+    }
+  }
+
   if (database) {
     const event = await database.query.events.findFirst({
       columns: {
@@ -407,6 +501,21 @@ export async function processEventOutcomeEmailQueueMessage(
     }
   }
 
+  if (database && parsedMessage.data.notificationType === 'certificate') {
+    const certificateState = await resolveCertificateEmailDeliveryState(database, parsedMessage.data)
+
+    if (certificateState !== 'ready') {
+      message.ack()
+
+      return {
+        messageId: message.id,
+        action: 'ack',
+        reason: certificateState,
+        delivery: null
+      }
+    }
+  }
+
   const delivery = await sendOutcomeEmail(
     { context: {} } as H3Event,
     parsedMessage.data,
@@ -417,6 +526,14 @@ export async function processEventOutcomeEmailQueueMessage(
   )
 
   if (delivery.status === 'sent' || delivery.status === 'skipped') {
+    if (database && parsedMessage.data.notificationType === 'certificate') {
+      if (delivery.status === 'sent') {
+        await markCertificateEmailSent(database, parsedMessage.data.applicationId)
+      } else {
+        await clearCertificateEmailReservation(database, parsedMessage.data.applicationId)
+      }
+    }
+
     message.ack()
 
     return {
@@ -441,6 +558,10 @@ export async function processEventOutcomeEmailQueueMessage(
   }
 
   message.ack()
+
+  if (database && parsedMessage.data.notificationType === 'certificate') {
+    await clearCertificateEmailReservation(database, parsedMessage.data.applicationId)
+  }
 
   return {
     messageId: message.id,

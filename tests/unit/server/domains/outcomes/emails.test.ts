@@ -122,4 +122,42 @@ describe('event outcome email utilities', () => {
     expect(payload?.text).toContain('finished #1 of 12 and won Grand Prize and Best Demo')
     expect(payload?.headers?.['X-Codex-Notification-Type']).toBe('event_winner')
   })
+
+  test('sends certificate thank-you emails with the certificate link', async () => {
+    const send = vi.fn(async () => ({
+      messageId: 'email_3'
+    }))
+    const event = createEvent({
+      outboundEmail: {
+        fromEmail: 'notifications@example.com'
+      }
+    })
+
+    const result = await sendEventOutcomeEmail(event, {
+      notificationType: 'certificate',
+      eventId: 'event_1',
+      eventName: 'Codex Build Vienna',
+      eventSlug: 'codex-build-vienna',
+      applicationId: 'application_1',
+      recipientUserId: 'user_1',
+      recipientEmail: 'participant@example.com',
+      recipientDisplayName: 'Ada Lovelace',
+      certificateUrl: 'https://events.example/events/codex-build-vienna/user_1'
+    }, {
+      emailBinding: { send }
+    })
+
+    expect(result).toEqual({
+      status: 'sent',
+      messageId: 'email_3'
+    })
+
+    const payload = send.mock.calls[0]?.[0]
+    expect(payload?.subject).toBe('Thank you for joining Codex Build Vienna')
+    expect(payload?.text).toContain('Thank you for joining Codex Build Vienna.')
+    expect(payload?.text).toContain('https://events.example/events/codex-build-vienna/user_1')
+    expect(payload?.html).toContain('View your certificate')
+    expect(payload?.headers?.['X-Codex-Notification-Type']).toBe('event_certificate')
+    expect(payload?.headers?.['X-Codex-Email-Key']).toBe('event-outcome:certificate:application_1:user_1')
+  })
 })

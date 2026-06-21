@@ -401,6 +401,7 @@ Key characteristics:
 - The certificate page is the live verification record for the certificate. The PDF embeds a QR code that resolves back to that page, and the page exposes schema.org structured data describing the credential.
 - A participant can disable certificate generation from their account event workspace and enable it again. Disabled certificates respond not found on every public certificate read, account surfaces do not show the certificate link to the participant, and the admin Certificates tab marks certificate generation as disabled.
 - An event admin or platform admin can revoke certificate access from the admin Certificates tab and restore it again. Revoked certificates respond not found on every public certificate read, account surfaces do not show the certificate link or generation controls to the participant, and the admin Certificates tab marks the certificate as revoked.
+- An event admin or platform admin can send certificate thank-you emails from the admin Certificates tab. The action sends only to approved participants who currently have certificate access and have not already had a certificate email queued or sent. Admins can run the action again after marking additional participants joined; only newly eligible participants receive the email.
 - A certificate preview at `/events/:slug/preview` renders a synthetic certificate from query parameters for design review. Previews state that they are samples, are excluded from search indexing, and never represent issued certificates.
 
 ### Team

@@ -730,6 +730,9 @@ export function serializeUserApplication(
     checkInOverrideAt: application.checkInOverrideAt,
     certificateHiddenAt: application.certificateHiddenAt,
     certificateRevokedAt: application.certificateRevokedAt,
+    certificateEmailQueuedAt: application.certificateEmailQueuedAt,
+    certificateEmailQueuedByUserId: application.certificateEmailQueuedByUserId,
+    certificateEmailSentAt: application.certificateEmailSentAt,
     ...(typeof options?.isEventStaff === 'boolean'
       ? { isEventStaff: options.isEventStaff }
       : {}),

@@ -23,12 +23,18 @@ const toast = useToast()
 const eventId = computed(() => props.eventId.trim())
 
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
+type CertificateEmailResponse = {
+  enqueuedCount: number
+  failedCount: number
+  applications: AdminApplicationRecord[]
+}
 
 const applications = ref<AdminApplicationRecord[]>([])
 const loadStatus = ref<LoadStatus>('pending')
 const loadErrorMessage = ref('')
 const pendingActionKey = ref('')
 const searchTerm = ref('')
+const certificateEmailActionKey = 'certificate-emails:send'
 
 const attendanceFilters = [
   { id: 'all', label: 'All' },
@@ -68,6 +74,13 @@ const visibleApplications = computed(() => {
 
 const checkedInCount = computed(() => approvedApplications.value.filter(application => isApplicationCheckedIn(application)).length)
 const notCheckedInCount = computed(() => approvedApplications.value.length - checkedInCount.value)
+const certificateEmailReadyApplications = computed(() =>
+  approvedApplications.value.filter(application => canSendCertificateEmail(application))
+)
+const certificateEmailReadyCount = computed(() => certificateEmailReadyApplications.value.length)
+const certificateEmailSentCount = computed(() =>
+  approvedApplications.value.filter(application => Boolean(application.certificateEmailSentAt)).length
+)
 const attendanceFilterTabs = computed(() =>
   attendanceFilters.map(filter => ({
     ...filter,
@@ -77,6 +90,11 @@ const attendanceFilterTabs = computed(() =>
         ? checkedInCount.value
         : notCheckedInCount.value
   }))
+)
+const isCertificateEmailActionPending = computed(() => pendingActionKey.value === certificateEmailActionKey)
+const isCertificateEmailActionDisabled = computed(() =>
+  (pendingActionKey.value.length > 0 && !isCertificateEmailActionPending.value)
+  || certificateEmailReadyCount.value === 0
 )
 
 async function loadApplications() {
@@ -171,6 +189,66 @@ async function setCertificateRevoked(application: AdminApplicationRecord, revoke
   }
 }
 
+async function sendCertificateEmails() {
+  if (pendingActionKey.value || certificateEmailReadyCount.value === 0) {
+    return
+  }
+
+  pendingActionKey.value = certificateEmailActionKey
+
+  try {
+    const response = await $fetch<ApiDataResponse<CertificateEmailResponse>>(
+      `/api/events/${eventId.value}/applications/actions/send-certificate-emails`,
+      {
+        method: 'POST'
+      }
+    )
+
+    if (response.data.applications.length > 0) {
+      const updatedApplicationsById = new Map(
+        response.data.applications.map(application => [application.id, application] as const)
+      )
+
+      applications.value = applications.value.map((record) => {
+        const updatedApplication = updatedApplicationsById.get(record.id)
+
+        if (!updatedApplication) {
+          return record
+        }
+
+        return {
+          ...record,
+          ...updatedApplication,
+          user: record.user ?? updatedApplication.user
+        }
+      })
+    }
+
+    if (response.data.enqueuedCount > 0) {
+      toast.add({
+        title: 'Certificate emails queued',
+        color: 'success'
+      })
+      return
+    }
+
+    toast.add({
+      title: response.data.failedCount > 0
+        ? 'Certificate emails could not be sent'
+        : 'No certificate emails ready',
+      color: response.data.failedCount > 0 ? 'error' : 'neutral'
+    })
+  } catch (error) {
+    toast.add({
+      title: 'Certificate emails could not be sent',
+      description: normalizeApiError(error).message,
+      color: 'error'
+    })
+  } finally {
+    pendingActionKey.value = ''
+  }
+}
+
 function certificateHref(application: AdminApplicationRecord) {
   return buildEventCertificatePath(props.eventSlug, application.userId)
 }
@@ -179,6 +257,13 @@ function canViewCertificate(application: AdminApplicationRecord) {
   return isApplicationCheckedIn(application)
     && !application.certificateHiddenAt
     && !application.certificateRevokedAt
+}
+
+function canSendCertificateEmail(application: AdminApplicationRecord) {
+  return canViewCertificate(application)
+    && !application.certificateEmailQueuedAt
+    && !application.certificateEmailSentAt
+    && Boolean(application.user?.email?.trim())
 }
 
 function getCheckInActionKey(application: AdminApplicationRecord, status: ApplicationCheckInOverrideStatus) {
@@ -277,26 +362,51 @@ onMounted(loadApplications)
 
     <template v-else>
       <section class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex flex-col gap-4 rounded-xl p-2">
-        <div class="flex min-w-0 flex-wrap items-center gap-2">
-          <button
-            v-for="filter in attendanceFilterTabs"
-            :key="filter.id"
-            type="button"
-            class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
-            :class="activeAttendanceFilter === filter.id
-              ? 'bg-black text-white font-medium dark:bg-white dark:text-black'
-              : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
-            :data-testid="`certificates-filter-${filter.id}`"
-            @click="activeAttendanceFilter = filter.id"
-          >
-            <span>{{ filter.label }}</span>
-            <span
-              class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
-              :class="activeAttendanceFilter === filter.id ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
+        <div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div class="flex min-w-0 flex-wrap items-center gap-2">
+            <button
+              v-for="filter in attendanceFilterTabs"
+              :key="filter.id"
+              type="button"
+              class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
+              :class="activeAttendanceFilter === filter.id
+                ? 'bg-black text-white font-medium dark:bg-white dark:text-black'
+                : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
+              :data-testid="`certificates-filter-${filter.id}`"
+              @click="activeAttendanceFilter = filter.id"
             >
-              {{ filter.count }}
-            </span>
-          </button>
+              <span>{{ filter.label }}</span>
+              <span
+                class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
+                :class="activeAttendanceFilter === filter.id ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
+              >
+                {{ filter.count }}
+              </span>
+            </button>
+          </div>
+
+          <div class="flex shrink-0 flex-col gap-2 sm:items-end">
+            <AppButton
+              color="neutral"
+              variant="solid"
+              icon="i-lucide-mail"
+              class="justify-center rounded-lg"
+              :loading="isCertificateEmailActionPending"
+              :disabled="isCertificateEmailActionDisabled"
+              data-testid="certificates-send-emails"
+              @click="sendCertificateEmails"
+            >
+              Send certificate emails
+            </AppButton>
+            <div class="flex flex-wrap gap-2 text-xs text-muted sm:justify-end">
+              <span class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]">
+                {{ certificateEmailReadyCount }} ready to send
+              </span>
+              <span class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]">
+                {{ certificateEmailSentCount }} already sent
+              </span>
+            </div>
+          </div>
         </div>
 
         <div class="px-2 pb-2">
