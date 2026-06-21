@@ -39,6 +39,7 @@ import eventPhotosGetHandler from '../../../../server/api/events/[eventId]/photo
 import eventPhotosPostHandler from '../../../../server/api/events/[eventId]/photos/index.post'
 import eventPhotoDeleteHandler from '../../../../server/api/events/[eventId]/photos/[photoId].delete'
 import eventPhotoImageGetHandler from '../../../../server/api/events/[eventId]/photos/[photoId]/image.get'
+import eventPhotoHighlightPatchHandler from '../../../../server/api/events/[eventId]/photos/[photoId]/highlight.patch'
 import eventPhotoPublicVisibilityPatchHandler from '../../../../server/api/events/[eventId]/photos/[photoId]/public-visibility.patch'
 import openSubmissionPostHandler from '../../../../server/api/events/[eventId]/actions/open-submission.post'
 import startJudgingPreparationPostHandler from '../../../../server/api/events/[eventId]/actions/start-judging-preparation.post'
@@ -4794,6 +4795,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         { method: 'get', path: '/api/events/:eventId/photos', handler: eventPhotosGetHandler },
         { method: 'post', path: '/api/events/:eventId/photos', handler: eventPhotosPostHandler },
         { method: 'delete', path: '/api/events/:eventId/photos/:photoId', handler: eventPhotoDeleteHandler },
+        { method: 'patch', path: '/api/events/:eventId/photos/:photoId/highlight', handler: eventPhotoHighlightPatchHandler },
         { method: 'patch', path: '/api/events/:eventId/photos/:photoId/public-visibility', handler: eventPhotoPublicVisibilityPatchHandler },
         { method: 'get', path: '/api/events/:eventId/photos/:photoId/image', handler: eventPhotoImageGetHandler }
       ],
@@ -4890,6 +4892,7 @@ describe('TASK-3.5 event CRUD routes', () => {
           id: 'photo_1',
           fileName: 'gallery-photo.png',
           isPubliclyVisible: false,
+          isHighlighted: false,
           previewUrl: '/api/events/event_photos_read/photos/photo_1/image?variant=preview&v=2026-04-01T12%3A00%3A00.000Z',
           originalUrl: '/api/events/event_photos_read/photos/photo_1/image?variant=original&v=2026-04-01T12%3A00%3A00.000Z'
         })
@@ -4951,6 +4954,23 @@ describe('TASK-3.5 event CRUD routes', () => {
         code: 'event_photo_manage_required'
       }
     })
+
+    const highlightResponse = await harness.request('/api/events/event_photos_read/photos/photo_1/highlight', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        isHighlighted: true
+      }),
+      headers: {
+        'content-type': 'application/json'
+      }
+    })
+
+    expect(highlightResponse.status).toBe(403)
+    expect(await highlightResponse.json()).toMatchObject({
+      error: {
+        code: 'event_photo_manage_required'
+      }
+    })
   })
 
   test('event photo routes let judges upload and delete gallery photos', async () => {
@@ -4960,6 +4980,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         { method: 'get', path: '/api/events/:eventId/photos', handler: eventPhotosGetHandler },
         { method: 'post', path: '/api/events/:eventId/photos', handler: eventPhotosPostHandler },
         { method: 'delete', path: '/api/events/:eventId/photos/:photoId', handler: eventPhotoDeleteHandler },
+        { method: 'patch', path: '/api/events/:eventId/photos/:photoId/highlight', handler: eventPhotoHighlightPatchHandler },
         { method: 'patch', path: '/api/events/:eventId/photos/:photoId/public-visibility', handler: eventPhotoPublicVisibilityPatchHandler }
       ],
       sessionUser: {
@@ -5039,6 +5060,7 @@ describe('TASK-3.5 event CRUD routes', () => {
           width: 1600,
           height: 900,
           isPubliclyVisible: false,
+          isHighlighted: false,
           uploadedByUserId: 'judge_user'
         })
       ]
@@ -5049,6 +5071,28 @@ describe('TASK-3.5 event CRUD routes', () => {
 
     expect(storedPhotoObject).not.toBeNull()
     expect(new Uint8Array(await storedPhotoObject!.arrayBuffer())).toEqual(pngSignatureBytes)
+
+    const highlightResponse = await harness.request(
+      `/api/events/event_photos_judge/photos/${createdPhotoId}/highlight`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          isHighlighted: true
+        }),
+        headers: {
+          'content-type': 'application/json'
+        }
+      }
+    )
+
+    expect(highlightResponse.status).toBe(200)
+    expect(await highlightResponse.json()).toMatchObject({
+      data: {
+        id: createdPhotoId,
+        isHighlighted: true,
+        isPubliclyVisible: false
+      }
+    })
 
     const publicVisibilityResponse = await harness.request(
       `/api/events/event_photos_judge/photos/${createdPhotoId}/public-visibility`,
@@ -5094,6 +5138,11 @@ describe('TASK-3.5 event CRUD routes', () => {
         actorUserId: 'judge_user',
         entityType: 'event_photo',
         action: 'event_photo.created'
+      }),
+      expect.objectContaining({
+        actorUserId: 'judge_user',
+        entityType: 'event_photo',
+        action: 'event_photo.updated_highlight'
       }),
       expect.objectContaining({
         actorUserId: 'judge_user',
@@ -5195,6 +5244,7 @@ describe('TASK-3.5 event CRUD routes', () => {
           contentType: 'image/jpeg',
           createdAt: capturedAt,
           isPubliclyVisible: false,
+          isHighlighted: false,
           uploadedByUserId: 'staff_user',
           previewUrl: expect.stringContaining(`v=${encodeURIComponent(capturedAt)}`)
         })
@@ -5206,7 +5256,8 @@ describe('TASK-3.5 event CRUD routes', () => {
         expect.objectContaining({
           fileName: 'staff-upload.jpeg',
           contentType: 'image/jpeg',
-          createdAt: capturedAt
+          createdAt: capturedAt,
+          isHighlighted: false
         })
       ])
   })
@@ -5299,11 +5350,13 @@ describe('TASK-3.5 event CRUD routes', () => {
       expect.objectContaining({
         fileName: 'bulk-upload-1.png',
         isPubliclyVisible: false,
+        isHighlighted: false,
         uploadedByUserId: 'gallery_admin'
       }),
       expect.objectContaining({
         fileName: 'bulk-upload-13.png',
         isPubliclyVisible: false,
+        isHighlighted: false,
         uploadedByUserId: 'gallery_admin'
       })
     ]))
@@ -5315,6 +5368,7 @@ describe('TASK-3.5 event CRUD routes', () => {
 
     expect(storedPhotos).toHaveLength(13)
     expect(storedPhotos.every(photo => photo.isPubliclyVisible === false)).toBe(true)
+    expect(storedPhotos.every(photo => photo.isHighlighted === false)).toBe(true)
     expect(uploadRateLimiter.limit).toHaveBeenCalledTimes(1)
   })
 
@@ -5382,6 +5436,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         uploadedByUserId: 'creator_1',
         fileName: 'public-gallery-photo.png',
         isPubliclyVisible: true,
+        isHighlighted: true,
         contentType: 'image/png',
         width: 1600,
         height: 900,
@@ -5393,6 +5448,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         uploadedByUserId: 'creator_1',
         fileName: 'private-gallery-photo.png',
         isPubliclyVisible: false,
+        isHighlighted: false,
         contentType: 'image/png',
         width: 1600,
         height: 900,
@@ -5403,7 +5459,8 @@ describe('TASK-3.5 event CRUD routes', () => {
     const listResponse = await harness.request('/api/public/events/public-gallery-event/photos')
 
     expect(listResponse.status).toBe(200)
-    expect(await listResponse.json()).toMatchObject({
+    const listPayload = await listResponse.json()
+    expect(listPayload).toMatchObject({
       data: [
         {
           id: 'photo_public',
@@ -5417,6 +5474,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         }
       ]
     })
+    expect(listPayload.data[0]).not.toHaveProperty('isHighlighted')
 
     const previewResponse = await harness.request('/api/public/events/public-gallery-event/photos/photo_public/image?variant=preview')
 

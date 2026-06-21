@@ -379,7 +379,8 @@ Operations:
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
 | List event gallery photos | `GET /api/events/:eventId/photos` | approved participant, judge, staff, event admin, or platform admin | Returns protected gallery photo metadata plus account-scoped image URLs for the requested event. |
-| Upload event gallery photos | `POST /api/events/:eventId/photos` | judge, staff, event admin, or platform admin | Accepts multipart upload for one or more JPEG or PNG images, stores the originals in R2, derives image dimensions through the Worker `IMAGES` binding, records gallery rows with image creation metadata when available, and enforces the authenticated upload rate limiter. New rows start hidden from the public event page. |
+| Upload event gallery photos | `POST /api/events/:eventId/photos` | judge, staff, event admin, or platform admin | Accepts multipart upload for one or more JPEG or PNG images, stores the originals in R2, derives image dimensions through the Worker `IMAGES` binding, records gallery rows with image creation metadata when available, and enforces the authenticated upload rate limiter. New rows start unhighlighted and hidden from the public event page. |
+| Update event gallery photo highlight | `PATCH /api/events/:eventId/photos/:photoId/highlight` | judge, staff, event admin, or platform admin | Updates whether the selected gallery photo appears in the highlighted account-scoped gallery view. This does not change public gallery visibility. |
 | Update event gallery photo public visibility | `PATCH /api/events/:eventId/photos/:photoId/public-visibility` | judge, staff, event admin, or platform admin | Updates whether the selected gallery photo appears in the public Gallery tab for the event. |
 | Delete event photo | `DELETE /api/events/:eventId/photos/:photoId` | judge, staff, event admin, or platform admin | Deletes the stored original object and removes the gallery row. |
 | Get protected event photo bytes | `GET /api/events/:eventId/photos/:photoId/image?variant=preview|original` | approved participant, judge, staff, event admin, or platform admin | Returns the protected original image bytes or a transformed preview variant for the requested gallery photo. |
@@ -388,7 +389,7 @@ Operations:
 
 Testing:
 - Unit: photo-upload validation, protected image binding guards, and workspace-tab visibility helpers.
-- Integration: approved-participant read access plus role-based upload, public-visibility update, delete access, and public-gallery reads.
+- Integration: approved-participant read access plus role-based upload, highlight update, public-visibility update, delete access, and public-gallery reads.
 - End-to-end: account and public event Gallery tab read and management flows.
 
 ## Feedback

@@ -179,10 +179,13 @@ Rules:
 - Each photo records the uploading user.
 - Each photo stores canonical original-image metadata including file name, content type, width, height, and creation time from image metadata when available, otherwise upload time.
 - Each photo records whether it is visible in the public event gallery.
+- Each photo records whether it is highlighted in the protected account-scoped gallery.
 - The account-scoped event workspace exposes the photo gallery only to approved participants, judges, staff, event admins, and platform admins.
 - Approved participants have read-only access to the event photo gallery.
-- Judges, staff, event admins, and platform admins can add, remove, and mark gallery photos for the public event page.
+- Judges, staff, event admins, and platform admins can add, remove, highlight, and mark gallery photos for the public event page.
+- Newly uploaded photos start unhighlighted and hidden from the public event page.
 - The public event detail page exposes only the subset of gallery photos marked public for that event.
+- Public event gallery behavior does not depend on whether a photo is highlighted.
 - Photo delivery uses protected account-scoped routes for the private gallery and separate public routes for the public gallery subset.
 - Preview images are derived from the stored original object and do not create a separate canonical domain entity.
 

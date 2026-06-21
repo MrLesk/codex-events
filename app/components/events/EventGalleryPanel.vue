@@ -7,6 +7,12 @@ import 'photoswipe/style.css'
 import { Switch as UiSwitch } from '~/components/ui/switch'
 import { formatTimestamp } from '~/lib/date-formatting'
 
+interface EventGalleryFilterOption {
+  label: string
+  value: string
+  count?: number
+}
+
 type PhotoSwipeLightboxInstance = {
   init: () => void
   destroy: () => void
@@ -17,8 +23,12 @@ type PhotoSwipeLightboxCtor = new (options: Record<string, unknown>) => PhotoSwi
 const props = withDefaults(defineProps<{
   description: string
   photos: EventPhotoRecord[]
+  totalPhotoCount?: number | null
+  filterOptions?: ReadonlyArray<EventGalleryFilterOption>
   canManage?: boolean
   canTogglePublicVisibility?: boolean
+  canToggleHighlight?: boolean
+  showCurationBadges?: boolean
   showUploader?: boolean
   isLoading?: boolean
   loadErrorMessage?: string
@@ -27,12 +37,19 @@ const props = withDefaults(defineProps<{
   uploadingItems?: EventGalleryUploadItem[]
   pendingDeletePhotoId?: string | null
   pendingPublicVisibilityPhotoId?: string | null
+  pendingHighlightPhotoId?: string | null
   addButtonLabel?: string
   emptyStateTitle?: string
   emptyStateDescription?: string
+  emptyFilteredStateTitle?: string
+  emptyFilteredStateDescription?: string
 }>(), {
+  totalPhotoCount: null,
+  filterOptions: () => [],
   canManage: false,
   canTogglePublicVisibility: false,
+  canToggleHighlight: false,
+  showCurationBadges: false,
   showUploader: false,
   isLoading: false,
   loadErrorMessage: '',
@@ -41,27 +58,54 @@ const props = withDefaults(defineProps<{
   uploadingItems: () => [],
   pendingDeletePhotoId: null,
   pendingPublicVisibilityPhotoId: null,
+  pendingHighlightPhotoId: null,
   addButtonLabel: 'Add photos',
   emptyStateTitle: 'No gallery photos yet',
-  emptyStateDescription: 'Gallery photos will appear here once they are available.'
+  emptyStateDescription: 'Gallery photos will appear here once they are available.',
+  emptyFilteredStateTitle: 'No photos match this filter',
+  emptyFilteredStateDescription: 'Try another gallery filter to keep browsing.'
 })
 
 const emit = defineEmits<{
   uploadPhotos: [files: File[]]
   deletePhoto: [photo: EventPhotoRecord]
   togglePublicVisibility: [payload: { photo: EventPhotoRecord, value: boolean }]
+  toggleHighlight: [payload: { photo: EventPhotoRecord, value: boolean }]
 }>()
+
+const activeFilter = defineModel<string>('activeFilter', {
+  default: 'all'
+})
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const galleryElement = ref<HTMLElement | null>(null)
 const dragDepth = ref(0)
 const isDragTargetActive = ref(false)
-const photoCountLabel = computed(() => `${props.photos.length} ${props.photos.length === 1 ? 'photo' : 'photos'}`)
+const photoCountLabel = computed(() => {
+  const totalPhotoCount = props.totalPhotoCount
+
+  if (typeof totalPhotoCount === 'number' && totalPhotoCount > props.photos.length) {
+    return `${props.photos.length}/${totalPhotoCount} photos`
+  }
+
+  return `${props.photos.length} ${props.photos.length === 1 ? 'photo' : 'photos'}`
+})
 const uploadingItems = computed(() => props.uploadingItems ?? [])
 const uploadStatusLabel = computed(() => uploadingItems.value.length === 1 ? 'Uploading 1 photo' : `Uploading ${uploadingItems.value.length} photos`)
 const showInitialLoadingState = computed(() => props.isLoading && props.photos.length === 0)
+const showFilterControls = computed(() => props.filterOptions.length > 1)
+const hasFilteredEmptyState = computed(() =>
+  typeof props.totalPhotoCount === 'number'
+  && props.totalPhotoCount > 0
+  && props.photos.length === 0
+)
+const resolvedEmptyStateTitle = computed(() => hasFilteredEmptyState.value ? props.emptyFilteredStateTitle : props.emptyStateTitle)
+const resolvedEmptyStateDescription = computed(() => hasFilteredEmptyState.value ? props.emptyFilteredStateDescription : props.emptyStateDescription)
+const canUseEmptyUploadTarget = computed(() => props.canManage && !hasFilteredEmptyState.value)
 const hasPendingMutation = computed(() =>
-  props.pendingDeletePhotoId !== null || props.pendingPublicVisibilityPhotoId !== null
+  props.pendingDeletePhotoId !== null
+  || props.pendingPublicVisibilityPhotoId !== null
+  || props.pendingHighlightPhotoId !== null
 )
 
 let photoLightbox: PhotoSwipeLightboxInstance | null = null
@@ -79,12 +123,28 @@ function publicVisibilityStatusLabel(photo: EventPhotoRecord) {
   return photo.isPubliclyVisible ? 'Visible on the public page' : 'Only in the protected gallery'
 }
 
+function highlightSwitchId(photoId: string) {
+  return `event-gallery-highlight-${photoId}`
+}
+
+function highlightStatusLabel(photo: EventPhotoRecord) {
+  return photo.isHighlighted ? 'Highlighted for participants' : 'In all photos only'
+}
+
 function openFilePicker() {
   if (!props.canManage || props.isUploading) {
     return
   }
 
   fileInput.value?.click()
+}
+
+function openFilePickerFromEmptyState() {
+  if (!canUseEmptyUploadTarget.value) {
+    return
+  }
+
+  openFilePicker()
 }
 
 function onFileInputChange(event: Event) {
@@ -105,7 +165,7 @@ function hasDraggedFiles(event: DragEvent) {
 }
 
 function activateDropTarget(event: DragEvent) {
-  if (!props.canManage || props.isUploading || !hasDraggedFiles(event)) {
+  if (!props.canManage || props.isUploading || hasFilteredEmptyState.value || !hasDraggedFiles(event)) {
     return false
   }
 
@@ -264,6 +324,31 @@ onBeforeUnmount(() => {
       />
 
       <div
+        v-if="showFilterControls"
+        class="flex flex-col gap-4"
+      >
+        <div class="flex min-w-0 flex-wrap items-center gap-2">
+          <button
+            v-for="option in filterOptions"
+            :key="option.value"
+            type="button"
+            class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
+            :class="activeFilter === option.value ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
+            @click="activeFilter = option.value"
+          >
+            <span>{{ option.label }}</span>
+            <span
+              v-if="typeof option.count === 'number'"
+              class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
+              :class="activeFilter === option.value ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
+            >
+              {{ option.count }}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <div
         v-if="showInitialLoadingState"
         class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
       >
@@ -277,7 +362,7 @@ onBeforeUnmount(() => {
       <div
         v-else-if="photos.length === 0"
         class="rounded-2xl border border-dashed px-6 py-10 text-center transition-colors dark:border-white/[0.08]"
-        :class="canManage
+        :class="canUseEmptyUploadTarget
           ? [
             'cursor-pointer',
             isDragTargetActive
@@ -285,25 +370,25 @@ onBeforeUnmount(() => {
               : 'border-black/10 hover:border-black/18 hover:bg-black/[0.02] dark:border-white/[0.08] dark:hover:border-white/[0.14] dark:hover:bg-white/[0.03]'
           ]
           : 'border-black/10 dark:border-white/[0.08]'"
-        :role="canManage ? 'button' : undefined"
-        :tabindex="canManage ? 0 : undefined"
-        :aria-disabled="canManage && isUploading ? 'true' : undefined"
-        @click="openFilePicker"
-        @keydown.enter.prevent="openFilePicker"
-        @keydown.space.prevent="openFilePicker"
+        :role="canUseEmptyUploadTarget ? 'button' : undefined"
+        :tabindex="canUseEmptyUploadTarget ? 0 : undefined"
+        :aria-disabled="canUseEmptyUploadTarget && isUploading ? 'true' : undefined"
+        @click="openFilePickerFromEmptyState"
+        @keydown.enter.prevent="openFilePickerFromEmptyState"
+        @keydown.space.prevent="openFilePickerFromEmptyState"
         @dragenter="onDropTargetDragEnter"
         @dragover="onDropTargetDragOver"
         @dragleave="onDropTargetDragLeave"
         @drop="onDropTargetDrop"
       >
         <p class="text-base font-semibold text-highlighted">
-          {{ emptyStateTitle }}
+          {{ resolvedEmptyStateTitle }}
         </p>
         <p class="mt-2 text-sm text-muted">
-          {{ emptyStateDescription }}
+          {{ resolvedEmptyStateDescription }}
         </p>
         <p
-          v-if="canManage"
+          v-if="canUseEmptyUploadTarget"
           class="mt-3 text-[11px] font-medium uppercase tracking-[0.14em] text-muted"
         >
           {{ isDragTargetActive ? 'Drop JPEG or PNG files here.' : 'Drop JPEG or PNG files here, or click to choose.' }}
@@ -406,12 +491,62 @@ onBeforeUnmount(() => {
                   >
                     Added by {{ photo.uploadedBy.displayName }}
                   </p>
+                  <div
+                    v-if="showCurationBadges"
+                    class="flex flex-wrap gap-2 pt-1"
+                  >
+                    <AppBadge
+                      v-if="photo.isHighlighted"
+                      color="warning"
+                      variant="soft"
+                      size="sm"
+                      class="rounded-full"
+                    >
+                      Highlight
+                    </AppBadge>
+                    <AppBadge
+                      v-if="photo.isPubliclyVisible"
+                      color="success"
+                      variant="soft"
+                      size="sm"
+                      class="rounded-full"
+                    >
+                      Public
+                    </AppBadge>
+                  </div>
                 </div>
 
                 <div
-                  v-if="canTogglePublicVisibility || canManage"
+                  v-if="canToggleHighlight || canTogglePublicVisibility || canManage"
                   class="flex flex-col gap-4 border-t border-black/8 pt-4 dark:border-white/[0.08]"
                 >
+                  <div
+                    v-if="canToggleHighlight"
+                    class="flex items-start justify-between gap-4"
+                  >
+                    <div class="space-y-1">
+                      <label
+                        :for="highlightSwitchId(photo.id)"
+                        class="text-sm font-medium text-highlighted dark:text-white"
+                      >
+                        Highlight for participants
+                      </label>
+                      <p class="text-sm text-muted">
+                        Highlighted images appear in the default protected gallery view.
+                      </p>
+                      <p class="text-xs font-medium uppercase tracking-[0.14em] text-muted">
+                        {{ highlightStatusLabel(photo) }}
+                      </p>
+                    </div>
+
+                    <UiSwitch
+                      :id="highlightSwitchId(photo.id)"
+                      :model-value="photo.isHighlighted === true"
+                      :disabled="hasPendingMutation"
+                      @update:model-value="emit('toggleHighlight', { photo, value: Boolean($event) })"
+                    />
+                  </div>
+
                   <div
                     v-if="canTogglePublicVisibility"
                     class="flex items-start justify-between gap-4"

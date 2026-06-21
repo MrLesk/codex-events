@@ -24,7 +24,7 @@ import { assertGuard } from '#server/domains/lifecycle-guard'
 
 export const eventPhotoMaxBytes = 10 * 1024 * 1024
 export const eventPhotoContentTypes = supportedImageContentTypes
-export const eventPhotoMaxRowsPerInsert = 11
+export const eventPhotoMaxRowsPerInsert = 10
 
 type TiffByteOrder = 'little' | 'big'
 
@@ -69,6 +69,10 @@ export const eventPhotoImageQuerySchema = z.object({
 
 export const updateEventPhotoPublicVisibilityBodySchema = z.object({
   isPubliclyVisible: z.coerce.boolean()
+})
+
+export const updateEventPhotoHighlightBodySchema = z.object({
+  isHighlighted: z.coerce.boolean()
 })
 
 interface ImagesInfoResultLike {
@@ -719,6 +723,7 @@ function serializeEventPhotoRecord(
   photo: typeof eventPhotos.$inferSelect,
   options: {
     imagePathBuilder: (photoId: string, variant: EventPhotoImageVariant, version: string) => string
+    includeHighlight: boolean
     uploadedByUserId: string | null
     uploader: {
       id: string
@@ -731,6 +736,7 @@ function serializeEventPhotoRecord(
     eventId: photo.eventId,
     fileName: photo.fileName,
     isPubliclyVisible: photo.isPubliclyVisible,
+    ...(options.includeHighlight ? { isHighlighted: photo.isHighlighted } : {}),
     contentType: photo.contentType,
     width: photo.width,
     height: photo.height,
@@ -757,6 +763,7 @@ export async function listEventPhotoRecords(database: AppDatabase, eventId: stri
 
   return photos.map(photo => serializeEventPhotoRecord(photo, {
     imagePathBuilder: (photoId, variant, version) => buildEventPhotoImageUrl(eventId, photoId, variant, version),
+    includeHighlight: true,
     uploadedByUserId: photo.uploadedByUserId,
     uploader: usersById.get(photo.uploadedByUserId) ?? null
   }))
@@ -782,6 +789,7 @@ export async function listPublicEventPhotoRecords(
       variant,
       version
     ),
+    includeHighlight: false,
     uploadedByUserId: null,
     uploader: null
   }))

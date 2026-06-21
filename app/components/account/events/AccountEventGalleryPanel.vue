@@ -6,6 +6,8 @@ import EventGalleryPanel from '~/components/events/EventGalleryPanel.vue'
 import { normalizeApiError } from '~/lib/api'
 import { createEventGalleryUploadBatches, createEventGalleryUploadItems } from '~/domains/events/gallery'
 
+type AccountEventGalleryFilter = 'all' | 'highlighted' | 'not-highlighted' | 'public'
+
 const props = defineProps<{
   eventId: string
   canManage: boolean
@@ -17,8 +19,11 @@ const canManage = computed(() => props.canManage)
 const mutationErrorMessage = ref('')
 const pendingDeletePhotoId = ref<string | null>(null)
 const pendingPublicVisibilityPhotoId = ref<string | null>(null)
+const pendingHighlightPhotoId = ref<string | null>(null)
 const isUploading = ref(false)
 const uploadingItems = ref(createEventGalleryUploadItems([]))
+const galleryFilter = shallowRef<AccountEventGalleryFilter>('highlighted')
+const hasResolvedInitialFilter = shallowRef(false)
 
 const {
   data: photosResponse,
@@ -34,15 +39,85 @@ const {
 )
 
 const photos = computed(() => photosResponse.value?.data ?? [])
+const highlightedPhotoCount = computed(() => photos.value.filter(photo => photo.isHighlighted === true).length)
+const notHighlightedPhotoCount = computed(() => photos.value.length - highlightedPhotoCount.value)
+const publicPhotoCount = computed(() => photos.value.filter(photo => photo.isPubliclyVisible).length)
+const galleryFilterOptions = computed<Array<{
+  label: string
+  value: AccountEventGalleryFilter
+  count: number
+}>>(() => {
+  if (canManage.value) {
+    return [
+      { label: 'All', value: 'all', count: photos.value.length },
+      { label: 'Highlighted', value: 'highlighted', count: highlightedPhotoCount.value },
+      { label: 'Not highlighted', value: 'not-highlighted', count: notHighlightedPhotoCount.value },
+      { label: 'Public', value: 'public', count: publicPhotoCount.value }
+    ]
+  }
+
+  if (highlightedPhotoCount.value > 0 || galleryFilter.value === 'highlighted') {
+    return [
+      { label: 'Highlights', value: 'highlighted', count: highlightedPhotoCount.value },
+      { label: 'All photos', value: 'all', count: photos.value.length }
+    ]
+  }
+
+  return [
+    { label: 'All photos', value: 'all', count: photos.value.length }
+  ]
+})
+const visiblePhotos = computed(() => {
+  if (galleryFilter.value === 'highlighted') {
+    return photos.value.filter(photo => photo.isHighlighted === true)
+  }
+
+  if (galleryFilter.value === 'not-highlighted') {
+    return photos.value.filter(photo => photo.isHighlighted !== true)
+  }
+
+  if (galleryFilter.value === 'public') {
+    return photos.value.filter(photo => photo.isPubliclyVisible)
+  }
+
+  return photos.value
+})
 const loadErrorMessage = computed(() => photosError.value?.message ?? '')
 const panelDescription = computed(() => canManage.value
-  ? 'Capture the atmosphere of the event in one gallery. Upload new images, remove outdated ones, and choose which images also appear on the public page.'
-  : 'Browse the protected gallery for this event. Open any image to see it at full size.'
+  ? 'Upload the full event archive, mark the strongest photos as highlights, and choose which images also appear on the public page.'
+  : 'Browse the protected gallery for this event. Highlights show the curated set, and all photos keeps the full archive available.'
 )
 const emptyStateDescription = computed(() => canManage.value
   ? 'Upload the first JPEG or PNG image to start the event gallery.'
   : 'Gallery photos will appear here once the event team adds them.'
 )
+
+watch([photosStatus, canManage, highlightedPhotoCount], () => {
+  if (photosStatus.value !== 'success') {
+    return
+  }
+
+  if (!hasResolvedInitialFilter.value) {
+    galleryFilter.value = canManage.value
+      ? 'all'
+      : highlightedPhotoCount.value > 0 ? 'highlighted' : 'all'
+    hasResolvedInitialFilter.value = true
+    return
+  }
+
+  const validFilters = new Set(galleryFilterOptions.value.map(option => option.value))
+
+  if (!validFilters.has(galleryFilter.value)) {
+    galleryFilter.value = galleryFilterOptions.value[0]?.value ?? 'all'
+  }
+}, {
+  immediate: true
+})
+
+watch(eventId, () => {
+  hasResolvedInitialFilter.value = false
+  galleryFilter.value = canManage.value ? 'all' : 'highlighted'
+})
 
 async function uploadPhotos(files: File[]) {
   if (!canManage.value || files.length === 0 || isUploading.value) {
@@ -97,7 +172,7 @@ async function uploadPhotos(files: File[]) {
 }
 
 async function deletePhoto(photo: EventPhotoRecord) {
-  if (!canManage.value || pendingDeletePhotoId.value || pendingPublicVisibilityPhotoId.value) {
+  if (!canManage.value || pendingDeletePhotoId.value || pendingPublicVisibilityPhotoId.value || pendingHighlightPhotoId.value) {
     return
   }
 
@@ -129,7 +204,7 @@ async function deletePhoto(photo: EventPhotoRecord) {
 }
 
 async function togglePublicVisibility(payload: { photo: EventPhotoRecord, value: boolean }) {
-  if (!canManage.value || pendingDeletePhotoId.value || pendingPublicVisibilityPhotoId.value) {
+  if (!canManage.value || pendingDeletePhotoId.value || pendingPublicVisibilityPhotoId.value || pendingHighlightPhotoId.value) {
     return
   }
 
@@ -158,14 +233,50 @@ async function togglePublicVisibility(payload: { photo: EventPhotoRecord, value:
     pendingPublicVisibilityPhotoId.value = null
   }
 }
+
+async function toggleHighlight(payload: { photo: EventPhotoRecord, value: boolean }) {
+  if (!canManage.value || pendingDeletePhotoId.value || pendingPublicVisibilityPhotoId.value || pendingHighlightPhotoId.value) {
+    return
+  }
+
+  mutationErrorMessage.value = ''
+  pendingHighlightPhotoId.value = payload.photo.id
+
+  try {
+    await $fetch(`/api/events/${eventId.value}/photos/${payload.photo.id}/highlight`, {
+      method: 'PATCH',
+      body: {
+        isHighlighted: payload.value
+      }
+    })
+
+    await refreshPhotos()
+    toast.add({
+      title: payload.value ? 'Photo highlighted' : 'Highlight removed',
+      description: payload.value
+        ? 'The image now appears in the highlighted gallery view.'
+        : 'The image remains available in all photos.',
+      color: 'success'
+    })
+  } catch (error) {
+    mutationErrorMessage.value = normalizeApiError(error).message
+  } finally {
+    pendingHighlightPhotoId.value = null
+  }
+}
 </script>
 
 <template>
   <EventGalleryPanel
+    v-model:active-filter="galleryFilter"
     :description="panelDescription"
-    :photos="photos"
+    :photos="visiblePhotos"
+    :total-photo-count="photos.length"
+    :filter-options="galleryFilterOptions"
     :can-manage="canManage"
     :can-toggle-public-visibility="canManage"
+    :can-toggle-highlight="canManage"
+    :show-curation-badges="true"
     :show-uploader="true"
     :is-loading="photosStatus === 'pending'"
     :load-error-message="photosStatus === 'error' ? loadErrorMessage : ''"
@@ -174,11 +285,15 @@ async function togglePublicVisibility(payload: { photo: EventPhotoRecord, value:
     :uploading-items="uploadingItems"
     :pending-delete-photo-id="pendingDeletePhotoId"
     :pending-public-visibility-photo-id="pendingPublicVisibilityPhotoId"
+    :pending-highlight-photo-id="pendingHighlightPhotoId"
     add-button-label="Add photos"
     empty-state-title="No gallery photos yet"
     :empty-state-description="emptyStateDescription"
+    empty-filtered-state-title="No photos in this view"
+    empty-filtered-state-description="Switch filters to keep browsing the event gallery."
     @upload-photos="uploadPhotos"
     @delete-photo="deletePhoto"
     @toggle-public-visibility="togglePublicVisibility"
+    @toggle-highlight="toggleHighlight"
   />
 </template>

@@ -70,6 +70,7 @@ describe('event photo utilities', () => {
       uploadedByUserId: 'user_1',
       fileName: `photo-${index}.png`,
       isPubliclyVisible: false,
+      isHighlighted: false,
       contentType: 'image/png',
       width: 1600,
       height: 900,

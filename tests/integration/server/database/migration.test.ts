@@ -31,6 +31,15 @@ const preEventGeneralizationMigrationSql = readdirSync(join(process.cwd(), 'driz
   .replaceAll('--> statement-breakpoint', '\n')
 const eventGeneralizationMigrationSql = readFileSync(join(process.cwd(), 'drizzle', eventGeneralizationMigrationFileName), 'utf8')
   .replaceAll('--> statement-breakpoint', '\n')
+const photoHighlightsMigrationFileName = '0068_event_photo_highlights.sql'
+const prePhotoHighlightsMigrationSql = readdirSync(join(process.cwd(), 'drizzle'))
+  .filter(fileName => /^\d+.*\.sql$/.test(fileName) && fileName < photoHighlightsMigrationFileName)
+  .sort()
+  .map(fileName => readFileSync(join(process.cwd(), 'drizzle', fileName), 'utf8'))
+  .join('\n')
+  .replaceAll('--> statement-breakpoint', '\n')
+const photoHighlightsMigrationSql = readFileSync(join(process.cwd(), 'drizzle', photoHighlightsMigrationFileName), 'utf8')
+  .replaceAll('--> statement-breakpoint', '\n')
 
 describe('shared database migration', () => {
   let database: TestD1Database
@@ -675,6 +684,55 @@ describe('shared database migration', () => {
         event_id: 'event_1',
         role: 'event_admin'
       }])
+    } finally {
+      await migrationDatabase.close()
+    }
+  })
+
+  test('backfills existing event photos as highlighted and keeps new photos unhighlighted by default', async () => {
+    const migrationDatabase = createTestD1Database({
+      applyMigrations: false
+    })
+
+    try {
+      await migrationDatabase.exec(prePhotoHighlightsMigrationSql)
+
+      const now = isoTimestamp(0)
+      await seedUser(migrationDatabase, 'creator_1', now)
+      await seedEvent(migrationDatabase, 'event_1', 'registration_open', now, 'creator_1')
+
+      await migrationDatabase.prepare(`
+        insert into event_photos (
+          id, event_id, uploaded_by_user_id, file_name, is_publicly_visible, content_type, width, height, created_at
+        )
+        values (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run('photo_existing', 'event_1', 'creator_1', 'existing.png', 1, 'image/png', 1600, 900, now)
+
+      await migrationDatabase.exec(photoHighlightsMigrationSql)
+
+      await migrationDatabase.prepare(`
+        insert into event_photos (
+          id, event_id, uploaded_by_user_id, file_name, is_publicly_visible, content_type, width, height, created_at
+        )
+        values (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run('photo_new', 'event_1', 'creator_1', 'new.png', 0, 'image/png', 1600, 900, isoTimestamp(1))
+
+      const rows = await migrationDatabase.prepare(`
+        select id, is_highlighted
+        from event_photos
+        order by created_at
+      `).all<{ id: string, is_highlighted: number }>()
+
+      expect(rows.results).toEqual([
+        {
+          id: 'photo_existing',
+          is_highlighted: 1
+        },
+        {
+          id: 'photo_new',
+          is_highlighted: 0
+        }
+      ])
     } finally {
       await migrationDatabase.close()
     }

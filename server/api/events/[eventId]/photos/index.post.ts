@@ -57,6 +57,7 @@ export default defineApiHandler(async (h3Event) => {
     uploadedByUserId: actor.platformUser.id,
     fileName: file.fileName,
     isPubliclyVisible: false,
+    isHighlighted: false,
     contentType: file.contentType,
     width: file.width,
     height: file.height,
@@ -72,7 +73,7 @@ export default defineApiHandler(async (h3Event) => {
   }
 
   // D1 allows at most 100 bound parameters per statement. Each event photo row
-  // binds nine values, so keep metadata inserts at 11 rows per query.
+  // binds ten values, so keep metadata inserts at 10 rows per query.
   for (const rowBatch of chunkEventPhotoRowsForInsert(createdRows)) {
     await database.insert(eventPhotos).values(rowBatch)
   }

@@ -231,6 +231,7 @@ Event credit permissions apply to every event type.
 | --- | --- | --- | --- | --- | --- |
 | View event photo gallery in the account workspace | Yes | Yes | Yes | Yes | Yes |
 | Upload event gallery photos | No | Yes | Yes | Yes | Yes |
+| Update event gallery highlights | No | Yes | Yes | Yes | Yes |
 | Update event gallery public visibility | No | Yes | Yes | Yes | Yes |
 | Delete event gallery photos | No | Yes | Yes | Yes | Yes |
 
@@ -255,6 +256,7 @@ Event credit permissions apply to every event type.
 - Track staff instructions are visible only to platform admins, event admins, whole-event staff, and staff assigned to that track.
 - Approved participants can view event photo galleries for events where they are approved.
 - Judges, staff, event admins, and platform admins can manage event photo galleries for events where they hold that access.
+- Highlighted event photos define the curated account-scoped gallery view and do not affect public event gallery visibility.
 - Public event detail pages expose a Gallery tab only when the event has one or more gallery photos marked public.
 - Participation certificates at `/events/:slug/:userId` are publicly viewable for approved, effectively checked-in participants with active accounts who have not disabled certificate generation and whose certificate access has not been revoked, including the participant's name, the event, the certificate date, the Hackathon submission track when one applies, and the single configured Build track when unambiguous. Image and PDF downloads are public, matching the shareable certificate link.
 - The public event feedback route is unlinked and available only after the event reaches `completed`.

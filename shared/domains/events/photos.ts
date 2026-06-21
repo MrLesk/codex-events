@@ -10,6 +10,7 @@ export interface EventPhotoRecord {
   eventId: string
   fileName: string | null
   isPubliclyVisible: boolean
+  isHighlighted?: boolean
   contentType: string
   width: number
   height: number
