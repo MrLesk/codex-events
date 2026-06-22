@@ -12,6 +12,7 @@ import {
   buildAdminApplicationReviewGroups,
   canApproveAdminApplicationReviewGroup,
   countApprovedAdminApplicationsBySelectedTrack,
+  filterApprovedAdminApplicationsForTrackCounts,
   filterAdminApplicationReviewGroups,
   filterAdminApplicationReviewGroupsByAiKnowledge,
   filterAdminApplicationReviewGroupsByApplicant,
@@ -115,11 +116,16 @@ const showAiKnowledgeDetails = computed(() =>
 const showAiKnowledgeFilter = computed(() =>
   showAiKnowledgeDetails.value
 )
+const approvedTrackCountApplications = computed(() =>
+  filterApprovedAdminApplicationsForTrackCounts(props.applications, {
+    checkedInOnly: showApprovedAttendance.value && checkedInOnly.value
+  })
+)
 const approvedTrackCounts = computed(() =>
-  countApprovedAdminApplicationsBySelectedTrack(props.applications)
+  countApprovedAdminApplicationsBySelectedTrack(approvedTrackCountApplications.value)
 )
 const approvedTrackAllCount = computed(() =>
-  props.applications.filter(application => application.status === 'approved').length
+  approvedTrackCountApplications.value.length
 )
 const approvedTrackFilterOptions = computed(() =>
   sortedTrackOptions.value.map(track => ({

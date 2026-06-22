@@ -4,6 +4,7 @@ import {
   buildAdminApplicationReviewGroups,
   canApproveAdminApplicationReviewGroup,
   countApprovedAdminApplicationsBySelectedTrack,
+  filterApprovedAdminApplicationsForTrackCounts,
   filterAdminApplicationReviewGroups,
   filterAdminApplicationReviewGroupsByAiKnowledge,
   filterAdminApplicationReviewGroupsByApplicant,
@@ -22,6 +23,7 @@ function createApplication(options: {
   status?: 'submitted' | 'approved' | 'rejected' | 'withdrawn'
   preApprovalStatus?: 'approved' | 'rejected' | null
   checkedInAt?: string | null
+  checkInOverrideStatus?: 'joined' | 'not_joined' | null
   submittedAt?: string
   teamIntent?: 'solo' | 'team' | 'unknown'
   teamMembers?: Array<{ fullName?: string, email?: string }>
@@ -35,6 +37,7 @@ function createApplication(options: {
     status: options.status ?? 'submitted',
     preApprovalStatus: options.preApprovalStatus ?? null,
     checkedInAt: options.checkedInAt ?? null,
+    checkInOverrideStatus: options.checkInOverrideStatus ?? null,
     selectedTrackId: options.selectedTrackId ?? null,
     submittedAt: options.submittedAt ?? '2026-03-29T10:00:00.000Z',
     withdrawnAt: options.status === 'withdrawn' ? '2026-03-30T10:00:00.000Z' : null,
@@ -590,6 +593,72 @@ describe('buildAdminApplicationReviewGroups', () => {
     expect(counts.get('track-agents')).toBe(2)
     expect(counts.get('track-tools')).toBe(1)
     expect(counts.has('track-unknown')).toBe(false)
+  })
+
+  test('filters approved track count applications by effective checked-in state', () => {
+    const applications = [
+      createApplication({
+        id: 'application-1',
+        displayName: 'Alice Example',
+        email: 'alice@example.com',
+        status: 'approved',
+        checkedInAt: '2026-03-29T12:05:00.000Z',
+        selectedTrackId: 'track-agents'
+      }),
+      createApplication({
+        id: 'application-2',
+        displayName: 'Bob Example',
+        email: 'bob@example.com',
+        status: 'approved',
+        checkedInAt: null,
+        selectedTrackId: 'track-agents'
+      }),
+      createApplication({
+        id: 'application-3',
+        displayName: 'Carol Example',
+        email: 'carol@example.com',
+        status: 'approved',
+        checkedInAt: null,
+        checkInOverrideStatus: 'joined',
+        selectedTrackId: 'track-tools'
+      }),
+      createApplication({
+        id: 'application-4',
+        displayName: 'Dave Example',
+        email: 'dave@example.com',
+        status: 'approved',
+        checkedInAt: '2026-03-29T12:10:00.000Z',
+        checkInOverrideStatus: 'not_joined',
+        selectedTrackId: 'track-tools'
+      }),
+      createApplication({
+        id: 'application-5',
+        displayName: 'Eve Example',
+        email: 'eve@example.com',
+        status: 'submitted',
+        checkedInAt: '2026-03-29T12:15:00.000Z',
+        selectedTrackId: 'track-agents'
+      })
+    ]
+
+    const allApproved = filterApprovedAdminApplicationsForTrackCounts(applications)
+    const checkedInApproved = filterApprovedAdminApplicationsForTrackCounts(applications, {
+      checkedInOnly: true
+    })
+    const checkedInCounts = countApprovedAdminApplicationsBySelectedTrack(checkedInApproved)
+
+    expect(allApproved.map(application => application.id)).toEqual([
+      'application-1',
+      'application-2',
+      'application-3',
+      'application-4'
+    ])
+    expect(checkedInApproved.map(application => application.id)).toEqual([
+      'application-1',
+      'application-3'
+    ])
+    expect(checkedInCounts.get('track-agents')).toBe(1)
+    expect(checkedInCounts.get('track-tools')).toBe(1)
   })
 
   test('filters groups by selected track without leaking hidden teammate hints', () => {

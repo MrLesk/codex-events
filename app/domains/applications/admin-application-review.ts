@@ -4,6 +4,7 @@ import type { AdminApplicationRecord } from '~/domains/applications/admin-applic
 import type { EventRecord } from '~/domains/events/records'
 import type { ParticipantAiKnowledgeLevel, ParticipantRegistrationDetails } from './participant-application'
 
+import { isApplicationCheckedIn } from '~/domains/applications/admin-application-record'
 import { parseParticipantRegistrationDetailsJson } from './participant-application'
 
 export const adminApplicationFuzzyNameThreshold = 0.92
@@ -631,6 +632,19 @@ export function filterAdminApplicationReviewGroupsBySelectedTrack(
     groups,
     applicant => applicant.application.selectedTrackId === trackId
   )
+}
+
+export function filterApprovedAdminApplicationsForTrackCounts(
+  applications: AdminApplicationRecord[],
+  options: { checkedInOnly?: boolean } = {}
+) {
+  return applications.filter((application) => {
+    if (application.status !== 'approved') {
+      return false
+    }
+
+    return !options.checkedInOnly || isApplicationCheckedIn(application)
+  })
 }
 
 export function countApprovedAdminApplicationsBySelectedTrack(applications: AdminApplicationRecord[]) {
