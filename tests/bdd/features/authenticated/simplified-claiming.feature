@@ -8,3 +8,8 @@ Feature: Simplified Meetup claiming
     When I open the simplified claiming link again
     Then I should be redirected to the simplified claiming coupon
     And the "event_admin" should see the simplified claiming participant checked in
+
+  Scenario: Event admin sees the attendee claiming QR settings
+    Given the saved "event_admin" Auth0 session state exists
+    When I open the simplified claiming settings with the saved "event_admin" session
+    Then I should see the attendee claiming QR settings

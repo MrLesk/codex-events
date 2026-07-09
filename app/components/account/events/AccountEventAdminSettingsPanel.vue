@@ -2,6 +2,7 @@
 import type Sortable from 'sortablejs'
 
 import AccountEventAdminTermsCard from '~/components/account/events/AccountEventAdminTermsCard.vue'
+import AccountEventSimplifiedClaimingPanel from '~/components/account/events/AccountEventSimplifiedClaimingPanel.vue'
 import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
 
 import type { ApiDataResponse } from '~/lib/api'

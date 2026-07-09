@@ -78,8 +78,21 @@ When('I open the simplified claiming link again', async ({ page }) => {
   await page.goto(`/events/${fixtureSlug}/redeem`)
 })
 
+When('I open the simplified claiming settings with the saved {string} session', async ({ page }, personaKey: string) => {
+  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  await page.goto(`/account/events/${fixtureSlug}?tab=settings`)
+})
+
 Then('I should be redirected to the simplified claiming coupon', async ({ page }) => {
   await expect(page).toHaveURL(couponUrl)
+})
+
+Then('I should see the attendee claiming QR settings', async ({ page }) => {
+  const redemptionUrl = `${new URL(page.url()).origin}/events/${fixtureSlug}/redeem`
+  await expect(page.getByRole('heading', { name: 'Attendee claiming' })).toBeVisible()
+  await expect(page.getByText(redemptionUrl, { exact: true })).toBeVisible()
+  await expect(page.getByRole('img', { name: 'Redemption QR code' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Download QR as SVG' })).toBeVisible()
 })
 
 Then('the {string} should see the simplified claiming participant checked in', async ({ page }, personaKey: string) => {

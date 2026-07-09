@@ -1,11 +1,11 @@
 ---
 id: TASK-420
 title: Add simplified attendee credit claiming
-status: Done
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-07-09 20:21'
-updated_date: '2026-07-09 20:58'
+updated_date: '2026-07-09 21:36'
 labels: []
 dependencies: []
 priority: high
@@ -56,6 +56,10 @@ Participant slice: added the unlinked authenticated /events/:slug/redeem page wi
 Test and docs slice: covered concurrent final-coupon claims, attendee-email reuse, all application states, attendance precedence, readiness/error states, rate limiting, and Auth0-backed redirect/admin attendance behavior. Updated canonical domain, lifecycle, permissions, schema, API, and testing docs.
 
 Validation passed: git diff --check; bun run lint; bun run typecheck; bun run test:unit (110 files, 770 tests); bun run test:integration (25 files, 358 tests); bun run test:bdd (48 main scenarios and 2 destructive scenarios).
+
+Test deployment inspection found that the attendee-claiming API and event flag were present, but the Settings QR panel rendered as an unresolved custom element. Nuxt path-prefixed the nested component auto-import; the parent used the filename-only tag without the explicit import used by adjacent nested components.
+
+Repair validation passed: git diff --check; bun run lint; bun run typecheck; bun run test:unit (110 files, 770 tests); bun run test:integration (25 files, 358 tests); bun run test:bdd (49 main scenarios and 2 destructive scenarios). The new event-admin scenario asserts the Settings heading, redemption URL, QR image, and SVG download control.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
@@ -64,6 +68,8 @@ Validation passed: git diff --check; bun run lint; bun run typecheck; bun run te
 Implemented simplified attendee credit claiming for Meetups across schema, APIs, admin configuration, Luma CSV roster import, private QR redemption, transactional coupon assignment, attendance, audit/email behavior, tests, runtime bindings, and canonical docs. All required validation passes. No follow-up work is currently known; additive roster imports and post-first-claim configuration locks are intentional product behavior.
 
 Implementation commit 8f11fdc0 was pushed directly to origin/main with unrelated groma files excluded.
+
+Follow-up repair explicitly imports the nested Settings panel and adds browser coverage for its rendered QR controls.
 <!-- SECTION:FINAL_SUMMARY:END -->
 
 ## Definition of Done
@@ -76,5 +82,5 @@ Implementation commit 8f11fdc0 was pushed directly to origin/main with unrelated
 - [x] #6 Config and developer workflow docs were updated when setup changed
 - [x] #7 Auth and permissions changes follow the documented platform model
 - [x] #8 Risks and follow ups are recorded in the task summary
-- [x] #9 Implementation is committed and pushed directly to origin/main with unrelated worktree changes excluded.
+- [ ] #9 Implementation is committed and pushed directly to origin/main with unrelated worktree changes excluded.
 <!-- DOD:END -->
