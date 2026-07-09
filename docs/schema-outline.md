@@ -122,6 +122,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `max_team_members`
 - `participants_limit`
 - `auto_approve_applications`
+- `simplified_claiming_enabled`
 - `in_person_event`
 - `application_x_profile_visible`
 - `application_linkedin_profile_visible`
@@ -208,6 +209,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `final_ranking_submission_ids_json` stores the full saved shortlist order when `shortlist` is used and is later updated by any explicit final-ranking reorder recorded during `final_deliberation`.
 - `participants_limit` is an indicative planning target surfaced in admin approval workflows and does not enforce staged or applied admin approval writes by itself. When auto approval is enabled, it is also the capacity boundary for automatic approval.
 - `auto_approve_applications` controls whether newly submitted applications are approved immediately after required submission checks pass while approved participation is below `participants_limit` when one is configured. It defaults to false and does not affect already submitted applications when changed.
+- `simplified_claiming_enabled` is available only for Meetups. It requires no application terms, required registration fields, or Luma API Sync configuration. It uses the event slug and sole credit offer instead of a token or selected-offer field.
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.
 - Application field visibility columns control whether each optional application field appears on the participant application form. First name and family name are always visible and required.
 - `require_x_profile`, `require_linkedin_profile`, `require_github_profile`, `require_chatgpt_email`, `require_openai_org_id`, `require_luma_profile`, `require_why_this_event`, `require_proof_of_execution`, `require_team_intent`, and `require_ai_knowledge` control whether the corresponding visible field is required.
@@ -489,6 +491,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `submitted_at`
 - `withdrawn_at`
 - `checked_in_at`
+- `check_in_source`
 - `check_in_override_status`
 - `check_in_override_at`
 - `check_in_override_by_user_id`
@@ -525,6 +528,9 @@ It describes the intended persistent model at the level of entities, key fields,
   - `reject_synced`
   - `approve_failed`
   - `reject_failed`
+- `check_in_source`
+  - `luma`
+  - `simplified_claim`
 
 ### Constraints
 
@@ -541,13 +547,13 @@ It describes the intended persistent model at the level of entities, key fields,
   - `proofOfExecutionUrl`: optional string carrying one or more comma-separated `http` or `https` links to prior execution evidence when visible
   - `aiKnowledgeLevel`: `beginner`, `intermediate`, `advanced`, or an empty string when AI Knowledge is hidden or visible but not required and not selected
 - `withdrawn_at` records when the application was withdrawn from the event, including participant withdrawal, admin-managed withdrawal, and Luma guest cancellation sync.
-- `checked_in_at` records when a valid signed Luma guest check-in update first marked the approved participant as attended.
+- `checked_in_at` records the first accepted Luma or simplified-claim attendance timestamp. `check_in_source` records which path supplied it.
 - `pre_approval_status` stores a staged admin review decision that is applied later to transition the canonical `status`.
 - Applications created while `auto_approve_applications` is true are stored directly as `approved` with `reviewed_at` equal to `submitted_at` and no reviewing user.
 - `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for events that show and require a Luma email and have configured Luma sync.
 - `selected_track_id` stores the participant's selected Hackathon or Build track for that event when the application is `submitted` or `approved`.
-- `checked_in_at` is sticky in this version and is not cleared by later Luma uncheck updates.
-- `check_in_override_status` stores an admin attendance decision of `joined` or `not_joined` for an approved application, with `check_in_override_at` and `check_in_override_by_user_id` recording when and by whom it was set. The override wins over `checked_in_at` in both directions and is cleared back to the Luma default by repeating the active decision.
+- `checked_in_at` is sticky and is not cleared or replaced by later Luma or simplified-claim activity.
+- `check_in_override_status` stores an admin attendance decision of `joined` or `not_joined` for an approved application, with `check_in_override_at` and `check_in_override_by_user_id` recording when and by whom it was set. The override wins over `checked_in_at` in both directions and is cleared back to the recorded Luma or simplified-claim check-in by repeating the active decision.
 - `certificate_hidden_at` records when the participant disabled certificate generation. Null means the certificate is generated and publicly reachable when the participant is otherwise certificate-eligible.
 - `certificate_revoked_at` records when an event admin or platform admin revoked certificate access for an approved participant, with `certificate_revoked_by_user_id` recording the acting admin. Null means admin revocation does not block certificate access when the participant is otherwise certificate-eligible.
 - `certificate_email_queued_at` records when an event admin or platform admin reserved the application for certificate email delivery, with `certificate_email_queued_by_user_id` recording the acting admin. `certificate_email_sent_at` records successful delivery. These fields make the admin send action rerunnable without emailing the same participant again.
@@ -840,7 +846,8 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - A credit offer belongs to one event.
 - A credit offer is separate from winner prizes.
-- An event can define multiple credit offers.
+- An event can define multiple credit offers unless its Meetup has simplified claiming enabled, in which case zero or one offer is allowed.
+- An offer can be deleted only when none of its inventory rows has been claimed.
 - A credit offer stores participant-facing markdown copy and ordering only. Uploaded redeemable values live on `EventCreditCode`.
 
 ## EventCreditCode
@@ -851,6 +858,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `credit_offer_id`
 - `value`
 - `claimed_by_user_id`
+- `claimed_attendee_eligibility_id`
 - `claimed_at`
 - `created_at`
 
@@ -858,6 +866,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - `claimed_by_user_id` is null or references one `User`.
 - At most one row per `(credit_offer_id, claimed_by_user_id)` when `claimed_by_user_id` is not null.
+- `claimed_attendee_eligibility_id` is unique when present and references one `EventAttendeeEligibility`.
 
 ### Notes
 
@@ -865,6 +874,28 @@ It describes the intended persistent model at the level of entities, key fields,
 - Unclaimed rows are available inventory for the credit offer.
 - Claiming permanently assigns one uploaded value to one claiming user.
 - Only approved participants and event staff can claim from a credit offer.
+- Simplified claiming stores HTTPS coupon URLs, links the assigned row to the imported attendee eligibility, and denies the generic claim operation.
+
+## EventAttendeeEligibility
+
+### Key Fields
+
+- `id`
+- `event_id`
+- `normalized_email`
+- `first_name`
+- `family_name`
+- `created_at`
+- `updated_at`
+
+### Constraints
+
+- `unique (event_id, normalized_email)`
+
+### Notes
+
+- Rows contain only the approved attendee fields needed for simplified claiming. The source CSV and other Luma export columns are not persisted.
+- Re-import merges new eligibility and refreshes names without removing existing rows.
 
 ## PrizeEligibilitySnapshot
 

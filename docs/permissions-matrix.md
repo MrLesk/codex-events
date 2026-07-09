@@ -224,6 +224,11 @@ Event credit permissions apply to every event type.
 | View credit inventory and claim records | No | No | Yes | Yes |
 | Create or update credit offers | No | No | Yes | Yes |
 | Upload additional credit inventory to an offer | No | No | Yes | Yes |
+| Import approved Luma attendee eligibility | No | No | Yes, for a simplified-claiming Meetup | Yes, for a simplified-claiming Meetup |
+| Redeem the simplified Meetup offer | Yes, with attendee-email verification | Yes, with attendee-email verification | Yes, only when also an eligible attendee | Yes, only when also an eligible attendee |
+| Delete a credit offer with no claims | No | No | Yes | Yes |
+
+Simplified redemption requires an authenticated platform account with current legal consent and an unused imported attendee email; an event role alone grants no eligibility. When simplified claiming is enabled, the sole offer is hidden from ordinary participant and staff Credits views and the generic claim operation is denied. Event admins and platform admins continue to manage the offer and inventory in Credits, while Settings owns attendee import and QR readiness.
 
 ## Event Photo Gallery
 

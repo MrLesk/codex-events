@@ -79,6 +79,7 @@ export interface EventRecord {
   maxTeamMembers: number
   participantsLimit?: number | null
   autoApproveApplications: boolean
+  simplifiedClaimingEnabled: boolean
   blindReviewCount: number
   pitchReviewEnabled: boolean
   blindScoreWeightPercent: number

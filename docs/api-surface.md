@@ -649,11 +649,18 @@ Operations:
 | Update credit offer | `PATCH /api/events/:eventId/credits/:creditId` | event admin or platform admin | Updates participant-facing credit-offer metadata, including the markdown description. |
 | Import credit inventory into an offer | `POST /api/events/:eventId/credits/:creditId/import` | event admin or platform admin | Accepts a single-column CSV upload and appends one redeemable value per non-empty row. |
 | Claim one credit from an offer | `POST /api/events/:eventId/credits/:creditId/actions/claim` | approved participant or event staff | Returns the caller's existing assigned value for that offer when already claimed; otherwise atomically assigns one unclaimed uploaded value. |
+| Delete an unclaimed credit offer | `DELETE /api/events/:eventId/credits/:creditId` | event admin or platform admin | Deletes the offer and inventory only when no inventory row has been claimed. |
+| Get simplified claiming readiness | `GET /api/events/:eventId/simplified-claiming` | event admin or platform admin | Returns the attendee count, sole-offer and HTTPS-inventory readiness, locked state, redemption URL, and non-sensitive setup issues. |
+| Import simplified claiming attendees | `POST /api/events/:eventId/simplified-claiming/attendees/import` | event admin or platform admin | Accepts a bounded Luma CSV, requires `email`, `first_name`, `last_name`, and `approval_status`, and merges only approved minimal attendee eligibility. |
+| Get own simplified claim state | `GET /api/events/slug/:slug/simplified-claim` | authenticated platform user with current legal consent | Returns an existing assigned coupon for idempotent redirect or a non-sensitive ready, unavailable, or sold-out state. |
+| Redeem the simplified Meetup offer | `POST /api/events/slug/:slug/simplified-claim/actions/redeem` | authenticated platform user with current legal consent | During open registration, verifies the normalized Luma email, consumes attendee eligibility once, approves an absent or submitted application, assigns one HTTPS coupon, records attendance, queues the normal approval email once, and returns the coupon URL. |
+
+The `/events/:slug/redeem` page is unlinked, `noindex`, `nofollow`, and uses a no-referrer policy. Simplified offers are omitted from participant credit listings, and their generic manual claim route is rejected.
 
 Testing:
 - Unit: participant eligibility, URL-versus-code presentation helpers, and single-claim guards.
-- Integration: admin inventory writes, CSV import behavior, sold-out responses, and atomic claim writes.
-- End-to-end: account event Credits tab admin and participant flows.
+- Integration: admin inventory writes, both CSV import formats, readiness and locking, sold-out responses, ordinary atomic claims, and simplified transactional redemption.
+- End-to-end: account event Credits flows plus QR scan, authentication/account consent, attendee matching, external redirect, repeat redirect, and admin attendance visibility.
 
 ## Audit
 

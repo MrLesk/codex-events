@@ -4,6 +4,7 @@ import { getTableConfig } from 'drizzle-orm/sqlite-core'
 
 import {
   auditLogs,
+  eventAttendeeEligibilities,
   eventCreditCodes,
   eventCreditOffers,
   eventFeedback,
@@ -52,6 +53,7 @@ describe('shared schema foundation', () => {
     const assignmentIndexes = getTableConfig(judgeAssignments).indexes.map(index => index.config.name)
     const creditOfferIndexes = getTableConfig(eventCreditOffers).indexes.map(index => index.config.name)
     const creditCodeIndexes = getTableConfig(eventCreditCodes).indexes.map(index => index.config.name)
+    const attendeeEligibilityIndexes = getTableConfig(eventAttendeeEligibilities).indexes.map(index => index.config.name)
     const prizeEligibilitySnapshotIndexes = getTableConfig(prizeEligibilitySnapshots).indexes.map(index => index.config.name)
     const prizeRedemptionIndexes = getTableConfig(prizeRedemptions).indexes.map(index => index.config.name)
 
@@ -72,6 +74,9 @@ describe('shared schema foundation', () => {
     expect(creditOfferIndexes).toContain('event_credit_offers_event_display_order_idx')
     expect(creditCodeIndexes).toContain('event_credit_codes_offer_claim_state_idx')
     expect(creditCodeIndexes).toContain('event_credit_codes_offer_claimed_user_idx')
+    expect(creditCodeIndexes).toContain('event_credit_codes_claimed_attendee_eligibility_idx')
+    expect(attendeeEligibilityIndexes).toContain('event_attendee_eligibilities_event_email_idx')
+    expect(attendeeEligibilityIndexes).toContain('event_attendee_eligibilities_event_created_idx')
     expect(prizeEligibilitySnapshotIndexes).toContain('prize_eligibility_snapshots_event_user_team_idx')
     expect(prizeEligibilitySnapshotIndexes).toContain('prize_eligibility_snapshots_event_team_user_idx')
     expect(prizeRedemptionIndexes).toContain('prize_redemptions_pending_user_created_idx')
@@ -113,6 +118,7 @@ describe('shared schema foundation', () => {
     expect(eventColumns.inPersonEvent.name).toBe('in_person_event')
     expect(eventColumns.participantsLimit.name).toBe('participants_limit')
     expect(eventColumns.autoApproveApplications.name).toBe('auto_approve_applications')
+    expect(eventColumns.simplifiedClaimingEnabled.name).toBe('simplified_claiming_enabled')
     expect(eventColumns.shortlistFinalistCount.name).toBe('shortlist_finalist_count')
     expect(eventColumns.pitchFinalistSubmissionIdsJson.name).toBe('pitch_finalist_submission_ids_json')
     expect(eventColumns.activePitchPresentationSubmissionId.name).toBe('active_pitch_presentation_submission_id')
@@ -159,6 +165,7 @@ describe('shared schema foundation', () => {
     expect(applicationColumns.preApprovalStatus.name).toBe('pre_approval_status')
     expect(applicationColumns.lumaSyncStatus.name).toBe('luma_sync_status')
     expect(applicationColumns.checkedInAt.name).toBe('checked_in_at')
+    expect(applicationColumns.checkInSource.name).toBe('check_in_source')
     expect(applicationColumns.checkInOverrideStatus.name).toBe('check_in_override_status')
     expect(applicationColumns.checkInOverrideAt.name).toBe('check_in_override_at')
     expect(applicationColumns.checkInOverrideByUserId.name).toBe('check_in_override_by_user_id')
@@ -170,6 +177,7 @@ describe('shared schema foundation', () => {
     expect(creditOfferColumns.displayOrder.name).toBe('display_order')
     expect(creditCodeColumns.creditOfferId.name).toBe('credit_offer_id')
     expect(creditCodeColumns.claimedByUserId.name).toBe('claimed_by_user_id')
+    expect(creditCodeColumns.claimedAttendeeEligibilityId.name).toBe('claimed_attendee_eligibility_id')
     expect(prizeColumns.displayOrder.name).toBe('display_order')
     expect(submissionColumns.trackId.name).toBe('track_id')
     expect(getTableConfig(userApplications).indexes.map(index => index.config.name)).toContain('user_applications_event_selected_track_idx')

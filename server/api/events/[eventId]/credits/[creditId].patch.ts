@@ -12,7 +12,9 @@ import {
   serializeEventCreditOffer,
   updateEventCreditOfferBodySchema
 } from '#server/domains/credits'
+import { getSimplifiedClaimingSummary } from '#server/domains/credits/simplified-claiming'
 import { requireEventAdmin } from '#server/domains/events'
+import { assertGuard } from '#server/domains/lifecycle-guard'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (h3Event) => {
@@ -21,8 +23,14 @@ export default defineApiHandler(async (h3Event) => {
   const body = await parseValidatedBody(h3Event, updateEventCreditOfferBodySchema)
   const database = getDatabase(h3Event)
 
-  await requireEventAdmin(h3Event, eventId)
+  const { event } = await requireEventAdmin(h3Event, eventId)
   await getEventCreditOfferOrThrow(database, eventId, creditId)
+  const simplifiedClaiming = await getSimplifiedClaimingSummary(database, event)
+  assertGuard(!simplifiedClaiming.locked, {
+    statusCode: 409,
+    code: 'simplified_claiming_locked',
+    message: 'The credit offer cannot be changed after the first simplified claim.'
+  })
 
   await database
     .update(eventCreditOffers)

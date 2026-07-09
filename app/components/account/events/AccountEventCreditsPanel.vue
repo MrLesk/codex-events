@@ -16,6 +16,7 @@ const props = defineProps<{
   eventId: string
   canManage: boolean
   canClaim: boolean
+  simplifiedClaimingEnabled?: boolean
 }>()
 
 const apiFetch = import.meta.server ? useRequestFetch() : $fetch
@@ -80,6 +81,7 @@ const savePendingById = reactive<Record<string, boolean>>({})
 const saveErrorById = reactive<Record<string, string>>({})
 const importPendingById = reactive<Record<string, boolean>>({})
 const importErrorById = reactive<Record<string, string>>({})
+const deletePendingById = reactive<Record<string, boolean>>({})
 
 const selectedCreateFileName = computed(() => createInventoryFile.value?.name ?? '')
 const maskedCreditValue = '•••• •••• ••••'
@@ -388,6 +390,26 @@ async function saveOffer(offer: AdminEventCreditOffer) {
   }
 }
 
+async function deleteOffer(offer: AdminEventCreditOffer) {
+  if (offer.claimedCount > 0 || !window.confirm(`Delete ${offer.name}?`)) {
+    return
+  }
+
+  saveErrorById[offer.id] = ''
+  deletePendingById[offer.id] = true
+  try {
+    await apiFetch(`/api/events/${props.eventId}/credits/${offer.id}`, {
+      method: 'DELETE'
+    })
+    await refreshCredits()
+    toast.add({ title: 'Credit offer deleted', color: 'success' })
+  } catch (error) {
+    saveErrorById[offer.id] = normalizeEventCreditApiError(error).message
+  } finally {
+    deletePendingById[offer.id] = false
+  }
+}
+
 async function importCreditsFile(offerId: string, file: File) {
   importErrorById[offerId] = ''
   importPendingById[offerId] = true
@@ -523,6 +545,13 @@ async function copyCreditValue(value: string) {
 
       <div class="space-y-6">
         <AppAlert
+          v-if="props.simplifiedClaimingEnabled"
+          color="info"
+          variant="soft"
+          title="One private attendee offer"
+          description="This Meetup uses one credit offer. Participants receive its HTTPS coupon link from the private redemption page, so it will not appear in their Credits tab."
+        />
+        <AppAlert
           v-if="adminCreditsRequest.error.value"
           color="error"
           variant="soft"
@@ -638,6 +667,18 @@ async function copyCreditValue(value: string) {
                   >
                     <span class="sr-only">Edit offer name</span>
                   </AppButton>
+                  <AppButton
+                    v-if="offer.claimedCount === 0"
+                    color="error"
+                    variant="soft"
+                    size="sm"
+                    icon="i-lucide-trash-2"
+                    :loading="deletePendingById[offer.id]"
+                    :disabled="deletePendingById[offer.id]"
+                    @click="deleteOffer(offer)"
+                  >
+                    Delete
+                  </AppButton>
                   <AppBadge
                     color="success"
                     variant="soft"
@@ -672,7 +713,7 @@ async function copyCreditValue(value: string) {
                     Append inventory
                   </p>
                   <p class="text-sm text-muted">
-                    Upload a single-column CSV with no header and one code or link per row.
+                    {{ props.simplifiedClaimingEnabled ? 'Upload a single-column CSV with no header and one HTTPS coupon link per row.' : 'Upload a single-column CSV with no header and one code or link per row.' }}
                   </p>
                 </div>
 
@@ -835,7 +876,7 @@ async function copyCreditValue(value: string) {
     </AppCard>
 
     <AppCard
-      v-if="props.canManage"
+      v-if="props.canManage && (!props.simplifiedClaimingEnabled || adminCredits.length === 0)"
       class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
       :ui="{ body: 'p-5' }"
     >
@@ -958,7 +999,7 @@ async function copyCreditValue(value: string) {
     </AppCard>
 
     <AppCard
-      v-if="props.canClaim"
+      v-if="props.canClaim && !props.simplifiedClaimingEnabled"
       class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
       :ui="{ body: 'p-5' }"
     >

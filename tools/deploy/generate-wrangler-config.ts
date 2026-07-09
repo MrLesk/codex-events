@@ -138,16 +138,19 @@ const rateLimitNamespaceIdsByTarget: Record<DeployTarget, {
   publicContact: string
   authenticatedUpload: string
   publicEventFeedback: string
+  simplifiedClaiming: string
 }> = {
   test: {
     publicContact: '2001',
     authenticatedUpload: '2002',
-    publicEventFeedback: '2003'
+    publicEventFeedback: '2003',
+    simplifiedClaiming: '2004'
   },
   production: {
     publicContact: '3001',
     authenticatedUpload: '3002',
-    publicEventFeedback: '3003'
+    publicEventFeedback: '3003',
+    simplifiedClaiming: '3004'
   }
 }
 
@@ -399,6 +402,14 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
         namespace_id: rateLimitNamespaceIds.publicEventFeedback,
         simple: {
           limit: 1,
+          period: 60
+        }
+      },
+      {
+        name: 'SIMPLIFIED_CLAIMING_RATE_LIMITER',
+        namespace_id: rateLimitNamespaceIds.simplifiedClaiming,
+        simple: {
+          limit: 10,
           period: 60
         }
       }

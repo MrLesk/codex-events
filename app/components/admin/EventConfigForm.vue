@@ -76,6 +76,7 @@ const showProgramIdentitySection = computed(() => formModeView.value.showProgram
 const showProgramSettingsSections = computed(() => formModeView.value.showProgramSettingsSections)
 const isHackathon = computed(() => form.value.eventType === 'hackathon')
 const isBuildEvent = computed(() => form.value.eventType === 'build')
+const isMeetup = computed(() => form.value.eventType === 'meetup')
 const showEventTypeField = computed(() => formMode.value === 'full' && showBasicInformationFields.value)
 const showTracksSection = computed(() => formMode.value !== 'details' && (isHackathon.value || isBuildEvent.value))
 const showInlineDetailsActions = computed(() => formMode.value === 'details')
@@ -516,6 +517,10 @@ watch(() => form.value.eventType, (nextEventType, previousEventType) => {
   }
 
   applyEventTypeApplicationFieldDefaults(form.value, nextEventType)
+
+  if (nextEventType !== 'meetup') {
+    form.value.simplifiedClaimingEnabled = false
+  }
 })
 
 watch(lumaSyncEnabled, (enabled) => {
@@ -1531,6 +1536,21 @@ const submitConfigForm = handleSubmit(() => {
                     In-person event
                   </label>
 
+                  <label
+                    v-if="isMeetup"
+                    class="flex items-start gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]"
+                  >
+                    <input
+                      v-model="form.simplifiedClaimingEnabled"
+                      type="checkbox"
+                      class="mt-0.5 size-4 rounded border-black/20 dark:border-white/[0.3]"
+                    >
+                    <span class="grid gap-0.5">
+                      <span>Simplified attendee claiming</span>
+                      <span class="text-xs text-muted">Let approved Luma attendees claim the event credit from a private QR link. Add a credit offer before sharing the QR.</span>
+                    </span>
+                  </label>
+
                   <EventConfigApplicationFieldsTable
                     v-model:form="form"
                     class="mt-2"
@@ -1890,6 +1910,21 @@ const submitConfigForm = handleSubmit(() => {
                 class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
               In-person event
+            </label>
+
+            <label
+              v-if="isMeetup"
+              class="flex items-start gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]"
+            >
+              <input
+                v-model="form.simplifiedClaimingEnabled"
+                type="checkbox"
+                class="mt-0.5 size-4 rounded border-black/20 dark:border-white/[0.3]"
+              >
+              <span class="grid gap-0.5">
+                <span>Simplified attendee claiming</span>
+                <span class="text-xs text-muted">Let approved Luma attendees claim the event credit from a private QR link. Add a credit offer before sharing the QR.</span>
+              </span>
             </label>
 
             <EventConfigApplicationFieldsTable

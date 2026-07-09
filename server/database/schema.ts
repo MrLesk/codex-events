@@ -36,6 +36,7 @@ export const platformDocumentTypes = ['privacy_policy', 'platform_terms'] as con
 export const eventTermsDocumentTypes = ['application_terms', 'winner_terms'] as const
 export const userApplicationStatuses = ['submitted', 'approved', 'rejected', 'withdrawn'] as const
 export const applicationCheckInOverrideStatuses = ['joined', 'not_joined'] as const
+export const applicationCheckInSources = ['luma', 'simplified_claim'] as const
 export const userApplicationPreApprovalStatuses = ['approved', 'rejected'] as const
 export const userApplicationLumaSyncStatuses = [
   'not_synced',
@@ -150,6 +151,7 @@ export const events = sqliteTable(
     maxTeamMembers: integer('max_team_members').notNull(),
     participantsLimit: integer('participants_limit'),
     autoApproveApplications: integer('auto_approve_applications', { mode: 'boolean' }).notNull().default(false),
+    simplifiedClaimingEnabled: integer('simplified_claiming_enabled', { mode: 'boolean' }).notNull().default(false),
     inPersonEvent: integer('in_person_event', { mode: 'boolean' }).notNull().default(false),
     applicationXProfileVisible: integer('application_x_profile_visible', { mode: 'boolean' }).notNull().default(true),
     applicationLinkedinProfileVisible: integer('application_linkedin_profile_visible', { mode: 'boolean' }).notNull().default(true),
@@ -499,6 +501,28 @@ export const eventTermsDocuments = sqliteTable(
   ]
 )
 
+export const eventAttendeeEligibilities = sqliteTable(
+  'event_attendee_eligibilities',
+  {
+    id: idColumn(),
+    eventId: text('event_id')
+      .notNull()
+      .references(() => events.id, { onDelete: 'cascade' }),
+    normalizedEmail: text('normalized_email').notNull(),
+    firstName: text('first_name'),
+    familyName: text('family_name'),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn()
+  },
+  table => [
+    uniqueIndex('event_attendee_eligibilities_event_email_idx').on(
+      table.eventId,
+      table.normalizedEmail
+    ),
+    index('event_attendee_eligibilities_event_created_idx').on(table.eventId, table.createdAt)
+  ]
+)
+
 export const userApplications = sqliteTable(
   'user_applications',
   {
@@ -515,6 +539,7 @@ export const userApplications = sqliteTable(
     submittedAt: text('submitted_at').notNull().default(currentTimestamp),
     withdrawnAt: text('withdrawn_at'),
     checkedInAt: text('checked_in_at'),
+    checkInSource: text('check_in_source', { enum: applicationCheckInSources }),
     checkInOverrideStatus: text('check_in_override_status', { enum: applicationCheckInOverrideStatuses }),
     checkInOverrideAt: text('check_in_override_at'),
     checkInOverrideByUserId: text('check_in_override_by_user_id').references(() => users.id),
@@ -815,6 +840,8 @@ export const eventCreditCodes = sqliteTable(
       .references(() => eventCreditOffers.id, { onDelete: 'cascade' }),
     value: text('value').notNull(),
     claimedByUserId: text('claimed_by_user_id').references(() => users.id),
+    claimedAttendeeEligibilityId: text('claimed_attendee_eligibility_id')
+      .references(() => eventAttendeeEligibilities.id),
     claimedAt: text('claimed_at'),
     createdAt: createdAtColumn()
   },
@@ -826,7 +853,10 @@ export const eventCreditCodes = sqliteTable(
     ),
     uniqueIndex('event_credit_codes_offer_claimed_user_idx')
       .on(table.creditOfferId, table.claimedByUserId)
-      .where(sql`${table.claimedByUserId} is not null`)
+      .where(sql`${table.claimedByUserId} is not null`),
+    uniqueIndex('event_credit_codes_claimed_attendee_eligibility_idx')
+      .on(table.claimedAttendeeEligibilityId)
+      .where(sql`${table.claimedAttendeeEligibilityId} is not null`)
   ]
 )
 
@@ -976,6 +1006,7 @@ export const schema = {
   platformLegalSettings,
   userPlatformDocumentAcceptances,
   eventTermsDocuments,
+  eventAttendeeEligibilities,
   userApplications,
   teams,
   teamMembers,

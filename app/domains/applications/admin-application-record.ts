@@ -17,6 +17,7 @@ export interface AdminApplicationRecord {
   preApprovalStatus?: 'approved' | 'rejected' | null
   lumaSyncStatus?: 'not_synced' | 'approve_synced' | 'reject_synced' | 'approve_failed' | 'reject_failed' | null
   checkedInAt?: string | null
+  checkInSource?: 'luma' | 'simplified_claim' | null
   checkInOverrideStatus?: ApplicationCheckInOverrideStatus | null
   checkInOverrideAt?: string | null
   certificateHiddenAt?: string | null
@@ -110,10 +111,11 @@ export function getApplicationAttendanceStatusColor(
 }
 
 export function formatApplicationAttendanceSource(
-  application: Pick<AdminApplicationRecord, 'checkedInAt' | 'checkInOverrideStatus'>
+  application: Pick<AdminApplicationRecord, 'checkedInAt' | 'checkInSource' | 'checkInOverrideStatus'>
 ) {
   const source = resolveApplicationAttendanceSource({
     checkedInAt: application.checkedInAt ?? null,
+    checkInSource: application.checkInSource ?? null,
     checkInOverrideStatus: application.checkInOverrideStatus ?? null
   })
 
@@ -122,19 +124,24 @@ export function formatApplicationAttendanceSource(
       return application.checkInOverrideStatus === 'joined' ? 'Marked joined by event team' : 'Marked not joined by event team'
     case 'luma':
       return 'Checked in via Luma'
+    case 'simplified_claim':
+      return 'Checked in after claiming the event credit'
     default:
       return 'No check-in recorded'
   }
 }
 
 export function shouldShowApprovedParticipantAttendanceSummary(
-  event: Pick<EventRecord, 'applicationLumaEmailVisible' | 'requireLumaEmail' | 'lumaEventApiId' | 'lumaWebhookStatus'> | null | undefined
+  event: Pick<EventRecord, 'applicationLumaEmailVisible' | 'requireLumaEmail' | 'lumaEventApiId' | 'lumaWebhookStatus' | 'simplifiedClaimingEnabled'> | null | undefined
 ) {
   return Boolean(
-    event?.applicationLumaEmailVisible
-    && event.requireLumaEmail
-    && event.lumaEventApiId?.trim()
-    && event.lumaWebhookStatus === 'configured'
+    event?.simplifiedClaimingEnabled
+    || (
+      event?.applicationLumaEmailVisible
+      && event.requireLumaEmail
+      && event.lumaEventApiId?.trim()
+      && event.lumaWebhookStatus === 'configured'
+    )
   )
 }
 

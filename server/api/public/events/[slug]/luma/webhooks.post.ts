@@ -129,7 +129,7 @@ export default defineApiHandler(async (h3Event) => {
   const updatedAt = new Date().toISOString()
   const updateResult = await getD1Binding(h3Event).prepare(`
     update user_applications
-    set checked_in_at = ?, updated_at = ?
+    set checked_in_at = ?, check_in_source = 'luma', updated_at = ?
     where id = ?
       and status = 'approved'
       and checked_in_at is null

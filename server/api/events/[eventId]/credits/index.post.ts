@@ -2,10 +2,11 @@ import { desc, eq } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
-import { getDatabase } from '#server/database/client'
+import { getD1Binding, getDatabase } from '#server/database/client'
 import { eventCreditOffers } from '#server/database/schema'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
+import { ApiError } from '#server/http/api-error'
 import {
   createEventCreditOfferBodySchema,
   serializeEventCreditOffer
@@ -19,7 +20,7 @@ export default defineApiHandler(async (h3Event) => {
   const body = await parseValidatedBody(h3Event, createEventCreditOfferBodySchema)
   const database = getDatabase(h3Event)
 
-  await requireEventAdmin(h3Event, eventId)
+  const { event } = await requireEventAdmin(h3Event, eventId)
 
   const creditOfferId = crypto.randomUUID()
   const createdAt = new Date().toISOString()
@@ -29,15 +30,34 @@ export default defineApiHandler(async (h3Event) => {
   })
   const displayOrder = body.displayOrder ?? ((latestOffer?.displayOrder ?? 0) + 1)
 
-  await database.insert(eventCreditOffers).values({
-    id: creditOfferId,
+  const insertResult = await getD1Binding(h3Event).prepare(`
+    insert into event_credit_offers (
+      id, event_id, name, description, display_order, created_at, updated_at
+    )
+    select ?, ?, ?, ?, ?, ?, ?
+    where ? = 0
+      or not exists (
+        select 1 from event_credit_offers where event_id = ?
+      )
+  `).bind(
+    creditOfferId,
     eventId,
-    name: body.name,
-    description: body.description,
+    body.name,
+    body.description,
     displayOrder,
     createdAt,
-    updatedAt: createdAt
-  })
+    createdAt,
+    event.simplifiedClaimingEnabled ? 1 : 0,
+    eventId
+  ).run()
+
+  if ((insertResult.meta.changes ?? 0) === 0) {
+    throw new ApiError({
+      statusCode: 409,
+      code: 'simplified_claiming_multiple_offers',
+      message: 'Simplified claiming supports one credit offer.'
+    })
+  }
 
   const offer = await database.query.eventCreditOffers.findFirst({
     where: eq(eventCreditOffers.id, creditOfferId)

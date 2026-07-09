@@ -19,6 +19,11 @@ describe('application check-in helpers', () => {
   test('resolves the attendance source', () => {
     expect(resolveApplicationAttendanceSource({ checkedInAt: null, checkInOverrideStatus: 'joined' })).toBe('manual')
     expect(resolveApplicationAttendanceSource({ checkedInAt: '2026-06-20T08:05:00.000Z', checkInOverrideStatus: null })).toBe('luma')
+    expect(resolveApplicationAttendanceSource({
+      checkedInAt: '2026-06-20T08:05:00.000Z',
+      checkInSource: 'simplified_claim',
+      checkInOverrideStatus: null
+    })).toBe('simplified_claim')
     expect(resolveApplicationAttendanceSource({ checkedInAt: null, checkInOverrideStatus: null })).toBeNull()
   })
 })

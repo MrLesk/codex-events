@@ -51,6 +51,7 @@ function buildEventRecord(
     maxTeamMembers: 5,
     participantsLimit: null,
     autoApproveApplications: false,
+    simplifiedClaimingEnabled: false,
     inPersonEvent: false,
     applicationXProfileVisible: true,
     applicationLinkedinProfileVisible: true,
@@ -489,6 +490,69 @@ describe('event management utilities', () => {
       eventType: 'meetup',
       tracks: []
     })
+  })
+
+  test('accepts simplified claiming only for compatible Meetups', () => {
+    expect(createEventBodySchema.parse({
+      eventType: 'meetup',
+      name: 'Fixture Meetup',
+      slug: 'fixture-meetup',
+      description: 'Fixture meetup',
+      agendaItems: [],
+      tracks: [],
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      simplifiedClaimingEnabled: true
+    })).toMatchObject({ simplifiedClaimingEnabled: true })
+
+    expect(() => createEventBodySchema.parse({
+      eventType: 'build',
+      name: 'Fixture Build',
+      slug: 'fixture-build',
+      description: 'Fixture build',
+      agendaItems: [],
+      tracks: [],
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      simplifiedClaimingEnabled: true
+    })).toThrow('Simplified claiming is available only for Meetup events.')
+
+    expect(updateEventBodySchema.parse({
+      simplifiedClaimingEnabled: true
+    })).toEqual({ simplifiedClaimingEnabled: true })
+  })
+
+  test('rejects required fields, Luma Sync, and terms while simplified claiming is enabled', () => {
+    expect(() => buildEventUpdatePayload(buildEventRecord({
+      eventType: 'meetup',
+      submissionOpensAt: null,
+      submissionClosesAt: null,
+      simplifiedClaimingEnabled: true,
+      applicationChatgptEmailVisible: true,
+      requireChatgptEmail: true
+    }), {})).toThrow('Remove required registration fields before enabling simplified claiming.')
+
+    expect(() => buildEventUpdatePayload(buildEventRecord({
+      eventType: 'meetup',
+      submissionOpensAt: null,
+      submissionClosesAt: null,
+      simplifiedClaimingEnabled: true,
+      lumaEventApiId: 'evt-123'
+    }), {})).toThrow('Remove the Luma API Sync configuration before enabling simplified claiming.')
+
+    expect(() => buildEventUpdatePayload(buildEventRecord({
+      eventType: 'meetup',
+      submissionOpensAt: null,
+      submissionClosesAt: null,
+      simplifiedClaimingEnabled: true,
+      currentApplicationTermsDocumentId: 'terms-1'
+    }), {})).toThrow('Remove the application terms before enabling simplified claiming.')
   })
 
   test('requires event type on creation', () => {

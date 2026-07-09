@@ -12,7 +12,12 @@ import {
   getEventCreditOfferOrThrow,
   parseSingleColumnCreditCsv
 } from '#server/domains/credits'
+import {
+  getSimplifiedClaimingSummary,
+  isHttpsCouponUrl
+} from '#server/domains/credits/simplified-claiming'
 import { requireEventAdmin } from '#server/domains/events'
+import { assertGuard } from '#server/domains/lifecycle-guard'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (h3Event) => {
@@ -21,8 +26,14 @@ export default defineApiHandler(async (h3Event) => {
   const { eventId, creditId } = parseValidatedParams(h3Event, creditParamsSchema)
   const database = getDatabase(h3Event)
 
-  await requireEventAdmin(h3Event, eventId)
+  const { event } = await requireEventAdmin(h3Event, eventId)
   await getEventCreditOfferOrThrow(database, eventId, creditId)
+  const simplifiedClaiming = await getSimplifiedClaimingSummary(database, event)
+  assertGuard(!simplifiedClaiming.locked, {
+    statusCode: 409,
+    code: 'simplified_claiming_locked',
+    message: 'Coupon inventory cannot be changed after the first simplified claim.'
+  })
 
   const multipart = await readMultipartFormData(h3Event)
   const filePart = multipart?.find(part => part.name === 'file')
@@ -37,6 +48,13 @@ export default defineApiHandler(async (h3Event) => {
 
   const importedAtBase = Date.now()
   const values = parseSingleColumnCreditCsv(new TextDecoder().decode(filePart.data))
+  if (event.simplifiedClaimingEnabled) {
+    assertGuard(values.every(isHttpsCouponUrl), {
+      statusCode: 400,
+      code: 'simplified_claiming_coupon_url_invalid',
+      message: 'Every coupon must be an HTTPS link.'
+    })
+  }
   const codeRows = values.map((value, index) => ({
     id: crypto.randomUUID(),
     creditOfferId: creditId,

@@ -234,6 +234,7 @@ const tracksSchema = tracksInputSchema
 const maxTeamMembersSchema = z.coerce.number().int().min(1)
 const participantsLimitSchema = z.coerce.number().int().min(1).nullable()
 const autoApproveApplicationsSchema = z.coerce.boolean()
+const simplifiedClaimingEnabledSchema = z.coerce.boolean()
 const blindReviewCountSchema = z.coerce.number().int().min(0).max(2)
 const pitchReviewEnabledSchema = z.coerce.boolean()
 const blindScoreWeightPercentSchema = z.coerce.number().int().min(0).max(100)
@@ -340,6 +341,40 @@ function addApplicationFieldConfigurationIssues(
   }
 }
 
+function addSimplifiedClaimingConfigurationIssues(
+  input: Record<string, unknown>,
+  addIssue: (path: string[], message: string) => void
+) {
+  if (input.simplifiedClaimingEnabled !== true) {
+    return
+  }
+
+  if (input.eventType !== undefined && input.eventType !== 'meetup') {
+    addIssue(['simplifiedClaimingEnabled'], 'Simplified claiming is available only for Meetup events.')
+  }
+
+  if (input.lumaEventApiId || input.lumaApiKey) {
+    addIssue(
+      ['simplifiedClaimingEnabled'],
+      'Remove the Luma API Sync configuration before enabling simplified claiming.'
+    )
+  }
+
+  if (applicationFieldRequirementPairs.some(([, requiredKey]) => input[requiredKey] === true)) {
+    addIssue(
+      ['simplifiedClaimingEnabled'],
+      'Remove required registration fields before enabling simplified claiming.'
+    )
+  }
+
+  if (input.currentApplicationTermsDocumentId) {
+    addIssue(
+      ['simplifiedClaimingEnabled'],
+      'Remove the application terms before enabling simplified claiming.'
+    )
+  }
+}
+
 const eventConfigShape = {
   eventType: eventTypeEnumSchema,
   name: z.string().trim().min(1),
@@ -364,6 +399,7 @@ const eventConfigShape = {
   maxTeamMembers: maxTeamMembersSchema.default(4),
   participantsLimit: participantsLimitSchema.default(null),
   autoApproveApplications: autoApproveApplicationsSchema.default(false),
+  simplifiedClaimingEnabled: simplifiedClaimingEnabledSchema.default(false),
   blindReviewCount: blindReviewCountSchema.default(1),
   pitchReviewEnabled: pitchReviewEnabledSchema.default(false),
   blindScoreWeightPercent: blindScoreWeightPercentSchema.default(70),
@@ -399,6 +435,13 @@ export const createEventBodySchema = z.preprocess(
   normalizeCreateEventConfigInput,
   z.object(eventConfigShape).superRefine((input, ctx) => {
     addApplicationFieldConfigurationIssues(input as Record<string, unknown>, (path, message) => {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message,
+        path
+      })
+    })
+    addSimplifiedClaimingConfigurationIssues(input as Record<string, unknown>, (path, message) => {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message,
@@ -451,6 +494,7 @@ export const updateEventBodySchema = z.object({
   maxTeamMembers: maxTeamMembersSchema.optional(),
   participantsLimit: participantsLimitSchema.optional(),
   autoApproveApplications: autoApproveApplicationsSchema.optional(),
+  simplifiedClaimingEnabled: simplifiedClaimingEnabledSchema.optional(),
   blindReviewCount: blindReviewCountSchema.optional(),
   pitchReviewEnabled: pitchReviewEnabledSchema.optional(),
   blindScoreWeightPercent: blindScoreWeightPercentSchema.optional(),
@@ -482,6 +526,13 @@ export const updateEventBodySchema = z.object({
   requireSubmissionDemoUrl: profileRequirementSchema.optional()
 }).superRefine((input, ctx) => {
   addApplicationFieldConfigurationIssues(input as Record<string, unknown>, (path, message) => {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message,
+      path
+    })
+  })
+  addSimplifiedClaimingConfigurationIssues(input as Record<string, unknown>, (path, message) => {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message,
@@ -1184,6 +1235,24 @@ export function assertEventApplicationFieldConfiguration(
   })
 }
 
+export function assertSimplifiedClaimingConfiguration(
+  input: Record<string, unknown>,
+  eventId?: string
+) {
+  const issues: Array<{ path: string[], message: string }> = []
+  addSimplifiedClaimingConfigurationIssues(input, (path, message) => issues.push({ path, message }))
+
+  assertGuard(issues.length === 0, {
+    statusCode: 409,
+    code: 'simplified_claiming_configuration_conflict',
+    message: issues[0]?.message ?? 'The event configuration is not compatible with simplified claiming.',
+    details: {
+      ...(eventId ? { eventId } : {}),
+      fields: issues.map(issue => issue.path[0])
+    }
+  })
+}
+
 export function assertCompetitionEvent(event: Pick<EventRecord, 'id' | 'eventType'>) {
   if (event.eventType === 'hackathon') {
     return
@@ -1319,6 +1388,7 @@ export function buildEventUpdatePayload(
     submissionClosesAt: mergedEvent.submissionClosesAt
   })
   assertEventApplicationFieldConfiguration(mergedEvent, existingEvent.id)
+  assertSimplifiedClaimingConfiguration(mergedEvent, existingEvent.id)
 
   return {
     ...normalizedPatch,
@@ -1918,6 +1988,7 @@ export function serializeAdminEvent(
     hiddenAt: event.hiddenAt,
     hiddenByUserId: event.hiddenByUserId,
     hiddenReason: event.hiddenReason,
+    simplifiedClaimingEnabled: event.simplifiedClaimingEnabled,
     slidesUrl: event.slidesUrl,
     lumaApiKey: event.lumaApiKey,
     lumaWebhookStatus: event.lumaWebhookStatus,

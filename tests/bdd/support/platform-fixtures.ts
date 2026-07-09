@@ -32,6 +32,7 @@ const fixtureApiTeamFormationEventId = 'event_e2e_api_team_formation_fixture'
 const fixtureParticipantProfileRequirementEventId = 'event_e2e_participant_profile_requirement_fixture'
 const fixtureParticipantApprovedEventId = 'event_e2e_participant_approved_fixture'
 const fixtureParticipantRejectedEventId = 'event_e2e_participant_rejected_fixture'
+export const fixtureSimplifiedClaimingEventId = 'event_e2e_simplified_claiming_fixture'
 const fixtureParticipantTeamCreateEventId = 'event_e2e_participant_team_create_fixture'
 const fixtureParticipantTeamJoinEventId = 'event_e2e_participant_team_join_fixture'
 const fixtureParticipantTeamSoloEventId = 'event_e2e_participant_team_solo_fixture'
@@ -111,6 +112,7 @@ export const platformFixtureIds = {
   participantProfileRequirementEventId: fixtureParticipantProfileRequirementEventId,
   participantApprovedEventId: fixtureParticipantApprovedEventId,
   participantRejectedEventId: fixtureParticipantRejectedEventId,
+  simplifiedClaimingEventId: fixtureSimplifiedClaimingEventId,
   draftEventId: fixtureDraftEventId,
   operationsEventId: fixtureOperationsEventId,
   judgingEventId: fixtureJudgingEventId,
@@ -228,6 +230,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
   const eventAdminId = personaUserIds.event_admin
   const judgeId = personaUserIds.judge
   const regularUserId = personaUserIds.regular_user
+  const regularUserEmail = personas.find(persona => persona.key === 'regular_user')!.email.trim().toLowerCase()
   const backupJudgeId = syntheticUserIds.backupJudge
   const judgingParticipantTwoId = syntheticUserIds.judgingParticipantTwo
   const extraUserTuples = [
@@ -966,6 +969,71 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       ${sqlLiteral(platformAdminId)},
       '2026-03-20T12:00:00.000Z',
       '2026-03-20T12:00:00.000Z'
+    )`,
+    `insert into events (
+      id, event_type, name, slug, description, city, country, address,
+      registration_opens_at, registration_closes_at, submission_opens_at, submission_closes_at,
+      state, max_team_members, simplified_claiming_enabled, created_by_user_id, created_at, updated_at
+    ) values (
+      ${sqlLiteral(fixtureSimplifiedClaimingEventId)},
+      'meetup',
+      'Simplified Claiming Fixture Meetup',
+      'simplified-claiming-fixture-event',
+      'Meetup fixture for the private attendee redemption flow.',
+      'Vienna',
+      'Austria',
+      'Fixture Venue',
+      '2020-01-01T00:00:00.000Z',
+      '2030-01-01T00:00:00.000Z',
+      null,
+      null,
+      'registration_open',
+      1,
+      1,
+      ${sqlLiteral(eventAdminId)},
+      ${sqlLiteral(fixtureTimestamp)},
+      ${sqlLiteral(fixtureTimestamp)}
+    )`,
+    `update users set luma_email = ${sqlLiteral(regularUserEmail)} where id = ${sqlLiteral(regularUserId)}`,
+    `insert into event_attendee_eligibilities (
+      id, event_id, normalized_email, first_name, family_name, created_at, updated_at
+    ) values (
+      'eligibility_simplified_claiming_regular_user',
+      ${sqlLiteral(fixtureSimplifiedClaimingEventId)},
+      ${sqlLiteral(regularUserEmail)},
+      'Regular',
+      'User',
+      ${sqlLiteral(fixtureTimestamp)},
+      ${sqlLiteral(fixtureTimestamp)}
+    )`,
+    `insert into event_credit_offers (
+      id, event_id, name, description, display_order, created_at, updated_at
+    ) values (
+      'offer_simplified_claiming_fixture',
+      ${sqlLiteral(fixtureSimplifiedClaimingEventId)},
+      'Codex event credit',
+      'Private attendee credit.',
+      1,
+      ${sqlLiteral(fixtureTimestamp)},
+      ${sqlLiteral(fixtureTimestamp)}
+    )`,
+    `insert into event_credit_codes (
+      id, credit_offer_id, value, created_at
+    ) values (
+      'code_simplified_claiming_fixture',
+      'offer_simplified_claiming_fixture',
+      'https://chatgpt.com/coupon/bdd-simplified',
+      ${sqlLiteral(fixtureTimestamp)}
+    )`,
+    `insert into event_role_assignments (
+      id, event_id, user_id, role, is_in_judge_pool, created_at
+    ) values (
+      'role_event_admin_simplified_claiming_fixture',
+      ${sqlLiteral(fixtureSimplifiedClaimingEventId)},
+      ${sqlLiteral(eventAdminId)},
+      'event_admin',
+      0,
+      ${sqlLiteral(fixtureTimestamp)}
     )`,
     `insert into event_terms_documents (
       id, event_id, document_type, version, title, content, published_at, created_at

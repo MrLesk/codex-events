@@ -62,6 +62,7 @@ export default defineApiHandler(async (h3Event) => {
     maxTeamMembers: isHackathon ? body.maxTeamMembers : 1,
     participantsLimit: body.participantsLimit,
     autoApproveApplications: body.autoApproveApplications,
+    simplifiedClaimingEnabled: body.simplifiedClaimingEnabled,
     blindReviewCount: isHackathon ? body.blindReviewCount : 1,
     pitchReviewEnabled: isHackathon ? body.pitchReviewEnabled : false,
     blindScoreWeightPercent: isHackathon ? body.blindScoreWeightPercent : 100,

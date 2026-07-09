@@ -1,0 +1,247 @@
+<script setup lang="ts">
+import type { ApiDataResponse } from '~/lib/api'
+
+import { buildAccountRegisterHref } from '#shared/domains/accounts/auth-navigation'
+import { normalizeApiError } from '~/lib/api'
+
+type SimplifiedClaimState = {
+  status: 'claimed'
+  eventName: string
+  redirectUrl: string
+  claimedAt: string | null
+} | {
+  status: 'ready'
+  eventName: string
+  lumaEmail: string | null
+  canAutoRedeem: boolean
+} | {
+  status: 'unavailable'
+  eventName: string
+} | {
+  status: 'sold_out'
+  eventName: string
+}
+
+definePageMeta({
+  middleware: ['require-auth'],
+  layout: 'event-detail'
+})
+
+useHead({
+  title: 'Event redemption',
+  meta: [
+    { name: 'robots', content: 'noindex, nofollow' },
+    { name: 'referrer', content: 'no-referrer' }
+  ]
+})
+if (import.meta.server) {
+  useResponseHeader('Referrer-Policy').value = 'no-referrer'
+}
+
+const route = useRoute()
+const slug = computed(() => String(route.params.slug ?? '').trim())
+const returnTo = computed(() => `/events/${slug.value}/redeem`)
+const { actor, status: actorStatus } = await useAccountLifecycleActor()
+const accountReady = computed(() =>
+  actor.value.kind === 'platform_user' && actor.value.hasAcceptedCurrentPlatformDocuments
+)
+
+if (!slug.value) {
+  throw createError({ statusCode: 404, statusMessage: 'Event not found.' })
+}
+
+if (actorStatus.value !== 'pending' && !accountReady.value) {
+  await navigateTo(buildAccountRegisterHref(returnTo.value), { replace: true })
+}
+
+const { data, error, status, refresh } = await useFetch<ApiDataResponse<SimplifiedClaimState>>(
+  () => `/api/events/slug/${slug.value}/simplified-claim`,
+  {
+    key: `simplified-claim:${slug.value}`,
+    watch: [slug],
+    immediate: accountReady.value
+  }
+)
+const claimState = computed(() => data.value?.data ?? null)
+const lumaEmail = shallowRef('')
+const isRedeeming = shallowRef(false)
+const redeemError = shallowRef('')
+const autoAttempted = shallowRef(false)
+const showEmailForm = computed(() =>
+  claimState.value?.status === 'ready' && (!claimState.value.canAutoRedeem || autoAttempted.value)
+)
+
+watch(claimState, (nextState) => {
+  if (nextState?.status === 'ready' && !lumaEmail.value) {
+    lumaEmail.value = nextState.lumaEmail?.trim() ?? ''
+  }
+}, { immediate: true })
+
+async function redirectToCoupon(url: string) {
+  if (import.meta.client) {
+    window.location.replace(url)
+    return
+  }
+  await navigateTo(url, { external: true, replace: true })
+}
+
+if (claimState.value?.status === 'claimed') {
+  await redirectToCoupon(claimState.value.redirectUrl)
+}
+
+async function redeem() {
+  const email = lumaEmail.value.trim()
+  if (!email || isRedeeming.value) {
+    return
+  }
+
+  isRedeeming.value = true
+  redeemError.value = ''
+  try {
+    const response = await $fetch<ApiDataResponse<{
+      status: 'claimed'
+      redirectUrl: string
+      claimedAt: string | null
+    }>>(`/api/events/slug/${slug.value}/simplified-claim/actions/redeem`, {
+      method: 'POST',
+      body: { lumaEmail: email }
+    })
+    await redirectToCoupon(response.data.redirectUrl)
+  } catch (caught) {
+    autoAttempted.value = true
+    redeemError.value = normalizeApiError(caught).message
+  } finally {
+    isRedeeming.value = false
+  }
+}
+
+onMounted(async () => {
+  if (claimState.value?.status === 'claimed') {
+    await redirectToCoupon(claimState.value.redirectUrl)
+    return
+  }
+  if (claimState.value?.status === 'ready' && claimState.value.canAutoRedeem && !autoAttempted.value) {
+    autoAttempted.value = true
+    await redeem()
+  }
+})
+</script>
+
+<template>
+  <main class="mx-auto flex min-h-[70vh] w-full max-w-xl items-center px-5 py-12 sm:px-8">
+    <AppCard class="w-full">
+      <template #header>
+        <div class="space-y-1">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+            Event attendee
+          </p>
+          <h1 class="text-2xl font-semibold text-highlighted">
+            {{ claimState?.eventName ?? 'Redeem your event credit' }}
+          </h1>
+        </div>
+      </template>
+
+      <div class="grid gap-5">
+        <AppAlert
+          v-if="error"
+          color="error"
+          variant="soft"
+          title="Redemption unavailable"
+          :description="normalizeApiError(error).message"
+        />
+        <div
+          v-else-if="status === 'pending' || isRedeeming"
+          class="grid justify-items-center gap-3 py-8 text-center"
+        >
+          <AppIcon
+            name="i-lucide-loader-circle"
+            class="size-7 animate-spin text-muted"
+          />
+          <p class="text-sm text-muted">
+            Checking your attendee details…
+          </p>
+        </div>
+        <AppAlert
+          v-else-if="claimState?.status === 'sold_out'"
+          color="warning"
+          variant="soft"
+          title="All coupons have been claimed"
+          description="There are no coupons left for this event."
+        />
+        <AppAlert
+          v-else-if="claimState?.status === 'unavailable'"
+          color="warning"
+          variant="soft"
+          title="Redemption unavailable"
+          description="This redemption page is not available right now."
+        />
+        <form
+          v-else-if="showEmailForm"
+          class="grid gap-4"
+          @submit.prevent="redeem"
+        >
+          <div class="space-y-1">
+            <h2 class="text-lg font-semibold text-highlighted">
+              Confirm your Luma email
+            </h2>
+            <p class="text-sm text-muted">
+              Use the email address you used to join this Meetup.
+            </p>
+          </div>
+          <AppFormField
+            label="Luma email"
+            name="luma-email"
+          >
+            <AppInput
+              v-model="lumaEmail"
+              type="email"
+              autocomplete="email"
+              required
+              :disabled="isRedeeming"
+            />
+          </AppFormField>
+          <AppAlert
+            v-if="redeemError"
+            color="error"
+            variant="soft"
+            title="Could not continue"
+            :description="redeemError"
+          />
+          <div class="flex justify-end">
+            <AppButton
+              type="submit"
+              color="primary"
+              :loading="isRedeeming"
+            >
+              Continue to ChatGPT
+            </AppButton>
+          </div>
+        </form>
+        <div
+          v-else-if="claimState?.status === 'ready'"
+          class="grid justify-items-center gap-3 py-8 text-center"
+        >
+          <AppIcon
+            name="i-lucide-loader-circle"
+            class="size-7 animate-spin text-muted"
+          />
+          <p class="text-sm text-muted">
+            Confirming your attendee email…
+          </p>
+        </div>
+        <div
+          v-else
+          class="flex justify-center"
+        >
+          <AppButton
+            color="neutral"
+            variant="outline"
+            @click="refresh"
+          >
+            Try again
+          </AppButton>
+        </div>
+      </div>
+    </AppCard>
+  </main>
+</template>

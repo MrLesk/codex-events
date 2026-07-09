@@ -125,9 +125,11 @@ describe('deploy Wrangler config generator', () => {
     expect(config.ratelimits.map(rateLimit => rateLimit.namespace_id)).toEqual([
       '3001',
       '3002',
-      '3003'
+      '3003',
+      '3004'
     ])
     expect(config.ratelimits.find(rateLimit => rateLimit.name === 'AUTHENTICATED_UPLOAD_RATE_LIMITER')?.simple.limit).toBe(60)
+    expect(config.ratelimits.find(rateLimit => rateLimit.name === 'SIMPLIFIED_CLAIMING_RATE_LIMITER')?.simple.limit).toBe(10)
     expect(config.observability).toEqual({
       logs: {
         enabled: true,

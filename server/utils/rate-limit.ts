@@ -7,9 +7,11 @@ import { ApiError } from '#server/http/api-error'
 export const publicContactRateLimitBindingName = 'PUBLIC_CONTACT_RATE_LIMITER'
 export const authenticatedUploadRateLimitBindingName = 'AUTHENTICATED_UPLOAD_RATE_LIMITER'
 export const publicEventFeedbackRateLimitBindingName = 'PUBLIC_EVENT_FEEDBACK_RATE_LIMITER'
+export const simplifiedClaimingRateLimitBindingName = 'SIMPLIFIED_CLAIMING_RATE_LIMITER'
 export const publicContactRateLimitPeriodSeconds = 60
 export const authenticatedUploadRateLimitPeriodSeconds = 60
 export const publicEventFeedbackRateLimitPeriodSeconds = 60
+export const simplifiedClaimingRateLimitPeriodSeconds = 60
 
 interface RateLimitBindingLike {
   limit: (options: {
@@ -123,5 +125,15 @@ export async function assertPublicEventFeedbackRateLimit(event: H3Event, key: st
     retryAfterSeconds: publicEventFeedbackRateLimitPeriodSeconds,
     errorCode: 'event_feedback_rate_limited',
     message: 'Too many feedback submissions were sent. Please wait before trying again.'
+  })
+}
+
+export async function assertSimplifiedClaimingRateLimit(event: H3Event, key: string) {
+  await assertRateLimitAllowed(event, {
+    bindingName: simplifiedClaimingRateLimitBindingName,
+    key,
+    retryAfterSeconds: simplifiedClaimingRateLimitPeriodSeconds,
+    errorCode: 'simplified_claiming_rate_limited',
+    message: 'Too many redemption attempts were submitted. Please wait before trying again.'
   })
 }

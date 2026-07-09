@@ -1,0 +1,546 @@
+import { afterEach, describe, expect, test, vi } from 'vitest'
+import { and, eq } from 'drizzle-orm'
+
+import simplifiedClaimGetHandler from '../../../../server/api/events/slug/[slug]/simplified-claim.get'
+import simplifiedClaimRedeemHandler from '../../../../server/api/events/slug/[slug]/simplified-claim/actions/redeem.post'
+import simplifiedClaimingAdminGetHandler from '../../../../server/api/events/[eventId]/simplified-claiming/index.get'
+import simplifiedClaimingAttendeeImportHandler from '../../../../server/api/events/[eventId]/simplified-claiming/attendees/import.post'
+import creditCreateHandler from '../../../../server/api/events/[eventId]/credits/index.post'
+import creditDeleteHandler from '../../../../server/api/events/[eventId]/credits/[creditId].delete'
+import {
+  auditLogs,
+  eventAttendeeEligibilities,
+  eventCreditCodes,
+  eventCreditOffers,
+  events,
+  userApplications,
+  users
+} from '../../../../server/database/schema'
+import { simplifiedClaimingRateLimitBindingName } from '../../../../server/utils/rate-limit'
+import { createApiRouteTestHarness } from '../../../support/backend/api-route'
+import { stubAuth0Session } from '../../../support/backend/runtime'
+
+describe('TASK-420 simplified attendee claiming routes', () => {
+  const harnesses: Array<ReturnType<typeof createApiRouteTestHarness>> = []
+
+  afterEach(async () => {
+    vi.unstubAllGlobals()
+    while (harnesses.length > 0) {
+      await harnesses.pop()?.d1Database.close()
+    }
+  })
+
+  async function createContext(options?: {
+    application?: {
+      status: 'submitted' | 'approved' | 'rejected' | 'withdrawn'
+      checkedInAt?: string | null
+      checkInSource?: 'luma' | 'simplified_claim' | null
+      checkInOverrideStatus?: 'joined' | 'not_joined' | null
+    }
+    rateLimitAllowed?: boolean
+  }) {
+    const queueSend = vi.fn(async () => undefined)
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/events/slug/:slug/simplified-claim', handler: simplifiedClaimGetHandler },
+        { method: 'post', path: '/api/events/slug/:slug/simplified-claim/actions/redeem', handler: simplifiedClaimRedeemHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|participant',
+        email: 'account@example.com'
+      },
+      cloudflareEnv: {
+        [simplifiedClaimingRateLimitBindingName]: {
+          limit: vi.fn(async () => ({ success: options?.rateLimitAllowed ?? true }))
+        },
+        APPLICATION_REVIEW_EMAIL_QUEUE: {
+          send: queueSend
+        }
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'participant',
+      auth0Subject: 'auth0|participant',
+      email: 'account@example.com',
+      displayName: 'Participant',
+      firstName: '',
+      familyName: '',
+      lumaEmail: 'guest@example.com'
+    })
+    await harness.database.insert(events).values({
+      id: 'meetup',
+      eventType: 'meetup',
+      name: 'Vienna Meetup',
+      slug: 'vienna-meetup',
+      description: 'Meetup',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Venue',
+      registrationOpensAt: '2026-01-01T00:00:00.000Z',
+      registrationClosesAt: '2027-01-01T00:00:00.000Z',
+      submissionOpensAt: null,
+      submissionClosesAt: null,
+      state: 'registration_open',
+      maxTeamMembers: 1,
+      simplifiedClaimingEnabled: true,
+      createdByUserId: 'participant'
+    })
+    await harness.database.insert(eventCreditOffers).values({
+      id: 'offer',
+      eventId: 'meetup',
+      name: 'Codex credit',
+      description: 'Private offer'
+    })
+    await harness.database.insert(eventCreditCodes).values({
+      id: 'coupon',
+      creditOfferId: 'offer',
+      value: 'https://chatgpt.com/coupon/example'
+    })
+    await harness.database.insert(eventAttendeeEligibilities).values({
+      id: 'eligibility',
+      eventId: 'meetup',
+      normalizedEmail: 'guest@example.com',
+      firstName: 'Ada',
+      familyName: 'Lovelace'
+    })
+
+    if (options?.application) {
+      await harness.database.insert(userApplications).values({
+        id: 'application',
+        eventId: 'meetup',
+        userId: 'participant',
+        status: options.application.status,
+        submittedAt: '2026-07-09T10:00:00.000Z',
+        checkedInAt: options.application.checkedInAt ?? null,
+        checkInSource: options.application.checkInSource ?? null,
+        checkInOverrideStatus: options.application.checkInOverrideStatus ?? null,
+        registrationDetailsJson: '{}'
+      })
+    }
+
+    return { harness, queueSend }
+  }
+
+  test('saved attendee email redeems once, approves, checks in, and returns the same coupon', async () => {
+    const { harness, queueSend } = await createContext()
+
+    const stateResponse = await harness.request('/api/events/slug/vienna-meetup/simplified-claim')
+    expect(stateResponse.status).toBe(200)
+    expect(await stateResponse.json()).toMatchObject({
+      data: {
+        status: 'ready',
+        lumaEmail: 'guest@example.com',
+        canAutoRedeem: true
+      }
+    })
+
+    const firstResponse = await harness.request('/api/events/slug/vienna-meetup/simplified-claim/actions/redeem', {
+      method: 'POST',
+      body: JSON.stringify({ lumaEmail: 'Guest@Example.com' })
+    })
+    expect(firstResponse.status).toBe(200)
+    expect(await firstResponse.json()).toMatchObject({
+      data: {
+        status: 'claimed',
+        redirectUrl: 'https://chatgpt.com/coupon/example'
+      }
+    })
+
+    const application = await harness.database.query.userApplications.findFirst({
+      where: and(
+        eq(userApplications.eventId, 'meetup'),
+        eq(userApplications.userId, 'participant')
+      )
+    })
+    expect(application).toMatchObject({
+      status: 'approved',
+      checkInSource: 'simplified_claim'
+    })
+    expect(application?.checkedInAt).toBeTruthy()
+
+    const user = await harness.database.query.users.findFirst({ where: eq(users.id, 'participant') })
+    expect(user).toMatchObject({
+      lumaEmail: 'guest@example.com',
+      firstName: 'Ada',
+      familyName: 'Lovelace'
+    })
+    const code = await harness.database.query.eventCreditCodes.findFirst({ where: eq(eventCreditCodes.id, 'coupon') })
+    expect(code).toMatchObject({
+      claimedByUserId: 'participant',
+      claimedAttendeeEligibilityId: 'eligibility'
+    })
+
+    const actions = (await harness.database.select().from(auditLogs)).map(row => row.action)
+    expect(actions).toEqual(expect.arrayContaining([
+      'event_credit_code.claimed',
+      'user_application.simplified_claim_check_in_recorded',
+      'user_application.approved',
+      'user_application.review_email_enqueued'
+    ]))
+    expect(queueSend).toHaveBeenCalledTimes(1)
+
+    const repeatResponse = await harness.request('/api/events/slug/vienna-meetup/simplified-claim/actions/redeem', {
+      method: 'POST',
+      body: JSON.stringify({ lumaEmail: 'guest@example.com' })
+    })
+    expect(repeatResponse.status).toBe(200)
+    expect(await repeatResponse.json()).toMatchObject({
+      data: { redirectUrl: 'https://chatgpt.com/coupon/example' }
+    })
+    expect(queueSend).toHaveBeenCalledTimes(1)
+
+    await harness.database.insert(users).values({
+      id: 'other-participant',
+      auth0Subject: 'auth0|other-participant',
+      email: 'other@example.com',
+      displayName: 'Other Participant',
+      firstName: '',
+      familyName: '',
+      lumaEmail: 'guest@example.com'
+    })
+    stubAuth0Session({
+      sub: 'auth0|other-participant',
+      email: 'other@example.com'
+    })
+    const reusedEmailResponse = await harness.request('/api/events/slug/vienna-meetup/simplified-claim/actions/redeem', {
+      method: 'POST',
+      body: JSON.stringify({ lumaEmail: 'guest@example.com' })
+    })
+    expect(reusedEmailResponse.status).toBe(409)
+    expect(await reusedEmailResponse.json()).toMatchObject({
+      error: { code: 'simplified_claiming_attendee_already_used' }
+    })
+  })
+
+  test('assigns the final coupon once across concurrent redemption attempts', async () => {
+    const { harness, queueSend } = await createContext()
+    const request = () => harness.request('/api/events/slug/vienna-meetup/simplified-claim/actions/redeem', {
+      method: 'POST',
+      body: JSON.stringify({ lumaEmail: 'guest@example.com' })
+    })
+
+    const responses = await Promise.all([request(), request()])
+    const responseBodies = await Promise.all(responses.map(response => response.json()))
+    expect(responses.map(response => response.status)).toEqual([200, 200])
+    expect(responseBodies).toEqual([
+      expect.objectContaining({ data: expect.objectContaining({ redirectUrl: 'https://chatgpt.com/coupon/example' }) }),
+      expect.objectContaining({ data: expect.objectContaining({ redirectUrl: 'https://chatgpt.com/coupon/example' }) })
+    ])
+    expect(queueSend).toHaveBeenCalledTimes(1)
+    expect(await harness.database.select().from(eventCreditCodes)).toEqual([
+      expect.objectContaining({ claimedByUserId: 'participant' })
+    ])
+  })
+
+  test('preserves a Luma check-in and an authoritative not-joined override', async () => {
+    const checkedInAt = '2026-07-09T11:00:00.000Z'
+    const { harness } = await createContext({
+      application: {
+        status: 'approved',
+        checkedInAt,
+        checkInSource: 'luma',
+        checkInOverrideStatus: 'not_joined'
+      }
+    })
+
+    const response = await harness.request('/api/events/slug/vienna-meetup/simplified-claim/actions/redeem', {
+      method: 'POST',
+      body: JSON.stringify({ lumaEmail: 'guest@example.com' })
+    })
+    expect(response.status).toBe(200)
+
+    const application = await harness.database.query.userApplications.findFirst({
+      where: eq(userApplications.id, 'application')
+    })
+    expect(application).toMatchObject({
+      checkedInAt,
+      checkInSource: 'luma',
+      checkInOverrideStatus: 'not_joined'
+    })
+  })
+
+  test('promotes a submitted application and sends the normal approval email once', async () => {
+    const { harness, queueSend } = await createContext({ application: { status: 'submitted' } })
+    const response = await harness.request('/api/events/slug/vienna-meetup/simplified-claim/actions/redeem', {
+      method: 'POST',
+      body: JSON.stringify({ lumaEmail: 'guest@example.com' })
+    })
+
+    expect(response.status).toBe(200)
+    expect(await harness.database.query.userApplications.findFirst({
+      where: eq(userApplications.id, 'application')
+    })).toMatchObject({
+      status: 'approved',
+      checkInSource: 'simplified_claim'
+    })
+    expect(queueSend).toHaveBeenCalledTimes(1)
+  })
+
+  test('rejects an email outside the roster and a rejected application', async () => {
+    const first = await createContext()
+    const mismatchResponse = await first.harness.request('/api/events/slug/vienna-meetup/simplified-claim/actions/redeem', {
+      method: 'POST',
+      body: JSON.stringify({ lumaEmail: 'missing@example.com' })
+    })
+    expect(mismatchResponse.status).toBe(409)
+    expect(await mismatchResponse.json()).toMatchObject({
+      error: { code: 'simplified_claiming_attendee_not_found' }
+    })
+
+    const second = await createContext({ application: { status: 'rejected' } })
+    const rejectedResponse = await second.harness.request('/api/events/slug/vienna-meetup/simplified-claim/actions/redeem', {
+      method: 'POST',
+      body: JSON.stringify({ lumaEmail: 'guest@example.com' })
+    })
+    expect(rejectedResponse.status).toBe(409)
+    expect(await rejectedResponse.json()).toMatchObject({
+      error: { code: 'simplified_claiming_application_blocked' }
+    })
+
+    const third = await createContext({ application: { status: 'withdrawn' } })
+    const withdrawnResponse = await third.harness.request('/api/events/slug/vienna-meetup/simplified-claim/actions/redeem', {
+      method: 'POST',
+      body: JSON.stringify({ lumaEmail: 'guest@example.com' })
+    })
+    expect(withdrawnResponse.status).toBe(409)
+    expect(await withdrawnResponse.json()).toMatchObject({
+      error: { code: 'simplified_claiming_application_blocked' }
+    })
+  })
+
+  test('rate limits failed redemption attempts before assigning inventory', async () => {
+    const { harness } = await createContext({ rateLimitAllowed: false })
+    const response = await harness.request('/api/events/slug/vienna-meetup/simplified-claim/actions/redeem', {
+      method: 'POST',
+      body: JSON.stringify({ lumaEmail: 'guest@example.com' })
+    })
+
+    expect(response.status).toBe(429)
+    expect(response.headers.get('retry-after')).toBe('60')
+    expect(await response.json()).toMatchObject({
+      error: { code: 'simplified_claiming_rate_limited' }
+    })
+    expect(await harness.database.query.eventCreditCodes.findFirst({
+      where: eq(eventCreditCodes.id, 'coupon')
+    })).toMatchObject({ claimedByUserId: null })
+  })
+
+  test('reports disabled, incomplete, closed, sold-out, and invalid-slug states', async () => {
+    const { harness } = await createContext()
+    const readState = async () => {
+      const response = await harness.request('/api/events/slug/vienna-meetup/simplified-claim')
+      return { response, body: await response.json() }
+    }
+
+    await harness.database.update(events)
+      .set({ simplifiedClaimingEnabled: false })
+      .where(eq(events.id, 'meetup'))
+    expect(await readState()).toMatchObject({
+      response: { status: 200 },
+      body: { data: { status: 'unavailable' } }
+    })
+
+    await harness.database.update(events)
+      .set({ simplifiedClaimingEnabled: true })
+      .where(eq(events.id, 'meetup'))
+    await harness.database.delete(eventAttendeeEligibilities)
+      .where(eq(eventAttendeeEligibilities.id, 'eligibility'))
+    expect(await readState()).toMatchObject({ body: { data: { status: 'unavailable' } } })
+
+    await harness.database.insert(eventAttendeeEligibilities).values({
+      id: 'eligibility',
+      eventId: 'meetup',
+      normalizedEmail: 'guest@example.com',
+      firstName: 'Ada',
+      familyName: 'Lovelace'
+    })
+    await harness.database.update(events)
+      .set({ registrationClosesAt: '2026-01-02T00:00:00.000Z' })
+      .where(eq(events.id, 'meetup'))
+    expect(await readState()).toMatchObject({ body: { data: { status: 'unavailable' } } })
+
+    await harness.database.insert(users).values({
+      id: 'coupon-owner',
+      auth0Subject: 'auth0|coupon-owner',
+      email: 'owner@example.com',
+      displayName: 'Coupon Owner'
+    })
+    await harness.database.insert(eventAttendeeEligibilities).values({
+      id: 'used-eligibility',
+      eventId: 'meetup',
+      normalizedEmail: 'owner@example.com'
+    })
+    await harness.database.update(events)
+      .set({ registrationClosesAt: '2027-01-01T00:00:00.000Z' })
+      .where(eq(events.id, 'meetup'))
+    await harness.database.update(eventCreditCodes)
+      .set({
+        claimedByUserId: 'coupon-owner',
+        claimedAttendeeEligibilityId: 'used-eligibility',
+        claimedAt: '2026-07-09T12:00:00.000Z'
+      })
+      .where(eq(eventCreditCodes.id, 'coupon'))
+    expect(await readState()).toMatchObject({ body: { data: { status: 'sold_out' } } })
+
+    const missingResponse = await harness.request('/api/events/slug/not-a-real-event/simplified-claim')
+    expect(missingResponse.status).toBe(404)
+  })
+
+  test('imports only approved Luma guests, reports readiness, and rejects a second offer', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/events/:eventId/simplified-claiming', handler: simplifiedClaimingAdminGetHandler },
+        { method: 'post', path: '/api/events/:eventId/simplified-claiming/attendees/import', handler: simplifiedClaimingAttendeeImportHandler },
+        { method: 'post', path: '/api/events/:eventId/credits', handler: creditCreateHandler }
+      ],
+      sessionUser: { sub: 'auth0|admin', email: 'admin@example.com' },
+      runtimeConfig: { auth0: { appBaseUrl: 'https://codex-events.com' } }
+    })
+    harnesses.push(harness)
+    await harness.database.insert(users).values({
+      id: 'admin',
+      auth0Subject: 'auth0|admin',
+      email: 'admin@example.com',
+      displayName: 'Admin',
+      isPlatformAdmin: true
+    })
+    await harness.database.insert(events).values({
+      id: 'admin-meetup',
+      eventType: 'meetup',
+      name: 'Admin Meetup',
+      slug: 'admin-meetup',
+      description: 'Meetup',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Venue',
+      registrationOpensAt: '2026-01-01T00:00:00.000Z',
+      registrationClosesAt: '2027-01-01T00:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 1,
+      simplifiedClaimingEnabled: true,
+      createdByUserId: 'admin'
+    })
+
+    const initialStatus = await harness.request('/api/events/admin-meetup/simplified-claiming')
+    expect(await initialStatus.json()).toMatchObject({
+      data: {
+        ready: false,
+        issues: expect.arrayContaining([
+          { code: 'offer_missing', message: 'Add a credit offer before sharing the QR.' }
+        ])
+      }
+    })
+
+    const firstOffer = await harness.request('/api/events/admin-meetup/credits', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Codex credit', description: 'Private offer' })
+    })
+    expect(firstOffer.status).toBe(200)
+    const offerId = (await firstOffer.json()).data.id as string
+
+    const secondOffer = await harness.request('/api/events/admin-meetup/credits', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Another offer', description: 'Not allowed' })
+    })
+    expect(secondOffer.status).toBe(409)
+    expect(await secondOffer.json()).toMatchObject({
+      error: { code: 'simplified_claiming_multiple_offers' }
+    })
+
+    await harness.database.insert(eventCreditCodes).values({
+      id: 'admin-coupon',
+      creditOfferId: offerId,
+      value: 'https://chatgpt.com/coupon/admin'
+    })
+    const importForm = new FormData()
+    importForm.append('file', new Blob([[
+      'guest_id,email,first_name,last_name,approval_status,phone_number',
+      'guest-1,approved@example.com,Ada,Lovelace,approved,+43123',
+      'guest-2,pending@example.com,Grace,Hopper,pending,+43456'
+    ].join('\n')], { type: 'text/csv' }), 'guests.csv')
+    const importResponse = await harness.request('/api/events/admin-meetup/simplified-claiming/attendees/import', {
+      method: 'POST',
+      body: importForm
+    })
+    expect(importResponse.status).toBe(200)
+    expect(await importResponse.json()).toMatchObject({
+      data: { eligibleCount: 1, attendeeCount: 1 }
+    })
+
+    const eligibilityRows = await harness.database.select().from(eventAttendeeEligibilities)
+    expect(eligibilityRows).toHaveLength(1)
+    expect(eligibilityRows[0]).toMatchObject({
+      normalizedEmail: 'approved@example.com',
+      firstName: 'Ada',
+      familyName: 'Lovelace'
+    })
+
+    const statusResponse = await harness.request('/api/events/admin-meetup/simplified-claiming')
+    expect(statusResponse.status).toBe(200)
+    expect(await statusResponse.json()).toMatchObject({
+      data: {
+        ready: true,
+        redemptionUrl: 'https://codex-events.com/events/admin-meetup/redeem',
+        attendeeCount: 1,
+        offerCount: 1,
+        totalInventoryCount: 1
+      }
+    })
+  })
+
+  test('deletes only credit offers without claims', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'delete', path: '/api/events/:eventId/credits/:creditId', handler: creditDeleteHandler }
+      ],
+      sessionUser: { sub: 'auth0|admin', email: 'admin@example.com' }
+    })
+    harnesses.push(harness)
+    await harness.database.insert(users).values({
+      id: 'admin',
+      auth0Subject: 'auth0|admin',
+      email: 'admin@example.com',
+      displayName: 'Admin',
+      isPlatformAdmin: true
+    })
+    await harness.database.insert(events).values({
+      id: 'delete-meetup',
+      eventType: 'meetup',
+      name: 'Delete Meetup',
+      slug: 'delete-meetup',
+      description: 'Meetup',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Venue',
+      registrationOpensAt: '2026-01-01T00:00:00.000Z',
+      registrationClosesAt: '2027-01-01T00:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 1,
+      simplifiedClaimingEnabled: true,
+      createdByUserId: 'admin'
+    })
+    await harness.database.insert(eventCreditOffers).values([
+      { id: 'unclaimed-offer', eventId: 'delete-meetup', name: 'Unclaimed', description: 'Delete me' },
+      { id: 'claimed-offer', eventId: 'delete-meetup', name: 'Claimed', description: 'Keep me' }
+    ])
+    await harness.database.insert(eventCreditCodes).values({
+      id: 'claimed-code',
+      creditOfferId: 'claimed-offer',
+      value: 'https://chatgpt.com/coupon/claimed',
+      claimedByUserId: 'admin',
+      claimedAt: '2026-07-09T12:00:00.000Z'
+    })
+
+    const deleted = await harness.request('/api/events/delete-meetup/credits/unclaimed-offer', { method: 'DELETE' })
+    expect(deleted.status).toBe(200)
+    expect(await harness.database.query.eventCreditOffers.findFirst({
+      where: eq(eventCreditOffers.id, 'unclaimed-offer')
+    })).toBeUndefined()
+
+    const rejected = await harness.request('/api/events/delete-meetup/credits/claimed-offer', { method: 'DELETE' })
+    expect(rejected.status).toBe(409)
+    expect(await rejected.json()).toMatchObject({ error: { code: 'event_credit_offer_claimed' } })
+  })
+})

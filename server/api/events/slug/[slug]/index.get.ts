@@ -44,6 +44,9 @@ export default defineApiHandler(async (h3Event) => {
         : undefined
     }),
     ...restrictedFields,
+    ...(authorization?.isEventAdmin
+      ? { simplifiedClaimingEnabled: event.simplifiedClaimingEnabled }
+      : {}),
     ...(canViewPhotos
       ? {
           hasGallery: await hasEventPhotos(database, event.id)

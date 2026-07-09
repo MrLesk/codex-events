@@ -29,6 +29,7 @@ export interface EventFormState {
   maxTeamMembers: number
   participantsLimit: number | null
   autoApproveApplications: boolean
+  simplifiedClaimingEnabled: boolean
   blindReviewCount: number
   pitchReviewEnabled: boolean
   blindScoreWeightPercent: number
@@ -346,6 +347,7 @@ const eventConfigFormBaseSchema = z.object({
   maxTeamMembers: z.number().int().min(1),
   participantsLimit: z.number().int().min(1).nullable(),
   autoApproveApplications: z.boolean(),
+  simplifiedClaimingEnabled: z.boolean(),
   blindReviewCount: z.number().int().min(0).max(2),
   pitchReviewEnabled: z.boolean(),
   blindScoreWeightPercent: z.number().int().min(0).max(100),
@@ -383,6 +385,8 @@ const eventConfigFormBaseSchema = z.object({
   const isHackathon = input.eventType === 'hackathon'
   const hasLumaSyncConfiguration = input.lumaEventApiId.length > 0 || input.lumaApiKey.length > 0
   const hasLumaRegistrationEmail = input.applicationLumaEmailVisible && input.requireLumaEmail
+  const hasRequiredRegistrationFields = applicationFieldRequirementPairs
+    .some(([, requiredKey]) => input[requiredKey])
 
   if (Number.isNaN(registrationOpensAt)) {
     context.addIssue({
@@ -440,6 +444,32 @@ const eventConfigFormBaseSchema = z.object({
         code: z.ZodIssueCode.custom,
         path: ['requireLumaEmail'],
         message: 'Luma email must be required when Luma Sync is enabled.'
+      })
+    }
+  }
+
+  if (input.simplifiedClaimingEnabled) {
+    if (input.eventType !== 'meetup') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['simplifiedClaimingEnabled'],
+        message: 'Simplified claiming is available only for Meetup events.'
+      })
+    }
+
+    if (hasLumaSyncConfiguration || hasLumaRegistrationEmail) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['simplifiedClaimingEnabled'],
+        message: 'Turn off Luma Sync before enabling simplified claiming.'
+      })
+    }
+
+    if (hasRequiredRegistrationFields) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['simplifiedClaimingEnabled'],
+        message: 'Remove required registration fields before enabling simplified claiming.'
       })
     }
   }
@@ -579,6 +609,7 @@ export function createEmptyEventFormState(): EventFormState {
     maxTeamMembers: 4,
     participantsLimit: null,
     autoApproveApplications: false,
+    simplifiedClaimingEnabled: false,
     blindReviewCount: 1,
     pitchReviewEnabled: false,
     blindScoreWeightPercent: 70,
@@ -690,6 +721,7 @@ export function createEventFormState(event: EventRecord): EventFormState {
     maxTeamMembers: event.maxTeamMembers,
     participantsLimit: event.participantsLimit ?? null,
     autoApproveApplications: event.autoApproveApplications,
+    simplifiedClaimingEnabled: event.simplifiedClaimingEnabled,
     blindReviewCount: event.blindReviewCount,
     pitchReviewEnabled: event.pitchReviewEnabled,
     blindScoreWeightPercent: event.blindScoreWeightPercent,
@@ -743,6 +775,7 @@ export function buildEventConfigurationPatch(configForm: EventFormState, eventTy
     registrationClosesAt: fromDateTimeLocalValue(configForm.registrationClosesAt),
     participantsLimit: configForm.participantsLimit,
     autoApproveApplications: configForm.autoApproveApplications,
+    simplifiedClaimingEnabled: eventType === 'meetup' && configForm.simplifiedClaimingEnabled,
     inPersonEvent: configForm.inPersonEvent,
     applicationXProfileVisible: configForm.applicationXProfileVisible,
     applicationLinkedinProfileVisible: configForm.applicationLinkedinProfileVisible,

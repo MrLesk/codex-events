@@ -150,6 +150,7 @@ interface VerifyLumaEmailResponse {
 type AccountWorkspaceEvent = Omit<PublicEvent, 'tracks'> & {
   id: string
   updatedAt: string
+  simplifiedClaimingEnabled?: boolean
   hasGallery?: boolean
   discordServerUrl?: string | null
   slidesUrl?: string | null
@@ -445,7 +446,8 @@ async function setCertificateGenerationDisabled(disabled: boolean) {
 }
 const canClaimCredits = computed(() => applicationStatus.value === 'approved' || hasStaffCreditAccess.value)
 const hasCreditInventory = computed(() =>
-  participantCreditOffers.value.some(offer => offer.totalCount > 0)
+  !event.value.simplifiedClaimingEnabled
+  && participantCreditOffers.value.some(offer => offer.totalCount > 0)
 )
 const shouldLoadPublishedStaffRoster = computed(() => actor.value.kind === 'platform_user')
 const publishedStaffRosterRequest = await useApiData<PublishedEventRosterLoadState>(
@@ -1547,6 +1549,7 @@ useSeoMeta({
           :event-id="event.id"
           :can-manage="canAdmin"
           :can-claim="canClaimCredits"
+          :simplified-claiming-enabled="Boolean(event.simplifiedClaimingEnabled)"
         />
       </section>
 

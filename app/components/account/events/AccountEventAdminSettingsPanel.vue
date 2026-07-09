@@ -1249,6 +1249,16 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
       </section>
 
       <section
+        v-if="showSettingsOverview && currentEvent.eventType === 'meetup'"
+        class="space-y-6"
+      >
+        <AccountEventSimplifiedClaimingPanel
+          :event-id="currentEvent.id"
+          :enabled="currentEvent.simplifiedClaimingEnabled"
+        />
+      </section>
+
+      <section
         v-if="props.showProgramSettings"
         class="space-y-6"
       >

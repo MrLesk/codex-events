@@ -19,8 +19,17 @@ export default defineApiHandler(async (h3Event) => {
   const {
     actor,
     database,
+    event,
     offer
   } = await requireEventCreditClaimAccess(h3Event, eventId, creditId)
+
+  if (event.simplifiedClaimingEnabled) {
+    throw new ApiError({
+      statusCode: 409,
+      code: 'simplified_claiming_manual_claim_disabled',
+      message: 'Use the event redemption page to claim this credit.'
+    })
+  }
 
   async function readOfferCodes() {
     return await database.query.eventCreditCodes.findMany({

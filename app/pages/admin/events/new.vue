@@ -55,6 +55,7 @@ async function createEvent(form: EventFormState) {
         maxTeamMembers: isHackathon ? form.maxTeamMembers : 1,
         participantsLimit: form.participantsLimit,
         autoApproveApplications: form.autoApproveApplications,
+        simplifiedClaimingEnabled: form.eventType === 'meetup' && form.simplifiedClaimingEnabled,
         inPersonEvent: form.inPersonEvent,
         applicationXProfileVisible: form.applicationXProfileVisible,
         applicationLinkedinProfileVisible: form.applicationLinkedinProfileVisible,

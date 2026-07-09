@@ -4,7 +4,8 @@ import { ApiError } from '#server/http/api-error'
 import {
   authenticatedUploadRateLimitBindingName,
   publicContactRateLimitBindingName,
-  publicEventFeedbackRateLimitBindingName
+  publicEventFeedbackRateLimitBindingName,
+  simplifiedClaimingRateLimitBindingName
 } from '#server/utils/rate-limit'
 import { createLocalPlatformProxy } from '#server/database/local-platform-proxy'
 import { defaultOutboundEmailBinding } from '#server/utils/outbound-email'
@@ -164,6 +165,9 @@ export default defineEventHandler(async (event) => {
     ?? proxyEnv[publicEventFeedbackRateLimitBindingName]
   const existingAuthenticatedUploadRateLimiter = cloudflareEnv?.[authenticatedUploadRateLimitBindingName]
   const authenticatedUploadRateLimiter = existingAuthenticatedUploadRateLimiter ?? proxyEnv[authenticatedUploadRateLimitBindingName]
+  const existingSimplifiedClaimingRateLimiter = cloudflareEnv?.[simplifiedClaimingRateLimitBindingName]
+  const simplifiedClaimingRateLimiter = existingSimplifiedClaimingRateLimiter
+    ?? proxyEnv[simplifiedClaimingRateLimitBindingName]
 
   if (!d1Database) {
     throw new ApiError({
@@ -225,6 +229,13 @@ export default defineEventHandler(async (event) => {
     && isRateLimitBindingLike(authenticatedUploadRateLimiter)
   ) {
     event.context.cloudflare.env[authenticatedUploadRateLimitBindingName] = authenticatedUploadRateLimiter as never
+  }
+
+  if (
+    !event.context.cloudflare.env[simplifiedClaimingRateLimitBindingName]
+    && isRateLimitBindingLike(simplifiedClaimingRateLimiter)
+  ) {
+    event.context.cloudflare.env[simplifiedClaimingRateLimitBindingName] = simplifiedClaimingRateLimiter as never
   }
 
   const profileIconContext = event.context as typeof event.context & { profileIconsBucket?: R2BucketLike }

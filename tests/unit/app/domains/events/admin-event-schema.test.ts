@@ -35,6 +35,33 @@ describe('event config form schema', () => {
     expect(result.success).toBe(true)
   })
 
+  test('validates the simplified Meetup claiming toggle and includes it in patches', () => {
+    const meetup = {
+      ...createValidEventFormState(),
+      eventType: 'meetup' as const,
+      submissionOpensAt: '',
+      submissionClosesAt: '',
+      simplifiedClaimingEnabled: true
+    }
+    expect(eventConfigFormSchema.safeParse(meetup).success).toBe(true)
+    expect(buildEventConfigurationPatch(meetup, 'meetup')).toMatchObject({
+      simplifiedClaimingEnabled: true
+    })
+    expect(eventConfigFormSchema.safeParse({
+      ...meetup,
+      lumaEventApiId: 'evt-123',
+      lumaApiKey: 'secret',
+      applicationLumaEmailVisible: true,
+      requireLumaEmail: true
+    }).success).toBe(false)
+    expect(buildEventConfigurationPatch({
+      ...meetup,
+      eventType: 'build'
+    }, 'build')).toMatchObject({
+      simplifiedClaimingEnabled: false
+    })
+  })
+
   test('rejects non-http Discord server URLs', () => {
     const result = eventConfigFormSchema.safeParse({
       ...createValidEventFormState(),

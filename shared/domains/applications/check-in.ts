@@ -1,9 +1,11 @@
 export const applicationCheckInOverrideStatuses = ['joined', 'not_joined'] as const
 
 export type ApplicationCheckInOverrideStatus = typeof applicationCheckInOverrideStatuses[number]
+export type ApplicationCheckInSource = 'luma' | 'simplified_claim'
 
 export interface ApplicationCheckInState {
   checkedInAt: string | null
+  checkInSource?: ApplicationCheckInSource | null
   checkInOverrideStatus: ApplicationCheckInOverrideStatus | null
 }
 
@@ -20,5 +22,5 @@ export function resolveApplicationAttendanceSource(application: ApplicationCheck
     return 'manual' as const
   }
 
-  return application.checkedInAt ? 'luma' as const : null
+  return application.checkedInAt ? application.checkInSource ?? 'luma' : null
 }
