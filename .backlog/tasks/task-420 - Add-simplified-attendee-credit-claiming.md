@@ -1,11 +1,11 @@
 ---
 id: TASK-420
 title: Add simplified attendee credit claiming
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-07-09 20:21'
-updated_date: '2026-07-09 21:56'
+updated_date: '2026-07-09 22:05'
 labels: []
 dependencies: []
 priority: high
@@ -70,6 +70,8 @@ UX follow-up: move the attendee-claiming tools into the Participation Rules form
 Inline Settings UX implemented: the persisted tools component now composes inside Participation Rules immediately after the checkbox, is mounted only while checked, and uses an integrated section instead of a nested card. Newly checked unsaved events show a save-first notice; creation has no event-scoped tools before save.
 
 UX follow-up validation passed: git diff --check; bun run lint; bun run typecheck; bun run test:unit (110 files, 770 tests); bun run test:integration (25 files, 358 tests); bun run test:bdd (49 main scenarios and 2 destructive scenarios).
+
+Inline Settings UX commit 3f800be0 was pushed to origin/main. GitHub deploy-test run 29053036474 completed successfully and deployed it to test.codex-events.com.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
@@ -84,6 +86,8 @@ Follow-up repair explicitly imports the nested Settings panel and adds browser c
 Repair commit 8117aa49 is deployed successfully to the test environment.
 
 The Settings tools now sit directly below and follow the state of the simplified attendee claiming checkbox.
+
+Inline-toggle UX commit 3f800be0 is deployed successfully to the test environment.
 <!-- SECTION:FINAL_SUMMARY:END -->
 
 ## Definition of Done
@@ -96,5 +100,5 @@ The Settings tools now sit directly below and follow the state of the simplified
 - [x] #6 Config and developer workflow docs were updated when setup changed
 - [x] #7 Auth and permissions changes follow the documented platform model
 - [x] #8 Risks and follow ups are recorded in the task summary
-- [ ] #9 Implementation is committed and pushed directly to origin/main with unrelated worktree changes excluded.
+- [x] #9 Implementation is committed and pushed directly to origin/main with unrelated worktree changes excluded.
 <!-- DOD:END -->
