@@ -89,10 +89,21 @@ Then('I should be redirected to the simplified claiming coupon', async ({ page }
 
 Then('I should see the attendee claiming QR settings', async ({ page }) => {
   const redemptionUrl = `${new URL(page.url()).origin}/events/${fixtureSlug}/redeem`
+  const checkbox = page.getByRole('checkbox', { name: 'Simplified attendee claiming' })
+  const panel = page.getByTestId('simplified-claiming-settings-panel')
+  const inlinePanel = page.locator('[data-testid="simplified-claiming-toggle"] + [data-testid="simplified-claiming-settings-panel"]')
+
+  await expect(checkbox).toBeChecked()
+  await expect(inlinePanel).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Attendee claiming' })).toBeVisible()
   await expect(page.getByText(redemptionUrl, { exact: true })).toBeVisible()
   await expect(page.getByRole('img', { name: 'Redemption QR code' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Download QR as SVG' })).toBeVisible()
+
+  await checkbox.uncheck()
+  await expect(panel).toBeHidden()
+  await checkbox.check()
+  await expect(inlinePanel).toBeVisible()
 })
 
 Then('the {string} should see the simplified claiming participant checked in', async ({ page }, personaKey: string) => {

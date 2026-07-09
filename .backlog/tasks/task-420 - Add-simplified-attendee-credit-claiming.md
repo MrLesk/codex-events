@@ -1,11 +1,11 @@
 ---
 id: TASK-420
 title: Add simplified attendee credit claiming
-status: Done
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-07-09 20:21'
-updated_date: '2026-07-09 21:44'
+updated_date: '2026-07-09 21:56'
 labels: []
 dependencies: []
 priority: high
@@ -29,6 +29,7 @@ Add an opt-in simplified claiming flow for Meetup participants. Event admins con
 - [x] #7 Credit and attendance audits omit attendee emails and coupon URLs, the normal approval email is queued once, and disabled, incomplete, closed, invalid, sold-out, and rate-limited states are covered.
 - [x] #8 Canonical domain, lifecycle, permissions, schema, API, and testing documentation describes the implemented current behavior.
 - [x] #9 bun run lint, bun run typecheck, bun run test:unit, bun run test:integration, and bun run test:bdd pass.
+- [x] #10 In Meetup Settings, attendee-claiming tools render directly below the simplified claiming checkbox only while it is checked; newly enabled unsaved configuration shows a save-first notice.
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -40,6 +41,7 @@ Add an opt-in simplified claiming flow for Meetup participants. Event admins con
 4. Add the Meetup creation/Settings controls, roster and QR tools, Credits ownership UI, and the unlinked authenticated redeem page.
 5. Add schema, unit, integration, and Auth0-backed BDD coverage; run the full required validation suite.
 6. Record each implementation slice and validation result in this task, then finalize, commit, and push the isolated change to main.
+7. Integrate the attendee-claiming tools directly below the Settings checkbox, gate them by local and persisted configuration state, and cover placement and toggle behavior in BDD.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -62,6 +64,12 @@ Test deployment inspection found that the attendee-claiming API and event flag w
 Repair validation passed: git diff --check; bun run lint; bun run typecheck; bun run test:unit (110 files, 770 tests); bun run test:integration (25 files, 358 tests); bun run test:bdd (49 main scenarios and 2 destructive scenarios). The new event-admin scenario asserts the Settings heading, redemption URL, QR image, and SVG download control.
 
 Repair commit 8117aa49 was pushed to origin/main. GitHub deploy-test run 29051951697 completed successfully and deployed the repaired Worker to test.codex-events.com.
+
+UX follow-up: move the attendee-claiming tools into the Participation Rules form directly below the checkbox. Keep creation lightweight because no event ID exists yet; when an existing disabled event is checked but unsaved, show a save-first notice.
+
+Inline Settings UX implemented: the persisted tools component now composes inside Participation Rules immediately after the checkbox, is mounted only while checked, and uses an integrated section instead of a nested card. Newly checked unsaved events show a save-first notice; creation has no event-scoped tools before save.
+
+UX follow-up validation passed: git diff --check; bun run lint; bun run typecheck; bun run test:unit (110 files, 770 tests); bun run test:integration (25 files, 358 tests); bun run test:bdd (49 main scenarios and 2 destructive scenarios).
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
@@ -74,6 +82,8 @@ Implementation commit 8f11fdc0 was pushed directly to origin/main with unrelated
 Follow-up repair explicitly imports the nested Settings panel and adds browser coverage for its rendered QR controls.
 
 Repair commit 8117aa49 is deployed successfully to the test environment.
+
+The Settings tools now sit directly below and follow the state of the simplified attendee claiming checkbox.
 <!-- SECTION:FINAL_SUMMARY:END -->
 
 ## Definition of Done
@@ -86,5 +96,5 @@ Repair commit 8117aa49 is deployed successfully to the test environment.
 - [x] #6 Config and developer workflow docs were updated when setup changed
 - [x] #7 Auth and permissions changes follow the documented platform model
 - [x] #8 Risks and follow ups are recorded in the task summary
-- [x] #9 Implementation is committed and pushed directly to origin/main with unrelated worktree changes excluded.
+- [ ] #9 Implementation is committed and pushed directly to origin/main with unrelated worktree changes excluded.
 <!-- DOD:END -->

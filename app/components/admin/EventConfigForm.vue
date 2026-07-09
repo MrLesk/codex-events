@@ -4,6 +4,7 @@ import type Sortable from 'sortablejs'
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
+import AccountEventSimplifiedClaimingPanel from '~/components/account/events/AccountEventSimplifiedClaimingPanel.vue'
 import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
 import EventConfigApplicationFieldsTable from '~/components/admin/EventConfigApplicationFieldsTable.vue'
 import EventConfigProgramIdentitySection from '~/components/admin/EventConfigProgramIdentitySection.vue'
@@ -59,6 +60,8 @@ const props = defineProps<{
   bannerImageUploadPending?: boolean
   bannerImageUploadError?: string
   imageVersion?: string | null
+  eventId?: string | null
+  persistedSimplifiedClaimingEnabled?: boolean
   lumaWebhookUrl?: string | null
   lumaWebhookStatus?: EventRecord['lumaWebhookStatus'] | null
   lumaWebhookError?: string | null
@@ -81,6 +84,13 @@ const showEventTypeField = computed(() => formMode.value === 'full' && showBasic
 const showTracksSection = computed(() => formMode.value !== 'details' && (isHackathon.value || isBuildEvent.value))
 const showInlineDetailsActions = computed(() => formMode.value === 'details')
 const isSettingsMode = computed(() => formMode.value === 'settings')
+const persistedEventId = computed(() => props.eventId?.trim() ?? '')
+const showSimplifiedClaimingTools = computed(() =>
+  isSettingsMode.value
+  && isMeetup.value
+  && form.value.simplifiedClaimingEnabled
+  && persistedEventId.value.length > 0
+)
 const isLumaApiKeyRevealed = ref(false)
 const lumaApiKeyInputType = computed(() => isLumaApiKeyRevealed.value ? 'text' : 'password')
 const hasLumaSyncFields = computed(() =>
@@ -1538,6 +1548,7 @@ const submitConfigForm = handleSubmit(() => {
 
                   <label
                     v-if="isMeetup"
+                    data-testid="simplified-claiming-toggle"
                     class="flex items-start gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]"
                   >
                     <input
@@ -1550,6 +1561,21 @@ const submitConfigForm = handleSubmit(() => {
                       <span class="text-xs text-muted">Let approved Luma attendees claim the event credit from a private QR link. Add a credit offer before sharing the QR.</span>
                     </span>
                   </label>
+
+                  <template v-if="showSimplifiedClaimingTools">
+                    <AccountEventSimplifiedClaimingPanel
+                      v-if="props.persistedSimplifiedClaimingEnabled"
+                      :event-id="persistedEventId"
+                    />
+                    <AppAlert
+                      v-else
+                      data-testid="simplified-claiming-save-notice"
+                      color="info"
+                      variant="soft"
+                      title="Save configuration to continue"
+                      description="Save this setting before importing attendees or sharing the redemption QR."
+                    />
+                  </template>
 
                   <EventConfigApplicationFieldsTable
                     v-model:form="form"

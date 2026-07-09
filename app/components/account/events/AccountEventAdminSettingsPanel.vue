@@ -2,7 +2,6 @@
 import type Sortable from 'sortablejs'
 
 import AccountEventAdminTermsCard from '~/components/account/events/AccountEventAdminTermsCard.vue'
-import AccountEventSimplifiedClaimingPanel from '~/components/account/events/AccountEventSimplifiedClaimingPanel.vue'
 import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
 
 import type { ApiDataResponse } from '~/lib/api'
@@ -1247,16 +1246,6 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
             {{ judgeCount }}
           </p>
         </div>
-      </section>
-
-      <section
-        v-if="showSettingsOverview && currentEvent.eventType === 'meetup'"
-        class="space-y-6"
-      >
-        <AccountEventSimplifiedClaimingPanel
-          :event-id="currentEvent.id"
-          :enabled="currentEvent.simplifiedClaimingEnabled"
-        />
       </section>
 
       <section

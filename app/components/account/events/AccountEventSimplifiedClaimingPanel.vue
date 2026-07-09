@@ -20,7 +20,6 @@ interface SimplifiedClaimingStatus {
 
 const props = defineProps<{
   eventId: string
-  enabled: boolean
 }>()
 
 const toast = useToast()
@@ -41,10 +40,6 @@ const qrDataUrl = computed(() => {
   qr.addData(claimStatus.value.redemptionUrl)
   qr.make()
   return qr.createDataURL(6, 3)
-})
-
-watch(() => props.enabled, async () => {
-  await refresh()
 })
 
 function chooseFile() {
@@ -113,17 +108,18 @@ function downloadQrSvg() {
 </script>
 
 <template>
-  <AppCard>
-    <template #header>
-      <div class="space-y-1">
-        <h2 class="text-lg font-semibold text-highlighted">
-          Attendee claiming
-        </h2>
-        <p class="text-sm text-muted">
-          Import approved Luma guests and prepare the private redemption QR.
-        </p>
-      </div>
-    </template>
+  <section
+    data-testid="simplified-claiming-settings-panel"
+    class="mt-2 grid gap-5 border-t border-black/8 pt-5 dark:border-white/[0.08]"
+  >
+    <div class="space-y-1">
+      <h3 class="text-lg font-semibold text-highlighted">
+        Attendee claiming
+      </h3>
+      <p class="text-sm text-muted">
+        Import approved Luma guests and prepare the private redemption QR.
+      </p>
+    </div>
 
     <div class="grid gap-5">
       <AppAlert
@@ -132,13 +128,6 @@ function downloadQrSvg() {
         variant="soft"
         title="Unable to load attendee claiming"
         :description="error.message"
-      />
-      <AppAlert
-        v-else-if="!props.enabled"
-        color="neutral"
-        variant="soft"
-        title="Simplified claiming is off"
-        description="Enable simplified attendee claiming in Participation Rules to prepare the attendee list and QR."
       />
       <template v-else-if="claimStatus">
         <AppAlert
@@ -250,5 +239,5 @@ function downloadQrSvg() {
         Loading attendee claiming…
       </p>
     </div>
-  </AppCard>
+  </section>
 </template>

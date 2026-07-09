@@ -79,6 +79,8 @@ function submitForm() {
       :banner-image-upload-pending="bannerImageUploadPending"
       :banner-image-upload-error="bannerImageUploadError"
       :image-version="imageVersion"
+      :event-id="initialEvent?.id ?? null"
+      :persisted-simplified-claiming-enabled="initialEvent?.simplifiedClaimingEnabled ?? false"
       :luma-webhook-url="initialEvent?.lumaWebhookUrl ?? null"
       :luma-webhook-status="initialEvent?.lumaWebhookStatus ?? null"
       :luma-webhook-error="initialEvent?.lumaWebhookError ?? null"
