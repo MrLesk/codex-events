@@ -1,11 +1,11 @@
 ---
 id: TASK-420
 title: Add simplified attendee credit claiming
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-07-09 20:21'
-updated_date: '2026-07-09 21:36'
+updated_date: '2026-07-09 21:44'
 labels: []
 dependencies: []
 priority: high
@@ -60,6 +60,8 @@ Validation passed: git diff --check; bun run lint; bun run typecheck; bun run te
 Test deployment inspection found that the attendee-claiming API and event flag were present, but the Settings QR panel rendered as an unresolved custom element. Nuxt path-prefixed the nested component auto-import; the parent used the filename-only tag without the explicit import used by adjacent nested components.
 
 Repair validation passed: git diff --check; bun run lint; bun run typecheck; bun run test:unit (110 files, 770 tests); bun run test:integration (25 files, 358 tests); bun run test:bdd (49 main scenarios and 2 destructive scenarios). The new event-admin scenario asserts the Settings heading, redemption URL, QR image, and SVG download control.
+
+Repair commit 8117aa49 was pushed to origin/main. GitHub deploy-test run 29051951697 completed successfully and deployed the repaired Worker to test.codex-events.com.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
@@ -70,6 +72,8 @@ Implemented simplified attendee credit claiming for Meetups across schema, APIs,
 Implementation commit 8f11fdc0 was pushed directly to origin/main with unrelated groma files excluded.
 
 Follow-up repair explicitly imports the nested Settings panel and adds browser coverage for its rendered QR controls.
+
+Repair commit 8117aa49 is deployed successfully to the test environment.
 <!-- SECTION:FINAL_SUMMARY:END -->
 
 ## Definition of Done
@@ -82,5 +86,5 @@ Follow-up repair explicitly imports the nested Settings panel and adds browser c
 - [x] #6 Config and developer workflow docs were updated when setup changed
 - [x] #7 Auth and permissions changes follow the documented platform model
 - [x] #8 Risks and follow ups are recorded in the task summary
-- [ ] #9 Implementation is committed and pushed directly to origin/main with unrelated worktree changes excluded.
+- [x] #9 Implementation is committed and pushed directly to origin/main with unrelated worktree changes excluded.
 <!-- DOD:END -->
