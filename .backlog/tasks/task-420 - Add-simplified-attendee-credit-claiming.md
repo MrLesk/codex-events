@@ -1,7 +1,7 @@
 ---
 id: TASK-420
 title: Add simplified attendee credit claiming
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-07-09 20:21'
@@ -62,6 +62,8 @@ Validation passed: git diff --check; bun run lint; bun run typecheck; bun run te
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
 Implemented simplified attendee credit claiming for Meetups across schema, APIs, admin configuration, Luma CSV roster import, private QR redemption, transactional coupon assignment, attendance, audit/email behavior, tests, runtime bindings, and canonical docs. All required validation passes. No follow-up work is currently known; additive roster imports and post-first-claim configuration locks are intentional product behavior.
+
+Implementation commit 8f11fdc0 was pushed directly to origin/main with unrelated groma files excluded.
 <!-- SECTION:FINAL_SUMMARY:END -->
 
 ## Definition of Done
@@ -74,5 +76,5 @@ Implemented simplified attendee credit claiming for Meetups across schema, APIs,
 - [x] #6 Config and developer workflow docs were updated when setup changed
 - [x] #7 Auth and permissions changes follow the documented platform model
 - [x] #8 Risks and follow ups are recorded in the task summary
-- [ ] #9 Implementation is committed and pushed directly to origin/main with unrelated worktree changes excluded.
+- [x] #9 Implementation is committed and pushed directly to origin/main with unrelated worktree changes excluded.
 <!-- DOD:END -->
