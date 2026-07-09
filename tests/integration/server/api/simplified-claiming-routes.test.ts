@@ -131,8 +131,7 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     expect(await stateResponse.json()).toMatchObject({
       data: {
         status: 'ready',
-        lumaEmail: 'guest@example.com',
-        canAutoRedeem: true
+        lumaEmail: 'guest@example.com'
       }
     })
 

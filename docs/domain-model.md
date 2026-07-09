@@ -739,7 +739,7 @@ Judging applies only to Hackathon events.
 - Approved participants and event staff see event credits in the account event workspace only when uploaded credit inventory exists for the event.
 - A claiming user can claim at most one uploaded value from each credit offer.
 - Simplified-claiming offers remain hidden from the normal participant Credits view. Authenticated attendees use `/events/:slug/redeem`, and repeat visits redirect to the same assigned coupon.
-- A simplified claim verifies the entered normalized Luma email against imported eligibility, consumes that email once, approves the application, records attendance, and redirects to the assigned HTTPS coupon.
+- For a first simplified claim, the page prefills the account's saved Luma email when available and waits for the participant to confirm or edit it before redemption. The claim verifies the entered normalized email against imported eligibility, consumes that email once, approves the application, records attendance, and redirects to the assigned HTTPS coupon.
 
 ## Compliance
 

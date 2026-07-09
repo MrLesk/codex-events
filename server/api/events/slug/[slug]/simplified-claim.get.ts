@@ -79,7 +79,6 @@ export default defineApiHandler(async (h3Event) => {
   return apiData({
     status: 'ready' as const,
     eventName: event.name,
-    lumaEmail: actor.platformUser.lumaEmail,
-    canAutoRedeem: Boolean(actor.platformUser.lumaEmail?.trim())
+    lumaEmail: actor.platformUser.lumaEmail
   })
 })

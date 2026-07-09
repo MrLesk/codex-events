@@ -13,7 +13,6 @@ type SimplifiedClaimState = {
   status: 'ready'
   eventName: string
   lumaEmail: string | null
-  canAutoRedeem: boolean
 } | {
   status: 'unavailable'
   eventName: string
@@ -64,12 +63,10 @@ const { data, error, status, refresh } = await useFetch<ApiDataResponse<Simplifi
 )
 const claimState = computed(() => data.value?.data ?? null)
 const lumaEmail = shallowRef('')
+const isInteractive = shallowRef(false)
 const isRedeeming = shallowRef(false)
 const redeemError = shallowRef('')
-const autoAttempted = shallowRef(false)
-const showEmailForm = computed(() =>
-  claimState.value?.status === 'ready' && (!claimState.value.canAutoRedeem || autoAttempted.value)
-)
+const showEmailForm = computed(() => claimState.value?.status === 'ready')
 
 watch(claimState, (nextState) => {
   if (nextState?.status === 'ready' && !lumaEmail.value) {
@@ -108,7 +105,6 @@ async function redeem() {
     })
     await redirectToCoupon(response.data.redirectUrl)
   } catch (caught) {
-    autoAttempted.value = true
     redeemError.value = normalizeApiError(caught).message
   } finally {
     isRedeeming.value = false
@@ -116,13 +112,9 @@ async function redeem() {
 }
 
 onMounted(async () => {
+  isInteractive.value = true
   if (claimState.value?.status === 'claimed') {
     await redirectToCoupon(claimState.value.redirectUrl)
-    return
-  }
-  if (claimState.value?.status === 'ready' && claimState.value.canAutoRedeem && !autoAttempted.value) {
-    autoAttempted.value = true
-    await redeem()
   }
 })
 </script>
@@ -193,11 +185,12 @@ onMounted(async () => {
             name="luma-email"
           >
             <AppInput
+              id="luma-email"
               v-model="lumaEmail"
               type="email"
               autocomplete="email"
               required
-              :disabled="isRedeeming"
+              :disabled="!isInteractive || isRedeeming"
             />
           </AppFormField>
           <AppAlert
@@ -212,23 +205,12 @@ onMounted(async () => {
               type="submit"
               color="primary"
               :loading="isRedeeming"
+              :disabled="!isInteractive"
             >
               Continue to ChatGPT
             </AppButton>
           </div>
         </form>
-        <div
-          v-else-if="claimState?.status === 'ready'"
-          class="grid justify-items-center gap-3 py-8 text-center"
-        >
-          <AppIcon
-            name="i-lucide-loader-circle"
-            class="size-7 animate-spin text-muted"
-          />
-          <p class="text-sm text-muted">
-            Confirming your attendee email…
-          </p>
-        </div>
         <div
           v-else
           class="flex justify-center"

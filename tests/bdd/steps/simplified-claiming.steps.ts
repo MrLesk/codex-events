@@ -6,6 +6,7 @@ import { createBdd } from 'playwright-bdd'
 import { createAuthenticatedApiClient } from '../support/api-client'
 import { platformFixtureIds } from '../support/platform-fixtures'
 import {
+  getStablePersonas,
   stablePersonaKeys,
   storageStatePathForPersona,
   type StablePersonaKey
@@ -37,6 +38,10 @@ function parsePersonaKey(value: string): StablePersonaKey {
     return value as StablePersonaKey
   }
   throw new Error(`Unknown stable persona key: ${value}`)
+}
+
+function getRegularUserEmail() {
+  return getStablePersonas().find(persona => persona.key === 'regular_user')!.email.trim().toLowerCase()
 }
 
 async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) {
@@ -78,6 +83,18 @@ When('I open the simplified claiming link again', async ({ page }) => {
   await page.goto(`/events/${fixtureSlug}/redeem`)
 })
 
+When('I confirm the simplified claim', async ({ page }) => {
+  await page.getByRole('button', { name: 'Continue to ChatGPT' }).click()
+})
+
+When('I replace the Luma email with {string}', async ({ page }, lumaEmail: string) => {
+  await page.getByLabel('Luma email').fill(lumaEmail)
+})
+
+When('I restore my saved Luma email', async ({ page }) => {
+  await page.getByLabel('Luma email').fill(getRegularUserEmail())
+})
+
 When('I open the simplified claiming settings with the saved {string} session', async ({ page }, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
   await page.goto(`/account/events/${fixtureSlug}?tab=settings`)
@@ -85,6 +102,19 @@ When('I open the simplified claiming settings with the saved {string} session', 
 
 Then('I should be redirected to the simplified claiming coupon', async ({ page }) => {
   await expect(page).toHaveURL(couponUrl)
+})
+
+Then('I should see my saved Luma email ready to confirm', async ({ page }) => {
+  await expect(page).toHaveURL(new RegExp(`/events/${fixtureSlug}/redeem$`))
+  await expect(page.getByRole('heading', { name: 'Confirm your Luma email' })).toBeVisible()
+  await expect(page.getByLabel('Luma email')).toHaveValue(getRegularUserEmail())
+  await expect(page.getByRole('button', { name: 'Continue to ChatGPT' })).toBeVisible()
+})
+
+Then('I should be able to correct the unmatched Luma email', async ({ page }) => {
+  await expect(page.getByText('That email was not found on the approved Luma attendee list.')).toBeVisible()
+  await expect(page.getByLabel('Luma email')).toBeEditable()
+  await expect(page.getByLabel('Luma email')).toHaveValue('missing@example.com')
 })
 
 Then('I should see the attendee claiming QR settings', async ({ page }) => {
