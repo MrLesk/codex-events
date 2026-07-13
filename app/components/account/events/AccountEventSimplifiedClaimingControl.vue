@@ -15,13 +15,19 @@ const claimingLocked = shallowRef(false)
 </script>
 
 <template>
-  <div class="grid">
+  <div
+    data-testid="simplified-claiming-control"
+    class="grid min-w-0 overflow-hidden rounded-xl border transition-colors"
+    :class="enabled
+      ? 'border-primary/25 bg-primary/[0.035] dark:border-primary/30 dark:bg-primary/[0.055]'
+      : 'border-black/8 dark:border-white/[0.08]'"
+  >
     <label
       data-testid="simplified-claiming-toggle"
-      class="flex items-start gap-3 border px-4 py-3 text-sm text-toned transition-colors"
+      class="flex min-w-0 items-start gap-3 px-4 py-3 text-sm text-toned transition-colors"
       :class="enabled
-        ? 'rounded-t-xl border-primary/25 bg-primary/[0.06] pb-4 dark:border-primary/30 dark:bg-primary/[0.08]'
-        : 'rounded-lg border-black/8 dark:border-white/[0.08]'"
+        ? 'border-b border-primary/15 bg-primary/[0.045] pb-4 dark:border-primary/20 dark:bg-primary/[0.065]'
+        : 'bg-transparent'"
     >
       <input
         v-model="enabled"
@@ -29,7 +35,7 @@ const claimingLocked = shallowRef(false)
         :disabled="claimingLocked"
         class="mt-0.5 size-4 rounded border-black/20 dark:border-white/[0.3]"
       >
-      <span class="grid gap-0.5">
+      <span class="grid min-w-0 flex-1 gap-0.5">
         <span class="font-medium text-highlighted">Simplified attendee claiming</span>
         <span class="text-xs text-muted">Prepare a private QR, upload reward links, and match approved Luma attendees.</span>
       </span>
@@ -43,7 +49,7 @@ const claimingLocked = shallowRef(false)
       />
       <section
         v-else
-        class="-mt-px ml-7 rounded-b-xl border border-l-4 border-primary/20 border-l-primary/35 bg-primary/[0.035] px-4 py-5 dark:border-primary/25 dark:border-l-primary/40 dark:bg-primary/[0.055] sm:px-5"
+        class="min-w-0 px-4 py-5 sm:px-5"
       >
         <div class="mb-4 space-y-1">
           <h3 class="text-lg font-semibold text-highlighted">

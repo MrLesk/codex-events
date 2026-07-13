@@ -196,7 +196,7 @@ function downloadQrSvg() {
 <template>
   <section
     data-testid="simplified-claiming-settings-panel"
-    class="-mt-px ml-7 rounded-b-xl border border-l-4 border-primary/20 border-l-primary/35 bg-primary/[0.035] px-4 pb-2 dark:border-primary/25 dark:border-l-primary/40 dark:bg-primary/[0.055] sm:px-5"
+    class="min-w-0 px-4 pb-2 sm:px-5"
   >
     <div class="flex flex-col gap-3 border-b border-primary/15 py-5 sm:flex-row sm:items-start sm:justify-between">
       <div class="space-y-1">

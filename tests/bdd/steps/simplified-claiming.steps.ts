@@ -134,10 +134,25 @@ Then('I should be able to correct the unmatched Luma email', async ({ page }) =>
 Then('I should see the attendee claiming QR settings', async ({ page }) => {
   const redemptionUrl = `${new URL(page.url()).origin}/events/${fixtureSlug}/redeem`
   const checkbox = page.getByRole('checkbox', { name: 'Simplified attendee claiming' })
-  const inlinePanel = page.locator('[data-testid="simplified-claiming-toggle"] + [data-testid="simplified-claiming-settings-panel"]')
+  const compoundControl = page.getByTestId('simplified-claiming-control')
+  const inlinePanel = compoundControl.getByTestId('simplified-claiming-settings-panel')
 
   await expect(checkbox).toBeChecked()
+  await expect(compoundControl).toBeVisible()
   await expect(inlinePanel).toBeVisible()
+  const [controlBox, panelBox] = await Promise.all([
+    compoundControl.boundingBox(),
+    inlinePanel.boundingBox()
+  ])
+  expect(controlBox).not.toBeNull()
+  expect(panelBox).not.toBeNull()
+  expect(Math.abs((controlBox?.x ?? 0) - (panelBox?.x ?? 0))).toBeLessThanOrEqual(1)
+  expect(Math.abs((controlBox?.width ?? 0) - (panelBox?.width ?? 0))).toBeLessThanOrEqual(2)
+  await page.setViewportSize({ width: 390, height: 844 })
+  const narrowControlBox = await compoundControl.boundingBox()
+  expect(narrowControlBox).not.toBeNull()
+  expect(narrowControlBox?.x ?? -1).toBeGreaterThanOrEqual(0)
+  expect((narrowControlBox?.x ?? 0) + (narrowControlBox?.width ?? 391)).toBeLessThanOrEqual(390)
   await expect(page.getByRole('heading', { name: 'Attendee claiming setup' })).toBeVisible()
   await expect(page.getByText('3 of 3 prepared', { exact: true })).toBeVisible()
   await expect(page.getByText(redemptionUrl, { exact: true })).toBeVisible()
@@ -150,9 +165,11 @@ Then('I should see the attendee claiming QR settings', async ({ page }) => {
 
 Then('I should see the nested attendee claiming creation state', async ({ page }) => {
   const checkbox = page.getByRole('checkbox', { name: 'Simplified attendee claiming' })
+  const compoundControl = page.getByTestId('simplified-claiming-control')
   const saveNotice = page.getByTestId('simplified-claiming-save-notice')
 
   await expect(checkbox).toBeChecked()
+  await expect(compoundControl).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Attendee claiming setup' })).toBeVisible()
   await expect(saveNotice).toBeVisible()
   await expect(saveNotice).toContainText('Create the event to continue')
