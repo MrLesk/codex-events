@@ -32,6 +32,7 @@ export interface AccountEventTabAccessOptions {
   eventState?: PublicEventState | null
   canJudge: boolean
   canManage: boolean
+  showCredits?: boolean
   canViewParticipantsAndTeams: boolean
 }
 
@@ -135,12 +136,13 @@ export function getAccountEventTabAccess(
     eventState,
     canJudge,
     canManage,
+    showCredits = true,
     canViewParticipantsAndTeams
   } = options
   const isCompetitionEvent = eventType === 'hackathon'
   const availableTabs: AccountEventWorkspaceTab[] = ['overview']
 
-  if (canManage || ((hasApprovedParticipantAccess || canViewParticipantsAndTeams) && hasCreditInventory)) {
+  if (showCredits && (canManage || ((hasApprovedParticipantAccess || canViewParticipantsAndTeams) && hasCreditInventory))) {
     availableTabs.push('credits')
   }
 

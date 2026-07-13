@@ -19,3 +19,8 @@ Feature: Simplified Meetup claiming
     Given the saved "event_admin" Auth0 session state exists
     When I open the simplified claiming settings with the saved "event_admin" session
     Then I should see the attendee claiming QR settings
+
+  Scenario: Organizer sees the nested claiming setup while creating a Meetup
+    Given the saved "platform_admin" Auth0 session state exists
+    When I prepare simplified claiming on a new Meetup with the saved "platform_admin" session
+    Then I should see the nested attendee claiming creation state

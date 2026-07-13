@@ -80,6 +80,21 @@ describe('getAccountEventTabAccess', () => {
     })
   })
 
+  test('hides Credits management when private attendee rewards are managed in Settings', () => {
+    const access = getAccountEventTabAccess({
+      ...hackathonOptions,
+      hasApprovedParticipantAccess: false,
+      hasGallery: false,
+      hasPublishedPrizes: false,
+      canJudge: false,
+      canManage: true,
+      showCredits: false,
+      canViewParticipantsAndTeams: true
+    })
+
+    expect(access.availableTabs).not.toContain('credits')
+  })
+
   test('hides the staff tab from non-admins when no staff are published', () => {
     expect(getAccountEventTabAccess({
       ...hackathonOptions,

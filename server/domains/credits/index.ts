@@ -135,7 +135,10 @@ export async function listEventCreditOffers(
   eventId: string
 ) {
   return await database.query.eventCreditOffers.findMany({
-    where: eq(eventCreditOffers.eventId, eventId),
+    where: and(
+      eq(eventCreditOffers.eventId, eventId),
+      eq(eventCreditOffers.simplifiedClaimingOnly, false)
+    ),
     orderBy: [asc(eventCreditOffers.displayOrder), asc(eventCreditOffers.createdAt)]
   })
 }
@@ -148,7 +151,10 @@ export async function listEventCreditCodesForEvent(
     .select(getTableColumns(eventCreditCodes))
     .from(eventCreditCodes)
     .innerJoin(eventCreditOffers, eq(eventCreditOffers.id, eventCreditCodes.creditOfferId))
-    .where(eq(eventCreditOffers.eventId, eventId))
+    .where(and(
+      eq(eventCreditOffers.eventId, eventId),
+      eq(eventCreditOffers.simplifiedClaimingOnly, false)
+    ))
     .orderBy(asc(eventCreditCodes.createdAt), asc(eventCreditCodes.id))
 }
 

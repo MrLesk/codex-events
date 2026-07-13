@@ -485,6 +485,7 @@ const tabAccess = computed(() =>
     eventState: event.value.state,
     canJudge: canJudge.value,
     canManage: canAdmin.value,
+    showCredits: !event.value.simplifiedClaimingEnabled,
     canViewParticipantsAndTeams: canViewParticipantsAndTeams.value
   })
 )
@@ -1549,7 +1550,6 @@ useSeoMeta({
           :event-id="event.id"
           :can-manage="canAdmin"
           :can-claim="canClaimCredits"
-          :simplified-claiming-enabled="Boolean(event.simplifiedClaimingEnabled)"
         />
       </section>
 

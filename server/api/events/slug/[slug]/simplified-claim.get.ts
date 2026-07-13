@@ -26,6 +26,7 @@ export default defineApiHandler(async (h3Event) => {
     .innerJoin(eventCreditOffers, eq(eventCreditOffers.id, eventCreditCodes.creditOfferId))
     .where(and(
       eq(eventCreditOffers.eventId, event.id),
+      eq(eventCreditOffers.simplifiedClaimingOnly, true),
       eq(eventCreditCodes.claimedByUserId, actor.platformUser.id),
       isNotNull(eventCreditCodes.claimedAttendeeEligibilityId)
     ))

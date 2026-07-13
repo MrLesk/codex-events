@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import qrcode from 'qrcode-generator'
 
+import AccountEventSimplifiedClaimingStep from './AccountEventSimplifiedClaimingStep.vue'
 import type { ApiDataResponse } from '~/lib/api'
 import { normalizeApiError } from '~/lib/api'
 
@@ -12,6 +13,7 @@ interface SimplifiedClaimingStatus {
   issues: Array<{ code: string, message: string }>
   attendeeCount: number
   offerCount: number
+  ordinaryOfferCount: number
   totalInventoryCount: number
   availableInventoryCount: number
   simplifiedClaimCount: number
@@ -21,16 +23,42 @@ interface SimplifiedClaimingStatus {
 const props = defineProps<{
   eventId: string
 }>()
+const emit = defineEmits<{
+  lockChange: [locked: boolean]
+}>()
 
 const toast = useToast()
-const isUploading = shallowRef(false)
-const uploadError = shallowRef('')
-const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
+const isAttendeeUploadPending = shallowRef(false)
+const isRewardUploadPending = shallowRef(false)
+const isRewardDeletePending = shallowRef(false)
+const attendeeUploadError = shallowRef('')
+const rewardUploadError = shallowRef('')
+const attendeeFileInput = useTemplateRef<HTMLInputElement>('attendeeFileInput')
+const rewardFileInput = useTemplateRef<HTMLInputElement>('rewardFileInput')
 const statusUrl = computed(() => `/api/events/${props.eventId}/simplified-claiming`)
 const { data, status, error, refresh } = await useFetch<ApiDataResponse<SimplifiedClaimingStatus>>(statusUrl, {
   key: `simplified-claiming-${props.eventId}`
 })
 const claimStatus = computed(() => data.value?.data ?? null)
+watch(() => claimStatus.value?.locked, (locked) => {
+  if (typeof locked === 'boolean') {
+    emit('lockChange', locked)
+  }
+}, { immediate: true })
+const rewardReady = computed(() => Boolean(
+  claimStatus.value?.offer
+  && claimStatus.value.totalInventoryCount > 0
+  && !claimStatus.value.issues.some(issue => issue.code === 'inventory_invalid')
+))
+const completedStepCount = computed(() => {
+  if (!claimStatus.value) {
+    return 0
+  }
+
+  return Number(Boolean(claimStatus.value.redemptionUrl))
+    + Number(rewardReady.value)
+    + Number(claimStatus.value.attendeeCount > 0)
+})
 const qrDataUrl = computed(() => {
   if (!claimStatus.value?.redemptionUrl) {
     return ''
@@ -42,8 +70,12 @@ const qrDataUrl = computed(() => {
   return qr.createDataURL(6, 3)
 })
 
-function chooseFile() {
-  fileInput.value?.click()
+function chooseAttendeeFile() {
+  attendeeFileInput.value?.click()
+}
+
+function chooseRewardFile() {
+  rewardFileInput.value?.click()
 }
 
 async function importAttendees(event: Event) {
@@ -54,8 +86,8 @@ async function importAttendees(event: Event) {
     return
   }
 
-  isUploading.value = true
-  uploadError.value = ''
+  isAttendeeUploadPending.value = true
+  attendeeUploadError.value = ''
   try {
     const body = new FormData()
     body.append('file', file)
@@ -67,15 +99,69 @@ async function importAttendees(event: Event) {
       body
     })
     toast.add({
-      title: 'Luma attendees imported',
-      description: `${response.data.eligibleCount} approved attendee${response.data.eligibleCount === 1 ? '' : 's'} added or refreshed.`,
+      title: 'Approved attendees imported',
+      description: `${response.data.eligibleCount} attendee${response.data.eligibleCount === 1 ? '' : 's'} added or refreshed.`,
       color: 'success'
     })
     await refresh()
   } catch (caught) {
-    uploadError.value = normalizeApiError(caught).message
+    attendeeUploadError.value = normalizeApiError(caught).message
   } finally {
-    isUploading.value = false
+    isAttendeeUploadPending.value = false
+  }
+}
+
+async function importRewards(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) {
+    return
+  }
+
+  isRewardUploadPending.value = true
+  rewardUploadError.value = ''
+  try {
+    const body = new FormData()
+    body.append('file', file)
+    const response = await $fetch<ApiDataResponse<{ importedCount: number }>>(
+      `/api/events/${props.eventId}/simplified-claiming/rewards/import`,
+      {
+        method: 'POST',
+        body
+      }
+    )
+    toast.add({
+      title: 'Reward links uploaded',
+      description: `${response.data.importedCount} private reward link${response.data.importedCount === 1 ? '' : 's'} added.`,
+      color: 'success'
+    })
+    await refresh()
+  } catch (caught) {
+    rewardUploadError.value = normalizeApiError(caught).message
+  } finally {
+    isRewardUploadPending.value = false
+  }
+}
+
+async function deleteRewards() {
+  const offer = claimStatus.value?.offer
+  if (!offer || !window.confirm('Delete all unclaimed attendee reward links?')) {
+    return
+  }
+
+  isRewardDeletePending.value = true
+  rewardUploadError.value = ''
+  try {
+    await $fetch(`/api/events/${props.eventId}/credits/${offer.id}`, {
+      method: 'DELETE'
+    })
+    toast.add({ title: 'Attendee reward links deleted', color: 'success' })
+    await refresh()
+  } catch (caught) {
+    rewardUploadError.value = normalizeApiError(caught).message
+  } finally {
+    isRewardDeletePending.value = false
   }
 }
 
@@ -110,18 +196,28 @@ function downloadQrSvg() {
 <template>
   <section
     data-testid="simplified-claiming-settings-panel"
-    class="mt-2 grid gap-5 border-t border-black/8 pt-5 dark:border-white/[0.08]"
+    class="-mt-px ml-7 rounded-b-xl border border-l-4 border-primary/20 border-l-primary/35 bg-primary/[0.035] px-4 pb-2 dark:border-primary/25 dark:border-l-primary/40 dark:bg-primary/[0.055] sm:px-5"
   >
-    <div class="space-y-1">
-      <h3 class="text-lg font-semibold text-highlighted">
-        Attendee claiming
-      </h3>
-      <p class="text-sm text-muted">
-        Import approved Luma guests and prepare the private redemption QR.
-      </p>
+    <div class="flex flex-col gap-3 border-b border-primary/15 py-5 sm:flex-row sm:items-start sm:justify-between">
+      <div class="space-y-1">
+        <h3 class="text-lg font-semibold text-highlighted">
+          Attendee claiming setup
+        </h3>
+        <p class="text-sm text-muted">
+          Prepare the QR and private rewards now, then add the final attendee list during the event.
+        </p>
+      </div>
+      <AppBadge
+        v-if="claimStatus"
+        color="primary"
+        variant="soft"
+        class="shrink-0"
+      >
+        {{ completedStepCount }} of 3 prepared
+      </AppBadge>
     </div>
 
-    <div class="grid gap-5">
+    <div class="py-4">
       <AppAlert
         v-if="error"
         color="error"
@@ -135,35 +231,149 @@ function downloadQrSvg() {
           color="info"
           variant="soft"
           title="Claiming is active"
-          description="The event link, credit offer, and claiming setting are locked because at least one attendee has redeemed."
+          description="The QR and reward links are locked after the first redemption. You can still refresh the approved attendee list."
         />
         <AppAlert
           v-else-if="!claimStatus.ready"
           color="warning"
           variant="soft"
-          title="Finish setup before sharing the QR"
+          title="Redemption is not available yet"
           :description="claimStatus.issues.map(issue => issue.message).join(' ')"
         />
         <AppAlert
           v-else
           color="success"
           variant="soft"
-          title="Ready to share"
-          description="Approved attendees can now redeem from this private link."
+          title="Ready for attendees"
+          description="Approved attendees can redeem while event registration is open."
         />
 
-        <div class="grid gap-4 border-t border-black/8 pt-5 dark:border-white/[0.08] md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
-          <div class="grid gap-3">
-            <div>
-              <p class="text-sm font-medium text-highlighted">
-                Approved Luma attendees
-              </p>
-              <p class="mt-1 text-sm text-muted">
-                {{ claimStatus.attendeeCount }} eligible · imports add new guests and refresh names
-              </p>
+        <div class="mt-1 divide-y divide-primary/15">
+          <AccountEventSimplifiedClaimingStep
+            :number="1"
+            title="Redemption QR"
+          >
+            <template #status>
+              <AppBadge
+                color="success"
+                variant="soft"
+              >
+                Ready
+              </AppBadge>
+            </template>
+
+            <div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_10rem] md:items-center">
+              <div class="min-w-0">
+                <p class="break-all text-sm text-muted">
+                  {{ claimStatus.redemptionUrl }}
+                </p>
+                <p class="mt-2 text-sm text-toned">
+                  Prepare or share this QR now. Redemption stays unavailable until rewards and approved attendees are ready.
+                </p>
+                <div class="mt-4 flex flex-wrap gap-2">
+                  <AppButton
+                    type="button"
+                    color="neutral"
+                    variant="outline"
+                    @click="copyRedemptionUrl"
+                  >
+                    Copy link
+                  </AppButton>
+                  <AppButton
+                    type="button"
+                    color="neutral"
+                    variant="outline"
+                    @click="downloadQrSvg"
+                  >
+                    Download QR as SVG
+                  </AppButton>
+                </div>
+              </div>
+              <img
+                v-if="qrDataUrl"
+                :src="qrDataUrl"
+                alt="Redemption QR code"
+                class="mx-auto size-40 rounded-lg bg-white p-2"
+              >
             </div>
+          </AccountEventSimplifiedClaimingStep>
+
+          <AccountEventSimplifiedClaimingStep
+            :number="2"
+            title="Reward links"
+          >
+            <template #status>
+              <AppBadge
+                :color="claimStatus.locked ? 'info' : rewardReady ? 'success' : 'warning'"
+                variant="soft"
+              >
+                {{ claimStatus.locked ? 'Locked' : rewardReady ? `${claimStatus.availableInventoryCount} available` : 'Not uploaded' }}
+              </AppBadge>
+            </template>
+
+            <p class="text-sm text-muted">
+              Upload a single-column CSV with no header and one HTTPS reward link per row. These links never appear in Credits.
+            </p>
+            <p class="text-sm text-toned">
+              {{ claimStatus.totalInventoryCount }} uploaded · {{ claimStatus.availableInventoryCount }} available · {{ claimStatus.simplifiedClaimCount }} redeemed
+            </p>
             <input
-              ref="fileInput"
+              ref="rewardFileInput"
+              type="file"
+              accept=".csv,text/csv"
+              class="sr-only"
+              @change="importRewards"
+            >
+            <div class="flex flex-wrap gap-2">
+              <AppButton
+                type="button"
+                color="primary"
+                variant="soft"
+                :loading="isRewardUploadPending"
+                :disabled="claimStatus.locked"
+                @click="chooseRewardFile"
+              >
+                Upload reward links
+              </AppButton>
+              <AppButton
+                v-if="claimStatus.offer && claimStatus.simplifiedClaimCount === 0"
+                type="button"
+                color="error"
+                variant="ghost"
+                :loading="isRewardDeletePending"
+                :disabled="claimStatus.locked"
+                @click="deleteRewards"
+              >
+                Delete reward links
+              </AppButton>
+            </div>
+            <AppAlert
+              v-if="rewardUploadError"
+              color="error"
+              variant="soft"
+              title="Reward links could not be updated"
+              :description="rewardUploadError"
+            />
+          </AccountEventSimplifiedClaimingStep>
+
+          <AccountEventSimplifiedClaimingStep
+            :number="3"
+            title="Approved attendees"
+          >
+            <template #status>
+              <AppBadge
+                :color="claimStatus.attendeeCount > 0 ? 'success' : 'warning'"
+                variant="soft"
+              >
+                {{ claimStatus.attendeeCount > 0 ? `${claimStatus.attendeeCount} eligible` : 'Not uploaded' }}
+              </AppBadge>
+            </template>
+
+            <p class="text-sm text-muted">
+              Upload the final Luma guest CSV during the event. Only approved attendees are added, and later imports refresh names without removing anyone.
+            </p>
+            <input
+              ref="attendeeFileInput"
               type="file"
               accept=".csv,text/csv"
               class="sr-only"
@@ -174,67 +384,25 @@ function downloadQrSvg() {
                 type="button"
                 color="neutral"
                 variant="outline"
-                :loading="isUploading"
-                :disabled="claimStatus.locked"
-                @click="chooseFile"
+                :loading="isAttendeeUploadPending"
+                @click="chooseAttendeeFile"
               >
-                Import Luma CSV
+                Upload Luma attendees
               </AppButton>
             </div>
             <AppAlert
-              v-if="uploadError"
+              v-if="attendeeUploadError"
               color="error"
               variant="soft"
-              title="Import failed"
-              :description="uploadError"
+              title="Attendees could not be imported"
+              :description="attendeeUploadError"
             />
-          </div>
-
-          <div class="grid gap-2 text-sm text-muted md:text-right">
-            <span>{{ claimStatus.offer?.name ?? 'No credit offer' }}</span>
-            <span>{{ claimStatus.availableInventoryCount }} of {{ claimStatus.totalInventoryCount }} coupons available</span>
-            <span>{{ claimStatus.simplifiedClaimCount }} redeemed</span>
-          </div>
-        </div>
-
-        <div class="grid gap-4 border-t border-black/8 pt-5 dark:border-white/[0.08] md:grid-cols-[minmax(0,1fr)_12rem] md:items-center">
-          <div class="min-w-0">
-            <p class="text-sm font-medium text-highlighted">
-              Redemption link
-            </p>
-            <p class="mt-1 break-all text-sm text-muted">
-              {{ claimStatus.redemptionUrl }}
-            </p>
-            <div class="mt-4 flex flex-wrap gap-2">
-              <AppButton
-                type="button"
-                color="neutral"
-                variant="outline"
-                @click="copyRedemptionUrl"
-              >
-                Copy link
-              </AppButton>
-              <AppButton
-                type="button"
-                color="neutral"
-                variant="outline"
-                @click="downloadQrSvg"
-              >
-                Download QR as SVG
-              </AppButton>
-            </div>
-          </div>
-          <img
-            v-if="qrDataUrl"
-            :src="qrDataUrl"
-            alt="Redemption QR code"
-            class="mx-auto size-48 rounded-lg bg-white p-2"
-          >
+          </AccountEventSimplifiedClaimingStep>
         </div>
       </template>
       <p
         v-else-if="status === 'pending'"
-        class="text-sm text-muted"
+        class="py-5 text-sm text-muted"
       >
         Loading attendee claiming…
       </p>

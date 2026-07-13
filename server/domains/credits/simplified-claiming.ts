@@ -22,6 +22,11 @@ export const simplifiedClaimingAttendeeImportLimits = {
   maxRecordBytes: 64 * 1024
 } as const
 
+export const simplifiedClaimingRewardImportLimits = {
+  maxBytes: 2 * 1024 * 1024,
+  maxRows: 2_000
+} as const
+
 export interface SimplifiedClaimingAttendeeRow {
   normalizedEmail: string
   firstName: string | null
@@ -114,14 +119,23 @@ function hasRequiredRegistrationFields(event: EventRecord) {
 
 export async function getSimplifiedClaimingSummary(database: AppDatabase, event: EventRecord) {
   const offers = await database.query.eventCreditOffers.findMany({
-    where: eq(eventCreditOffers.eventId, event.id),
+    where: and(
+      eq(eventCreditOffers.eventId, event.id),
+      eq(eventCreditOffers.simplifiedClaimingOnly, true)
+    ),
     limit: 2
   })
   const offer = offers.length === 1 ? offers[0]! : null
-  const [eligibilityResult, inventoryResult, genericClaimResult, simplifiedClaimResult, inventoryValues] = await Promise.all([
+  const [eligibilityResult, ordinaryOfferResult, inventoryResult, genericClaimResult, simplifiedClaimResult, inventoryValues] = await Promise.all([
     database.select({ value: count() })
       .from(eventAttendeeEligibilities)
       .where(eq(eventAttendeeEligibilities.eventId, event.id)),
+    database.select({ value: count() })
+      .from(eventCreditOffers)
+      .where(and(
+        eq(eventCreditOffers.eventId, event.id),
+        eq(eventCreditOffers.simplifiedClaimingOnly, false)
+      )),
     offer
       ? database.select({
           totalCount: count(),
@@ -152,6 +166,7 @@ export async function getSimplifiedClaimingSummary(database: AppDatabase, event:
   ])
 
   const attendeeCount = eligibilityResult[0]?.value ?? 0
+  const ordinaryOfferCount = ordinaryOfferResult[0]?.value ?? 0
   const totalInventoryCount = inventoryResult[0]?.totalCount ?? 0
   const availableInventoryCount = Number(inventoryResult[0]?.availableCount ?? 0)
   const genericClaimCount = genericClaimResult[0]?.value ?? 0
@@ -162,15 +177,21 @@ export async function getSimplifiedClaimingSummary(database: AppDatabase, event:
     issues.push({ code: 'disabled', message: 'Enable simplified attendee claiming.' })
   }
   if (offers.length === 0) {
-    issues.push({ code: 'offer_missing', message: 'Add a credit offer before sharing the QR.' })
+    issues.push({ code: 'offer_missing', message: 'Upload reward links in Settings.' })
   } else if (offers.length > 1) {
-    issues.push({ code: 'multiple_offers', message: 'Simplified claiming supports one credit offer.' })
+    issues.push({ code: 'multiple_offers', message: 'Simplified claiming supports one private reward set.' })
+  }
+  if (ordinaryOfferCount > 0) {
+    issues.push({ code: 'ordinary_offers', message: 'Remove ordinary credit offers before using attendee claiming.' })
+  }
+  if (genericClaimCount > 0) {
+    issues.push({ code: 'generic_claims', message: 'Attendee claiming cannot use rewards that were claimed through Credits.' })
   }
   if (attendeeCount === 0) {
     issues.push({ code: 'attendees_missing', message: 'Import approved Luma attendees.' })
   }
-  if (totalInventoryCount === 0) {
-    issues.push({ code: 'inventory_missing', message: 'Import HTTPS coupon links in Credits.' })
+  if (offer && totalInventoryCount === 0) {
+    issues.push({ code: 'inventory_missing', message: 'Upload HTTPS reward links in Settings.' })
   } else if (inventoryValues.some(code => !isHttpsCouponUrl(code.value))) {
     issues.push({ code: 'inventory_invalid', message: 'Every coupon must be an HTTPS link.' })
   }
@@ -190,6 +211,7 @@ export async function getSimplifiedClaimingSummary(database: AppDatabase, event:
     issues,
     attendeeCount,
     offerCount: offers.length,
+    ordinaryOfferCount,
     offer,
     totalInventoryCount,
     availableInventoryCount,

@@ -30,6 +30,7 @@ export default defineApiHandler(async (h3Event) => {
     .innerJoin(eventCreditOffers, eq(eventCreditOffers.id, eventCreditCodes.creditOfferId))
     .where(and(
       eq(eventCreditOffers.eventId, eventId),
+      eq(eventCreditOffers.simplifiedClaimingOnly, false),
       isNotNull(eventCreditCodes.claimedByUserId)
     ))
   const usersById = new Map(claimingUsers.map(user => [user.id, user] as const))

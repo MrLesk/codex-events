@@ -16,6 +16,12 @@ const { When, Then } = createBdd()
 const fixtureSlug = 'simplified-claiming-fixture-event'
 const couponUrl = 'https://chatgpt.com/coupon/bdd-simplified'
 
+async function waitForNuxtHydration(page: Page) {
+  await page.waitForFunction(() =>
+    typeof window.useNuxtApp === 'function' && window.useNuxtApp().isHydrating === false
+  )
+}
+
 type StoredState = {
   cookies?: Array<{
     name: string
@@ -100,6 +106,14 @@ When('I open the simplified claiming settings with the saved {string} session', 
   await page.goto(`/account/events/${fixtureSlug}?tab=settings`)
 })
 
+When('I prepare simplified claiming on a new Meetup with the saved {string} session', async ({ page }, personaKey: string) => {
+  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  await page.goto('/admin/events/new')
+  await waitForNuxtHydration(page)
+  await page.getByLabel('Event type').selectOption('meetup')
+  await page.getByRole('checkbox', { name: 'Simplified attendee claiming' }).check()
+})
+
 Then('I should be redirected to the simplified claiming coupon', async ({ page }) => {
   await expect(page).toHaveURL(couponUrl)
 })
@@ -120,20 +134,30 @@ Then('I should be able to correct the unmatched Luma email', async ({ page }) =>
 Then('I should see the attendee claiming QR settings', async ({ page }) => {
   const redemptionUrl = `${new URL(page.url()).origin}/events/${fixtureSlug}/redeem`
   const checkbox = page.getByRole('checkbox', { name: 'Simplified attendee claiming' })
-  const panel = page.getByTestId('simplified-claiming-settings-panel')
   const inlinePanel = page.locator('[data-testid="simplified-claiming-toggle"] + [data-testid="simplified-claiming-settings-panel"]')
 
   await expect(checkbox).toBeChecked()
   await expect(inlinePanel).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Attendee claiming' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Attendee claiming setup' })).toBeVisible()
+  await expect(page.getByText('3 of 3 prepared', { exact: true })).toBeVisible()
   await expect(page.getByText(redemptionUrl, { exact: true })).toBeVisible()
   await expect(page.getByRole('img', { name: 'Redemption QR code' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Download QR as SVG' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Upload reward links' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Upload Luma attendees' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Credits' })).toHaveCount(0)
+})
 
+Then('I should see the nested attendee claiming creation state', async ({ page }) => {
+  const checkbox = page.getByRole('checkbox', { name: 'Simplified attendee claiming' })
+  const saveNotice = page.getByTestId('simplified-claiming-save-notice')
+
+  await expect(checkbox).toBeChecked()
+  await expect(page.getByRole('heading', { name: 'Attendee claiming setup' })).toBeVisible()
+  await expect(saveNotice).toBeVisible()
+  await expect(saveNotice).toContainText('Create the event to continue')
   await checkbox.uncheck()
-  await expect(panel).toBeHidden()
-  await checkbox.check()
-  await expect(inlinePanel).toBeVisible()
+  await expect(saveNotice).toBeHidden()
 })
 
 Then('the {string} should see the simplified claiming participant checked in', async ({ page }, personaKey: string) => {

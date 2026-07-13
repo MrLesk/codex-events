@@ -22,6 +22,14 @@ export default defineApiHandler(async (h3Event) => {
 
   const { event } = await requireEventAdmin(h3Event, eventId)
 
+  if (event.simplifiedClaimingEnabled) {
+    throw new ApiError({
+      statusCode: 409,
+      code: 'simplified_claiming_credits_managed_in_settings',
+      message: 'Upload attendee reward links from Settings.'
+    })
+  }
+
   const creditOfferId = crypto.randomUUID()
   const createdAt = new Date().toISOString()
   const latestOffer = await database.query.eventCreditOffers.findFirst({
@@ -30,15 +38,11 @@ export default defineApiHandler(async (h3Event) => {
   })
   const displayOrder = body.displayOrder ?? ((latestOffer?.displayOrder ?? 0) + 1)
 
-  const insertResult = await getD1Binding(h3Event).prepare(`
+  await getD1Binding(h3Event).prepare(`
     insert into event_credit_offers (
       id, event_id, name, description, display_order, created_at, updated_at
     )
-    select ?, ?, ?, ?, ?, ?, ?
-    where ? = 0
-      or not exists (
-        select 1 from event_credit_offers where event_id = ?
-      )
+    values (?, ?, ?, ?, ?, ?, ?)
   `).bind(
     creditOfferId,
     eventId,
@@ -46,18 +50,8 @@ export default defineApiHandler(async (h3Event) => {
     body.description,
     displayOrder,
     createdAt,
-    createdAt,
-    event.simplifiedClaimingEnabled ? 1 : 0,
-    eventId
+    createdAt
   ).run()
-
-  if ((insertResult.meta.changes ?? 0) === 0) {
-    throw new ApiError({
-      statusCode: 409,
-      code: 'simplified_claiming_multiple_offers',
-      message: 'Simplified claiming supports one credit offer.'
-    })
-  }
 
   const offer = await database.query.eventCreditOffers.findFirst({
     where: eq(eventCreditOffers.id, creditOfferId)

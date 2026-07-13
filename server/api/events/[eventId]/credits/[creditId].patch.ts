@@ -24,7 +24,12 @@ export default defineApiHandler(async (h3Event) => {
   const database = getDatabase(h3Event)
 
   const { event } = await requireEventAdmin(h3Event, eventId)
-  await getEventCreditOfferOrThrow(database, eventId, creditId)
+  const offer = await getEventCreditOfferOrThrow(database, eventId, creditId)
+  assertGuard(!offer.simplifiedClaimingOnly, {
+    statusCode: 409,
+    code: 'simplified_claiming_credits_managed_in_settings',
+    message: 'Attendee rewards are managed in Settings.'
+  })
   const simplifiedClaiming = await getSimplifiedClaimingSummary(database, event)
   assertGuard(!simplifiedClaiming.locked, {
     statusCode: 409,

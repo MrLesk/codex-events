@@ -40,6 +40,15 @@ const prePhotoHighlightsMigrationSql = readdirSync(join(process.cwd(), 'drizzle'
   .replaceAll('--> statement-breakpoint', '\n')
 const photoHighlightsMigrationSql = readFileSync(join(process.cwd(), 'drizzle', photoHighlightsMigrationFileName), 'utf8')
   .replaceAll('--> statement-breakpoint', '\n')
+const simplifiedOfferScopeMigrationFileName = '0070_simplified_claiming_offer_scope.sql'
+const preSimplifiedOfferScopeMigrationSql = readdirSync(join(process.cwd(), 'drizzle'))
+  .filter(fileName => /^\d+.*\.sql$/.test(fileName) && fileName < simplifiedOfferScopeMigrationFileName)
+  .sort()
+  .map(fileName => readFileSync(join(process.cwd(), 'drizzle', fileName), 'utf8'))
+  .join('\n')
+  .replaceAll('--> statement-breakpoint', '\n')
+const simplifiedOfferScopeMigrationSql = readFileSync(join(process.cwd(), 'drizzle', simplifiedOfferScopeMigrationFileName), 'utf8')
+  .replaceAll('--> statement-breakpoint', '\n')
 
 describe('shared database migration', () => {
   let database: TestD1Database
@@ -733,6 +742,43 @@ describe('shared database migration', () => {
           is_highlighted: 0
         }
       ])
+    } finally {
+      await migrationDatabase.close()
+    }
+  })
+
+  test('backfills the sole offer for an existing simplified-claiming event and enforces one private offer', async () => {
+    const migrationDatabase = createTestD1Database({
+      applyMigrations: false
+    })
+
+    try {
+      await migrationDatabase.exec(preSimplifiedOfferScopeMigrationSql)
+
+      const now = isoTimestamp(0)
+      await seedUser(migrationDatabase, 'creator_1', now)
+      await seedEvent(migrationDatabase, 'event_1', 'registration_open', now, 'creator_1')
+      await migrationDatabase.prepare(`
+        update events set simplified_claiming_enabled = true where id = ?
+      `).run('event_1')
+      await migrationDatabase.prepare(`
+        insert into event_credit_offers (id, event_id, name, description, display_order, created_at, updated_at)
+        values (?, ?, ?, ?, ?, ?, ?)
+      `).run('offer_existing', 'event_1', 'Attendee reward', 'Private', 0, now, now)
+
+      await migrationDatabase.exec(simplifiedOfferScopeMigrationSql)
+
+      const rows = await migrationDatabase.prepare(`
+        select id, simplified_claiming_only
+        from event_credit_offers
+      `).all<{ id: string, simplified_claiming_only: number }>()
+      expect(rows.results).toEqual([{ id: 'offer_existing', simplified_claiming_only: 1 }])
+
+      await expect(migrationDatabase.prepare(`
+        insert into event_credit_offers (
+          id, event_id, name, description, simplified_claiming_only, display_order, created_at, updated_at
+        ) values (?, ?, ?, ?, true, ?, ?, ?)
+      `).run('offer_duplicate', 'event_1', 'Duplicate', 'Private', 0, now, now)).rejects.toThrow()
     } finally {
       await migrationDatabase.close()
     }

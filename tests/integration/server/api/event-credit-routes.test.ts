@@ -745,4 +745,85 @@ describe('TASK-220 event credit routes', () => {
       }
     })
   })
+
+  test('keeps simplified-only rewards out of Credits and rejects generic operations while disabled', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/events/:eventId/credits', handler: creditsGetHandler },
+        { method: 'get', path: '/api/events/:eventId/admin/credits', handler: adminCreditsGetHandler },
+        { method: 'patch', path: '/api/events/:eventId/credits/:creditId', handler: creditsPatchHandler },
+        { method: 'post', path: '/api/events/:eventId/credits/:creditId/import', handler: creditImportPostHandler },
+        { method: 'post', path: '/api/events/:eventId/credits/:creditId/actions/claim', handler: creditClaimPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedCreditsContext(harness, {
+      eventType: 'meetup',
+      includeApprovedApplicationFor: ['platform_admin']
+    })
+
+    await harness.database.insert(eventCreditOffers).values([
+      {
+        id: 'ordinary_offer',
+        eventId: 'event_1',
+        name: 'Ordinary credits',
+        description: 'Visible in Credits.'
+      },
+      {
+        id: 'simplified_offer',
+        eventId: 'event_1',
+        name: 'Attendee reward',
+        description: 'Private.',
+        simplifiedClaimingOnly: true
+      }
+    ])
+    await harness.database.insert(eventCreditCodes).values([
+      { id: 'ordinary_code', creditOfferId: 'ordinary_offer', value: 'VISIBLE' },
+      { id: 'simplified_code', creditOfferId: 'simplified_offer', value: 'https://chatgpt.com/coupon/private' }
+    ])
+
+    const participantList = await harness.request('/api/events/event_1/credits')
+    expect(await participantList.json()).toMatchObject({
+      data: [{ id: 'ordinary_offer' }],
+      meta: { total: 1 }
+    })
+
+    const adminList = await harness.request('/api/events/event_1/admin/credits')
+    expect(await adminList.json()).toMatchObject({
+      data: [{ id: 'ordinary_offer' }],
+      meta: { total: 1 }
+    })
+
+    const claim = await harness.request('/api/events/event_1/credits/simplified_offer/actions/claim', {
+      method: 'POST'
+    })
+    expect(claim.status).toBe(409)
+    expect(await claim.json()).toMatchObject({
+      error: { code: 'simplified_claiming_manual_claim_disabled' }
+    })
+
+    const importForm = new FormData()
+    importForm.append('file', new Blob(['https://chatgpt.com/coupon/another'], { type: 'text/csv' }), 'rewards.csv')
+    const imported = await harness.request('/api/events/event_1/credits/simplified_offer/import', {
+      method: 'POST',
+      body: importForm
+    })
+    expect(imported.status).toBe(409)
+    expect(await imported.json()).toMatchObject({
+      error: { code: 'simplified_claiming_credits_managed_in_settings' }
+    })
+
+    const updated = await harness.request('/api/events/event_1/credits/simplified_offer', {
+      method: 'PATCH',
+      body: JSON.stringify({ name: 'Exposed reward' })
+    })
+    expect(updated.status).toBe(409)
+    expect(await updated.json()).toMatchObject({
+      error: { code: 'simplified_claiming_credits_managed_in_settings' }
+    })
+  })
 })

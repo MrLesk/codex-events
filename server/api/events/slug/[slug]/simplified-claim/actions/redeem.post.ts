@@ -58,6 +58,7 @@ export default defineApiHandler(async (h3Event) => {
       .innerJoin(eventCreditOffers, eq(eventCreditOffers.id, eventCreditCodes.creditOfferId))
       .where(and(
         eq(eventCreditOffers.eventId, event.id),
+        eq(eventCreditOffers.simplifiedClaimingOnly, true),
         eq(eventCreditCodes.claimedByUserId, actor.platformUser.id),
         isNotNull(eventCreditCodes.claimedAttendeeEligibilityId)
       ))
@@ -145,6 +146,7 @@ export default defineApiHandler(async (h3Event) => {
         from event_credit_codes code
         inner join event_credit_offers offer on offer.id = code.credit_offer_id
         where offer.event_id = ?
+          and offer.simplified_claiming_only = true
           and code.claimed_by_user_id is null
           and code.value like 'https://%'
         order by code.created_at asc, code.id asc
@@ -158,7 +160,9 @@ export default defineApiHandler(async (h3Event) => {
           select 1
           from event_credit_codes code
           inner join event_credit_offers offer on offer.id = code.credit_offer_id
-          where offer.event_id = ? and code.claimed_by_user_id = ?
+          where offer.event_id = ?
+            and offer.simplified_claiming_only = true
+            and code.claimed_by_user_id = ?
         )
         and not exists (
           select 1 from user_applications

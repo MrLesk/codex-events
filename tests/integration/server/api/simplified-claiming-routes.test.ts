@@ -5,6 +5,7 @@ import simplifiedClaimGetHandler from '../../../../server/api/events/slug/[slug]
 import simplifiedClaimRedeemHandler from '../../../../server/api/events/slug/[slug]/simplified-claim/actions/redeem.post'
 import simplifiedClaimingAdminGetHandler from '../../../../server/api/events/[eventId]/simplified-claiming/index.get'
 import simplifiedClaimingAttendeeImportHandler from '../../../../server/api/events/[eventId]/simplified-claiming/attendees/import.post'
+import simplifiedClaimingRewardImportHandler from '../../../../server/api/events/[eventId]/simplified-claiming/rewards/import.post'
 import creditCreateHandler from '../../../../server/api/events/[eventId]/credits/index.post'
 import creditDeleteHandler from '../../../../server/api/events/[eventId]/credits/[creditId].delete'
 import {
@@ -12,6 +13,7 @@ import {
   eventAttendeeEligibilities,
   eventCreditCodes,
   eventCreditOffers,
+  eventRoleAssignments,
   events,
   userApplications,
   users
@@ -43,7 +45,8 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/events/slug/:slug/simplified-claim', handler: simplifiedClaimGetHandler },
-        { method: 'post', path: '/api/events/slug/:slug/simplified-claim/actions/redeem', handler: simplifiedClaimRedeemHandler }
+        { method: 'post', path: '/api/events/slug/:slug/simplified-claim/actions/redeem', handler: simplifiedClaimRedeemHandler },
+        { method: 'post', path: '/api/events/:eventId/simplified-claiming/attendees/import', handler: simplifiedClaimingAttendeeImportHandler }
       ],
       sessionUser: {
         sub: 'auth0|participant',
@@ -87,11 +90,19 @@ describe('TASK-420 simplified attendee claiming routes', () => {
       simplifiedClaimingEnabled: true,
       createdByUserId: 'participant'
     })
+    await harness.database.insert(eventRoleAssignments).values({
+      id: 'participant-event-admin',
+      eventId: 'meetup',
+      userId: 'participant',
+      role: 'event_admin',
+      isInJudgePool: false
+    })
     await harness.database.insert(eventCreditOffers).values({
       id: 'offer',
       eventId: 'meetup',
       name: 'Codex credit',
-      description: 'Private offer'
+      description: 'Private offer',
+      simplifiedClaimingOnly: true
     })
     await harness.database.insert(eventCreditCodes).values({
       id: 'coupon',
@@ -189,6 +200,20 @@ describe('TASK-420 simplified attendee claiming routes', () => {
       data: { redirectUrl: 'https://chatgpt.com/coupon/example' }
     })
     expect(queueSend).toHaveBeenCalledTimes(1)
+
+    const lateAttendeeForm = new FormData()
+    lateAttendeeForm.append('file', new Blob([[
+      'email,first_name,last_name,approval_status',
+      'late@example.com,Grace,Hopper,approved'
+    ].join('\n')], { type: 'text/csv' }), 'late-guests.csv')
+    const lateAttendeeImport = await harness.request('/api/events/meetup/simplified-claiming/attendees/import', {
+      method: 'POST',
+      body: lateAttendeeForm
+    })
+    expect(lateAttendeeImport.status).toBe(200)
+    expect(await lateAttendeeImport.json()).toMatchObject({
+      data: { eligibleCount: 1, attendeeCount: 2 }
+    })
 
     await harness.database.insert(users).values({
       id: 'other-participant',
@@ -387,11 +412,12 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     expect(missingResponse.status).toBe(404)
   })
 
-  test('imports only approved Luma guests, reports readiness, and rejects a second offer', async () => {
+  test('imports private reward links and approved Luma guests from Settings', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/events/:eventId/simplified-claiming', handler: simplifiedClaimingAdminGetHandler },
         { method: 'post', path: '/api/events/:eventId/simplified-claiming/attendees/import', handler: simplifiedClaimingAttendeeImportHandler },
+        { method: 'post', path: '/api/events/:eventId/simplified-claiming/rewards/import', handler: simplifiedClaimingRewardImportHandler },
         { method: 'post', path: '/api/events/:eventId/credits', handler: creditCreateHandler }
       ],
       sessionUser: { sub: 'auth0|admin', email: 'admin@example.com' },
@@ -427,32 +453,46 @@ describe('TASK-420 simplified attendee claiming routes', () => {
       data: {
         ready: false,
         issues: expect.arrayContaining([
-          { code: 'offer_missing', message: 'Add a credit offer before sharing the QR.' }
+          { code: 'offer_missing', message: 'Upload reward links in Settings.' }
         ])
       }
     })
 
-    const firstOffer = await harness.request('/api/events/admin-meetup/credits', {
+    const genericOffer = await harness.request('/api/events/admin-meetup/credits', {
       method: 'POST',
       body: JSON.stringify({ name: 'Codex credit', description: 'Private offer' })
     })
-    expect(firstOffer.status).toBe(200)
-    const offerId = (await firstOffer.json()).data.id as string
-
-    const secondOffer = await harness.request('/api/events/admin-meetup/credits', {
-      method: 'POST',
-      body: JSON.stringify({ name: 'Another offer', description: 'Not allowed' })
-    })
-    expect(secondOffer.status).toBe(409)
-    expect(await secondOffer.json()).toMatchObject({
-      error: { code: 'simplified_claiming_multiple_offers' }
+    expect(genericOffer.status).toBe(409)
+    expect(await genericOffer.json()).toMatchObject({
+      error: { code: 'simplified_claiming_credits_managed_in_settings' }
     })
 
-    await harness.database.insert(eventCreditCodes).values({
-      id: 'admin-coupon',
-      creditOfferId: offerId,
-      value: 'https://chatgpt.com/coupon/admin'
+    function rewardUpload(value: string) {
+      const body = new FormData()
+      body.append('file', new Blob([value], { type: 'text/csv' }), 'rewards.csv')
+      return harness.request('/api/events/admin-meetup/simplified-claiming/rewards/import', {
+        method: 'POST',
+        body
+      })
+    }
+
+    const firstRewardUpload = await rewardUpload('https://chatgpt.com/coupon/admin')
+    expect(firstRewardUpload.status).toBe(200)
+    expect(await firstRewardUpload.json()).toMatchObject({
+      data: { importedCount: 1, totalInventoryCount: 1 }
     })
+
+    const concurrentUploads = await Promise.all([
+      rewardUpload('https://chatgpt.com/coupon/second'),
+      rewardUpload('https://chatgpt.com/coupon/third')
+    ])
+    expect(concurrentUploads.map(response => response.status)).toEqual([200, 200])
+    expect(await harness.database.select().from(eventCreditOffers)).toHaveLength(1)
+    expect(await harness.database.select().from(eventCreditCodes)).toHaveLength(3)
+    expect(await harness.database.query.eventCreditOffers.findFirst()).toMatchObject({
+      simplifiedClaimingOnly: true
+    })
+
     const importForm = new FormData()
     importForm.append('file', new Blob([[
       'guest_id,email,first_name,last_name,approval_status,phone_number',
@@ -484,7 +524,7 @@ describe('TASK-420 simplified attendee claiming routes', () => {
         redemptionUrl: 'https://codex-events.com/events/admin-meetup/redeem',
         attendeeCount: 1,
         offerCount: 1,
-        totalInventoryCount: 1
+        totalInventoryCount: 3
       }
     })
   })

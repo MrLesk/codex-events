@@ -16,7 +16,6 @@ const props = defineProps<{
   eventId: string
   canManage: boolean
   canClaim: boolean
-  simplifiedClaimingEnabled?: boolean
 }>()
 
 const apiFetch = import.meta.server ? useRequestFetch() : $fetch
@@ -545,13 +544,6 @@ async function copyCreditValue(value: string) {
 
       <div class="space-y-6">
         <AppAlert
-          v-if="props.simplifiedClaimingEnabled"
-          color="info"
-          variant="soft"
-          title="One private attendee offer"
-          description="This Meetup uses one credit offer. Participants receive its HTTPS coupon link from the private redemption page, so it will not appear in their Credits tab."
-        />
-        <AppAlert
           v-if="adminCreditsRequest.error.value"
           color="error"
           variant="soft"
@@ -713,7 +705,7 @@ async function copyCreditValue(value: string) {
                     Append inventory
                   </p>
                   <p class="text-sm text-muted">
-                    {{ props.simplifiedClaimingEnabled ? 'Upload a single-column CSV with no header and one HTTPS coupon link per row.' : 'Upload a single-column CSV with no header and one code or link per row.' }}
+                    Upload a single-column CSV with no header and one code or link per row.
                   </p>
                 </div>
 
@@ -876,7 +868,7 @@ async function copyCreditValue(value: string) {
     </AppCard>
 
     <AppCard
-      v-if="props.canManage && (!props.simplifiedClaimingEnabled || adminCredits.length === 0)"
+      v-if="props.canManage"
       class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
       :ui="{ body: 'p-5' }"
     >
@@ -999,7 +991,7 @@ async function copyCreditValue(value: string) {
     </AppCard>
 
     <AppCard
-      v-if="props.canClaim && !props.simplifiedClaimingEnabled"
+      v-if="props.canClaim"
       class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
       :ui="{ body: 'p-5' }"
     >

@@ -13,8 +13,7 @@ import {
   parseSingleColumnCreditCsv
 } from '#server/domains/credits'
 import {
-  getSimplifiedClaimingSummary,
-  isHttpsCouponUrl
+  getSimplifiedClaimingSummary
 } from '#server/domains/credits/simplified-claiming'
 import { requireEventAdmin } from '#server/domains/events'
 import { assertGuard } from '#server/domains/lifecycle-guard'
@@ -27,7 +26,12 @@ export default defineApiHandler(async (h3Event) => {
   const database = getDatabase(h3Event)
 
   const { event } = await requireEventAdmin(h3Event, eventId)
-  await getEventCreditOfferOrThrow(database, eventId, creditId)
+  const offer = await getEventCreditOfferOrThrow(database, eventId, creditId)
+  assertGuard(!offer.simplifiedClaimingOnly, {
+    statusCode: 409,
+    code: 'simplified_claiming_credits_managed_in_settings',
+    message: 'Upload attendee reward links from Settings.'
+  })
   const simplifiedClaiming = await getSimplifiedClaimingSummary(database, event)
   assertGuard(!simplifiedClaiming.locked, {
     statusCode: 409,
@@ -48,13 +52,6 @@ export default defineApiHandler(async (h3Event) => {
 
   const importedAtBase = Date.now()
   const values = parseSingleColumnCreditCsv(new TextDecoder().decode(filePart.data))
-  if (event.simplifiedClaimingEnabled) {
-    assertGuard(values.every(isHttpsCouponUrl), {
-      statusCode: 400,
-      code: 'simplified_claiming_coupon_url_invalid',
-      message: 'Every coupon must be an HTTPS link.'
-    })
-  }
   const codeRows = values.map((value, index) => ({
     id: crypto.randomUUID(),
     creditOfferId: creditId,

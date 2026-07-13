@@ -643,19 +643,20 @@ Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| List participant-visible credits for an event | `GET /api/events/:eventId/credits` | approved participant, event staff, event admin, or platform admin | Returns credit offers with the caller's own claim state for that event when the caller can claim credits. |
-| List admin credit inventory for an event | `GET /api/events/:eventId/admin/credits` | event admin or platform admin | Returns credit offers, inventory counts, and claim records for the event. |
+| List participant-visible credits for an event | `GET /api/events/:eventId/credits` | approved participant, event staff, event admin, or platform admin | Returns ordinary credit offers with the caller's own claim state for that event when the caller can claim credits. Simplified-only offers are omitted. |
+| List admin credit inventory for an event | `GET /api/events/:eventId/admin/credits` | event admin or platform admin | Returns ordinary offers, inventory counts, and claim records for the event. Simplified-only offers are omitted. |
 | Create credit offer | `POST /api/events/:eventId/credits` | event admin or platform admin | Creates one event credit offer with participant-facing name and markdown description fields. |
 | Update credit offer | `PATCH /api/events/:eventId/credits/:creditId` | event admin or platform admin | Updates participant-facing credit-offer metadata, including the markdown description. |
 | Import credit inventory into an offer | `POST /api/events/:eventId/credits/:creditId/import` | event admin or platform admin | Accepts a single-column CSV upload and appends one redeemable value per non-empty row. |
 | Claim one credit from an offer | `POST /api/events/:eventId/credits/:creditId/actions/claim` | approved participant or event staff | Returns the caller's existing assigned value for that offer when already claimed; otherwise atomically assigns one unclaimed uploaded value. |
 | Delete an unclaimed credit offer | `DELETE /api/events/:eventId/credits/:creditId` | event admin or platform admin | Deletes the offer and inventory only when no inventory row has been claimed. |
-| Get simplified claiming readiness | `GET /api/events/:eventId/simplified-claiming` | event admin or platform admin | Returns the attendee count, sole-offer and HTTPS-inventory readiness, locked state, redemption URL, and non-sensitive setup issues. |
+| Get simplified claiming readiness | `GET /api/events/:eventId/simplified-claiming` | event admin or platform admin | Returns the attendee count, simplified-only offer and HTTPS-inventory readiness, locked state, redemption URL, and non-sensitive setup issues. |
+| Import simplified claiming rewards | `POST /api/events/:eventId/simplified-claiming/rewards/import` | event admin or platform admin | Accepts a bounded single-column CSV of HTTPS coupon links and atomically creates or reuses the event's simplified-only offer before appending inventory. |
 | Import simplified claiming attendees | `POST /api/events/:eventId/simplified-claiming/attendees/import` | event admin or platform admin | Accepts a bounded Luma CSV, requires `email`, `first_name`, `last_name`, and `approval_status`, and merges only approved minimal attendee eligibility. |
 | Get own simplified claim state | `GET /api/events/slug/:slug/simplified-claim` | authenticated platform user with current legal consent | Returns an existing assigned coupon for idempotent redirect or a non-sensitive ready, unavailable, or sold-out state. |
 | Redeem the simplified Meetup offer | `POST /api/events/slug/:slug/simplified-claim/actions/redeem` | authenticated platform user with current legal consent | During open registration, verifies the normalized Luma email, consumes attendee eligibility once, approves an absent or submitted application, assigns one HTTPS coupon, records attendance, queues the normal approval email once, and returns the coupon URL. |
 
-The `/events/:slug/redeem` page is unlinked, `noindex`, `nofollow`, and uses a no-referrer policy. Simplified offers are omitted from participant credit listings, and their generic manual claim route is rejected.
+The `/events/:slug/redeem` page is unlinked, `noindex`, `nofollow`, and uses a no-referrer policy. Simplified-only offers are omitted from participant and admin credit listings, and their generic metadata, inventory-import, and manual-claim routes are rejected. Disabling the event setting does not expose or convert their inventory.
 
 Testing:
 - Unit: participant eligibility, URL-versus-code presentation helpers, and single-claim guards.

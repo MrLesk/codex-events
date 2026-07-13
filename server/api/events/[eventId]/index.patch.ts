@@ -45,10 +45,10 @@ export default defineApiHandler(async (h3Event) => {
   }
 
   if (body.simplifiedClaimingEnabled === true && !event.simplifiedClaimingEnabled) {
-    assertGuard(simplifiedClaiming.offerCount <= 1, {
+    assertGuard(simplifiedClaiming.ordinaryOfferCount === 0, {
       statusCode: 409,
-      code: 'simplified_claiming_multiple_offers',
-      message: 'Simplified claiming supports one credit offer. Delete the extra offers first.'
+      code: 'simplified_claiming_ordinary_offers',
+      message: 'Delete ordinary credit offers before enabling attendee claiming.'
     })
     assertGuard(simplifiedClaiming.genericClaimCount === 0, {
       statusCode: 409,

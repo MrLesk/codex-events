@@ -558,7 +558,7 @@ Operational rules:
 
 ### EventCreditOffer
 
-An event-scoped credit offer that approved participants and event staff can claim.
+An event-scoped collection of redeemable credit inventory.
 
 Examples:
 
@@ -570,12 +570,14 @@ Rules:
 
 - Event credits are separate from prizes and are not part of winner selection.
 - Each credit offer belongs to exactly one event.
-- A credit offer has a participant-facing name and markdown description.
-- An event can define multiple credit offers.
-- A Meetup with simplified claiming enabled can define at most one credit offer. Before the first simplified claim, disabling the setting restores the ordinary multiple-offer behavior.
+- An ordinary credit offer has a participant-facing name and markdown description.
+- A simplified-only offer is private setup inventory for attendee claiming and is not participant-facing.
+- An event can define multiple ordinary credit offers and at most one simplified-only offer.
+- Enabling simplified attendee claiming requires that the event has no ordinary credit offers. Uploading reward links in Settings creates or reuses the simplified-only offer.
 - Event admins and platform admins can append inventory to an existing credit offer over time.
 - A credit offer can remain available as long as it has unclaimed inventory.
-- An offer can be deleted only while it has no claims. The offer and claiming setting are locked after the first simplified claim.
+- An offer can be deleted only while it has no claims. The simplified-only offer and claiming setting are locked after the first simplified claim.
+- Disabling simplified attendee claiming before the first claim leaves its simplified-only offer private and unavailable. It does not convert that inventory into an ordinary credit offer.
 
 ### EventAttendeeEligibility
 
@@ -738,7 +740,7 @@ Judging applies only to Hackathon events.
 - Only approved participants and event staff can claim event credits.
 - Approved participants and event staff see event credits in the account event workspace only when uploaded credit inventory exists for the event.
 - A claiming user can claim at most one uploaded value from each credit offer.
-- Simplified-claiming offers remain hidden from the normal participant Credits view. Authenticated attendees use `/events/:slug/redeem`, and repeat visits redirect to the same assigned coupon.
+- Simplified-only offers remain hidden from normal participant and admin Credits views. Event admins manage their HTTPS reward links, approved attendee roster, redemption URL, and QR in Settings. Authenticated attendees use `/events/:slug/redeem`, and repeat visits redirect to the same assigned coupon.
 - For a first simplified claim, the page prefills the account's saved Luma email when available and waits for the participant to confirm or edit it before redemption. The claim verifies the entered normalized email against imported eligibility, consumes that email once, approves the application, records attendance, and redirects to the assigned HTTPS coupon.
 
 ## Compliance

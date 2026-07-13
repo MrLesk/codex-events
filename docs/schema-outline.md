@@ -838,6 +838,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `event_id`
 - `name`
 - `description`
+- `simplified_claiming_only`
 - `display_order`
 - `created_at`
 - `updated_at`
@@ -846,9 +847,12 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - A credit offer belongs to one event.
 - A credit offer is separate from winner prizes.
-- An event can define multiple credit offers unless its Meetup has simplified claiming enabled, in which case zero or one offer is allowed.
+- An event can define multiple ordinary credit offers and at most one offer where `simplified_claiming_only = true`.
+- A simplified-claiming Meetup cannot have ordinary credit offers while the setting is enabled.
 - An offer can be deleted only when none of its inventory rows has been claimed.
-- A credit offer stores participant-facing markdown copy and ordering only. Uploaded redeemable values live on `EventCreditCode`.
+- Ordinary credit offers store participant-facing markdown copy and ordering. The simplified-only offer uses system-owned metadata because participants receive its HTTPS reward links through the redemption page.
+- Disabling simplified claiming leaves the simplified-only offer flagged, private, and unavailable.
+- Uploaded redeemable values live on `EventCreditCode`.
 
 ## EventCreditCode
 

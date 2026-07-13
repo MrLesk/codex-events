@@ -822,12 +822,16 @@ export const eventCreditOffers = sqliteTable(
       .references(() => events.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     description: text('description').notNull(),
+    simplifiedClaimingOnly: integer('simplified_claiming_only', { mode: 'boolean' }).notNull().default(false),
     displayOrder: integer('display_order').notNull().default(0),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn()
   },
   table => [
-    index('event_credit_offers_event_display_order_idx').on(table.eventId, table.displayOrder)
+    index('event_credit_offers_event_display_order_idx').on(table.eventId, table.displayOrder),
+    uniqueIndex('event_credit_offers_simplified_claiming_event_idx')
+      .on(table.eventId)
+      .where(sql`${table.simplifiedClaimingOnly} = true`)
   ]
 )
 
