@@ -100,7 +100,7 @@ async function importAttendees(event: Event) {
     })
     toast.add({
       title: 'Approved attendees imported',
-      description: `${response.data.eligibleCount} attendee${response.data.eligibleCount === 1 ? '' : 's'} added or refreshed.`,
+      description: `${response.data.eligibleCount} unique attendee${response.data.eligibleCount === 1 ? '' : 's'} added or refreshed.`,
       color: 'success'
     })
     await refresh()
@@ -124,7 +124,7 @@ async function importRewards(event: Event) {
   try {
     const body = new FormData()
     body.append('file', file)
-    const response = await $fetch<ApiDataResponse<{ importedCount: number }>>(
+    const response = await $fetch<ApiDataResponse<{ importedCount: number, skippedCount: number }>>(
       `/api/events/${props.eventId}/simplified-claiming/rewards/import`,
       {
         method: 'POST',
@@ -132,8 +132,10 @@ async function importRewards(event: Event) {
       }
     )
     toast.add({
-      title: 'Reward links uploaded',
-      description: `${response.data.importedCount} private reward link${response.data.importedCount === 1 ? '' : 's'} added.`,
+      title: response.data.importedCount > 0 ? 'Reward links uploaded' : 'No new reward links',
+      description: response.data.skippedCount > 0
+        ? `${response.data.importedCount} new link${response.data.importedCount === 1 ? '' : 's'} added · ${response.data.skippedCount} duplicate${response.data.skippedCount === 1 ? '' : 's'} skipped.`
+        : `${response.data.importedCount} private reward link${response.data.importedCount === 1 ? '' : 's'} added.`,
       color: 'success'
     })
     await refresh()
@@ -231,7 +233,7 @@ function downloadQrSvg() {
           color="info"
           variant="soft"
           title="Claiming is active"
-          description="The QR and reward links are locked after the first redemption. You can still refresh the approved attendee list."
+          description="The event URL and claiming option are locked after the first redemption. You can keep adding unique reward links and approved attendees."
         />
         <AppAlert
           v-else-if="!claimStatus.ready"
@@ -304,15 +306,15 @@ function downloadQrSvg() {
           >
             <template #status>
               <AppBadge
-                :color="claimStatus.locked ? 'info' : rewardReady ? 'success' : 'warning'"
+                :color="claimStatus.availableInventoryCount > 0 ? 'success' : 'warning'"
                 variant="soft"
               >
-                {{ claimStatus.locked ? 'Locked' : rewardReady ? `${claimStatus.availableInventoryCount} available` : 'Not uploaded' }}
+                {{ claimStatus.totalInventoryCount > 0 ? `${claimStatus.availableInventoryCount} available` : 'Not uploaded' }}
               </AppBadge>
             </template>
 
             <p class="text-sm text-muted">
-              Upload a single-column CSV with no header and one HTTPS reward link per row. These links never appear in Credits.
+              Upload a single-column CSV with no header and one HTTPS reward link per row. Add more at any time; links already uploaded are skipped. These links never appear in Credits.
             </p>
             <p class="text-sm text-toned">
               {{ claimStatus.totalInventoryCount }} uploaded · {{ claimStatus.availableInventoryCount }} available · {{ claimStatus.simplifiedClaimCount }} redeemed
@@ -330,7 +332,6 @@ function downloadQrSvg() {
                 color="primary"
                 variant="soft"
                 :loading="isRewardUploadPending"
-                :disabled="claimStatus.locked"
                 @click="chooseRewardFile"
               >
                 Upload reward links
@@ -341,7 +342,6 @@ function downloadQrSvg() {
                 color="error"
                 variant="ghost"
                 :loading="isRewardDeletePending"
-                :disabled="claimStatus.locked"
                 @click="deleteRewards"
               >
                 Delete reward links
@@ -370,7 +370,7 @@ function downloadQrSvg() {
             </template>
 
             <p class="text-sm text-muted">
-              Upload the final Luma guest CSV during the event. Only approved attendees are added, and later imports refresh names without removing anyone.
+              Upload the final Luma guest CSV during the event. Add more at any time; duplicate emails are treated as one attendee, and later imports refresh names without removing anyone.
             </p>
             <input
               ref="attendeeFileInput"

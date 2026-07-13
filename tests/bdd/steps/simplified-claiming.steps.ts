@@ -158,8 +158,9 @@ Then('I should see the attendee claiming QR settings', async ({ page }) => {
   await expect(page.getByText(redemptionUrl, { exact: true })).toBeVisible()
   await expect(page.getByRole('img', { name: 'Redemption QR code' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Download QR as SVG' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Upload reward links' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Upload Luma attendees' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Upload reward links' })).toBeEnabled()
+  await expect(page.getByRole('button', { name: 'Upload Luma attendees' })).toBeEnabled()
+  await expect(inlinePanel.getByText('Locked', { exact: true })).toHaveCount(0)
   await expect(page.getByRole('tab', { name: 'Credits' })).toHaveCount(0)
 })
 

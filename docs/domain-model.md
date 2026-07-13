@@ -575,13 +575,16 @@ Rules:
 - An event can define multiple ordinary credit offers and at most one simplified-only offer.
 - Enabling simplified attendee claiming requires that the event has no ordinary credit offers. Uploading reward links in Settings creates or reuses the simplified-only offer.
 - Event admins and platform admins can append inventory to an existing credit offer over time.
+- Simplified-only reward inventory remains appendable after claiming begins. Imports keep one inventory row per exact HTTPS reward link and skip links already uploaded for the offer.
 - A credit offer can remain available as long as it has unclaimed inventory.
-- An offer can be deleted only while it has no claims. The simplified-only offer and claiming setting are locked after the first simplified claim.
+- An offer can be deleted only while it has no claims. The simplified-only offer identity and claiming setting are locked after the first simplified claim.
 - Disabling simplified attendee claiming before the first claim leaves its simplified-only offer private and unavailable. It does not convert that inventory into an ordinary credit offer.
 
 ### EventAttendeeEligibility
 
 An event-scoped approved Luma attendee who can use simplified claiming.
+
+Approved-attendee imports remain appendable after claiming begins. Each normalized email identifies one eligibility row; later imports refresh that attendee's names without creating another row or removing attendees omitted from the new file.
 
 Rules:
 

@@ -16,7 +16,7 @@ import { ApiError } from '#server/http/api-error'
 import { apiData } from '#server/http/api-response'
 import { parseValidatedParams } from '#server/http/validation'
 
-const maxRewardRowsPerStatement = 25
+const maxRewardRowsPerStatement = 20
 
 export default defineApiHandler(async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
@@ -31,11 +31,6 @@ export default defineApiHandler(async (h3Event) => {
   })
 
   const summary = await getSimplifiedClaimingSummary(database, event)
-  assertGuard(!summary.locked, {
-    statusCode: 409,
-    code: 'simplified_claiming_locked',
-    message: 'Reward links cannot be changed after the first attendee redeems.'
-  })
   assertGuard(summary.ordinaryOfferCount === 0 && summary.genericClaimCount === 0, {
     statusCode: 409,
     code: 'simplified_claiming_credit_conflict',
@@ -58,17 +53,18 @@ export default defineApiHandler(async (h3Event) => {
     message: 'The reward-link CSV must be 2 MB or smaller.'
   })
 
-  const values = parseSingleColumnCreditCsv(new TextDecoder().decode(filePart.data))
-  assertGuard(values.length <= simplifiedClaimingRewardImportLimits.maxRows, {
+  const parsedValues = parseSingleColumnCreditCsv(new TextDecoder().decode(filePart.data))
+  assertGuard(parsedValues.length <= simplifiedClaimingRewardImportLimits.maxRows, {
     statusCode: 413,
     code: 'simplified_claiming_reward_row_limit_exceeded',
     message: `The reward-link CSV can contain at most ${simplifiedClaimingRewardImportLimits.maxRows} rows.`
   })
-  assertGuard(values.every(isHttpsCouponUrl), {
+  assertGuard(parsedValues.every(isHttpsCouponUrl), {
     statusCode: 400,
     code: 'simplified_claiming_coupon_url_invalid',
     message: 'Every reward must be an HTTPS link.'
   })
+  const values = [...new Set(parsedValues)]
 
   const binding = getD1Binding(h3Event)
   const offerId = crypto.randomUUID()
@@ -85,17 +81,16 @@ export default defineApiHandler(async (h3Event) => {
     const bindings: string[] = []
     const selects = chunk.map((value, chunkIndex) => {
       const createdAt = new Date(importedAtBase + index + chunkIndex + 1).toISOString()
-      bindings.push(crypto.randomUUID(), value, createdAt, eventId)
+      bindings.push(crypto.randomUUID(), value, createdAt, eventId, value)
       return `
         select ?, offer.id, ?, ?
         from event_credit_offers offer
         where offer.event_id = ?
           and offer.simplified_claiming_only = true
           and not exists (
-            select 1
-            from event_credit_codes claimed_code
-            where claimed_code.credit_offer_id = offer.id
-              and claimed_code.claimed_attendee_eligibility_id is not null
+            select 1 from event_credit_codes existing_code
+            where existing_code.credit_offer_id = offer.id
+              and existing_code.value = ?
           )
       `
     })
@@ -113,12 +108,6 @@ export default defineApiHandler(async (h3Event) => {
     importedCount += Number(result.meta.changes ?? 0)
   }
 
-  assertGuard(importedCount === values.length, {
-    statusCode: 409,
-    code: 'simplified_claiming_locked',
-    message: 'Reward links cannot be changed after the first attendee redeems.'
-  })
-
   const updatedSummary = await getSimplifiedClaimingSummary(database, event)
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,
@@ -127,12 +116,14 @@ export default defineApiHandler(async (h3Event) => {
     action: 'event_credit_offer.simplified_inventory_imported',
     metadata: {
       eventId,
-      importedCount
+      importedCount,
+      skippedCount: parsedValues.length - importedCount
     }
   })
 
   return apiData({
     importedCount,
+    skippedCount: parsedValues.length - importedCount,
     totalInventoryCount: updatedSummary.totalInventoryCount,
     availableInventoryCount: updatedSummary.availableInventoryCount,
     simplifiedClaimCount: updatedSummary.simplifiedClaimCount

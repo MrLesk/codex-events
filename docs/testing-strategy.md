@@ -83,7 +83,7 @@ When backend constraints prevent complete actor-facing UI coverage, the gap must
 - Event-type behavior is tested as product behavior, not as legacy compatibility. Tests should use `/events` and `/api/events` routes only.
 - Hackathon-only workflows are tested only against `eventType = hackathon`.
 - Meetup and Build workflows are tested as registration-only events and must reject team, submission, judging, prize, and winner operations while allowing event-credit operations.
-- Simplified Meetup claiming coverage includes bounded private reward and approved-attendee CSV imports, PII minimization, simplified-only offer visibility and locking rules, authenticated email matching, idempotent and concurrent coupon allocation, attendance-source precedence, certificate eligibility, rate limiting, and the external coupon redirect.
+- Simplified Meetup claiming coverage includes bounded and appendable private reward and approved-attendee CSV imports, duplicate reward and normalized-email handling, PII minimization, simplified-only offer visibility and configuration locking rules, authenticated email matching, idempotent and concurrent coupon allocation, attendance-source precedence, certificate eligibility, rate limiting, and the external coupon redirect.
 
 ## Event Type Coverage
 

@@ -852,6 +852,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - An offer can be deleted only when none of its inventory rows has been claimed.
 - Ordinary credit offers store participant-facing markdown copy and ordering. The simplified-only offer uses system-owned metadata because participants receive its HTTPS reward links through the redemption page.
 - Disabling simplified claiming leaves the simplified-only offer flagged, private, and unavailable.
+- The simplified-only offer remains fixed after its first claim, while new unique HTTPS reward rows can still be appended to its inventory.
 - Uploaded redeemable values live on `EventCreditCode`.
 
 ## EventCreditCode
@@ -875,6 +876,7 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Notes
 
 - Each row stores one uploaded redeemable value, which can be a code or a URL.
+- Simplified reward import stores at most one row per exact HTTPS value within its offer.
 - Unclaimed rows are available inventory for the credit offer.
 - Claiming permanently assigns one uploaded value to one claiming user.
 - Only approved participants and event staff can claim from a credit offer.

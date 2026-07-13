@@ -204,7 +204,8 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     const lateAttendeeForm = new FormData()
     lateAttendeeForm.append('file', new Blob([[
       'email,first_name,last_name,approval_status',
-      'late@example.com,Grace,Hopper,approved'
+      'late@example.com,Grace,Hopper,approved',
+      'LATE@example.com,Rear,Admiral,approved'
     ].join('\n')], { type: 'text/csv' }), 'late-guests.csv')
     const lateAttendeeImport = await harness.request('/api/events/meetup/simplified-claiming/attendees/import', {
       method: 'POST',
@@ -214,6 +215,9 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     expect(await lateAttendeeImport.json()).toMatchObject({
       data: { eligibleCount: 1, attendeeCount: 2 }
     })
+    expect(await harness.database.query.eventAttendeeEligibilities.findFirst({
+      where: eq(eventAttendeeEligibilities.normalizedEmail, 'late@example.com')
+    })).toMatchObject({ firstName: 'Rear', familyName: 'Admiral' })
 
     await harness.database.insert(users).values({
       id: 'other-participant',
@@ -476,10 +480,13 @@ describe('TASK-420 simplified attendee claiming routes', () => {
       })
     }
 
-    const firstRewardUpload = await rewardUpload('https://chatgpt.com/coupon/admin')
+    const firstRewardUpload = await rewardUpload([
+      'https://chatgpt.com/coupon/admin',
+      'https://chatgpt.com/coupon/admin'
+    ].join('\n'))
     expect(firstRewardUpload.status).toBe(200)
     expect(await firstRewardUpload.json()).toMatchObject({
-      data: { importedCount: 1, totalInventoryCount: 1 }
+      data: { importedCount: 1, skippedCount: 1, totalInventoryCount: 1 }
     })
 
     const concurrentUploads = await Promise.all([
@@ -497,7 +504,8 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     importForm.append('file', new Blob([[
       'guest_id,email,first_name,last_name,approval_status,phone_number',
       'guest-1,approved@example.com,Ada,Lovelace,approved,+43123',
-      'guest-2,pending@example.com,Grace,Hopper,pending,+43456'
+      'guest-2,APPROVED@example.com,Augusta,King,approved,+43124',
+      'guest-3,pending@example.com,Grace,Hopper,pending,+43456'
     ].join('\n')], { type: 'text/csv' }), 'guests.csv')
     const importResponse = await harness.request('/api/events/admin-meetup/simplified-claiming/attendees/import', {
       method: 'POST',
@@ -512,8 +520,8 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     expect(eligibilityRows).toHaveLength(1)
     expect(eligibilityRows[0]).toMatchObject({
       normalizedEmail: 'approved@example.com',
-      firstName: 'Ada',
-      familyName: 'Lovelace'
+      firstName: 'Augusta',
+      familyName: 'King'
     })
 
     const statusResponse = await harness.request('/api/events/admin-meetup/simplified-claiming')
@@ -527,6 +535,55 @@ describe('TASK-420 simplified attendee claiming routes', () => {
         totalInventoryCount: 3
       }
     })
+
+    await harness.database.update(eventCreditCodes)
+      .set({
+        claimedByUserId: 'admin',
+        claimedAttendeeEligibilityId: eligibilityRows[0]!.id,
+        claimedAt: '2026-07-09T12:00:00.000Z'
+      })
+      .where(eq(eventCreditCodes.value, 'https://chatgpt.com/coupon/admin'))
+
+    const postClaimUpload = await rewardUpload([
+      'https://chatgpt.com/coupon/admin',
+      'https://chatgpt.com/coupon/fourth',
+      'https://chatgpt.com/coupon/fourth'
+    ].join('\n'))
+    expect(postClaimUpload.status).toBe(200)
+    expect(await postClaimUpload.json()).toMatchObject({
+      data: { importedCount: 1, skippedCount: 2, totalInventoryCount: 4 }
+    })
+
+    const duplicateConcurrentUploads = await Promise.all([
+      rewardUpload('https://chatgpt.com/coupon/fifth'),
+      rewardUpload('https://chatgpt.com/coupon/fifth')
+    ])
+    expect(duplicateConcurrentUploads.map(response => response.status)).toEqual([200, 200])
+    const duplicateConcurrentBodies = await Promise.all(duplicateConcurrentUploads.map(response => response.json()))
+    expect(duplicateConcurrentBodies.map(body => body.data.importedCount).sort()).toEqual([0, 1])
+    expect(await harness.database.select().from(eventCreditCodes)).toHaveLength(5)
+
+    const laterAttendeeForm = new FormData()
+    laterAttendeeForm.append('file', new Blob([[
+      'email,first_name,last_name,approval_status',
+      'approved@example.com,Ada,Byron,approved',
+      'new@example.com,Grace,Hopper,approved',
+      'NEW@example.com,Rear,Admiral,approved'
+    ].join('\n')], { type: 'text/csv' }), 'later-guests.csv')
+    const laterAttendeeImport = await harness.request('/api/events/admin-meetup/simplified-claiming/attendees/import', {
+      method: 'POST',
+      body: laterAttendeeForm
+    })
+    expect(laterAttendeeImport.status).toBe(200)
+    expect(await laterAttendeeImport.json()).toMatchObject({
+      data: { eligibleCount: 2, attendeeCount: 2 }
+    })
+    expect(await harness.database.query.eventAttendeeEligibilities.findFirst({
+      where: eq(eventAttendeeEligibilities.normalizedEmail, 'approved@example.com')
+    })).toMatchObject({ firstName: 'Ada', familyName: 'Byron' })
+    expect(await harness.database.query.eventAttendeeEligibilities.findFirst({
+      where: eq(eventAttendeeEligibilities.normalizedEmail, 'new@example.com')
+    })).toMatchObject({ firstName: 'Rear', familyName: 'Admiral' })
   })
 
   test('deletes only credit offers without claims', async () => {
