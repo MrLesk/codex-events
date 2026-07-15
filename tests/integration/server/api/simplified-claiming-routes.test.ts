@@ -483,13 +483,29 @@ describe('TASK-420 simplified attendee claiming routes', () => {
       })
     }
 
-    const firstRewardUpload = await rewardUpload([
-      'https://chatgpt.com/coupon/admin',
-      'https://chatgpt.com/coupon/admin'
-    ].join('\n'))
+    const initialRewardLinks = Array.from(
+      { length: 120 },
+      (_, index) => `https://chatgpt.com/coupon/bulk-${index + 1}`
+    )
+    const firstRewardUpload = await rewardUpload(initialRewardLinks.join('\n'))
     expect(firstRewardUpload.status).toBe(200)
     expect(await firstRewardUpload.json()).toMatchObject({
-      data: { importedCount: 1, skippedCount: 1, totalInventoryCount: 1 }
+      data: {
+        importedCount: 120,
+        skippedCount: 0,
+        totalInventoryCount: 120,
+        availableInventoryCount: 120
+      }
+    })
+
+    const duplicateRewardUpload = await rewardUpload([
+      initialRewardLinks[0],
+      initialRewardLinks[0],
+      'https://chatgpt.com/coupon/admin'
+    ].join('\n'))
+    expect(duplicateRewardUpload.status).toBe(200)
+    expect(await duplicateRewardUpload.json()).toMatchObject({
+      data: { importedCount: 1, skippedCount: 2, totalInventoryCount: 121 }
     })
 
     const concurrentUploads = await Promise.all([
@@ -498,7 +514,7 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     ])
     expect(concurrentUploads.map(response => response.status)).toEqual([200, 200])
     expect(await harness.database.select().from(eventCreditOffers)).toHaveLength(1)
-    expect(await harness.database.select().from(eventCreditCodes)).toHaveLength(3)
+    expect(await harness.database.select().from(eventCreditCodes)).toHaveLength(123)
     expect(await harness.database.query.eventCreditOffers.findFirst()).toMatchObject({
       simplifiedClaimingOnly: true
     })
@@ -535,7 +551,7 @@ describe('TASK-420 simplified attendee claiming routes', () => {
         redemptionUrl: 'https://codex-events.com/events/admin-meetup/redeem',
         attendeeCount: 1,
         offerCount: 1,
-        totalInventoryCount: 3
+        totalInventoryCount: 123
       }
     })
 
@@ -554,7 +570,7 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     ].join('\n'))
     expect(postClaimUpload.status).toBe(200)
     expect(await postClaimUpload.json()).toMatchObject({
-      data: { importedCount: 1, skippedCount: 2, totalInventoryCount: 4 }
+      data: { importedCount: 1, skippedCount: 2, totalInventoryCount: 124 }
     })
 
     const duplicateConcurrentUploads = await Promise.all([
@@ -564,7 +580,7 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     expect(duplicateConcurrentUploads.map(response => response.status)).toEqual([200, 200])
     const duplicateConcurrentBodies = await Promise.all(duplicateConcurrentUploads.map(response => response.json()))
     expect(duplicateConcurrentBodies.map(body => body.data.importedCount).sort()).toEqual([0, 1])
-    expect(await harness.database.select().from(eventCreditCodes)).toHaveLength(5)
+    expect(await harness.database.select().from(eventCreditCodes)).toHaveLength(125)
 
     const laterAttendeeForm = new FormData()
     laterAttendeeForm.append('file', new Blob([[

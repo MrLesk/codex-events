@@ -16,7 +16,8 @@ import { ApiError } from '#server/http/api-error'
 import { apiData } from '#server/http/api-response'
 import { parseValidatedParams } from '#server/http/validation'
 
-const maxRewardRowsPerStatement = 20
+// Two bindings per row plus the timestamp and event ID stay within D1's 100-binding limit.
+const maxRewardRowsPerStatement = 49
 
 export default defineApiHandler(async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
@@ -79,26 +80,31 @@ export default defineApiHandler(async (h3Event) => {
   for (let index = 0; index < values.length; index += maxRewardRowsPerStatement) {
     const chunk = values.slice(index, index + maxRewardRowsPerStatement)
     const bindings: string[] = []
-    const selects = chunk.map((value, chunkIndex) => {
-      const createdAt = new Date(importedAtBase + index + chunkIndex + 1).toISOString()
-      bindings.push(crypto.randomUUID(), value, createdAt, eventId, value)
-      return `
-        select ?, offer.id, ?, ?
-        from event_credit_offers offer
-        where offer.event_id = ?
-          and offer.simplified_claiming_only = true
-          and not exists (
-            select 1 from event_credit_codes existing_code
-            where existing_code.credit_offer_id = offer.id
-              and existing_code.value = ?
-          )
-      `
+    const valueRows = chunk.map((value, chunkIndex) => {
+      bindings.push(crypto.randomUUID(), value)
+      return `(?, ?, ${index + chunkIndex + 1})`
     })
 
     statements.push(binding.prepare(`
       insert into event_credit_codes (id, credit_offer_id, value, created_at)
-      ${selects.join(' union all ')}
-    `).bind(...bindings))
+      with input(id, value, offset_ms) as (
+        values ${valueRows.join(', ')}
+      )
+      select
+        input.id,
+        offer.id,
+        input.value,
+        strftime('%Y-%m-%dT%H:%M:%fZ', (? + input.offset_ms) / 1000.0, 'unixepoch')
+      from input
+      join event_credit_offers offer
+        on offer.event_id = ?
+        and offer.simplified_claiming_only = true
+      where not exists (
+        select 1 from event_credit_codes existing_code
+        where existing_code.credit_offer_id = offer.id
+          and existing_code.value = input.value
+      )
+    `).bind(...bindings, importedAtBase, eventId))
   }
 
   const results = await binding.batch<Record<string, never>>(statements)
