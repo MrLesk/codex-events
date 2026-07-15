@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 
 import { describe, expect, test, vi } from 'vitest'
 
-import { sendApplicationReviewDecisionEmail } from '../../../../../server/domains/applications/review-emails'
+import { sendParticipantNotificationEmail } from '../../../../../server/domains/applications/review-emails'
 
 function createEvent(runtimeConfig?: Record<string, unknown>) {
   return {
@@ -14,7 +14,7 @@ function createEvent(runtimeConfig?: Record<string, unknown>) {
 
 describe('application review email utilities', () => {
   test('skips delivery when outbound email configuration is missing', async () => {
-    const result = await sendApplicationReviewDecisionEmail(createEvent(), {
+    const result = await sendParticipantNotificationEmail(createEvent(), {
       applicationId: 'application_1',
       decision: 'approved',
       reviewedAt: '2026-03-27T12:00:00.000Z',
@@ -46,7 +46,7 @@ describe('application review email utilities', () => {
       }
     })
 
-    const result = await sendApplicationReviewDecisionEmail(event, {
+    const result = await sendParticipantNotificationEmail(event, {
       applicationId: 'application_1',
       decision: 'approved',
       reviewedAt: '2026-03-27T12:00:00.000Z',
@@ -79,6 +79,51 @@ describe('application review email utilities', () => {
     expect(payload?.text).toContain('https://events.example/account/events/codex-spring')
   })
 
+  test('sends a coupon receipt with the reusable reward link', async () => {
+    const send = vi.fn(async () => ({
+      messageId: 'email_receipt'
+    }))
+    const event = createEvent({
+      outboundEmail: {
+        binding: 'EMAIL',
+        fromEmail: 'notifications@example.com',
+        fromName: 'Codex Events'
+      }
+    })
+
+    const result = await sendParticipantNotificationEmail(event, {
+      notificationType: 'simplified_claim_receipt',
+      creditCodeId: 'coupon_1',
+      claimedAt: '2026-07-16T08:00:00.000Z',
+      recipientEmail: 'participant@example.com',
+      recipientDisplayName: 'Ada Lovelace',
+      eventName: 'Codex Spring',
+      couponUrl: 'https://chatgpt.com/coupon/example'
+    }, {
+      emailBinding: { send }
+    })
+
+    expect(result).toEqual({
+      status: 'sent',
+      messageId: 'email_receipt'
+    })
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({
+      to: 'participant@example.com',
+      subject: 'Your coupon for Codex Spring',
+      headers: {
+        'X-Codex-Notification-Type': 'simplified_claim_receipt',
+        'X-Codex-Email-Key': 'simplified-claim-receipt:coupon_1:2026-07-16T08:00:00.000Z'
+      }
+    }))
+
+    const payload = send.mock.calls[0]?.[0]
+    expect(payload?.text).toContain('Your coupon for Codex Spring has been claimed successfully.')
+    expect(payload?.text).toContain('https://chatgpt.com/coupon/example')
+    expect(payload?.html).toContain('Open your coupon')
+    expect(payload?.html).toContain('https://chatgpt.com/coupon/example')
+    expect(payload?.text).not.toContain('application')
+  })
+
   test('returns failed delivery status when Cloudflare reports a provider error', async () => {
     const error = Object.assign(new Error('Too many requests'), {
       code: 'E_RATE_LIMIT_EXCEEDED'
@@ -92,7 +137,7 @@ describe('application review email utilities', () => {
       }
     })
 
-    const result = await sendApplicationReviewDecisionEmail(event, {
+    const result = await sendParticipantNotificationEmail(event, {
       applicationId: 'application_1',
       decision: 'rejected',
       reviewedAt: '2026-03-27T12:00:00.000Z',
@@ -125,7 +170,7 @@ describe('application review email utilities', () => {
       }
     })
 
-    const result = await sendApplicationReviewDecisionEmail(event, {
+    const result = await sendParticipantNotificationEmail(event, {
       applicationId: 'application_1',
       decision: 'rejected',
       reviewedAt: '2026-03-27T12:00:00.000Z',
@@ -149,7 +194,7 @@ describe('application review email utilities', () => {
   })
 
   test('skips deleted-account recipients', async () => {
-    const result = await sendApplicationReviewDecisionEmail(createEvent({
+    const result = await sendParticipantNotificationEmail(createEvent({
       outboundEmail: {
         fromEmail: 'notifications@example.com'
       }

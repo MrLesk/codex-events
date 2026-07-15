@@ -40,7 +40,20 @@ export interface ApplicationReviewDecisionEmailInput {
   eventSlug: string
 }
 
-export type ApplicationReviewDecisionEmailDeliveryResult = {
+export interface SimplifiedClaimReceiptEmailInput {
+  notificationType: 'simplified_claim_receipt'
+  creditCodeId: string
+  claimedAt: string
+  recipientEmail: string | null
+  recipientDisplayName?: string | null
+  eventName: string
+  couponUrl: string
+}
+
+export type ParticipantNotificationEmailInput
+  = ApplicationReviewDecisionEmailInput | SimplifiedClaimReceiptEmailInput
+
+export type ParticipantNotificationEmailDeliveryResult = {
   status: 'sent'
   messageId: string | null
 } | {
@@ -128,7 +141,8 @@ function buildApplicationReviewEmailContent(input: ApplicationReviewDecisionEmai
         `<p>Great news - your application for <strong>${escapedEventName}</strong> has been approved.</p>`,
         `<p>${escapedLinkText}</p>`,
         dashboardAnchor
-      ].join('\n')
+      ].join('\n'),
+      notificationType: 'application_approved'
     }
   }
 
@@ -148,19 +162,49 @@ function buildApplicationReviewEmailContent(input: ApplicationReviewDecisionEmai
       '<p>Your application was not selected this time.</p>',
       `<p>${escapedLinkText}</p>`,
       dashboardAnchor
-    ].join('\n')
+    ].join('\n'),
+    notificationType: 'application_rejected'
   }
 }
 
-export async function sendApplicationReviewDecisionEmail(
+function buildSimplifiedClaimReceiptEmailContent(input: SimplifiedClaimReceiptEmailInput) {
+  const firstName = toPreferredFirstName(input.recipientDisplayName)
+  const escapedFirstName = escapeHtml(firstName)
+  const escapedEventName = escapeHtml(input.eventName)
+  const escapedCouponUrl = escapeHtml(input.couponUrl)
+
+  return {
+    subject: `Your coupon for ${input.eventName}`,
+    text: [
+      `Hi ${firstName},`,
+      '',
+      `Your coupon for ${input.eventName} has been claimed successfully.`,
+      '',
+      'Keep this email as a backup. You can open your coupon again here:',
+      input.couponUrl,
+      '',
+      'Best,',
+      'Codex Community Events'
+    ].join('\n'),
+    html: [
+      `<p>Hi ${escapedFirstName},</p>`,
+      `<p>Your coupon for <strong>${escapedEventName}</strong> has been claimed successfully.</p>`,
+      `<p>Keep this email as a backup. You can open your coupon again here:<br><a href="${escapedCouponUrl}">Open your coupon</a></p>`,
+      '<p>Best,<br>Codex Community Events</p>'
+    ].join('\n'),
+    notificationType: 'simplified_claim_receipt'
+  }
+}
+
+export async function sendParticipantNotificationEmail(
   event: H3Event,
-  input: ApplicationReviewDecisionEmailInput,
+  input: ParticipantNotificationEmailInput,
   options?: {
     emailBinding?: OutboundEmailBindingLike
     cloudflareEnv?: Record<string, unknown>
     runtimeConfig?: unknown
   }
-): Promise<ApplicationReviewDecisionEmailDeliveryResult> {
+): Promise<ParticipantNotificationEmailDeliveryResult> {
   if (input.recipientEmail?.endsWith('@deleted.invalid')) {
     return {
       status: 'skipped',
@@ -195,10 +239,17 @@ export async function sendApplicationReviewDecisionEmail(
     }
   }
 
-  const dashboardUrl = resolveApplicationDashboardUrl(runtimeConfig, input.eventSlug)
-  const content = buildApplicationReviewEmailContent(input, dashboardUrl)
+  const isSimplifiedClaimReceipt = 'notificationType' in input
+  const content = isSimplifiedClaimReceipt
+    ? buildSimplifiedClaimReceiptEmailContent(input)
+    : buildApplicationReviewEmailContent(
+        input,
+        resolveApplicationDashboardUrl(runtimeConfig, input.eventSlug)
+      )
   const replyTo = getOutboundEmailReplyTo(runtimeConfig)
-  const emailKey = `application-review:${input.applicationId}:${input.decision}:${input.reviewedAt}`
+  const emailKey = isSimplifiedClaimReceipt
+    ? `simplified-claim-receipt:${input.creditCodeId}:${input.claimedAt}`
+    : `application-review:${input.applicationId}:${input.decision}:${input.reviewedAt}`
   let response: Awaited<ReturnType<OutboundEmailBindingLike['send']>>
 
   try {
@@ -210,7 +261,7 @@ export async function sendApplicationReviewDecisionEmail(
       html: content.html,
       ...(replyTo ? { replyTo } : {}),
       headers: createOutboundEmailMetadataHeaders({
-        notificationType: `application_${input.decision}`,
+        notificationType: content.notificationType,
         idempotencyKey: emailKey
       })
     })

@@ -3,9 +3,10 @@ import type { H3Event } from 'h3'
 import { z } from 'zod'
 
 import {
-  sendApplicationReviewDecisionEmail,
+  sendParticipantNotificationEmail,
   type ApplicationReviewDecisionEmailInput,
-  type ApplicationReviewDecisionEmailDeliveryResult
+  type ParticipantNotificationEmailDeliveryResult,
+  type SimplifiedClaimReceiptEmailInput
 } from './review-emails'
 import { isRetryableOutboundEmailProviderError } from '#server/utils/outbound-email'
 
@@ -21,16 +22,27 @@ const applicationReviewEmailsQueueRuntimeConfigSchema = z.object({
   }).optional()
 })
 
-export const applicationReviewEmailQueueMessageSchema = z.object({
-  applicationId: z.string().trim().min(1),
-  decision: z.enum(['approved', 'rejected']),
-  reviewedAt: z.string().trim().min(1),
+const participantNotificationEmailQueueMessageSchema = z.object({
   recipientEmail: z.string().trim().email().nullable(),
   recipientDisplayName: z.string().trim().max(160).nullable().optional(),
   eventName: z.string().trim().min(1).max(200),
-  eventSlug: z.string().trim().min(1).max(200),
   enqueuedAt: z.string().trim().min(1)
 })
+
+export const applicationReviewEmailQueueMessageSchema = z.union([
+  participantNotificationEmailQueueMessageSchema.extend({
+    applicationId: z.string().trim().min(1),
+    decision: z.enum(['approved', 'rejected']),
+    reviewedAt: z.string().trim().min(1),
+    eventSlug: z.string().trim().min(1).max(200)
+  }),
+  participantNotificationEmailQueueMessageSchema.extend({
+    notificationType: z.literal('simplified_claim_receipt'),
+    creditCodeId: z.string().trim().min(1),
+    claimedAt: z.string().trim().min(1),
+    couponUrl: z.string().trim().url().refine(value => value.startsWith('https://'))
+  })
+])
 
 export type ApplicationReviewEmailQueueMessage = z.infer<typeof applicationReviewEmailQueueMessageSchema>
 
@@ -71,13 +83,24 @@ export type ApplicationReviewEmailQueueMessageOutcome = {
   messageId: string
   action: 'ack' | 'retry'
   reason: string
-  delivery: ApplicationReviewDecisionEmailDeliveryResult | null
+  delivery: ParticipantNotificationEmailDeliveryResult | null
 }
 
 export function buildApplicationReviewEmailQueueMessage(
   input: ApplicationReviewDecisionEmailInput
 ): ApplicationReviewEmailQueueMessage {
   return {
+    ...input,
+    recipientDisplayName: input.recipientDisplayName?.trim() || null,
+    enqueuedAt: new Date().toISOString()
+  }
+}
+
+export function buildSimplifiedClaimReceiptEmailQueueMessage(
+  input: Omit<SimplifiedClaimReceiptEmailInput, 'notificationType'>
+): ApplicationReviewEmailQueueMessage {
+  return {
+    notificationType: 'simplified_claim_receipt',
     ...input,
     recipientDisplayName: input.recipientDisplayName?.trim() || null,
     enqueuedAt: new Date().toISOString()
@@ -178,7 +201,7 @@ export async function enqueueApplicationReviewEmailMessage(
   }
 }
 
-function shouldRetryDeliveryFailure(delivery: ApplicationReviewDecisionEmailDeliveryResult) {
+function shouldRetryDeliveryFailure(delivery: ParticipantNotificationEmailDeliveryResult) {
   if (delivery.status !== 'failed') {
     return false
   }
@@ -195,7 +218,7 @@ export async function processApplicationReviewEmailQueueMessage(
   options?: {
     runtimeConfig?: unknown
     cloudflareEnv?: Record<string, unknown>
-    sendDecisionEmail?: typeof sendApplicationReviewDecisionEmail
+    sendNotificationEmail?: typeof sendParticipantNotificationEmail
   }
 ): Promise<ApplicationReviewEmailQueueMessageOutcome> {
   const parsedMessage = applicationReviewEmailQueueMessageSchema.safeParse(message.body)
@@ -212,8 +235,8 @@ export async function processApplicationReviewEmailQueueMessage(
   }
 
   const config = resolveQueueRuntimeConfigFromUnknown(options?.runtimeConfig ?? {})
-  const sendDecisionEmail = options?.sendDecisionEmail ?? sendApplicationReviewDecisionEmail
-  const delivery = await sendDecisionEmail(
+  const sendNotificationEmail = options?.sendNotificationEmail ?? sendParticipantNotificationEmail
+  const delivery = await sendNotificationEmail(
     { context: {} } as H3Event,
     parsedMessage.data,
     {
@@ -262,7 +285,7 @@ export async function processApplicationReviewEmailQueueBatch(
     runtimeConfig?: unknown
     cloudflareEnv?: Record<string, unknown>
     queueName?: string
-    sendDecisionEmail?: typeof sendApplicationReviewDecisionEmail
+    sendNotificationEmail?: typeof sendParticipantNotificationEmail
   }
 ) {
   const config = resolveQueueRuntimeConfigFromUnknown(options?.runtimeConfig ?? {})
@@ -282,7 +305,7 @@ export async function processApplicationReviewEmailQueueBatch(
     outcomes.push(await processApplicationReviewEmailQueueMessage(message, {
       runtimeConfig: options?.runtimeConfig ?? config,
       cloudflareEnv: options?.cloudflareEnv,
-      sendDecisionEmail: options?.sendDecisionEmail
+      sendNotificationEmail: options?.sendNotificationEmail
     }))
   }
 

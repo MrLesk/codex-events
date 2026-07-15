@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from 'vitest'
 
 import {
   buildApplicationReviewEmailQueueMessage,
+  buildSimplifiedClaimReceiptEmailQueueMessage,
   enqueueApplicationReviewEmailMessage,
   processApplicationReviewEmailQueueBatch,
   processApplicationReviewEmailQueueMessage
@@ -100,9 +101,34 @@ describe('application review email queue utilities', () => {
     })
   })
 
+  test('enqueue accepts a simplified claim receipt payload', async () => {
+    const send = vi.fn(async () => undefined)
+    const event = createEvent({
+      queueProducer: { send }
+    })
+
+    const result = await enqueueApplicationReviewEmailMessage(event, buildSimplifiedClaimReceiptEmailQueueMessage({
+      creditCodeId: 'coupon_1',
+      claimedAt: '2026-07-16T08:00:00.000Z',
+      recipientEmail: 'participant@example.com',
+      recipientDisplayName: 'Ada Lovelace',
+      eventName: 'Codex Spring',
+      couponUrl: 'https://chatgpt.com/coupon/example'
+    }))
+
+    expect(result).toEqual({ status: 'enqueued' })
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({
+      notificationType: 'simplified_claim_receipt',
+      creditCodeId: 'coupon_1',
+      couponUrl: 'https://chatgpt.com/coupon/example'
+    }), {
+      contentType: 'json'
+    })
+  })
+
   test('queue message processing retries retryable failures', async () => {
     const message = createQueueMessage()
-    const sendDecisionEmail = vi.fn(async () => ({
+    const sendNotificationEmail = vi.fn(async () => ({
       status: 'failed' as const,
       reason: 'provider_error',
       providerError: {
@@ -118,7 +144,7 @@ describe('application review email queue utilities', () => {
           retryDelaySeconds: 90
         }
       },
-      sendDecisionEmail
+      sendNotificationEmail
     })
 
     expect(result).toEqual(expect.objectContaining({
@@ -131,7 +157,7 @@ describe('application review email queue utilities', () => {
 
   test('queue message processing acknowledges non-retryable failures', async () => {
     const message = createQueueMessage()
-    const sendDecisionEmail = vi.fn(async () => ({
+    const sendNotificationEmail = vi.fn(async () => ({
       status: 'failed' as const,
       reason: 'provider_error',
       providerError: {
@@ -142,7 +168,7 @@ describe('application review email queue utilities', () => {
     }))
 
     const result = await processApplicationReviewEmailQueueMessage(message, {
-      sendDecisionEmail
+      sendNotificationEmail
     })
 
     expect(result).toEqual(expect.objectContaining({

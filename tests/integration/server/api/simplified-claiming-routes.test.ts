@@ -185,11 +185,22 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     const actions = (await harness.database.select().from(auditLogs)).map(row => row.action)
     expect(actions).toEqual(expect.arrayContaining([
       'event_credit_code.claimed',
+      'event_credit_code.claim_receipt_email_enqueued',
       'user_application.simplified_claim_check_in_recorded',
-      'user_application.approved',
-      'user_application.review_email_enqueued'
+      'user_application.approved'
     ]))
+    expect(actions).not.toContain('user_application.review_email_enqueued')
     expect(queueSend).toHaveBeenCalledTimes(1)
+    expect(queueSend).toHaveBeenCalledWith(expect.objectContaining({
+      notificationType: 'simplified_claim_receipt',
+      creditCodeId: 'coupon',
+      recipientEmail: 'account@example.com',
+      eventName: 'Vienna Meetup',
+      couponUrl: 'https://chatgpt.com/coupon/example'
+    }), {
+      contentType: 'json'
+    })
+    expect(queueSend.mock.calls[0]?.[0]).not.toHaveProperty('decision')
 
     const repeatResponse = await harness.request('/api/events/slug/vienna-meetup/simplified-claim/actions/redeem', {
       method: 'POST',
@@ -264,7 +275,7 @@ describe('TASK-420 simplified attendee claiming routes', () => {
 
   test('preserves a Luma check-in and an authoritative not-joined override', async () => {
     const checkedInAt = '2026-07-09T11:00:00.000Z'
-    const { harness } = await createContext({
+    const { harness, queueSend } = await createContext({
       application: {
         status: 'approved',
         checkedInAt,
@@ -287,9 +298,10 @@ describe('TASK-420 simplified attendee claiming routes', () => {
       checkInSource: 'luma',
       checkInOverrideStatus: 'not_joined'
     })
+    expect(queueSend).toHaveBeenCalledTimes(1)
   })
 
-  test('promotes a submitted application and sends the normal approval email once', async () => {
+  test('promotes a submitted application and sends the coupon receipt once', async () => {
     const { harness, queueSend } = await createContext({ application: { status: 'submitted' } })
     const response = await harness.request('/api/events/slug/vienna-meetup/simplified-claim/actions/redeem', {
       method: 'POST',
@@ -304,6 +316,12 @@ describe('TASK-420 simplified attendee claiming routes', () => {
       checkInSource: 'simplified_claim'
     })
     expect(queueSend).toHaveBeenCalledTimes(1)
+    expect(queueSend).toHaveBeenCalledWith(expect.objectContaining({
+      notificationType: 'simplified_claim_receipt',
+      couponUrl: 'https://chatgpt.com/coupon/example'
+    }), {
+      contentType: 'json'
+    })
   })
 
   test('rejects an email outside the roster and a rejected application', async () => {

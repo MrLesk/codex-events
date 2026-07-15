@@ -12,7 +12,7 @@ import {
 } from '#server/database/schema'
 import { assertEventAllowsApplications } from '#server/domains/applications'
 import {
-  buildApplicationReviewEmailQueueMessage,
+  buildSimplifiedClaimReceiptEmailQueueMessage,
   enqueueApplicationReviewEmailMessage
 } from '#server/domains/applications/review-email-queue'
 import {
@@ -130,7 +130,7 @@ export default defineApiHandler(async (h3Event) => {
 
   const claimTimestamp = createUniqueClaimTimestamp()
   const applicationId = existingApplication?.id ?? crypto.randomUUID()
-  const shouldSendApprovalEmail = !existingApplication || existingApplication.status === 'submitted'
+  const shouldRecordApproval = !existingApplication || existingApplication.status === 'submitted'
   const binding = getD1Binding(h3Event)
   const codeAuditId = crypto.randomUUID()
   const checkInAuditId = crypto.randomUUID()
@@ -297,7 +297,7 @@ export default defineApiHandler(async (h3Event) => {
       auditMetadata({ eventId: event.id, userId: actor.platformUser.id, reviewSource: 'simplified_claim' }),
       claimTimestamp,
       applicationId,
-      shouldSendApprovalEmail ? 1 : 0,
+      shouldRecordApproval ? 1 : 0,
       actor.platformUser.id,
       eligibility!.id,
       claimTimestamp
@@ -355,33 +355,28 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  if (shouldSendApprovalEmail) {
-    const enqueue = await enqueueApplicationReviewEmailMessage(
-      h3Event,
-      buildApplicationReviewEmailQueueMessage({
-        applicationId: application.id,
-        decision: 'approved',
-        reviewedAt: claimTimestamp,
-        recipientEmail: actor.platformUser.email,
-        recipientDisplayName: actor.platformUser.displayName,
-        eventName: event.name,
-        eventSlug: event.slug
-      })
-    )
-    await writeAuditLog(database, {
-      actorUserId: actor.platformUser.id,
-      entityType: 'user_application',
-      entityId: application.id,
-      action: 'user_application.review_email_enqueued',
-      metadata: {
-        eventId: event.id,
-        userId: actor.platformUser.id,
-        decision: 'approved',
-        reviewSource: 'simplified_claim',
-        enqueue
-      }
+  const enqueue = await enqueueApplicationReviewEmailMessage(
+    h3Event,
+    buildSimplifiedClaimReceiptEmailQueueMessage({
+      creditCodeId: claimedCode.id,
+      claimedAt: claimTimestamp,
+      recipientEmail: actor.platformUser.email,
+      recipientDisplayName: actor.platformUser.displayName,
+      eventName: event.name,
+      couponUrl: claimedCode.value
     })
-  }
+  )
+  await writeAuditLog(database, {
+    actorUserId: actor.platformUser.id,
+    entityType: 'event_credit_code',
+    entityId: claimedCode.id,
+    action: 'event_credit_code.claim_receipt_email_enqueued',
+    metadata: {
+      eventId: event.id,
+      userId: actor.platformUser.id,
+      enqueue
+    }
+  })
 
   return apiData({
     status: 'claimed' as const,
