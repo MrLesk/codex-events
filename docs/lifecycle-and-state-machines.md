@@ -484,6 +484,7 @@ Behavior:
 - Event credits are independent from winner prizes and do not require `winners_announced`.
 - Approved participants can claim at most one uploaded value from each event credit offer while inventory remains available.
 - A simplified-claiming Meetup accepts redemption only during its open registration window. The first claim waits for the participant to confirm or edit the prefilled saved Luma email. A matching approved Luma attendee moves an absent or submitted application to `approved`, assigns the sole offer's HTTPS coupon, and records attendance in one transaction.
+- A configured redemption page identifies an ended registration window as closed. Disabled or incomplete setup remains unavailable without exposing organizer configuration to participants.
 - An approved application is accepted without another approval transition. Rejected and withdrawn applications cannot redeem.
 - A repeated simplified claim by the same account returns the existing coupon. A consumed attendee email cannot be used by another account.
 - The first simplified claim locks the event slug, claiming setting, and simplified-only offer identity. Before that claim, the setting can be disabled without exposing or converting the private reward inventory.

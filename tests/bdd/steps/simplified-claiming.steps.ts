@@ -14,6 +14,7 @@ import {
 
 const { When, Then } = createBdd()
 const fixtureSlug = 'simplified-claiming-fixture-event'
+const closedFixtureSlug = 'closed-simplified-claiming-fixture-event'
 const couponUrl = 'https://chatgpt.com/coupon/bdd-simplified'
 
 async function waitForNuxtHydration(page: Page) {
@@ -89,6 +90,11 @@ When('I open the simplified claiming link again', async ({ page }) => {
   await page.goto(`/events/${fixtureSlug}/redeem`)
 })
 
+When('I open the closed simplified claiming link with the saved {string} session', async ({ page }, personaKey: string) => {
+  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  await page.goto(`/events/${closedFixtureSlug}/redeem`)
+})
+
 When('I confirm the simplified claim', async ({ page }) => {
   await page.getByRole('button', { name: 'Continue to ChatGPT' }).click()
 })
@@ -126,9 +132,15 @@ Then('I should see my saved Luma email ready to confirm', async ({ page }) => {
 })
 
 Then('I should be able to correct the unmatched Luma email', async ({ page }) => {
-  await expect(page.getByText('That email was not found on the approved Luma attendee list.')).toBeVisible()
+  await expect(page.getByText('That email was not found on the Luma attendee list.')).toBeVisible()
   await expect(page.getByLabel('Luma email')).toBeEditable()
   await expect(page.getByLabel('Luma email')).toHaveValue('missing@example.com')
+})
+
+Then('I should see that redemption has closed', async ({ page }) => {
+  await expect(page).toHaveURL(new RegExp(`/events/${closedFixtureSlug}/redeem$`))
+  await expect(page.getByText('Redemption has closed', { exact: true })).toBeVisible()
+  await expect(page.getByText('Coupons can no longer be claimed for this event.', { exact: true })).toBeVisible()
 })
 
 Then('I should see the attendee claiming QR settings', async ({ page }) => {

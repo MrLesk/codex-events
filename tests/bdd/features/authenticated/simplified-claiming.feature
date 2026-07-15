@@ -20,6 +20,11 @@ Feature: Simplified Meetup claiming
     When I open the simplified claiming settings with the saved "event_admin" session
     Then I should see the attendee claiming QR settings
 
+  Scenario: Participant opens a redemption link after claiming has closed
+    Given the saved "regular_user" Auth0 session state exists
+    When I open the closed simplified claiming link with the saved "regular_user" session
+    Then I should see that redemption has closed
+
   Scenario: Organizer sees the nested claiming setup while creating a Meetup
     Given the saved "platform_admin" Auth0 session state exists
     When I prepare simplified claiming on a new Meetup with the saved "platform_admin" session

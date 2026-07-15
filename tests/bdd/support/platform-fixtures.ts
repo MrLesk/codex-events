@@ -33,6 +33,7 @@ const fixtureParticipantProfileRequirementEventId = 'event_e2e_participant_profi
 const fixtureParticipantApprovedEventId = 'event_e2e_participant_approved_fixture'
 const fixtureParticipantRejectedEventId = 'event_e2e_participant_rejected_fixture'
 export const fixtureSimplifiedClaimingEventId = 'event_e2e_simplified_claiming_fixture'
+const fixtureClosedSimplifiedClaimingEventId = 'event_e2e_closed_simplified_claiming_fixture'
 const fixtureParticipantTeamCreateEventId = 'event_e2e_participant_team_create_fixture'
 const fixtureParticipantTeamJoinEventId = 'event_e2e_participant_team_join_fixture'
 const fixtureParticipantTeamSoloEventId = 'event_e2e_participant_team_solo_fixture'
@@ -975,6 +976,30 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       registration_opens_at, registration_closes_at, submission_opens_at, submission_closes_at,
       state, max_team_members, simplified_claiming_enabled, created_by_user_id, created_at, updated_at
     ) values (
+      ${sqlLiteral(fixtureClosedSimplifiedClaimingEventId)},
+      'meetup',
+      'Closed Simplified Claiming Fixture Meetup',
+      'closed-simplified-claiming-fixture-event',
+      'Meetup fixture for a closed private attendee redemption flow.',
+      'Vienna',
+      'Austria',
+      'Fixture Venue',
+      '2026-03-20T00:00:00.000Z',
+      '2026-03-21T00:00:00.000Z',
+      null,
+      null,
+      'registration_open',
+      1,
+      1,
+      ${sqlLiteral(eventAdminId)},
+      ${sqlLiteral(fixtureTimestamp)},
+      ${sqlLiteral(fixtureTimestamp)}
+    )`,
+    `insert into events (
+      id, event_type, name, slug, description, city, country, address,
+      registration_opens_at, registration_closes_at, submission_opens_at, submission_closes_at,
+      state, max_team_members, simplified_claiming_enabled, created_by_user_id, created_at, updated_at
+    ) values (
       ${sqlLiteral(fixtureSimplifiedClaimingEventId)},
       'meetup',
       'Simplified Claiming Fixture Meetup',
@@ -994,6 +1019,17 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       ${sqlLiteral(fixtureTimestamp)},
       ${sqlLiteral(fixtureTimestamp)}
     )`,
+    `insert into event_attendee_eligibilities (
+      id, event_id, normalized_email, first_name, family_name, created_at, updated_at
+    ) values (
+      'eligibility_closed_simplified_claiming_fixture',
+      ${sqlLiteral(fixtureClosedSimplifiedClaimingEventId)},
+      'closed-attendee@example.com',
+      'Closed',
+      'Attendee',
+      ${sqlLiteral(fixtureTimestamp)},
+      ${sqlLiteral(fixtureTimestamp)}
+    )`,
     `update users set luma_email = ${sqlLiteral(regularUserEmail)} where id = ${sqlLiteral(regularUserId)}`,
     `insert into event_attendee_eligibilities (
       id, event_id, normalized_email, first_name, family_name, created_at, updated_at
@@ -1009,6 +1045,18 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
     `insert into event_credit_offers (
       id, event_id, name, description, simplified_claiming_only, display_order, created_at, updated_at
     ) values (
+      'offer_closed_simplified_claiming_fixture',
+      ${sqlLiteral(fixtureClosedSimplifiedClaimingEventId)},
+      'Closed Codex event credit',
+      'Private attendee credit for closed-state coverage.',
+      true,
+      1,
+      ${sqlLiteral(fixtureTimestamp)},
+      ${sqlLiteral(fixtureTimestamp)}
+    )`,
+    `insert into event_credit_offers (
+      id, event_id, name, description, simplified_claiming_only, display_order, created_at, updated_at
+    ) values (
       'offer_simplified_claiming_fixture',
       ${sqlLiteral(fixtureSimplifiedClaimingEventId)},
       'Codex event credit',
@@ -1016,6 +1064,14 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       true,
       1,
       ${sqlLiteral(fixtureTimestamp)},
+      ${sqlLiteral(fixtureTimestamp)}
+    )`,
+    `insert into event_credit_codes (
+      id, credit_offer_id, value, created_at
+    ) values (
+      'code_closed_simplified_claiming_fixture',
+      'offer_closed_simplified_claiming_fixture',
+      'https://chatgpt.com/coupon/bdd-closed-simplified',
       ${sqlLiteral(fixtureTimestamp)}
     )`,
     `insert into event_credit_codes (

@@ -17,6 +17,9 @@ type SimplifiedClaimState = {
   status: 'unavailable'
   eventName: string
 } | {
+  status: 'closed'
+  eventName: string
+} | {
   status: 'sold_out'
   eventName: string
 }
@@ -159,6 +162,13 @@ onMounted(async () => {
           variant="soft"
           title="All coupons have been claimed"
           description="There are no coupons left for this event."
+        />
+        <AppAlert
+          v-else-if="claimState?.status === 'closed'"
+          color="warning"
+          variant="soft"
+          title="Redemption has closed"
+          description="Coupons can no longer be claimed for this event."
         />
         <AppAlert
           v-else-if="claimState?.status === 'unavailable'"

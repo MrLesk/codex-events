@@ -59,11 +59,17 @@ export default defineApiHandler(async (h3Event) => {
   }
 
   const now = Date.now()
-  const registrationOpen = event.state === 'registration_open'
-    && now >= Date.parse(event.registrationOpensAt)
-    && now < Date.parse(event.registrationClosesAt)
+  const registrationOpensAt = Date.parse(event.registrationOpensAt)
+  const registrationClosesAt = Date.parse(event.registrationClosesAt)
 
-  if (!registrationOpen) {
+  if (event.state === 'completed' || now >= registrationClosesAt) {
+    return apiData({
+      status: 'closed' as const,
+      eventName: event.name
+    })
+  }
+
+  if (event.state !== 'registration_open' || now < registrationOpensAt) {
     return apiData({
       status: 'unavailable' as const,
       eventName: event.name

@@ -103,7 +103,7 @@ export default defineApiHandler(async (h3Event) => {
   assertGuard(Boolean(eligibility), {
     statusCode: 409,
     code: 'simplified_claiming_attendee_not_found',
-    message: 'That email was not found on the approved Luma attendee list.'
+    message: 'That email was not found on the Luma attendee list.'
   })
 
   const existingEligibilityClaim = await database.query.eventCreditCodes.findFirst({

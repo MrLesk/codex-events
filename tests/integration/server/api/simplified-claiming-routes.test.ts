@@ -314,7 +314,10 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     })
     expect(mismatchResponse.status).toBe(409)
     expect(await mismatchResponse.json()).toMatchObject({
-      error: { code: 'simplified_claiming_attendee_not_found' }
+      error: {
+        code: 'simplified_claiming_attendee_not_found',
+        message: 'That email was not found on the Luma attendee list.'
+      }
     })
 
     const second = await createContext({ application: { status: 'rejected' } })
@@ -387,7 +390,7 @@ describe('TASK-420 simplified attendee claiming routes', () => {
     await harness.database.update(events)
       .set({ registrationClosesAt: '2026-01-02T00:00:00.000Z' })
       .where(eq(events.id, 'meetup'))
-    expect(await readState()).toMatchObject({ body: { data: { status: 'unavailable' } } })
+    expect(await readState()).toMatchObject({ body: { data: { status: 'closed' } } })
 
     await harness.database.insert(users).values({
       id: 'coupon-owner',
