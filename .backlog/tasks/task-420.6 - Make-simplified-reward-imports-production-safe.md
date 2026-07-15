@@ -1,11 +1,11 @@
 ---
 id: TASK-420.6
 title: Make simplified reward imports production-safe
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-07-15 21:19'
-updated_date: '2026-07-15 21:28'
+updated_date: '2026-07-15 21:35'
 labels: []
 dependencies: []
 references:
@@ -31,7 +31,7 @@ A valid 120-link simplified-claiming reward CSV reaches production but fails ato
 - [x] #2 Duplicate links within the upload and links already stored remain skipped without creating duplicate inventory.
 - [x] #3 The importer uses D1-compatible statements that remain within production query limits.
 - [x] #4 Required unit, integration, and BDD validation passes.
-- [ ] #5 A production release includes this fix and TASK-420.5's simplified claiming failure-message fix.
+- [x] #5 A production release includes this fix and TASK-420.5's simplified claiming failure-message fix.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -43,7 +43,7 @@ A valid 120-link simplified-claiming reward CSV reaches production but fails ato
 - [x] #5 Test gaps are documented when automation is not practical
 - [x] #6 Config and developer workflow docs were updated when setup changed
 - [x] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -66,4 +66,14 @@ Implementation: use a VALUES-backed input table with 49 rows per statement. Each
 Verification so far: production D1 EXPLAIN accepted the 49-row/100-binding statement, and the targeted simplified-claiming integration suite passed with a 120-link first import plus existing, in-file, and concurrent duplicate cases.
 
 Full validation passed: `bun run lint`; `bun run typecheck`; `bun run test:unit` (110 files, 771 tests); `bun run test:integration` (25 files, 360 tests); `bun run test:bdd` (51 standard scenarios and 2 destructive scenarios); and `git diff --check`. Canonical product behavior, configuration, authorization, and documentation are unchanged.
+
+Production verification: GitHub release `v1.19.1` deployed successfully from commit `35849016d6c8e5def50ac84f726c273e345cfd8c` and included TASK-420.5. The real 120-link upload returned HTTP 200 on Worker version `861e1598-f8b1-4abc-ba15-a69b33c1436b`. A read-only production D1 check confirmed one simplified offer, 120 rewards, 120 distinct reward values, and zero claims.
+
+Risk review: no remaining reward-import risk was identified at the configured 2,000-row limit. The separate Luma attendee importer is safe at this event's 200-person scale; its 10,000-row theoretical maximum uses sequential chunks and can be evaluated separately if that scale is needed.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Replaced the D1-incompatible compound SELECT reward insert with bounded VALUES-backed statements, preserving append and duplicate behavior. Verified a 120-link import and duplicate/concurrent cases in integration tests, passed lint/typecheck/unit/integration/BDD validation, and confirmed the statement against production D1. Released `v1.19.1` with TASK-420.5, observed the production upload return HTTP 200, and confirmed exactly 120 unique unclaimed rewards in production.
+<!-- SECTION:FINAL_SUMMARY:END -->
