@@ -181,7 +181,7 @@ function buildSimplifiedClaimReceiptEmailContent(input: SimplifiedClaimReceiptEm
       '',
       `Your coupon for ${input.eventName} has been claimed successfully.`,
       '',
-      'You can open your coupon again here:',
+      'Here\'s a copy of your coupon:',
       input.couponUrl,
       '',
       'After you apply your coupon, you can view your credits here:',
@@ -195,7 +195,7 @@ function buildSimplifiedClaimReceiptEmailContent(input: SimplifiedClaimReceiptEm
     html: [
       `<p>Hi ${escapedFirstName},</p>`,
       `<p>Your coupon for <strong>${escapedEventName}</strong> has been claimed successfully.</p>`,
-      `<p>You can open your coupon again here:<br><a href="${escapedCouponUrl}">Open your coupon</a></p>`,
+      `<p>Here's a copy of your coupon:<br><a href="${escapedCouponUrl}">View your coupon</a></p>`,
       `<p>After you apply your coupon, you can <a href="${creditsAnalyticsUrl}">view your credits in Codex Cloud</a>.</p>`,
       '<p>Sol is currently available only on paid plans. You can also build with Terra and Luna - both are strong models.</p>',
       '<p>Best,<br>Codex Community Events</p>'
