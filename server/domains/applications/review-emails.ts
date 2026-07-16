@@ -168,6 +168,7 @@ function buildApplicationReviewEmailContent(input: ApplicationReviewDecisionEmai
 }
 
 function buildSimplifiedClaimReceiptEmailContent(input: SimplifiedClaimReceiptEmailInput) {
+  const creditsAnalyticsUrl = 'https://chatgpt.com/codex/cloud/settings/analytics#usage'
   const firstName = toPreferredFirstName(input.recipientDisplayName)
   const escapedFirstName = escapeHtml(firstName)
   const escapedEventName = escapeHtml(input.eventName)
@@ -180,8 +181,13 @@ function buildSimplifiedClaimReceiptEmailContent(input: SimplifiedClaimReceiptEm
       '',
       `Your coupon for ${input.eventName} has been claimed successfully.`,
       '',
-      'Keep this email as a backup. You can open your coupon again here:',
+      'You can open your coupon again here:',
       input.couponUrl,
+      '',
+      'After you apply your coupon, you can view your credits here:',
+      creditsAnalyticsUrl,
+      '',
+      'Sol is currently available only on paid plans. You can also build with Terra and Luna - both are strong models.',
       '',
       'Best,',
       'Codex Community Events'
@@ -189,7 +195,9 @@ function buildSimplifiedClaimReceiptEmailContent(input: SimplifiedClaimReceiptEm
     html: [
       `<p>Hi ${escapedFirstName},</p>`,
       `<p>Your coupon for <strong>${escapedEventName}</strong> has been claimed successfully.</p>`,
-      `<p>Keep this email as a backup. You can open your coupon again here:<br><a href="${escapedCouponUrl}">Open your coupon</a></p>`,
+      `<p>You can open your coupon again here:<br><a href="${escapedCouponUrl}">Open your coupon</a></p>`,
+      `<p>After you apply your coupon, you can <a href="${creditsAnalyticsUrl}">view your credits in Codex Cloud</a>.</p>`,
+      '<p>Sol is currently available only on paid plans. You can also build with Terra and Luna - both are strong models.</p>',
       '<p>Best,<br>Codex Community Events</p>'
     ].join('\n'),
     notificationType: 'simplified_claim_receipt'

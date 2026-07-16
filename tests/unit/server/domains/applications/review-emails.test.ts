@@ -119,9 +119,15 @@ describe('application review email utilities', () => {
     const payload = send.mock.calls[0]?.[0]
     expect(payload?.text).toContain('Your coupon for Codex Spring has been claimed successfully.')
     expect(payload?.text).toContain('https://chatgpt.com/coupon/example')
+    expect(payload?.text).toContain('https://chatgpt.com/codex/cloud/settings/analytics#usage')
+    expect(payload?.text).toContain('Sol is currently available only on paid plans.')
+    expect(payload?.text).toContain('You can also build with Terra and Luna - both are strong models.')
     expect(payload?.html).toContain('Open your coupon')
     expect(payload?.html).toContain('https://chatgpt.com/coupon/example')
+    expect(payload?.html).toContain('view your credits in Codex Cloud')
+    expect(payload?.html).toContain('https://chatgpt.com/codex/cloud/settings/analytics#usage')
     expect(payload?.text).not.toContain('application')
+    expect(payload?.text).not.toContain('Keep this email as a backup')
   })
 
   test('returns failed delivery status when Cloudflare reports a provider error', async () => {
