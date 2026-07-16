@@ -1,11 +1,11 @@
 ---
 id: TASK-420.8
 title: Send correction emails for malformed coupon claims
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-07-16 20:25'
-updated_date: '2026-07-16 20:36'
+updated_date: '2026-07-16 20:42'
 labels: []
 dependencies: []
 modified_files:
@@ -30,7 +30,7 @@ Participants who claimed Vienna simplified rewards before the production URL rep
 - [x] #1 The correction email apologizes for the incorrect link, names the event, includes the exact corrected coupon, links to Codex Cloud usage, and explains the Sol paid-plan limitation while recommending Terra and Luna
 - [x] #2 The existing participant notification queue validates and delivers correction messages with its current retry behavior while receipt and application-review emails remain unchanged
 - [x] #3 The production recipient batch is reconciled against exactly the 26 pre-repair claimed reward IDs and excludes claims completed after the repair
-- [ ] #4 The production release succeeds and exactly 26 correction messages are accepted by the platform notification queue without exposing coupon values in logs or repository files
+- [x] #4 The production release succeeds and exactly 26 correction messages are accepted by the platform notification queue without exposing coupon values in logs or repository files
 <!-- AC:END -->
 
 ## Definition of Done
@@ -42,7 +42,7 @@ Participants who claimed Vienna simplified rewards before the production URL rep
 - [x] #5 Test gaps are documented when automation is not practical
 - [x] #6 Config and developer workflow docs were updated when setup changed
 - [x] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -61,4 +61,14 @@ Canonical docs remain unchanged because this is a recovery notification using th
 Validation passed: bun run lint; bun run typecheck; bun run test:unit (110 files, 775 tests); bun run test:integration (25 files, 360 tests); bun run test:bdd (51 standard plus 2 destructive scenarios); git diff --check.
 
 The secure pre-repair snapshot reconciles to exactly 26 unique claimed reward IDs, 26 unique active participant emails, and 26 canonical corrected coupon URLs for OpenAI Build Week Community Meetup - Vienna. The claim completed after the repair is absent from this fixed ID set.
+
+Production release v1.19.3 completed successfully in GitHub Actions run 29532771866. At 2026-07-16T20:40:18.515Z, one private batch containing exactly 26 correction messages was accepted by the production participant notification queue. The immediate queue metric was 26 messages; subsequent realtime metrics reached zero. Observed queue consumer invocations used production Worker version 31293e9c-c6f7-43b5-b0e4-d18684d6cc12 and completed with outcome ok, no exceptions, and no error logs. No participant emails or coupon values were written to repository files or console logs.
+
+Residual risk: platform and provider acceptance do not guarantee recipient inbox placement. No product follow-up is required unless delivery/bounce reports or participant support requests indicate an issue.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Released v1.19.3 with a dedicated simplified-claim correction email that apologizes, provides each participant's corrected coupon, links to Codex Cloud usage, and includes the requested Sol/Terra/Luna guidance. Reconciled the secure pre-repair snapshot to 26 unique active participants and excluded the later claim. Cloudflare accepted exactly 26 messages through the production platform queue; the backlog drained from 26 to zero and observed consumer invocations completed successfully without exceptions or error logs. Validation passed across lint, typecheck, 775 unit tests, 360 integration tests, and 53 BDD scenarios.
+<!-- SECTION:FINAL_SUMMARY:END -->
