@@ -50,8 +50,20 @@ export interface SimplifiedClaimReceiptEmailInput {
   couponUrl: string
 }
 
+export interface SimplifiedClaimCorrectionEmailInput {
+  notificationType: 'simplified_claim_correction'
+  creditCodeId: string
+  correctedAt: string
+  recipientEmail: string | null
+  recipientDisplayName?: string | null
+  eventName: string
+  couponUrl: string
+}
+
 export type ParticipantNotificationEmailInput
-  = ApplicationReviewDecisionEmailInput | SimplifiedClaimReceiptEmailInput
+  = ApplicationReviewDecisionEmailInput
+    | SimplifiedClaimReceiptEmailInput
+    | SimplifiedClaimCorrectionEmailInput
 
 export type ParticipantNotificationEmailDeliveryResult = {
   status: 'sent'
@@ -204,6 +216,43 @@ function buildSimplifiedClaimReceiptEmailContent(input: SimplifiedClaimReceiptEm
   }
 }
 
+function buildSimplifiedClaimCorrectionEmailContent(input: SimplifiedClaimCorrectionEmailInput) {
+  const creditsAnalyticsUrl = 'https://chatgpt.com/codex/cloud/settings/analytics#usage'
+  const firstName = toPreferredFirstName(input.recipientDisplayName)
+  const escapedFirstName = escapeHtml(firstName)
+  const escapedEventName = escapeHtml(input.eventName)
+  const escapedCouponUrl = escapeHtml(input.couponUrl)
+
+  return {
+    subject: `Correction: your coupon for ${input.eventName}`,
+    text: [
+      `Hi ${firstName},`,
+      '',
+      `The coupon link you received for ${input.eventName} was incorrect. We're sorry about that.`,
+      '',
+      'Here is the correct coupon:',
+      input.couponUrl,
+      '',
+      'After you apply your coupon, you can view your credits here:',
+      creditsAnalyticsUrl,
+      '',
+      'Sol is currently available only on paid plans. You can also build with Terra and Luna - both are strong models.',
+      '',
+      'Best,',
+      'Codex Community Events'
+    ].join('\n'),
+    html: [
+      `<p>Hi ${escapedFirstName},</p>`,
+      `<p>The coupon link you received for <strong>${escapedEventName}</strong> was incorrect. We're sorry about that.</p>`,
+      `<p>Here is the correct coupon:<br><a href="${escapedCouponUrl}">Use the correct coupon</a></p>`,
+      `<p>After you apply your coupon, you can <a href="${creditsAnalyticsUrl}">view your credits in Codex Cloud</a>.</p>`,
+      '<p>Sol is currently available only on paid plans. You can also build with Terra and Luna - both are strong models.</p>',
+      '<p>Best,<br>Codex Community Events</p>'
+    ].join('\n'),
+    notificationType: 'simplified_claim_correction'
+  }
+}
+
 export async function sendParticipantNotificationEmail(
   event: H3Event,
   input: ParticipantNotificationEmailInput,
@@ -247,16 +296,20 @@ export async function sendParticipantNotificationEmail(
     }
   }
 
-  const isSimplifiedClaimReceipt = 'notificationType' in input
-  const content = isSimplifiedClaimReceipt
-    ? buildSimplifiedClaimReceiptEmailContent(input)
+  const isSimplifiedClaimNotification = 'notificationType' in input
+  const content = isSimplifiedClaimNotification
+    ? input.notificationType === 'simplified_claim_receipt'
+      ? buildSimplifiedClaimReceiptEmailContent(input)
+      : buildSimplifiedClaimCorrectionEmailContent(input)
     : buildApplicationReviewEmailContent(
         input,
         resolveApplicationDashboardUrl(runtimeConfig, input.eventSlug)
       )
   const replyTo = getOutboundEmailReplyTo(runtimeConfig)
-  const emailKey = isSimplifiedClaimReceipt
-    ? `simplified-claim-receipt:${input.creditCodeId}:${input.claimedAt}`
+  const emailKey = isSimplifiedClaimNotification
+    ? input.notificationType === 'simplified_claim_receipt'
+      ? `simplified-claim-receipt:${input.creditCodeId}:${input.claimedAt}`
+      : `simplified-claim-correction:${input.creditCodeId}:${input.correctedAt}`
     : `application-review:${input.applicationId}:${input.decision}:${input.reviewedAt}`
   let response: Awaited<ReturnType<OutboundEmailBindingLike['send']>>
 

@@ -132,6 +132,56 @@ describe('application review email utilities', () => {
     expect(payload?.text).not.toContain('open your coupon again')
   })
 
+  test('sends a coupon correction with the replacement reward link', async () => {
+    const send = vi.fn(async () => ({
+      messageId: 'email_correction'
+    }))
+    const event = createEvent({
+      outboundEmail: {
+        binding: 'EMAIL',
+        fromEmail: 'notifications@example.com',
+        fromName: 'Codex Events'
+      }
+    })
+
+    const result = await sendParticipantNotificationEmail(event, {
+      notificationType: 'simplified_claim_correction',
+      creditCodeId: 'coupon_1',
+      correctedAt: '2026-07-16T18:37:00.000Z',
+      recipientEmail: 'participant@example.com',
+      recipientDisplayName: 'Ada Lovelace',
+      eventName: 'Codex Spring',
+      couponUrl: 'https://chatgpt.com/codex/p/EXAMPLE123456789'
+    }, {
+      emailBinding: { send }
+    })
+
+    expect(result).toEqual({
+      status: 'sent',
+      messageId: 'email_correction'
+    })
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({
+      to: 'participant@example.com',
+      subject: 'Correction: your coupon for Codex Spring',
+      headers: {
+        'X-Codex-Notification-Type': 'simplified_claim_correction',
+        'X-Codex-Email-Key': 'simplified-claim-correction:coupon_1:2026-07-16T18:37:00.000Z'
+      }
+    }))
+
+    const payload = send.mock.calls[0]?.[0]
+    expect(payload?.text).toContain('The coupon link you received for Codex Spring was incorrect.')
+    expect(payload?.text).toContain('We\'re sorry about that.')
+    expect(payload?.text).toContain('Here is the correct coupon:')
+    expect(payload?.text).toContain('https://chatgpt.com/codex/p/EXAMPLE123456789')
+    expect(payload?.text).toContain('https://chatgpt.com/codex/cloud/settings/analytics#usage')
+    expect(payload?.text).toContain('Sol is currently available only on paid plans.')
+    expect(payload?.text).toContain('You can also build with Terra and Luna - both are strong models.')
+    expect(payload?.html).toContain('Use the correct coupon')
+    expect(payload?.html).toContain('https://chatgpt.com/codex/p/EXAMPLE123456789')
+    expect(payload?.html).toContain('view your credits in Codex Cloud')
+  })
+
   test('returns failed delivery status when Cloudflare reports a provider error', async () => {
     const error = Object.assign(new Error('Too many requests'), {
       code: 'E_RATE_LIMIT_EXCEEDED'

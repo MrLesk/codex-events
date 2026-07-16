@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from 'vitest'
 
 import {
   buildApplicationReviewEmailQueueMessage,
+  buildSimplifiedClaimCorrectionEmailQueueMessage,
   buildSimplifiedClaimReceiptEmailQueueMessage,
   enqueueApplicationReviewEmailMessage,
   processApplicationReviewEmailQueueBatch,
@@ -121,6 +122,32 @@ describe('application review email queue utilities', () => {
       notificationType: 'simplified_claim_receipt',
       creditCodeId: 'coupon_1',
       couponUrl: 'https://chatgpt.com/coupon/example'
+    }), {
+      contentType: 'json'
+    })
+  })
+
+  test('enqueue accepts a simplified claim correction payload', async () => {
+    const send = vi.fn(async () => undefined)
+    const event = createEvent({
+      queueProducer: { send }
+    })
+
+    const result = await enqueueApplicationReviewEmailMessage(event, buildSimplifiedClaimCorrectionEmailQueueMessage({
+      creditCodeId: 'coupon_1',
+      correctedAt: '2026-07-16T18:37:00.000Z',
+      recipientEmail: 'participant@example.com',
+      recipientDisplayName: 'Ada Lovelace',
+      eventName: 'Codex Spring',
+      couponUrl: 'https://chatgpt.com/codex/p/EXAMPLE123456789'
+    }))
+
+    expect(result).toEqual({ status: 'enqueued' })
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({
+      notificationType: 'simplified_claim_correction',
+      creditCodeId: 'coupon_1',
+      correctedAt: '2026-07-16T18:37:00.000Z',
+      couponUrl: 'https://chatgpt.com/codex/p/EXAMPLE123456789'
     }), {
       contentType: 'json'
     })

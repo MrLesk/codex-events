@@ -6,6 +6,7 @@ import {
   sendParticipantNotificationEmail,
   type ApplicationReviewDecisionEmailInput,
   type ParticipantNotificationEmailDeliveryResult,
+  type SimplifiedClaimCorrectionEmailInput,
   type SimplifiedClaimReceiptEmailInput
 } from './review-emails'
 import { isRetryableOutboundEmailProviderError } from '#server/utils/outbound-email'
@@ -40,6 +41,12 @@ export const applicationReviewEmailQueueMessageSchema = z.union([
     notificationType: z.literal('simplified_claim_receipt'),
     creditCodeId: z.string().trim().min(1),
     claimedAt: z.string().trim().min(1),
+    couponUrl: z.string().trim().url().refine(value => value.startsWith('https://'))
+  }),
+  participantNotificationEmailQueueMessageSchema.extend({
+    notificationType: z.literal('simplified_claim_correction'),
+    creditCodeId: z.string().trim().min(1),
+    correctedAt: z.string().trim().min(1),
     couponUrl: z.string().trim().url().refine(value => value.startsWith('https://'))
   })
 ])
@@ -101,6 +108,17 @@ export function buildSimplifiedClaimReceiptEmailQueueMessage(
 ): ApplicationReviewEmailQueueMessage {
   return {
     notificationType: 'simplified_claim_receipt',
+    ...input,
+    recipientDisplayName: input.recipientDisplayName?.trim() || null,
+    enqueuedAt: new Date().toISOString()
+  }
+}
+
+export function buildSimplifiedClaimCorrectionEmailQueueMessage(
+  input: Omit<SimplifiedClaimCorrectionEmailInput, 'notificationType'>
+): ApplicationReviewEmailQueueMessage {
+  return {
+    notificationType: 'simplified_claim_correction',
     ...input,
     recipientDisplayName: input.recipientDisplayName?.trim() || null,
     enqueuedAt: new Date().toISOString()
