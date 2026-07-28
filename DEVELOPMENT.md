@@ -8,6 +8,7 @@ Required local tools:
 
 - Bun, matching the version pinned in `package.json`.
 - Backlog.md CLI, with the `backlog` command available on `PATH`.
+- Codex CLI for the default local sign-in flow.
 
 Install dependencies:
 
@@ -15,9 +16,27 @@ Install dependencies:
 bun install
 ```
 
-Copy `.env.example` to `.env` and provide local development values.
+For ordinary local development, run:
 
-Required Auth0 runtime variables:
+```bash
+bun run dev
+```
+
+When the required Auth0 variables are absent, the application uses the installed
+Codex CLI for local sign-in. Select **Sign in** in Codex Events, complete the
+Codex browser flow, and the application creates a local session from the
+ChatGPT email returned by Codex app-server. **Sign out** clears only the Codex
+Events session and does not sign the machine out of Codex.
+
+This development-only identity uses the normalized email as its identifier. A
+ChatGPT email change therefore creates a different local identity. The
+application does not read or store Codex access or refresh tokens.
+
+To exercise Auth0 locally or run the Auth0-backed BDD suite, copy `.env.example`
+to `.env` and provide the Auth0 development values below. When all four required
+Auth0 session variables are present, local development continues to use Auth0.
+
+Auth0-backed local runtime variables:
 
 ```bash
 NUXT_AUTH0_DOMAIN=your-tenant.auth0.com

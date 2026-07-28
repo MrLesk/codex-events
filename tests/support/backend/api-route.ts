@@ -31,6 +31,7 @@ export function createApiRouteTestHarness(options: {
   cloudflareEnv?: Record<string, unknown>
   runtimeConfig?: {
     firstPlatformAdminEmail?: string
+    localCodexAuth?: boolean
     auth0?: Record<string, unknown>
     database?: {
       binding?: string
@@ -193,6 +194,7 @@ export function createApiRouteTestHarness(options: {
     } as never
     event.context.runtimeConfig = {
       firstPlatformAdminEmail: options.runtimeConfig?.firstPlatformAdminEmail ?? '',
+      localCodexAuth: options.runtimeConfig?.localCodexAuth ?? false,
       auth0: {
         ...(options.runtimeConfig?.auth0 ?? {})
       },

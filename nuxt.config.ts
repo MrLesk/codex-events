@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import tailwindcss from '@tailwindcss/vite'
+import { shouldUseLocalCodexAuth } from './tools/local-auth/mode'
 
 const nuxtTemporaryDirectory = process.platform === 'win32'
   ? join(tmpdir(), 'codex-events-nuxt')
@@ -14,6 +15,11 @@ process.env.TMPDIR = nuxtTemporaryDirectory
 process.env.TMP = nuxtTemporaryDirectory
 process.env.TEMP = nuxtTemporaryDirectory
 
+const localCodexAuth = shouldUseLocalCodexAuth(
+  process.env.NODE_ENV !== 'production',
+  process.env
+)
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
 
@@ -21,6 +27,7 @@ export default defineNuxtConfig({
     '@nuxt/eslint',
     ['@auth0/auth0-nuxt', {
       routes: {
+        login: '/auth/sdk/login',
         logout: '/auth/sdk/logout'
       }
     }],
@@ -36,14 +43,15 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     firstPlatformAdminEmail: '',
+    localCodexAuth,
     auth0: {
-      domain: '',
-      clientId: '',
-      clientSecret: '',
+      domain: localCodexAuth ? 'local.invalid' : '',
+      clientId: localCodexAuth ? 'local-client' : '',
+      clientSecret: localCodexAuth ? 'local-client-secret' : '',
       managementDomain: '',
       managementClientId: '',
       managementClientSecret: '',
-      sessionSecret: '',
+      sessionSecret: localCodexAuth ? 'local-session-secret' : '',
       appBaseUrl: 'http://localhost:3000',
       databaseConnectionName: '',
       accountLinkChallengeSecret: ''
