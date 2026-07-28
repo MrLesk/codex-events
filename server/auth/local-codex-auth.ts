@@ -19,6 +19,7 @@ interface LocalCodexAuthDependencies {
 }
 
 const accountReadErrorMessage = 'Codex Events could not read your ChatGPT account. Run `codex login` and try again.'
+let activeCodexAuthentication: Promise<LocalCodexUser> | null = null
 
 function buildLocalCodexUser(email: string): LocalCodexUser | null {
   const normalizedEmail = email.trim().toLowerCase()
@@ -199,11 +200,26 @@ async function readCodexAccount(spawn: typeof nodeSpawn) {
   })
 }
 
-export async function authenticateWithCodex(
+async function startCodexAuthentication(
   dependencies: LocalCodexAuthDependencies = {}
 ) {
   const spawn = dependencies.spawn ?? (await import('node:child_process')).spawn
 
   await runCodexLogin(spawn)
   return await readCodexAccount(spawn)
+}
+
+export async function authenticateWithCodex(
+  dependencies: LocalCodexAuthDependencies = {}
+) {
+  const authentication = activeCodexAuthentication
+    ??= startCodexAuthentication(dependencies)
+
+  try {
+    return await authentication
+  } finally {
+    if (activeCodexAuthentication === authentication) {
+      activeCodexAuthentication = null
+    }
+  }
 }

@@ -148,6 +148,36 @@ describe('local Codex auth session', () => {
 })
 
 describe('Codex account authentication', () => {
+  test('shares a pending sign-in attempt and allows a later retry', async () => {
+    const availableProcesses = [
+      createProcess(),
+      createProcess(),
+      createProcess()
+    ]
+    const spawnedProcesses: ReturnType<typeof createProcess>[] = []
+    const spawn = vi.fn(() => {
+      const process = availableProcesses[spawnedProcesses.length]!
+
+      spawnedProcesses.push(process)
+      return process
+    })
+
+    const firstAttempt = authenticateWithCodex({ spawn: spawn as never })
+    const concurrentAttempt = authenticateWithCodex({ spawn: spawn as never })
+
+    for (const process of spawnedProcesses) {
+      process.emit('close', 1)
+    }
+
+    await Promise.allSettled([firstAttempt, concurrentAttempt])
+
+    const laterAttempt = authenticateWithCodex({ spawn: spawn as never })
+    spawnedProcesses.at(-1)!.emit('close', 1)
+    await Promise.allSettled([laterAttempt])
+
+    expect(spawn).toHaveBeenCalledTimes(2)
+  })
+
   test('runs Codex login and returns the app-server ChatGPT email', async () => {
     const {
       spawn,
