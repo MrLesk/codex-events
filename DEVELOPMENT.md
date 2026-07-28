@@ -32,9 +32,9 @@ This development-only identity uses the normalized email as its identifier. A
 ChatGPT email change therefore creates a different local identity. The
 application does not read or store Codex access or refresh tokens.
 
-To exercise Auth0 locally or run the Auth0-backed BDD suite, copy `.env.example`
-to `.env` and provide the Auth0 development values below. When all four required
-Auth0 session variables are present, local development continues to use Auth0.
+To exercise Auth0 locally, copy `.env.example` to `.env` and provide the Auth0
+development values below. When all four required Auth0 session variables are
+present, local development uses Auth0 instead of the Codex flow.
 
 Auth0-backed local runtime variables:
 
@@ -46,7 +46,6 @@ AUTH0_MGMT_CLIENT_ID=your-management-client-id
 AUTH0_MGMT_CLIENT_SECRET=your-management-client-secret
 NUXT_AUTH0_SESSION_SECRET=replace-with-generated-session-secret
 NUXT_AUTH0_APP_BASE_URL=http://localhost:3000
-NUXT_AUTH0_BDD_APP_BASE_URL=http://localhost:3100
 NUXT_AUTH0_DATABASE_CONNECTION_NAME=Username-Password-Authentication
 NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET=replace-with-generated-account-link-secret
 NUXT_FIRST_PLATFORM_ADMIN_EMAIL=
@@ -79,8 +78,8 @@ bun -e "import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).t
 
 Local Auth0 dashboard settings:
 
-- Allowed Callback URLs: `http://localhost:3000/auth/callback, http://localhost:3000/auth/link/callback, http://localhost:3000/auth/bdd-callback, http://localhost:3100/auth/callback, http://localhost:3100/auth/link/callback, http://localhost:3100/auth/bdd-callback`
-- Allowed Logout URLs: `http://localhost:3000, http://localhost:3100`
+- Allowed Callback URLs: `http://localhost:3000/auth/callback, http://localhost:3000/auth/link/callback`
+- Allowed Logout URLs: `http://localhost:3000`
 - If you enable GitHub social login, create an Auth0 GitHub social connection for the same application and configure the GitHub OAuth app callback URL as `https://<your-auth0-domain>/login/callback`.
 
 Local Auth0 runtime notes:
@@ -88,7 +87,6 @@ Local Auth0 runtime notes:
 - `NUXT_AUTH0_DOMAIN` is the Auth0 issuer host, not the app host. For deployed environments, use the Auth0 custom domain or tenant domain for that deployment, not the application hostname.
 - `AUTH0_MGMT_CLIENT_ID` and `AUTH0_MGMT_CLIENT_SECRET` belong to a Machine-to-Machine application authorized for the Auth0 Management API `update:users` scope. The local app uses them together with `AUTH0_MANAGEMENT_DOMAIN` to send another confirmation email during account registration. The Management API only answers on the canonical tenant domain, so keep `AUTH0_MANAGEMENT_DOMAIN` set to `your-tenant.eu.auth0.com` even when `NUXT_AUTH0_DOMAIN` is an Auth0 custom domain.
 - When `NUXT_AUTH0_APP_BASE_URL=http://localhost:3000`, the app intentionally uses a non-secure Auth0 session cookie for local development so Safari can persist the login callback session on `localhost`. HTTPS environments continue to use secure cookies.
-- The Auth0-backed BDD suite uses `NUXT_AUTH0_BDD_APP_BASE_URL` when set and otherwise defaults to `http://localhost:3100`, so that `bun run test:bdd` does not have to take over the normal local dev server on port 3000.
 
 Auth0 bootstrap automation:
 
@@ -252,26 +250,9 @@ The `test` and `production` GitHub environment variables and secrets, the Cloudf
 
 ### BDD test environment
 
-The Auth0-backed BDD workflow uses a dedicated GitHub `bdd` environment that is not a deployment target and is not covered by `OPERATOR.md`. It must provide these variables:
-
-- `AUTH0_MANAGEMENT_DOMAIN`
-- `NUXT_AUTH0_DATABASE_CONNECTION_NAME`
-
-and these secrets:
-
-- `NUXT_AUTH0_DOMAIN`
-- `NUXT_AUTH0_CLIENT_ID`
-- `NUXT_AUTH0_CLIENT_SECRET`
-- `AUTH0_MGMT_CLIENT_ID`
-- `AUTH0_MGMT_CLIENT_SECRET`
-- `E2E_PLATFORM_ADMIN_EMAIL`
-- `E2E_PLATFORM_ADMIN_PASSWORD`
-- `E2E_EVENT_ADMIN_EMAIL`
-- `E2E_EVENT_ADMIN_PASSWORD`
-- `E2E_JUDGE_EMAIL`
-- `E2E_JUDGE_PASSWORD`
-- `E2E_REGULAR_USER_EMAIL`
-- `E2E_REGULAR_USER_PASSWORD`
+The scheduled and manually dispatched BDD workflow is self-contained. It uses
+fixed local personas and an isolated D1 database, so it needs no GitHub
+environment, Auth0 tenant, persona credentials, or authentication secrets.
 
 ## Validation
 
@@ -291,7 +272,7 @@ bun run test:integration
 bun run test:bdd
 ```
 
-GitHub Actions does not run `bun run test:bdd` on every `push` or `pull_request`. The default CI workflow runs the fast gate (`lint`, `typecheck`, `test:unit`, `test:integration`), while the Auth0-backed BDD suite runs only through manual `workflow_dispatch` invocations and the nightly scheduled workflow run.
+GitHub Actions does not run `bun run test:bdd` on every `push` or `pull_request`. The default CI workflow runs the fast gate (`lint`, `typecheck`, `test:unit`, `test:integration`), while the BDD suite runs only through manual `workflow_dispatch` invocations and the nightly scheduled workflow run.
 
 Run the local full-lifecycle 1000-participant D1 validation with:
 
@@ -299,7 +280,7 @@ Run the local full-lifecycle 1000-participant D1 validation with:
 bun tools/load-tests/local-1000-participant-event.ts
 ```
 
-The runner uses the Auth0-backed BDD origin on `http://localhost:3100`, stores isolated local D1 state under `.wrangler/state-load-1000`, keeps registration and submission open for 10 real minutes each, and writes ignored JSON/Markdown reports under `.wrangler/load-test-reports/`. Use `--smoke` for a shorter 40-participant rehearsal.
+The runner uses fixed local persona sessions on `http://localhost:3100`, stores isolated local D1 state under `.wrangler/state-load-1000`, keeps registration and submission open for 10 real minutes each, and writes ignored JSON/Markdown reports under `.wrangler/load-test-reports/`. It does not need Auth0 or Codex sign-in. Use `--smoke` for a shorter 40-participant rehearsal.
 
 For a 10000-participant performance run, use a separate local D1 state root and enable repeated API probes plus Lighthouse:
 
@@ -328,23 +309,14 @@ bun run notices:generate
 
 ## End-to-End Tests
 
-The repository uses `Playwright` with `playwright-bdd`, so end-to-end coverage is authored as Gherkin feature files plus step definitions and generated into Playwright tests before execution.
-
-Authenticated end-to-end coverage also requires the Auth0 tenant automation variables from `.env.example`, including:
-
-```bash
-AUTH0_MANAGEMENT_DOMAIN=your-tenant.auth0.com
-AUTH0_MGMT_CLIENT_ID=your-management-client-id
-AUTH0_MGMT_CLIENT_SECRET=your-management-client-secret
-NUXT_AUTH0_DATABASE_CONNECTION_NAME=codex-events-e2e-users
-```
+The repository uses `Playwright` with `playwright-bdd`, so end-to-end coverage is authored as Gherkin feature files plus step definitions and generated into Playwright tests before execution. Authenticated coverage uses four fixed local personas and requires no environment setup.
 
 For platform fixture reset and authenticated browser coverage, the repository uses the local D1 binding declared in `wrangler.jsonc`. The bootstrap flow clears persisted local D1 data before recreating schema and fixtures through Cloudflare's local D1 runtime.
 
 The repository now treats D1 targets as four distinct environments:
 
 - local app development D1
-- local Auth0-backed BDD D1
+- local BDD D1
 - remote test D1
 - remote production D1
 
@@ -360,26 +332,26 @@ Run the generated end-to-end suite:
 bun run test:bdd
 ```
 
-This is the canonical local BDD command. It bootstraps the stable Auth0 personas, resets the persisted local Cloudflare D1 state, regenerates the Playwright output, and runs all public, authenticated, and authenticated-destructive BDD scenarios.
+This is the canonical local BDD command. It seeds four stable local personas, resets the persisted local Cloudflare D1 state, writes their local session cookies, regenerates the Playwright output, and runs all public, authenticated, and authenticated-destructive BDD scenarios.
 
 BDD source files live under `tests/bdd/`: feature files in `tests/bdd/features`, matching step definitions in `tests/bdd/steps`, and authenticated bootstrap support in `tests/bdd/bootstrap.ts` plus `tests/bdd/support`. Generated files are written under `.features-gen/` and should not be edited by hand.
 
 By default, local app development uses `.wrangler/state` and authenticated BDD uses `.wrangler/state-bdd`. You can override them independently with `LOCAL_DEV_D1_STATE_ROOT` and `LOCAL_BDD_D1_STATE_ROOT`. BDD does not honor a generic `LOCAL_D1_STATE_ROOT` override that points anywhere else, and it fails fast if the BDD root matches the normal local app root.
 
-By default, the Auth0-backed BDD suite runs the local app on `http://localhost:3100`. Override that origin with `NUXT_AUTH0_BDD_APP_BASE_URL` when you need a different dedicated test port. Make sure Auth0 allows callbacks and logouts for whichever BDD origin you choose.
+By default, the BDD suite runs the local app on `http://localhost:3100`. Override that origin with `BDD_BASE_URL` when you need a different dedicated test port.
 
 Examples:
 
 ```bash
 LOCAL_BDD_D1_STATE_ROOT=.wrangler/state-bdd-alt bun run test:bdd
-NUXT_AUTH0_BDD_APP_BASE_URL=http://localhost:3200 bun run test:bdd
+BDD_BASE_URL=http://localhost:3200 bun run test:bdd
 LOCAL_DEV_D1_STATE_ROOT=.wrangler/state-dev-alt bun run dev
 LOCAL_BDD_D1_STATE_ROOT=.wrangler/state-bdd-alt bun tests/bdd/bootstrap.ts
 ```
 
-The bootstrap flow clears the selected persisted local Cloudflare state, reapplies migrations, reseeds the fixture dataset, clears `tests/bdd/.auth/`, and then performs fresh real Auth0 logins for the stable personas before saving new storage-state artifacts.
+The bootstrap flow clears the selected persisted local Cloudflare state, reapplies migrations, reseeds the fixture dataset, clears `tests/bdd/.auth/`, and writes fresh storage-state artifacts containing the existing local-development email cookie.
 
-The authenticated Playwright setup project writes reusable session-state artifacts under `tests/bdd/.auth/`. Those files are local test artifacts and are gitignored.
+The four personas are `platform_admin`, `event_admin`, `judge`, and `regular_user`. Their identity subjects are fixed in source, while platform and event permissions come only from the seeded D1 rows. Reusable session-state artifacts are written under `tests/bdd/.auth/`; these local files are gitignored.
 
 The authenticated BDD suite now covers the backend workflow surface delivered by `TASK-3.5` through `TASK-3.9` and the Milestone 1 UI flows delivered by `TASK-4.*`, including actor/session reads, public discovery, admin configuration, application and team formation, submissions, judging, shortlist and winners, prize redemption, audit access, and destructive account deletion.
 

@@ -57,7 +57,7 @@ Read these before making product or architecture decisions:
 - [docs/tech-stack.md](docs/tech-stack.md): application stack and
   infrastructure choices.
 - [docs/testing-strategy.md](docs/testing-strategy.md): validation layers,
-  Auth0-backed end-to-end strategy, and fixture rules.
+  local BDD personas, and fixture rules.
 
 If code and docs disagree during this design phase, treat the docs as the
 current source of truth and flag the mismatch.

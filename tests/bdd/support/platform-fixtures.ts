@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
-import type { ProvisionedStablePersona } from './personas.ts'
+import type { StablePersona } from './personas.ts'
 
 import { resolveLocalBddD1StateRoot } from './local-d1-state.ts'
 
@@ -165,7 +165,7 @@ export const platformFixtureIds = {
   outcomesMemberRedemptionPrizeId: fixtureOutcomesMemberRedemptionPrizeId
 } as const
 
-const personaUserIds: Record<ProvisionedStablePersona['key'], string> = {
+const personaUserIds: Record<StablePersona['key'], string> = {
   platform_admin: 'user_platform_admin',
   event_admin: 'user_event_admin',
   judge: 'user_judge',
@@ -208,7 +208,7 @@ const fixtureResetStatements = [
   'delete from users'
 ] as const
 
-function userTuple(persona: ProvisionedStablePersona) {
+function userTuple(persona: StablePersona) {
   return `(${[
     sqlLiteral(personaUserIds[persona.key]),
     sqlLiteral(persona.auth0Subject),
@@ -226,7 +226,7 @@ function userTuple(persona: ProvisionedStablePersona) {
   ].join(', ')})`
 }
 
-function buildFixtureSql(personas: ProvisionedStablePersona[]) {
+function buildFixtureSql(personas: StablePersona[]) {
   const platformAdminId = personaUserIds.platform_admin
   const eventAdminId = personaUserIds.event_admin
   const judgeId = personaUserIds.judge
@@ -1407,7 +1407,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
   ].map(shiftFixtureIsoLiterals).join(';\n')
 }
 
-export function buildPlatformFixtureResetSql(personas: ProvisionedStablePersona[]) {
+export function buildPlatformFixtureResetSql(personas: StablePersona[]) {
   return buildFixtureSql(personas)
 }
 
@@ -1478,7 +1478,7 @@ function applyFixtureSql(environment: NodeJS.ProcessEnv, fixtureSql: string) {
 }
 
 export async function resetPlatformFixtures(
-  personas: ProvisionedStablePersona[],
+  personas: StablePersona[],
   environment: NodeJS.ProcessEnv = process.env
 ) {
   const localPlatformPersistPath = resolveLocalPlatformPersistPath(environment)

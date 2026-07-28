@@ -1,5 +1,3 @@
-import 'dotenv/config'
-
 import { defineConfig, devices } from '@playwright/test'
 import { defineBddConfig } from 'playwright-bdd'
 
@@ -65,7 +63,7 @@ export default defineConfig({
     }
   ],
   webServer: {
-    command: `LOCAL_BDD_D1_STATE_ROOT=${localBddD1StateRootShellExpression} LOCAL_D1_STATE_ROOT=${localBddD1StateRootShellExpression} bun run db:local:guard && LOCAL_BDD_D1_STATE_ROOT=${localBddD1StateRootShellExpression} LOCAL_D1_STATE_ROOT=${localBddD1StateRootShellExpression} NUXT_AUTH0_APP_BASE_URL=${bddBaseUrl} nuxt dev --host 0.0.0.0 --port ${bddBaseUrlPort}`,
+    command: `LOCAL_BDD_D1_STATE_ROOT=${localBddD1StateRootShellExpression} LOCAL_D1_STATE_ROOT=${localBddD1StateRootShellExpression} bun run db:local:guard && LOCAL_BDD_D1_STATE_ROOT=${localBddD1StateRootShellExpression} LOCAL_D1_STATE_ROOT=${localBddD1StateRootShellExpression} NUXT_AUTH0_DOMAIN= NUXT_AUTH0_CLIENT_ID= NUXT_AUTH0_CLIENT_SECRET= NUXT_AUTH0_SESSION_SECRET= NUXT_AUTH0_APP_BASE_URL=${bddBaseUrl} nuxt dev --dotenv /dev/null --host 0.0.0.0 --port ${bddBaseUrlPort}`,
     url: bddBaseUrl,
     reuseExistingServer: false,
     timeout: 120000

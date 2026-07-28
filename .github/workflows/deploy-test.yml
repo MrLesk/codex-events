@@ -202,90 +202,24 @@ jobs:
         if: ${{ steps.test_deploy_config.outputs.enabled == 'true' }}
         run: bun run deploy:queue-consumers:test
 
-  auth0-bdd-suite:
+  bdd-suite:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
     needs: backend-checks
     runs-on: ubuntu-latest
-    environment:
-      name: bdd
     env:
       CI: true
-      NUXT_AUTH0_DOMAIN: ${{ secrets.NUXT_AUTH0_DOMAIN }}
-      NUXT_AUTH0_CLIENT_ID: ${{ secrets.NUXT_AUTH0_CLIENT_ID }}
-      NUXT_AUTH0_CLIENT_SECRET: ${{ secrets.NUXT_AUTH0_CLIENT_SECRET }}
-      NUXT_AUTH0_SESSION_SECRET: ${{ secrets.NUXT_AUTH0_SESSION_SECRET }}
-      NUXT_AUTH0_MANAGEMENT_CLIENT_ID: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
-      NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
-      NUXT_AUTH0_APP_BASE_URL: http://localhost:3000
-      NUXT_AUTH0_DATABASE_CONNECTION_NAME: ${{ vars.NUXT_AUTH0_DATABASE_CONNECTION_NAME }}
       NUXT_DATABASE_BINDING: DB
-      AUTH0_MANAGEMENT_DOMAIN: ${{ vars.AUTH0_MANAGEMENT_DOMAIN }}
-      AUTH0_MGMT_CLIENT_ID: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
-      AUTH0_MGMT_CLIENT_SECRET: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
-      E2E_PLATFORM_ADMIN_EMAIL: ${{ secrets.E2E_PLATFORM_ADMIN_EMAIL }}
-      E2E_PLATFORM_ADMIN_PASSWORD: ${{ secrets.E2E_PLATFORM_ADMIN_PASSWORD }}
-      E2E_EVENT_ADMIN_EMAIL: ${{ secrets.E2E_EVENT_ADMIN_EMAIL }}
-      E2E_EVENT_ADMIN_PASSWORD: ${{ secrets.E2E_EVENT_ADMIN_PASSWORD }}
-      E2E_JUDGE_EMAIL: ${{ secrets.E2E_JUDGE_EMAIL }}
-      E2E_JUDGE_PASSWORD: ${{ secrets.E2E_JUDGE_PASSWORD }}
-      E2E_REGULAR_USER_EMAIL: ${{ secrets.E2E_REGULAR_USER_EMAIL }}
-      E2E_REGULAR_USER_PASSWORD: ${{ secrets.E2E_REGULAR_USER_PASSWORD }}
 
     steps:
-      - name: Check Auth0-backed BDD configuration
-        id: auth0_bdd_config
-        run: |
-          set -euo pipefail
-          missing=()
-          for name in \
-            NUXT_AUTH0_DOMAIN \
-            NUXT_AUTH0_CLIENT_ID \
-            NUXT_AUTH0_CLIENT_SECRET \
-            NUXT_AUTH0_DATABASE_CONNECTION_NAME \
-            AUTH0_MANAGEMENT_DOMAIN \
-            AUTH0_MGMT_CLIENT_ID \
-            AUTH0_MGMT_CLIENT_SECRET \
-            E2E_PLATFORM_ADMIN_EMAIL \
-            E2E_PLATFORM_ADMIN_PASSWORD \
-            E2E_EVENT_ADMIN_EMAIL \
-            E2E_EVENT_ADMIN_PASSWORD \
-            E2E_JUDGE_EMAIL \
-            E2E_JUDGE_PASSWORD \
-            E2E_REGULAR_USER_EMAIL \
-            E2E_REGULAR_USER_PASSWORD
-          do
-            if [ -z "${!name:-}" ]; then
-              missing+=("$name")
-            fi
-          done
-
-          if [ "${#missing[@]}" -gt 0 ]; then
-            printf 'enabled=false\n' >> "$GITHUB_OUTPUT"
-            printf '::notice::Auth0-backed BDD suite skipped because required environment values are missing: %s.\n' "$(IFS=', '; echo "${missing[*]}")"
-            exit 0
-          fi
-
-          printf 'enabled=true\n' >> "$GITHUB_OUTPUT"
-
       - name: Checkout
-        if: ${{ steps.auth0_bdd_config.outputs.enabled == 'true' }}
         uses: actions/checkout@v6.0.2
 
       - name: Install bun
-        if: ${{ steps.auth0_bdd_config.outputs.enabled == 'true' }}
         uses: oven-sh/setup-bun@v2.2.0
         with:
           bun-version: 1.3.11
 
-      - name: Resolve Auth0-backed BDD generated secrets
-        if: ${{ steps.auth0_bdd_config.outputs.enabled == 'true' }}
-        run: |
-          session_secret="$(bun -e "import { resolveAuth0SessionSecret } from './tools/auth0/generated-secrets.ts'; console.log(resolveAuth0SessionSecret(process.env));")"
-          echo "::add-mask::$session_secret"
-          printf 'NUXT_AUTH0_SESSION_SECRET=%s\n' "$session_secret" >> "$GITHUB_ENV"
-
       - name: Cache Bun install cache
-        if: ${{ steps.auth0_bdd_config.outputs.enabled == 'true' }}
         uses: actions/cache@v5.0.4
         with:
           path: ~/.bun/install/cache
@@ -294,11 +228,9 @@ jobs:
             ${{ runner.os }}-bun-install-
 
       - name: Install dependencies
-        if: ${{ steps.auth0_bdd_config.outputs.enabled == 'true' }}
         run: bun ci
 
       - name: Cache Playwright Chromium
-        if: ${{ steps.auth0_bdd_config.outputs.enabled == 'true' }}
         uses: actions/cache@v5.0.4
         with:
           path: ~/.cache/ms-playwright
@@ -307,9 +239,7 @@ jobs:
             ${{ runner.os }}-playwright-
 
       - name: Install Playwright Chromium
-        if: ${{ steps.auth0_bdd_config.outputs.enabled == 'true' }}
         run: bunx playwright install --with-deps chromium
 
-      - name: Auth0-backed BDD suite
-        if: ${{ steps.auth0_bdd_config.outputs.enabled == 'true' }}
+      - name: BDD suite
         run: bun run test:bdd

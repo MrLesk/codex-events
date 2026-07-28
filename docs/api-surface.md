@@ -75,8 +75,8 @@ It translates the canonical product model into stable backend domains, operation
 ### Testing Expectations
 
 - Shared backend behavior requires unit and integration coverage.
-- Actor-facing workflows require Auth0-backed end-to-end coverage in addition to unit and integration coverage.
-- End-to-end coverage uses the documented stable personas and real Auth0 login flows.
+- Actor-facing workflows require authenticated end-to-end coverage in addition to unit and integration coverage.
+- End-to-end coverage uses the documented stable local personas and D1-owned authorization.
 - API end-to-end tests do not use fake JWTs, bypass headers, or Auth0-role shortcuts.
 
 ## Domain Map
@@ -247,7 +247,7 @@ Operations:
 Testing:
 - Unit: platform-admin grant and removal invariants and candidate ordering or filtering rules.
 - Integration: role enforcement, active-user filtering, promotion and removal persistence, assignment normalization, preserved event role assignments on removal, and audit creation.
-- End-to-end: Auth0-backed platform-admin management flows.
+- End-to-end: authenticated platform-admin management flows.
 
 ## Event Organizers
 
@@ -717,7 +717,7 @@ Testing:
 
 ## Test Coverage Matrix
 
-| Domain | Unit | Integration | Auth0-backed End-to-End |
+| Domain | Unit | Integration | Authenticated End-to-End |
 | --- | --- | --- | --- |
 | Session | Required | Required | Required |
 | Legal | Required | Required | Not required |

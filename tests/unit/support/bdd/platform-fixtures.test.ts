@@ -1,45 +1,11 @@
 import { describe, expect, test } from 'vitest'
 
+import { getStablePersonas } from '../../../bdd/support/personas'
 import { buildPlatformFixtureResetSql } from '../../../bdd/support/platform-fixtures'
-
-const personas = [
-  {
-    key: 'platform_admin',
-    email: 'platform-admin@example.com',
-    password: 'password-1',
-    displayName: 'Platform Admin',
-    nickname: 'platform-admin',
-    auth0Subject: 'auth0|platform-admin'
-  },
-  {
-    key: 'event_admin',
-    email: 'event-admin@example.com',
-    password: 'password-2',
-    displayName: 'Event Admin',
-    nickname: 'event-admin',
-    auth0Subject: 'auth0|event-admin'
-  },
-  {
-    key: 'judge',
-    email: 'judge@example.com',
-    password: 'password-3',
-    displayName: 'Judge Persona',
-    nickname: 'judge-persona',
-    auth0Subject: 'auth0|judge'
-  },
-  {
-    key: 'regular_user',
-    email: 'regular@example.com',
-    password: 'password-4',
-    displayName: 'Regular User',
-    nickname: 'regular-user',
-    auth0Subject: 'auth0|regular-user'
-  }
-] as const
 
 describe('platform fixture reset sql', () => {
   test('recreates the canonical fixture dataset deterministically', () => {
-    const sql = buildPlatformFixtureResetSql([...personas])
+    const sql = buildPlatformFixtureResetSql(getStablePersonas())
 
     expect(sql).toContain('delete from users')
     expect(sql).toContain('insert into users')
@@ -58,5 +24,9 @@ describe('platform fixture reset sql', () => {
     expect(sql).toContain('draft-managed-event')
     expect(sql).toContain('https://luma.com/a4i7qtbo')
     expect(sql).toContain('set luma_event_url')
+    expect(sql).toContain('local-chatgpt|platform-admin@bdd.codex-events.test')
+    expect(sql).toContain('local-chatgpt|event-admin@bdd.codex-events.test')
+    expect(sql).toContain('local-chatgpt|judge@bdd.codex-events.test')
+    expect(sql).toContain('local-chatgpt|regular-user@bdd.codex-events.test')
   })
 })

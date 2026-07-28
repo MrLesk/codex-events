@@ -42,14 +42,15 @@ function createAuth0BootstrapEnvironment(overrides: Record<string, string> = {})
 }
 
 describe('auth0 bootstrap config', () => {
-  test('infers the dedicated local BDD app base url for localhost development', () => {
+  test('keeps localhost Auth0 configuration limited to the application origin', () => {
     const config = resolveConfig(createAuth0BootstrapEnvironment({
       AUTH0_APP_BASE_URL: 'http://localhost:3000',
+      AUTH0_BDD_APP_BASE_URL: 'http://localhost:3100',
       AUTH0_LOGIN_URI: 'https://test.codex-events.com/auth/login'
     }))
 
     expect(config.appBaseUrl).toBe('http://localhost:3000')
-    expect(config.bddAppBaseUrl).toBe('http://localhost:3100')
+    expect(config).not.toHaveProperty('bddAppBaseUrl')
   })
 
   test('infers the canonical branding defaults from an https app base url', () => {
@@ -57,7 +58,6 @@ describe('auth0 bootstrap config', () => {
 
     expect(config.appDisplayName).toBe('Codex Events')
     expect(config.databaseConnectionName).toBe('Username-Password-Authentication')
-    expect(config.bddAppBaseUrl).toBe('')
     expect(config.loginUri).toBe('https://test.codex-events.com/auth/login')
     expect(config.brandingPrimaryColor).toBe('#030213')
     expect(config.brandingPrimaryButtonLabelColor).toBe('#ffffff')
@@ -106,28 +106,21 @@ describe('auth0 bootstrap config', () => {
     expect(resolvePrimaryButtonLabelColor('#f3f3f5')).toBe('#030213')
   })
 
-  test('builds the required callback, logout, and origin URLs for local app and BDD origins', () => {
+  test('builds the required callback, logout, and origin URLs for the application origin', () => {
     const urls = buildRequiredClientUrls({
-      appBaseUrl: 'http://localhost:3000',
-      bddAppBaseUrl: 'http://localhost:3100'
+      appBaseUrl: 'http://localhost:3000'
     })
 
     expect(urls).toEqual({
       callbacks: [
-        'http://localhost:3000/auth/bdd-callback',
         'http://localhost:3000/auth/callback',
-        'http://localhost:3000/auth/link/callback',
-        'http://localhost:3100/auth/bdd-callback',
-        'http://localhost:3100/auth/callback',
-        'http://localhost:3100/auth/link/callback'
+        'http://localhost:3000/auth/link/callback'
       ],
       logoutUrls: [
-        'http://localhost:3000',
-        'http://localhost:3100'
+        'http://localhost:3000'
       ],
       origins: [
-        'http://localhost:3000',
-        'http://localhost:3100'
+        'http://localhost:3000'
       ]
     })
   })

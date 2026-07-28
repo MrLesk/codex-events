@@ -8,7 +8,7 @@ Feature: Public event discovery
     And the public event card for "E2E Fixture Event" should link to "/events/e2e-fixture-event"
 
   Scenario: Viewing the public event list with the saved platform-admin session
-    Given the saved "platform_admin" Auth0 session state exists
+    Given the saved "platform_admin" local session state exists
     When I open the public events page with the saved "platform_admin" session
     Then I should see the public event titled "E2E Fixture Event"
     Then I should not see the public event titled "Draft Managed Event"

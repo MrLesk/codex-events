@@ -1,6 +1,6 @@
 import { mkdirSync, rmSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { z } from 'zod'
 
@@ -18,100 +18,53 @@ export type StablePersonaKey = (typeof stablePersonaKeys)[number]
 export interface StablePersona {
   key: StablePersonaKey
   email: string
-  password: string
   displayName: string
   nickname: string
-}
-
-export interface ProvisionedStablePersona extends StablePersona {
   auth0Subject: string
 }
 
 const bddBaseUrlEnvironmentSchema = z.object({
-  NUXT_AUTH0_APP_BASE_URL: z.string().url().optional(),
-  NUXT_AUTH0_BDD_APP_BASE_URL: z.string().url().optional()
+  BDD_BASE_URL: z.string().url().optional()
 })
 
-const stablePersonaEnvironmentSchema = bddBaseUrlEnvironmentSchema.extend({
-  E2E_PLATFORM_ADMIN_EMAIL: z.string().email(),
-  E2E_PLATFORM_ADMIN_PASSWORD: z.string().min(1),
-  E2E_EVENT_ADMIN_EMAIL: z.string().email(),
-  E2E_EVENT_ADMIN_PASSWORD: z.string().min(1),
-  E2E_JUDGE_EMAIL: z.string().email(),
-  E2E_JUDGE_PASSWORD: z.string().min(1),
-  E2E_REGULAR_USER_EMAIL: z.string().email(),
-  E2E_REGULAR_USER_PASSWORD: z.string().min(1)
-})
+const stablePersonas: StablePersona[] = [
+  {
+    key: 'platform_admin',
+    email: 'platform-admin@bdd.codex-events.test',
+    displayName: 'Platform Admin',
+    nickname: 'platform-admin',
+    auth0Subject: 'local-chatgpt|platform-admin@bdd.codex-events.test'
+  },
+  {
+    key: 'event_admin',
+    email: 'event-admin@bdd.codex-events.test',
+    displayName: 'Event Admin',
+    nickname: 'event-admin',
+    auth0Subject: 'local-chatgpt|event-admin@bdd.codex-events.test'
+  },
+  {
+    key: 'judge',
+    email: 'judge@bdd.codex-events.test',
+    displayName: 'Judge Persona',
+    nickname: 'judge-persona',
+    auth0Subject: 'local-chatgpt|judge@bdd.codex-events.test'
+  },
+  {
+    key: 'regular_user',
+    email: 'regular-user@bdd.codex-events.test',
+    displayName: 'Regular User',
+    nickname: 'regular-user',
+    auth0Subject: 'local-chatgpt|regular-user@bdd.codex-events.test'
+  }
+]
 
-const provisioningEnvironmentSchema = stablePersonaEnvironmentSchema.extend({
-  NUXT_AUTH0_CLIENT_ID: z.string().min(1),
-  NUXT_AUTH0_DATABASE_CONNECTION_NAME: z.string().min(1),
-  AUTH0_MANAGEMENT_DOMAIN: z.string().min(1),
-  AUTH0_MGMT_CLIENT_ID: z.string().min(1),
-  AUTH0_MGMT_CLIENT_SECRET: z.string().min(1)
-})
-
-export type StablePersonaEnvironment = z.infer<typeof stablePersonaEnvironmentSchema>
-export type ProvisioningEnvironment = z.infer<typeof provisioningEnvironmentSchema>
-
-export function loadBddBaseUrlEnvironment(environment: NodeJS.ProcessEnv = process.env) {
-  return bddBaseUrlEnvironmentSchema.parse(environment)
-}
-
-export function loadStablePersonaEnvironment(environment: NodeJS.ProcessEnv = process.env) {
-  return stablePersonaEnvironmentSchema.parse(environment)
-}
-
-export function loadProvisioningEnvironment(environment: NodeJS.ProcessEnv = process.env) {
-  return provisioningEnvironmentSchema.parse(environment)
-}
-
-export function getStablePersonas(environment: NodeJS.ProcessEnv = process.env): StablePersona[] {
-  const config = loadStablePersonaEnvironment(environment)
-
-  return [
-    {
-      key: 'platform_admin',
-      email: config.E2E_PLATFORM_ADMIN_EMAIL,
-      password: config.E2E_PLATFORM_ADMIN_PASSWORD,
-      displayName: 'Platform Admin',
-      nickname: 'platform-admin'
-    },
-    {
-      key: 'event_admin',
-      email: config.E2E_EVENT_ADMIN_EMAIL,
-      password: config.E2E_EVENT_ADMIN_PASSWORD,
-      displayName: 'Event Admin',
-      nickname: 'event-admin'
-    },
-    {
-      key: 'judge',
-      email: config.E2E_JUDGE_EMAIL,
-      password: config.E2E_JUDGE_PASSWORD,
-      displayName: 'Judge Persona',
-      nickname: 'judge-persona'
-    },
-    {
-      key: 'regular_user',
-      email: config.E2E_REGULAR_USER_EMAIL,
-      password: config.E2E_REGULAR_USER_PASSWORD,
-      displayName: 'Regular User',
-      nickname: 'regular-user'
-    }
-  ]
+export function getStablePersonas(): StablePersona[] {
+  return stablePersonas.map(persona => ({ ...persona }))
 }
 
 export function getBaseUrl(environment: NodeJS.ProcessEnv = process.env) {
-  const config = loadBddBaseUrlEnvironment(environment)
-  return config.NUXT_AUTH0_BDD_APP_BASE_URL ?? defaultLocalBddBaseUrl
-}
-
-export function getAuth0ConnectionName(environment: NodeJS.ProcessEnv = process.env) {
-  return loadProvisioningEnvironment(environment).NUXT_AUTH0_DATABASE_CONNECTION_NAME
-}
-
-export function getAuth0ClientId(environment: NodeJS.ProcessEnv = process.env) {
-  return loadProvisioningEnvironment(environment).NUXT_AUTH0_CLIENT_ID
+  const config = bddBaseUrlEnvironmentSchema.parse(environment)
+  return config.BDD_BASE_URL ?? defaultLocalBddBaseUrl
 }
 
 export function getAuthArtifactDirectory() {

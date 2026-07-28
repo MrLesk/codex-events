@@ -50,7 +50,7 @@ When('the saved {string} session creates a managed event named {string}', async 
         eventType: 'hackathon',
         name,
         slug: `bdd-managed-event-${now}`,
-        description: 'Event created by TASK-3.9 Auth0-backed release-gate coverage.',
+        description: 'Event created by TASK-3.9 authenticated release-gate coverage.',
         agendaItems: [],
         city: 'Vienna',
         country: 'Austria',

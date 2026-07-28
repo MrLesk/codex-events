@@ -1,8 +1,8 @@
 Feature: Authenticated session foundation
-  Stable Auth0 personas can reuse a saved authenticated session across browser and request contexts.
+  Stable local personas can reuse a saved authenticated session across browser and request contexts.
 
-  Scenario Outline: Reusing a saved Auth0 session
-    Given the saved "<persona>" Auth0 session state exists
+  Scenario Outline: Reusing a saved local session
+    Given the saved "<persona>" local session state exists
     When I open my events with the saved "<persona>" session
     Then I should see the my events heading
     And the saved "<persona>" session should authenticate a request context to "/account"

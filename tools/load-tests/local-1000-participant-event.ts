@@ -1,19 +1,17 @@
-import 'dotenv/config'
-
 import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { chromium, expect, request, type APIRequestContext, type Browser, type Page } from '@playwright/test'
 
-import { ensureStableAuth0Personas } from '../../tests/bdd/support/auth0-management.ts'
 import {
+  getStablePersonas,
   resetAuthArtifactDirectory,
   storageStatePathForPersona,
-  type ProvisionedStablePersona,
+  type StablePersona,
   type StablePersonaKey
 } from '../../tests/bdd/support/personas.ts'
-import { loginAndPersistStorageState } from '../../tests/bdd/support/session-state.ts'
+import { writePersonaStorageState } from '../../tests/bdd/support/session-state.ts'
 
 type LoadRunOptions = {
   participantCount: number
@@ -448,7 +446,7 @@ function registrationDetails(index: number, teamIntent: 'solo' | 'team' | 'unkno
   })
 }
 
-function buildBaseSeedSql(personas: ProvisionedStablePersona[], options: LoadRunOptions) {
+function buildBaseSeedSql(personas: StablePersona[], options: LoadRunOptions) {
   const now = new Date()
   const futureRegistrationOpen = addMinutes(now, 5)
   const futureRegistrationClose = addMinutes(now, 20)
@@ -683,14 +681,15 @@ function buildBaseSeedSql(personas: ProvisionedStablePersona[], options: LoadRun
     'id',
     'event_id',
     'name',
-    'description',
+    'short_description',
+    'full_description',
     'display_order',
     'created_at'
   ], [
-    ['load_track_agents', loadEventId, 'Agents', 'Projects centered on agentic workflows.', 1, createdAt],
-    ['load_track_data', loadEventId, 'Data', 'Projects centered on data workflows.', 2, createdAt],
-    ['load_track_ops', loadEventId, 'Operations', 'Projects improving event operations.', 3, createdAt],
-    ['load_track_creative', loadEventId, 'Creative', 'Creative tools and interfaces.', 4, createdAt]
+    ['load_track_agents', loadEventId, 'Agents', 'Agentic workflows.', 'Projects centered on agentic workflows.', 1, createdAt],
+    ['load_track_data', loadEventId, 'Data', 'Data workflows.', 'Projects centered on data workflows.', 2, createdAt],
+    ['load_track_ops', loadEventId, 'Operations', 'Event operations.', 'Projects improving event operations.', 3, createdAt],
+    ['load_track_creative', loadEventId, 'Creative', 'Creative tools.', 'Creative tools and interfaces.', 4, createdAt]
   ])
 
   pushInsert(statements, 'evaluation_criteria', [
@@ -1330,8 +1329,11 @@ function localD1Environment(options: LoadRunOptions) {
   return {
     ...process.env,
     LOCAL_D1_STATE_ROOT: options.stateRoot,
+    NUXT_AUTH0_DOMAIN: '',
+    NUXT_AUTH0_CLIENT_ID: '',
+    NUXT_AUTH0_CLIENT_SECRET: '',
+    NUXT_AUTH0_SESSION_SECRET: '',
     NUXT_AUTH0_APP_BASE_URL: options.baseUrl,
-    NUXT_AUTH0_BDD_APP_BASE_URL: options.baseUrl,
     CI: '1'
   }
 }
@@ -1357,6 +1359,7 @@ function applyLocalD1Migrations(options: LoadRunOptions) {
     {
       cwd: process.cwd(),
       env: localD1Environment(options),
+      maxBuffer: 10 * 1024 * 1024,
       stdio: 'pipe'
     }
   )
@@ -1390,6 +1393,7 @@ function executeLocalD1Sql(options: LoadRunOptions, sql: string, label: string) 
         execFileSync('bun', args, {
           cwd: process.cwd(),
           env: localD1Environment(options),
+          maxBuffer: 10 * 1024 * 1024,
           stdio: 'pipe'
         })
         return
@@ -1508,7 +1512,7 @@ async function startLocalServer(options: LoadRunOptions) {
   const effectivePort = port || '3000'
   const child = spawn(
     join(process.cwd(), 'node_modules/.bin/nuxt'),
-    ['dev', '--host', hostname, '--port', effectivePort],
+    ['dev', '--dotenv', '/dev/null', '--host', hostname, '--port', effectivePort],
     {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: localD1Environment(options)
@@ -1532,23 +1536,6 @@ async function startLocalServer(options: LoadRunOptions) {
 
   child.kill('SIGTERM')
   throw new Error(`Timed out waiting for local Nuxt dev server at ${options.baseUrl}.${readCapturedOutput()}`)
-}
-
-async function ensurePersonaStorageState(browser: Browser, persona: ProvisionedStablePersona, options: LoadRunOptions) {
-  const storageStatePath = storageStatePathForPersona(persona.key)
-  const environment = localD1Environment(options)
-
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    await loginAndPersistStorageState(browser, persona, environment)
-
-    if (existsSync(storageStatePath)) {
-      return
-    }
-
-    await sleep(500 * (attempt + 1))
-  }
-
-  throw new Error(`Storage state was not created for persona "${persona.key}".`)
 }
 
 async function timeCheck<T>(name: string, action: () => Promise<T>) {
@@ -2318,7 +2305,6 @@ async function run() {
   const options = parsedOptions
   process.env.LOCAL_D1_STATE_ROOT = options.stateRoot
   process.env.NUXT_AUTH0_APP_BASE_URL = options.baseUrl
-  process.env.NUXT_AUTH0_BDD_APP_BASE_URL = options.baseUrl
 
   let server: ChildProcessWithoutNullStreams | null = null
   let browser: Browser | null = null
@@ -2330,20 +2316,22 @@ async function run() {
   let failure: ReturnType<typeof serializeError> | null = null
 
   try {
-    console.log(`Reconciling Auth0 personas and preparing local D1 at ${options.stateRoot}.`)
-    const personas = await ensureStableAuth0Personas(localD1Environment(options))
+    console.log(`Preparing local personas and D1 at ${options.stateRoot}.`)
+    const personas = getStablePersonas()
     applyLocalD1Migrations(options)
     executeLocalD1Sql(options, buildBaseSeedSql(personas, options), 'base-seed')
+
+    resetAuthArtifactDirectory()
+    for (const persona of personas) {
+      writePersonaStorageState(persona, {
+        BDD_BASE_URL: options.baseUrl
+      })
+    }
 
     server = await startLocalServer(options)
     recordServerSnapshot(server, 'server started')
 
     browser = await chromium.launch()
-    resetAuthArtifactDirectory()
-
-    for (const persona of personas) {
-      await ensurePersonaStorageState(browser, persona, options)
-    }
 
     const adminApi = await request.newContext({
       baseURL: options.baseUrl,

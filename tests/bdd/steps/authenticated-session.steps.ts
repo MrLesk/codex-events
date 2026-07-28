@@ -79,7 +79,7 @@ async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) 
   }
 }
 
-Given('the saved {string} Auth0 session state exists', async ({ page }, personaKey: string) => {
+Given('the saved {string} local session state exists', async ({ page }, personaKey: string) => {
   void page
   expect(existsSync(storageStatePathForPersona(parsePersonaKey(personaKey)))).toBe(true)
 })

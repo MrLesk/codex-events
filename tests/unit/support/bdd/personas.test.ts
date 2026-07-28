@@ -2,92 +2,63 @@ import { describe, expect, test } from 'vitest'
 
 import {
   defaultLocalBddBaseUrl,
-  getAuth0ClientId,
-  getAuth0ConnectionName,
   getBaseUrl,
   getStablePersonas,
-  loadBddBaseUrlEnvironment,
-  loadProvisioningEnvironment,
-  loadStablePersonaEnvironment,
-  resetAuthArtifactDirectory,
   storageStatePathForPersona
 } from '../../../bdd/support/personas'
 
-const baseEnvironment = {
-  NUXT_AUTH0_APP_BASE_URL: 'http://localhost:3000',
-  E2E_PLATFORM_ADMIN_EMAIL: 'platform-admin@example.com',
-  E2E_PLATFORM_ADMIN_PASSWORD: 'password-1',
-  E2E_EVENT_ADMIN_EMAIL: 'event-admin@example.com',
-  E2E_EVENT_ADMIN_PASSWORD: 'password-2',
-  E2E_JUDGE_EMAIL: 'judge@example.com',
-  E2E_JUDGE_PASSWORD: 'password-3',
-  E2E_REGULAR_USER_EMAIL: 'regular@example.com',
-  E2E_REGULAR_USER_PASSWORD: 'password-4'
-}
+describe('stable local personas', () => {
+  test('uses BDD_BASE_URL as the only base URL override', () => {
+    expect(getBaseUrl({
+      BDD_BASE_URL: 'http://127.0.0.1:3200',
+      NUXT_AUTH0_APP_BASE_URL: 'http://localhost:3000',
+      NUXT_AUTH0_BDD_APP_BASE_URL: 'http://localhost:3300'
+    })).toBe('http://127.0.0.1:3200')
 
-describe('stable Auth0 personas', () => {
-  test('resolves the BDD base url from the BDD-specific override first', () => {
     expect(getBaseUrl({
       NUXT_AUTH0_APP_BASE_URL: 'http://localhost:3000',
-      NUXT_AUTH0_BDD_APP_BASE_URL: 'http://localhost:3100'
-    })).toBe('http://localhost:3100')
-  })
-
-  test('still parses the normal app base url without using it as the BDD default', () => {
-    expect(loadBddBaseUrlEnvironment({
-      NUXT_AUTH0_APP_BASE_URL: 'http://localhost:3000'
-    }).NUXT_AUTH0_APP_BASE_URL).toBe('http://localhost:3000')
-
-    expect(getBaseUrl({
-      NUXT_AUTH0_APP_BASE_URL: 'http://localhost:3000'
+      NUXT_AUTH0_BDD_APP_BASE_URL: 'http://localhost:3300'
     })).toBe(defaultLocalBddBaseUrl)
   })
 
-  test('defaults the BDD base url to the dedicated local test port', () => {
+  test('defaults to the dedicated local test port', () => {
     expect(getBaseUrl({})).toBe(defaultLocalBddBaseUrl)
   })
 
-  test('loads the stable persona environment and derives the documented personas', () => {
-    const environment = loadStablePersonaEnvironment(baseEnvironment)
-    const personas = getStablePersonas(baseEnvironment)
-
-    expect(environment.NUXT_AUTH0_APP_BASE_URL).toBe('http://localhost:3000')
-    expect(personas.map(persona => persona.key)).toEqual([
-      'platform_admin',
-      'event_admin',
-      'judge',
-      'regular_user'
+  test('defines the four local personas without credentials', () => {
+    expect(getStablePersonas()).toEqual([
+      {
+        key: 'platform_admin',
+        email: 'platform-admin@bdd.codex-events.test',
+        displayName: 'Platform Admin',
+        nickname: 'platform-admin',
+        auth0Subject: 'local-chatgpt|platform-admin@bdd.codex-events.test'
+      },
+      {
+        key: 'event_admin',
+        email: 'event-admin@bdd.codex-events.test',
+        displayName: 'Event Admin',
+        nickname: 'event-admin',
+        auth0Subject: 'local-chatgpt|event-admin@bdd.codex-events.test'
+      },
+      {
+        key: 'judge',
+        email: 'judge@bdd.codex-events.test',
+        displayName: 'Judge Persona',
+        nickname: 'judge-persona',
+        auth0Subject: 'local-chatgpt|judge@bdd.codex-events.test'
+      },
+      {
+        key: 'regular_user',
+        email: 'regular-user@bdd.codex-events.test',
+        displayName: 'Regular User',
+        nickname: 'regular-user',
+        auth0Subject: 'local-chatgpt|regular-user@bdd.codex-events.test'
+      }
     ])
   })
 
-  test('requires provisioning inputs for Auth0 and the Auth0 connection', () => {
-    expect(() => loadProvisioningEnvironment(baseEnvironment)).toThrow()
-    expect(() => loadProvisioningEnvironment({
-      ...baseEnvironment,
-      NUXT_AUTH0_CLIENT_ID: 'nuxt-client-id',
-      NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'codex-events-e2e-users',
-      AUTH0_MANAGEMENT_DOMAIN: 'example.us.auth0.com',
-      AUTH0_MGMT_CLIENT_ID: 'client-id',
-      AUTH0_MGMT_CLIENT_SECRET: 'client-secret'
-    })).not.toThrow()
-  })
-
-  test('exposes the provisioning connection name and client id helpers', () => {
-    const environment = {
-      ...baseEnvironment,
-      NUXT_AUTH0_CLIENT_ID: 'nuxt-client-id',
-      NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'codex-events-e2e-users',
-      AUTH0_MANAGEMENT_DOMAIN: 'example.us.auth0.com',
-      AUTH0_MGMT_CLIENT_ID: 'client-id',
-      AUTH0_MGMT_CLIENT_SECRET: 'client-secret'
-    }
-
-    expect(getAuth0ClientId(environment)).toBe('nuxt-client-id')
-    expect(getAuth0ConnectionName(environment)).toBe('codex-events-e2e-users')
-  })
-
   test('writes storage state under the BDD auth artifact directory', () => {
-    resetAuthArtifactDirectory()
     expect(storageStatePathForPersona('judge')).toContain('tests/bdd/.auth/judge.json')
   })
 })
