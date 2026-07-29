@@ -1,0 +1,57 @@
+---
+id: TASK-424
+title: Stabilize admin participant-review BDD checks in CI
+status: In Progress
+assignee:
+  - '@codex'
+created_date: '2026-07-29 04:55'
+updated_date: '2026-07-29 05:01'
+labels: []
+dependencies: []
+references:
+  - 'https://github.com/MrLesk/codex-events/actions/runs/30421228684'
+modified_files:
+  - app/components/account/events/AccountEventParticipantsPanel.vue
+priority: high
+type: bug
+ordinal: 111000
+---
+
+## Description
+
+<!-- SECTION:DESCRIPTION:BEGIN -->
+The scheduled deploy-test workflow intermittently fails two admin participant-review scenarios while the backend checks and remaining BDD suite pass. Stabilize the application-row interaction without weakening browser actionability checks.
+<!-- SECTION:DESCRIPTION:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 The approve and reject participant-review scenarios pass under CI-equivalent execution
+- [ ] #2 The full BDD suite passes without retries or forced browser clicks
+- [ ] #3 Lint, typecheck, unit, and integration validation pass
+<!-- AC:END -->
+
+## Definition of Done
+<!-- DOD:BEGIN -->
+- [ ] #1 Canonical docs were updated or confirmed unchanged
+- [ ] #2 Code behavior matches canonical docs
+- [ ] #3 Relevant validation commands pass
+- [ ] #4 Tests were added or updated when behavior changed
+- [ ] #5 Test gaps are documented when automation is not practical
+- [ ] #6 Config and developer workflow docs were updated when setup changed
+- [ ] #7 Auth and permissions changes follow the documented platform model
+- [ ] #8 Risks and follow ups are recorded in the task summary
+<!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Reproduce and inspect the failing browser interactions.
+2. Eagerly load the review panel that is always required on the Participants tab.
+3. Run targeted and full validation, then confirm the workflow in GitHub Actions.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Root cause: the slow CI runner received the lazy review-panel chunk and styles after the participant page was already interactive, causing a missing-row timeout and layout movement during a decision click. The focused scenario and full suite passed locally after removing the unnecessary lazy boundary; no retries, force clicks, sleeps, or test timeout changes were added.
+<!-- SECTION:NOTES:END -->
