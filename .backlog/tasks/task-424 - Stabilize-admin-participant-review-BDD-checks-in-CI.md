@@ -5,13 +5,13 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-07-29 04:55'
-updated_date: '2026-07-29 05:01'
+updated_date: '2026-07-29 05:13'
 labels: []
 dependencies: []
 references:
   - 'https://github.com/MrLesk/codex-events/actions/runs/30421228684'
 modified_files:
-  - app/components/account/events/AccountEventParticipantsPanel.vue
+  - tests/bdd/steps/admin-operations.steps.ts
 priority: high
 type: bug
 ordinal: 111000
@@ -46,12 +46,14 @@ The scheduled deploy-test workflow intermittently fails two admin participant-re
 
 <!-- SECTION:PLAN:BEGIN -->
 1. Reproduce and inspect the failing browser interactions.
-2. Eagerly load the review panel that is always required on the Participants tab.
+2. Wait for the requested application row and stabilize its exact decision control before clicking.
 3. Run targeted and full validation, then confirm the workflow in GitHub Actions.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Root cause: the slow CI runner received the lazy review-panel chunk and styles after the participant page was already interactive, causing a missing-row timeout and layout movement during a decision click. The focused scenario and full suite passed locally after removing the unnecessary lazy boundary; no retries, force clicks, sleeps, or test timeout changes were added.
+The first GitHub rerun on commit e92c5d6c reproduced both failures and disproved the eager-component hypothesis, so that production change was reverted. The CI evidence isolates the issue to browser-step synchronization: the asynchronously rendered row exceeded Playwright's five-second assertion default, and combining automatic scrolling with the decision click caused the long list to oscillate on the CI viewport.
+
+The focused BDD step now uses an explicit 15-second locator timeout for the requested row, scopes its decision button to that row, scrolls the control separately, verifies it is in the viewport, and then performs the normal actionability-checked click. No retries, forced clicks, or fixed sleeps were added.
 <!-- SECTION:NOTES:END -->

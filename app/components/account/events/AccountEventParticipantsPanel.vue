@@ -3,7 +3,7 @@ import type { AdminApplicationReviewView } from '~/domains/applications/admin-ap
 import type { AdminApplicationRecord } from '~/domains/applications/admin-application-record'
 import type { EventRecord, EventTrack } from '~/domains/events/records'
 
-import { ApplicationsAdminApplicationsReviewPanel as AdminApplicationsReviewPanel } from '#components'
+import { LazyApplicationsAdminApplicationsReviewPanel as LazyAdminApplicationsReviewPanel } from '#components'
 import {
   formatApprovedParticipantRegistrationSummary,
   getApprovedParticipantAttendanceSummary,
@@ -244,7 +244,7 @@ function selectParticipantView(nextView: AdminApplicationReviewView) {
       </div>
     </div>
 
-    <AdminApplicationsReviewPanel
+    <LazyAdminApplicationsReviewPanel
       :event-id="eventId"
       :applications="participantRosterApplications"
       :view="participantView"

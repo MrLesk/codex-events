@@ -159,7 +159,9 @@ async function openParticipantReviewView(page: Page, status: string) {
 async function waitForAdminApplication(page: Page, applicationId: string) {
   const application = page.getByTestId(`admin-application-${applicationId}`)
 
-  await expect(application).toBeVisible()
+  await expect(application).toBeVisible({
+    timeout: 15_000
+  })
 
   return application
 }
@@ -225,9 +227,11 @@ Then('I should see the admin application {string} with status {string}', async (
 })
 
 When('I approve the admin application {string}', async ({ page }, applicationId: string) => {
-  const approveButton = page.getByTestId(`admin-application-approve-${applicationId}`)
+  const application = await waitForAdminApplication(page, applicationId)
+  const approveButton = application.getByTestId(`admin-application-approve-${applicationId}`)
 
-  await waitForAdminApplication(page, applicationId)
+  await approveButton.scrollIntoViewIfNeeded()
+  await expect(approveButton).toBeInViewport()
   await expect(approveButton).toBeEnabled()
 
   if (!(await isDecisionButtonActive(approveButton, 'approve'))) {
@@ -249,9 +253,11 @@ When('I approve the admin application {string}', async ({ page }, applicationId:
 })
 
 When('I reject the admin application {string}', async ({ page }, applicationId: string) => {
-  const rejectButton = page.getByTestId(`admin-application-reject-${applicationId}`)
+  const application = await waitForAdminApplication(page, applicationId)
+  const rejectButton = application.getByTestId(`admin-application-reject-${applicationId}`)
 
-  await waitForAdminApplication(page, applicationId)
+  await rejectButton.scrollIntoViewIfNeeded()
+  await expect(rejectButton).toBeInViewport()
   await expect(rejectButton).toBeEnabled()
 
   if (!(await isDecisionButtonActive(rejectButton, 'reject'))) {
