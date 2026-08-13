@@ -1,5 +1,5 @@
 import { getDatabase } from '#server/database/client'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   getCurrentEventTerms,
@@ -12,7 +12,16 @@ import {
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { parseValidatedParams, parseValidatedQuery } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.public.events.by-slug',
+  toolName: 'get_public_events_by_slug',
+  description: 'GET /api/public/events/:slug',
+  rest: { method: 'GET', path: '/api/public/events/:slug' },
+  input: { params: routeSlugParamsSchema, query: publicEventDetailQuerySchema },
+  output: 'data',
+  capabilities: ['public'],
+  effect: 'read'
+}, async (h3Event) => {
   const { slug } = parseValidatedParams(h3Event, routeSlugParamsSchema)
   const query = parseValidatedQuery(h3Event, publicEventDetailQuerySchema)
   const database = getDatabase(h3Event)
@@ -30,3 +39,5 @@ export default defineApiHandler(async (h3Event) => {
     })
   })
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

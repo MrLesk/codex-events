@@ -7,7 +7,7 @@ This document defines the canonical lifecycle states and transitions for the mai
 Event lifecycle behavior depends on `eventType`.
 
 - Hackathon events use the full competition lifecycle.
-- Meetup and Build events are registration-only and use only `draft`, `registration_open`, and `completed`.
+- Meetup and Build events are registration-focused and use only `draft`, `registration_open`, and `completed`. A Meetup can run an independent private Call for talks without adding event lifecycle states.
 - The storage enum is shared, but competition-only states are not valid operational states for Meetup or Build events.
 
 ### States
@@ -199,6 +199,54 @@ Behavior:
 - `registration_open -> completed`
   Actor: event admin or platform admin.
   Guard: the event is ready to close. No submission, judging, winner, or prize workflows run.
+
+A Meetup Call for talks is controlled by `talk_proposals_enabled`, `talk_proposal_opens_at`, and `talk_proposal_closes_at`, not by the event state. The public callout is upcoming before the opening timestamp and open from the opening timestamp through the closing timestamp. Talk proposal owner mutations are available only while open; admin decisions can continue after close until the event is completed. Unresolved proposals do not block completion.
+
+## TalkProposal
+
+Talk proposals exist only for Meetups whose private Call for talks is enabled.
+
+### States
+
+- `draft`
+- `submitted`
+- `withdrawn`
+- `accepted`
+- `rejected`
+
+### Transitions
+
+- no proposal -> `draft`
+  - Actor: applicant.
+  - Guard: the Call for talks is open and the applicant's `UserApplication` is `submitted` or `approved`.
+- `draft -> draft`
+  - Actor: owner.
+  - Guard: the Call for talks is open and the owner remains eligible.
+  - Effect: updates title, abstract, or optional demo-or-slides URL.
+- `draft -> submitted`
+  - Actor: owner.
+  - Guard: the Call for talks is open, the owner remains eligible, and all proposal fields are valid.
+  - Effect: records `submitted_at`; content becomes read-only.
+- `submitted -> withdrawn`
+  - Actor: owner.
+  - Guard: the Call for talks is open and the owner remains eligible.
+  - Effect: records `withdrawn_at`.
+- `withdrawn -> draft`
+  - Actor: owner.
+  - Guard: the Call for talks is open and the owner remains eligible.
+  - Effect: records `revised_at`; content becomes editable and can be resubmitted.
+- `submitted -> accepted`
+  - Actor: event admin or platform admin.
+  - Guard: the Meetup is not completed and the proposal is still `submitted` at write time. The Call for talks may already be closed.
+  - Effect: atomically records the reviewer, decision timestamp, optional speaker-facing message, and durable pending acceptance-email state.
+- `submitted -> rejected`
+  - Actor: event admin or platform admin.
+  - Guard: the Meetup is not completed and the proposal is still `submitted` at write time. The Call for talks may already be closed.
+  - Effect: atomically records the reviewer, decision timestamp, optional speaker-facing message, and durable pending rejection-email state.
+
+`accepted` and `rejected` are final. The conditional decision write permits only one concurrent decision attempt to win. A later rejected or withdrawn application does not change or hide the proposal; it pauses owner mutations until application eligibility is restored before close. Staff can review submitted and retained proposals but cannot transition them. Email failure does not reverse a decision.
+
+Decision-email delivery moves from durable `pending` to `enqueued`, `delivering`, `retryable`, and finally `sent` or terminal `failed`. Enqueue reconciliation claims pending rows with a lease before publishing their deterministic delivery ID. Queue consumers claim a separate expiring delivery lease before contacting the email provider. Completed duplicate messages are acknowledged without another send; active-lease duplicates are retried after the lease. Retryable failures release the lease and remain recoverable. Because queue delivery is at least once, a worker failure after provider acceptance but before storing `sent` can still produce a retry; the deterministic email key is supplied for providers that support duplicate suppression.
 
 ## UserApplication
 
@@ -489,3 +537,13 @@ Behavior:
 - A repeated simplified claim by the same account returns the existing coupon without queuing another receipt. A consumed attendee email cannot be used by another account.
 - The first simplified claim locks the event slug, claiming setting, and simplified-only offer identity. Before that claim, the setting can be disabled without exposing or converting the private reward inventory.
 - Reward-link and approved-attendee imports remain additive while claiming is active. Reward imports skip exact links already uploaded for the offer; attendee imports merge normalized emails and refresh names without removing prior eligibility.
+
+## MCP Access Token
+
+MCP access tokens have two independent terminal conditions: expiry at the
+creation timestamp plus exactly 30 days, and explicit revocation. A token is
+active only while neither condition applies and its owner remains an active
+platform user. Creation is allowed only while the owner has fewer than five
+active tokens. Revocation is immediate and irreversible; there is no renewal,
+reactivation, or permanent-token transition. Last use is observational state
+and is written at most once per coalescing interval.

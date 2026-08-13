@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { submissions } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { requireTeamAdminContext } from '#server/domains/teams'
 import { parseValidatedParams } from '#server/http/validation'
@@ -14,7 +14,16 @@ import {
   submissionParamsSchema
 } from '#server/domains/submissions'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.teams.by-teamId.submission.actions.submit',
+  toolName: 'post_events_by_eventId_teams_by_teamId_submission_actions_submit',
+  description: 'POST /api/events/:eventId/teams/:teamId/submission/actions/submit',
+  rest: { method: 'POST', path: '/api/events/:eventId/teams/:teamId/submission/actions/submit' },
+  input: { params: submissionParamsSchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'action'
+}, async (h3Event) => {
   await requirePlatformActor(h3Event)
   const { eventId, teamId } = parseValidatedParams(h3Event, submissionParamsSchema)
   const { database, event } = await requireTeamAdminContext(h3Event, eventId, teamId)
@@ -41,3 +50,5 @@ export default defineApiHandler(async (h3Event) => {
     updatedAt: submittedAt
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

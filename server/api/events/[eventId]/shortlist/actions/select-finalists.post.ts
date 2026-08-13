@@ -4,7 +4,7 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { events } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   requireEventAdmin,
@@ -21,7 +21,16 @@ import {
 } from '#server/domains/outcomes'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.shortlist.actions.select-finalists',
+  toolName: 'post_events_by_eventId_shortlist_actions_select-finalists',
+  description: 'POST /api/events/:eventId/shortlist/actions/select-finalists',
+  rest: { method: 'POST', path: '/api/events/:eventId/shortlist/actions/select-finalists' },
+  input: { params: routeIdParamsSchema, body: selectFinalistsBodySchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'destructive'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const body = await parseValidatedBody(h3Event, selectFinalistsBodySchema)
@@ -69,3 +78,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData(await listShortlistEntries(database, eventId))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

@@ -180,6 +180,32 @@ Then('I should see the profile settings heading', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Profile settings' })).toBeVisible()
 })
 
+When('I create and copy an MCP access token named {string}', async ({ page }, tokenName: string) => {
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.getByLabel('Token name').fill(tokenName)
+  await page.getByRole('button', { name: 'Create token' }).click()
+  await expect(page.getByText('Copy this token now')).toBeVisible()
+  await page.getByRole('button', { name: 'Copy token' }).click()
+})
+
+Then('the copied MCP credential should be shown only once', async ({ page }) => {
+  await expect(page.getByRole('button', { name: 'Copied' })).toBeVisible()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/^ce_mcp_/u)
+  await expect(page.locator('code').filter({ hasText: /^ce_mcp_/u })).toHaveCount(1)
+})
+
+When('I revoke the MCP access token named {string}', async ({ page }, tokenName: string) => {
+  const row = page.locator('div').filter({ has: page.getByText(tokenName, { exact: true }) }).filter({ has: page.getByRole('button', { name: 'Revoke' }) }).last()
+  page.once('dialog', dialog => dialog.accept())
+  await row.getByRole('button', { name: 'Revoke' }).click()
+})
+
+Then('the MCP access token named {string} should be revoked', async ({ page }, tokenName: string) => {
+  const row = page.locator('div').filter({ has: page.getByText(tokenName, { exact: true }) }).filter({ hasText: 'Revoked' }).last()
+  await expect(row.getByText('Revoked', { exact: true })).toBeVisible()
+  await expect(row.getByRole('button', { name: 'Revoke' })).toHaveCount(0)
+})
+
 When('I update the account profile links', async ({ page }) => {
   await page.getByLabel('Company').fill('Codex Labs')
   await page.getByLabel('Bio').fill('Building tools for event participants.')

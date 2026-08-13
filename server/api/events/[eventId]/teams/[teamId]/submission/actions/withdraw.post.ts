@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { submissions } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { requireTeamAdminContext } from '#server/domains/teams'
 import { parseValidatedParams } from '#server/http/validation'
@@ -14,7 +14,16 @@ import {
   submissionParamsSchema
 } from '#server/domains/submissions'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.teams.by-teamId.submission.actions.withdraw',
+  toolName: 'post_events_by_eventId_teams_by_teamId_submission_actions_withdraw',
+  description: 'POST /api/events/:eventId/teams/:teamId/submission/actions/withdraw',
+  rest: { method: 'POST', path: '/api/events/:eventId/teams/:teamId/submission/actions/withdraw' },
+  input: { params: submissionParamsSchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'destructive'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId, teamId } = parseValidatedParams(h3Event, submissionParamsSchema)
   const { database, event } = await requireTeamAdminContext(h3Event, eventId, teamId)
@@ -53,3 +62,5 @@ export default defineApiHandler(async (h3Event) => {
     updatedAt: withdrawnAt
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

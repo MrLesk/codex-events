@@ -53,6 +53,11 @@ export function createApiRouteTestHarness(options: {
       queueName?: string
       retryDelaySeconds?: number
     }
+    talkProposalDecisionEmails?: {
+      queueBinding?: string
+      queueName?: string
+      retryDelaySeconds?: number
+    }
     eventOutcomeEmails?: {
       queueBinding?: string
       queueName?: string
@@ -177,6 +182,9 @@ export function createApiRouteTestHarness(options: {
     const reviewEmailsQueueBinding = options.runtimeConfig?.applicationReviewEmails?.queueBinding ?? 'APPLICATION_REVIEW_EMAIL_QUEUE'
     const reviewEmailsQueueName = options.runtimeConfig?.applicationReviewEmails?.queueName ?? 'codex-events-dev-application-review-email-delivery'
     const reviewEmailsRetryDelaySeconds = options.runtimeConfig?.applicationReviewEmails?.retryDelaySeconds ?? 120
+    const talkProposalEmailsQueueBinding = options.runtimeConfig?.talkProposalDecisionEmails?.queueBinding ?? 'TALK_PROPOSAL_DECISION_EMAIL_QUEUE'
+    const talkProposalEmailsQueueName = options.runtimeConfig?.talkProposalDecisionEmails?.queueName ?? 'codex-events-dev-talk-proposal-decision-email-delivery'
+    const talkProposalEmailsRetryDelaySeconds = options.runtimeConfig?.talkProposalDecisionEmails?.retryDelaySeconds ?? 120
     const outcomeEmailsQueueBinding = options.runtimeConfig?.eventOutcomeEmails?.queueBinding ?? 'EVENT_OUTCOME_EMAIL_QUEUE'
     const outcomeEmailsQueueName = options.runtimeConfig?.eventOutcomeEmails?.queueName ?? 'codex-events-dev-event-outcome-email-delivery'
     const outcomeEmailsRetryDelaySeconds = options.runtimeConfig?.eventOutcomeEmails?.retryDelaySeconds ?? 120
@@ -217,6 +225,11 @@ export function createApiRouteTestHarness(options: {
         queueBinding: reviewEmailsQueueBinding,
         queueName: reviewEmailsQueueName,
         retryDelaySeconds: reviewEmailsRetryDelaySeconds
+      },
+      talkProposalDecisionEmails: {
+        queueBinding: talkProposalEmailsQueueBinding,
+        queueName: talkProposalEmailsQueueName,
+        retryDelaySeconds: talkProposalEmailsRetryDelaySeconds
       },
       eventOutcomeEmails: {
         queueBinding: outcomeEmailsQueueBinding,

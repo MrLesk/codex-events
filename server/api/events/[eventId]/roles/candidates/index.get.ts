@@ -1,5 +1,5 @@
 import { getDatabase } from '#server/database/client'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiList } from '#server/http/api-response'
 import {
   listEventRoleCandidates,
@@ -10,7 +10,16 @@ import {
 } from '#server/domains/events'
 import { parseValidatedParams, parseValidatedQuery } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.events.by-eventId.roles.candidates',
+  toolName: 'get_events_by_eventId_roles_candidates',
+  description: 'GET /api/events/:eventId/roles/candidates',
+  rest: { method: 'GET', path: '/api/events/:eventId/roles/candidates' },
+  input: { params: routeIdParamsSchema, query: listEventRoleCandidatesQuerySchema },
+  output: 'list',
+  capabilities: ['event_admin'],
+  effect: 'read'
+}, async (h3Event) => {
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const query = parseValidatedQuery(h3Event, listEventRoleCandidatesQuerySchema)
   const database = getDatabase(h3Event)
@@ -28,3 +37,5 @@ export default defineApiHandler(async (h3Event) => {
     }
   )
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

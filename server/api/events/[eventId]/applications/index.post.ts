@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { requirePlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
 import { eventTracks, userApplications } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { ApiError } from '#server/http/api-error'
 import { apiData } from '#server/http/api-response'
 import { lookupLumaEventGuestByEmail } from '#server/domains/applications/luma-sync-queue'
@@ -23,7 +23,16 @@ import { applyPostRegistrationApplicationOutcome } from '#server/domains/applica
 import { getVisibleEventOrThrow, routeIdParamsSchema } from '#server/domains/events'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.applications',
+  toolName: 'post_events_by_eventId_applications',
+  description: 'POST /api/events/:eventId/applications',
+  rest: { method: 'POST', path: '/api/events/:eventId/applications' },
+  input: { params: routeIdParamsSchema, body: submitApplicationBodySchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'create'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const body = await parseValidatedBody(h3Event, submitApplicationBodySchema)
@@ -192,3 +201,5 @@ export default defineApiHandler(async (h3Event) => {
     applicationTermsDocument: currentTermsDocument
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { userApplications } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   buildApplicationLumaSyncQueueMessage,
@@ -27,7 +27,16 @@ import { getDatabase } from '#server/database/client'
 
 type UserApplicationLumaSyncStatus = typeof userApplications.$inferSelect['lumaSyncStatus']
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.applications.me.actions.withdraw',
+  toolName: 'post_events_by_eventId_applications_me_actions_withdraw',
+  description: 'POST /api/events/:eventId/applications/me/actions/withdraw',
+  rest: { method: 'POST', path: '/api/events/:eventId/applications/me/actions/withdraw' },
+  input: { params: routeIdParamsSchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'destructive'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const database = getDatabase(h3Event)
@@ -125,3 +134,5 @@ export default defineApiHandler(async (h3Event) => {
     updatedAt
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

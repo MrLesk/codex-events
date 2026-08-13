@@ -15,6 +15,81 @@ const hackathonOptions = {
 }
 
 describe('getAccountEventTabAccess', () => {
+  test('shows Call for talks only for an eligible applicant, retained owner, or reviewer', () => {
+    const base = {
+      eventType: 'meetup' as const,
+      talkProposalsEnabled: true,
+      hasApprovedParticipantAccess: false,
+      hasGallery: false,
+      hasPublishedPrizes: false,
+      hasPublishedStaff: false,
+      canJudge: false,
+      canManage: false,
+      canViewParticipantsAndTeams: false
+    }
+
+    expect(getAccountEventTabAccess({
+      ...base,
+      hasEligibleTalkProposalApplicant: true
+    }).availableTabs).toContain('call-for-talks')
+    expect(getAccountEventTabAccess({
+      ...base,
+      hasRetainedTalkProposal: true
+    }).availableTabs).toContain('call-for-talks')
+    expect(getAccountEventTabAccess({
+      ...base,
+      canViewParticipantsAndTeams: true
+    }).availableTabs).toContain('call-for-talks')
+    expect(getAccountEventTabAccess({
+      ...base,
+      talkProposalsEnabled: false,
+      hasEligibleTalkProposalApplicant: true
+    }).availableTabs).not.toContain('call-for-talks')
+    expect(getAccountEventTabAccess({
+      ...base,
+      hasEligibleTalkProposalApplicant: false,
+      hasRetainedTalkProposal: false
+    }).availableTabs).not.toContain('call-for-talks')
+  })
+
+  test.each(['draft', 'rejected', 'withdrawn'] as const)(
+    'does not show Call for talks to an ineligible %s applicant without a retained proposal',
+    () => {
+      expect(getAccountEventTabAccess({
+        eventType: 'meetup',
+        talkProposalsEnabled: true,
+        hasApprovedParticipantAccess: false,
+        hasEligibleTalkProposalApplicant: false,
+        hasRetainedTalkProposal: false,
+        hasGallery: false,
+        hasPublishedPrizes: false,
+        hasPublishedStaff: false,
+        canJudge: false,
+        canManage: false,
+        canViewParticipantsAndTeams: false
+      }).availableTabs).not.toContain('call-for-talks')
+    }
+  )
+
+  test.each(['rejected', 'withdrawn'] as const)(
+    'keeps Call for talks visible to a retained proposal owner after application becomes %s',
+    () => {
+      expect(getAccountEventTabAccess({
+        eventType: 'meetup',
+        talkProposalsEnabled: true,
+        hasApprovedParticipantAccess: false,
+        hasEligibleTalkProposalApplicant: false,
+        hasRetainedTalkProposal: true,
+        hasGallery: false,
+        hasPublishedPrizes: false,
+        hasPublishedStaff: false,
+        canJudge: false,
+        canManage: false,
+        canViewParticipantsAndTeams: false
+      }).availableTabs).toContain('call-for-talks')
+    }
+  )
+
   test('hides the prizes tab and admin prize configuration for non-admins when no prizes are published', () => {
     expect(getAccountEventTabAccess({
       ...hackathonOptions,

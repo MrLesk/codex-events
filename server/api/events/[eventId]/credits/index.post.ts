@@ -4,7 +4,7 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getD1Binding, getDatabase } from '#server/database/client'
 import { eventCreditOffers } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { ApiError } from '#server/http/api-error'
 import {
@@ -14,7 +14,16 @@ import {
 import { requireEventAdmin, routeIdParamsSchema } from '#server/domains/events'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.credits',
+  toolName: 'post_events_by_eventId_credits',
+  description: 'POST /api/events/:eventId/credits',
+  rest: { method: 'POST', path: '/api/events/:eventId/credits' },
+  input: { params: routeIdParamsSchema, body: createEventCreditOfferBodySchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'create'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const body = await parseValidatedBody(h3Event, createEventCreditOfferBodySchema)
@@ -69,3 +78,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData(serializeEventCreditOffer(offer!))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

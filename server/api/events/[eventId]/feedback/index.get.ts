@@ -1,6 +1,6 @@
 import { resolveEventAuthorization } from '#server/auth/authorization'
 import { getDatabase } from '#server/database/client'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   assertEventFeedbackResultsAccess,
@@ -12,7 +12,16 @@ import {
 } from '#server/domains/events'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.events.by-eventId.feedback',
+  toolName: 'get_events_by_eventId_feedback',
+  description: 'GET /api/events/:eventId/feedback',
+  rest: { method: 'GET', path: '/api/events/:eventId/feedback' },
+  input: { params: routeIdParamsSchema },
+  output: 'data',
+  capabilities: ['event_judge', 'event_staff'],
+  effect: 'read'
+}, async (h3Event) => {
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const authorization = await resolveEventAuthorization(h3Event, eventId)
 
@@ -23,3 +32,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData(await getEventFeedbackSummary(database, eventId, event.eventType))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

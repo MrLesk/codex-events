@@ -4,7 +4,7 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { evaluationCriteria, judgeCriterionScores } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { ApiError } from '#server/http/api-error'
 import { apiData } from '#server/http/api-response'
 import {
@@ -16,7 +16,16 @@ import {
 } from '#server/domains/events'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'delete.events.by-eventId.evaluation-criteria.by-criterionId',
+  toolName: 'delete_events_by_eventId_evaluation-criteria_by_criterionId',
+  description: 'DELETE /api/events/:eventId/evaluation-criteria/:criterionId',
+  rest: { method: 'DELETE', path: '/api/events/:eventId/evaluation-criteria/:criterionId' },
+  input: { params: criterionParamsSchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'delete'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId, criterionId } = parseValidatedParams(h3Event, criterionParamsSchema)
   const database = getDatabase(h3Event)
@@ -57,3 +66,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData(serializeEvaluationCriterion(criterion))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

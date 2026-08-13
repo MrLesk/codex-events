@@ -1,7 +1,7 @@
 import { requirePlatformActor } from '#server/auth/actor'
 import { assertPlatformAdminAccess } from '#server/auth/authorization'
 import { getDatabase } from '#server/database/client'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   platformAdminUserParamsSchema,
@@ -9,7 +9,16 @@ import {
 } from '#server/domains/platform/admins'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'delete.platform-admins.by-userId',
+  toolName: 'delete_platform-admins_by_userId',
+  description: 'DELETE /api/platform-admins/:userId',
+  rest: { method: 'DELETE', path: '/api/platform-admins/:userId' },
+  input: { params: platformAdminUserParamsSchema },
+  output: 'data',
+  capabilities: ['platform_admin'],
+  effect: 'delete'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   assertPlatformAdminAccess(actor)
 
@@ -21,3 +30,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData(result)
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

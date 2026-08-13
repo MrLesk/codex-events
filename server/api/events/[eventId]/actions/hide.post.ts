@@ -11,11 +11,20 @@ import {
   serializeAdminEvent
 } from '#server/domains/events'
 import { assertGuard } from '#server/domains/lifecycle-guard'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.actions.hide',
+  toolName: 'post_events_by_eventId_actions_hide',
+  description: 'POST /api/events/:eventId/actions/hide',
+  rest: { method: 'POST', path: '/api/events/:eventId/actions/hide' },
+  input: { params: routeIdParamsSchema, body: hideEventBodySchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'destructive'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const body = await parseValidatedBody(h3Event, hideEventBodySchema)
@@ -60,3 +69,5 @@ export default defineApiHandler(async (h3Event) => {
     appBaseUrl: useRuntimeConfig(h3Event).auth0.appBaseUrl
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

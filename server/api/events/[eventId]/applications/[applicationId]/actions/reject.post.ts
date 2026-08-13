@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { userApplications } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   applicationParamsSchema,
@@ -14,7 +14,16 @@ import {
 } from '#server/domains/applications'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.applications.by-applicationId.actions.reject',
+  toolName: 'post_events_by_eventId_applications_by_applicationId_actions_reject',
+  description: 'POST /api/events/:eventId/applications/:applicationId/actions/reject',
+  rest: { method: 'POST', path: '/api/events/:eventId/applications/:applicationId/actions/reject' },
+  input: { params: applicationParamsSchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'destructive'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId, applicationId } = parseValidatedParams(h3Event, applicationParamsSchema)
   const { database } = await requireEventAdminApplicationContext(h3Event, eventId)
@@ -63,3 +72,5 @@ export default defineApiHandler(async (h3Event) => {
     applicationTermsDocument
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

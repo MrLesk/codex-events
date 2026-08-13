@@ -56,6 +56,13 @@ async function createEvent(form: EventFormState) {
         participantsLimit: form.participantsLimit,
         autoApproveApplications: form.autoApproveApplications,
         simplifiedClaimingEnabled: form.eventType === 'meetup' && form.simplifiedClaimingEnabled,
+        talkProposalsEnabled: form.eventType === 'meetup' && form.talkProposalsEnabled,
+        talkProposalOpensAt: form.eventType === 'meetup' && form.talkProposalsEnabled
+          ? fromDateTimeLocalValue(form.talkProposalOpensAt)
+          : null,
+        talkProposalClosesAt: form.eventType === 'meetup' && form.talkProposalsEnabled
+          ? fromDateTimeLocalValue(form.talkProposalClosesAt)
+          : null,
         inPersonEvent: form.inPersonEvent,
         applicationXProfileVisible: form.applicationXProfileVisible,
         applicationLinkedinProfileVisible: form.applicationLinkedinProfileVisible,

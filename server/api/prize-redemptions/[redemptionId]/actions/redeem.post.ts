@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 
 import { writeAuditLog } from '#server/database/audit-log'
 import { prizeRedemptions } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   assertPrizeRedemptionRedeemable,
@@ -14,7 +14,16 @@ import {
 } from '#server/domains/prize-redemptions'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.prize-redemptions.by-redemptionId.actions.redeem',
+  toolName: 'post_prize-redemptions_by_redemptionId_actions_redeem',
+  description: 'POST /api/prize-redemptions/:redemptionId/actions/redeem',
+  rest: { method: 'POST', path: '/api/prize-redemptions/:redemptionId/actions/redeem' },
+  input: { params: prizeRedemptionParamsSchema, body: redeemPrizeRedemptionBodySchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'destructive'
+}, async (h3Event) => {
   const { redemptionId } = parseValidatedParams(h3Event, prizeRedemptionParamsSchema)
   const body = await parseValidatedBody(h3Event, redeemPrizeRedemptionBodySchema)
   const {
@@ -67,3 +76,5 @@ export default defineApiHandler(async (h3Event) => {
     updatedAt: redeemedAt
   }, prize, event))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

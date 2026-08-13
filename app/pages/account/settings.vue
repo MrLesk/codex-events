@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AccountSettingsProfileForm from '~/components/account/AccountSettingsProfileForm.vue'
+import AccountMcpTokensPanel from '~/components/account/AccountMcpTokensPanel.vue'
 import { authLogoutHref } from '#shared/domains/accounts/auth-navigation'
 import { normalizeApiError } from '~/lib/api'
 import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
@@ -403,6 +404,8 @@ useSeoMeta({
             @submit="saveProfile"
           />
         </section>
+
+        <AccountMcpTokensPanel v-if="!isPlatformAccountUnavailable" />
 
         <section
           v-if="!isPlatformAccountUnavailable"

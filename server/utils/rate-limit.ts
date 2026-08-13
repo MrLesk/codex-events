@@ -8,10 +8,12 @@ export const publicContactRateLimitBindingName = 'PUBLIC_CONTACT_RATE_LIMITER'
 export const authenticatedUploadRateLimitBindingName = 'AUTHENTICATED_UPLOAD_RATE_LIMITER'
 export const publicEventFeedbackRateLimitBindingName = 'PUBLIC_EVENT_FEEDBACK_RATE_LIMITER'
 export const simplifiedClaimingRateLimitBindingName = 'SIMPLIFIED_CLAIMING_RATE_LIMITER'
+export const mcpRateLimitBindingName = 'MCP_RATE_LIMITER'
 export const publicContactRateLimitPeriodSeconds = 60
 export const authenticatedUploadRateLimitPeriodSeconds = 60
 export const publicEventFeedbackRateLimitPeriodSeconds = 60
 export const simplifiedClaimingRateLimitPeriodSeconds = 60
+export const mcpRateLimitPeriodSeconds = 60
 
 interface RateLimitBindingLike {
   limit: (options: {
@@ -135,5 +137,15 @@ export async function assertSimplifiedClaimingRateLimit(event: H3Event, key: str
     retryAfterSeconds: simplifiedClaimingRateLimitPeriodSeconds,
     errorCode: 'simplified_claiming_rate_limited',
     message: 'Too many redemption attempts were submitted. Please wait before trying again.'
+  })
+}
+
+export async function assertMcpRateLimit(event: H3Event, tokenId: string) {
+  await assertRateLimitAllowed(event, {
+    bindingName: mcpRateLimitBindingName,
+    key: `mcp-token:${tokenId}`,
+    retryAfterSeconds: mcpRateLimitPeriodSeconds,
+    errorCode: 'mcp_rate_limited',
+    message: 'Too many MCP requests were submitted. Please wait before trying again.'
   })
 }

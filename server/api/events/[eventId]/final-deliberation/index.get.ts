@@ -1,7 +1,7 @@
 import { requirePlatformActor } from '#server/auth/actor'
 import { resolveEventAuthorization } from '#server/auth/authorization'
 import { getDatabase } from '#server/database/client'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { getVisibleEventOrThrow, routeIdParamsSchema } from '#server/domains/events'
 import { assertGuard } from '#server/domains/lifecycle-guard'
@@ -11,7 +11,16 @@ import {
 } from '#server/domains/outcomes'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.events.by-eventId.final-deliberation',
+  toolName: 'get_events_by_eventId_final-deliberation',
+  description: 'GET /api/events/:eventId/final-deliberation',
+  rest: { method: 'GET', path: '/api/events/:eventId/final-deliberation' },
+  input: { params: routeIdParamsSchema },
+  output: 'data',
+  capabilities: ['event_judge', 'event_admin'],
+  effect: 'read'
+}, async (h3Event) => {
   await requirePlatformActor(h3Event)
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const database = getDatabase(h3Event)
@@ -31,3 +40,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData(await getFinalDeliberationView(database, eventId))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

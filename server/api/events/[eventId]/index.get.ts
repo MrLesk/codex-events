@@ -1,4 +1,4 @@
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { resolveEventAuthorization } from '#server/auth/authorization'
 import {
@@ -33,7 +33,31 @@ function serializeTermsReference(document: NonNullable<Awaited<ReturnType<typeof
   }
 }
 
-export default defineApiHandler(async (h3Event) => {
+type EventDetailCurrentTerms = {
+  applicationTerms: ReturnType<typeof serializeTermsReference> | null
+  winnerTerms: ReturnType<typeof serializeTermsReference> | null
+}
+
+type EventDetailResponse = {
+  data:
+    | (Omit<ReturnType<typeof serializeAdminEvent>, 'currentTerms'> & Awaited<ReturnType<typeof resolveVisibleEventRestrictedFields>> & {
+      currentTerms: EventDetailCurrentTerms
+    })
+    | (Omit<ReturnType<typeof serializeEvent>, 'currentTerms'> & Awaited<ReturnType<typeof resolveVisibleEventRestrictedFields>> & {
+      currentTerms: EventDetailCurrentTerms
+    })
+}
+
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.events.by-eventId',
+  toolName: 'get_events_by_eventId',
+  description: 'GET /api/events/:eventId',
+  rest: { method: 'GET', path: '/api/events/:eventId' },
+  input: { params: routeIdParamsSchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'read'
+}, async (h3Event): Promise<EventDetailResponse> => {
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const event = await getVisibleEventOrThrow(h3Event, eventId)
   const database = getDatabase(h3Event)
@@ -50,24 +74,32 @@ export default defineApiHandler(async (h3Event) => {
     resolveCurrentActorEventAuthorization(h3Event, eventId),
     getEventDisplayImageOptions(database)
   ])
-  const serializedEvent = authorization?.isEventAdmin
-    ? serializeAdminEvent(event, undefined, tracks, {
+  const serializedTerms = {
+    applicationTerms: currentTerms.applicationTerms ? serializeTermsReference(currentTerms.applicationTerms) : null,
+    winnerTerms: currentTerms.winnerTerms ? serializeTermsReference(currentTerms.winnerTerms) : null
+  }
+
+  if (authorization?.isEventAdmin) {
+    return apiData({
+      ...serializeAdminEvent(event, undefined, tracks, {
         appBaseUrl: useRuntimeConfig(h3Event).auth0.appBaseUrl,
         ...imageOptions
-      })
-    : serializeEvent(event, undefined, tracks, {
-        ...imageOptions,
-        trackStaffInstructionIds: authorization
-          ? resolveEventTrackStaffInstructionIds(authorization)
-          : undefined
-      })
+      }),
+      ...restrictedFields,
+      currentTerms: serializedTerms
+    })
+  }
 
   return apiData({
-    ...serializedEvent,
+    ...serializeEvent(event, undefined, tracks, {
+      ...imageOptions,
+      trackStaffInstructionIds: authorization
+        ? resolveEventTrackStaffInstructionIds(authorization)
+        : undefined
+    }),
     ...restrictedFields,
-    currentTerms: {
-      applicationTerms: currentTerms.applicationTerms ? serializeTermsReference(currentTerms.applicationTerms) : null,
-      winnerTerms: currentTerms.winnerTerms ? serializeTermsReference(currentTerms.winnerTerms) : null
-    }
+    currentTerms: serializedTerms
   })
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

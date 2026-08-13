@@ -4,7 +4,7 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { eventCreditOffers } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   creditParamsSchema,
@@ -17,7 +17,16 @@ import { requireEventAdmin } from '#server/domains/events'
 import { assertGuard } from '#server/domains/lifecycle-guard'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'patch.events.by-eventId.credits.by-creditId',
+  toolName: 'patch_events_by_eventId_credits_by_creditId',
+  description: 'PATCH /api/events/:eventId/credits/:creditId',
+  rest: { method: 'PATCH', path: '/api/events/:eventId/credits/:creditId' },
+  input: { params: creditParamsSchema, body: updateEventCreditOfferBodySchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'update'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId, creditId } = parseValidatedParams(h3Event, creditParamsSchema)
   const body = await parseValidatedBody(h3Event, updateEventCreditOfferBodySchema)
@@ -60,3 +69,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData(serializeEventCreditOffer(updatedOffer))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

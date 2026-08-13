@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { getDatabase } from '#server/database/client'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { requireEventAdmin, routeIdParamsSchema } from '#server/domains/events'
 import {
@@ -22,7 +22,16 @@ const prizeRedemptionQuerySchema = z.object({
     .transform(value => value === true || value === 'true')
 })
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.events.by-eventId.prize-redemptions',
+  toolName: 'get_events_by_eventId_prize-redemptions',
+  description: 'GET /api/events/:eventId/prize-redemptions',
+  rest: { method: 'GET', path: '/api/events/:eventId/prize-redemptions' },
+  input: { params: routeIdParamsSchema, query: prizeRedemptionQuerySchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'read'
+}, async (h3Event) => {
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const query = parseValidatedQuery(h3Event, prizeRedemptionQuerySchema)
   const database = getDatabase(h3Event)
@@ -95,3 +104,5 @@ export default defineApiHandler(async (h3Event) => {
       }))
   })
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

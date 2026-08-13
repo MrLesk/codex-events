@@ -8,6 +8,7 @@ import AccountEventSimplifiedClaimingControl from '~/components/account/events/A
 import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
 import EventConfigApplicationFieldsTable from '~/components/admin/EventConfigApplicationFieldsTable.vue'
 import EventConfigProgramIdentitySection from '~/components/admin/EventConfigProgramIdentitySection.vue'
+import EventTalkProposalControl from '~/components/admin/EventTalkProposalControl.vue'
 
 import type { EventFormState } from '~/domains/events/admin-event'
 import type { EventRecord } from '~/domains/events/records'
@@ -62,6 +63,7 @@ const props = defineProps<{
   imageVersion?: string | null
   eventId?: string | null
   persistedSimplifiedClaimingEnabled?: boolean
+  persistedTalkProposalsEnabled?: boolean
   lumaWebhookUrl?: string | null
   lumaWebhookStatus?: EventRecord['lumaWebhookStatus'] | null
   lumaWebhookError?: string | null
@@ -1546,6 +1548,15 @@ const submitConfigForm = handleSubmit(() => {
                     :persisted-enabled="props.persistedSimplifiedClaimingEnabled"
                   />
 
+                  <EventTalkProposalControl
+                    v-if="isMeetup"
+                    v-model:enabled="form.talkProposalsEnabled"
+                    v-model:opens-at="form.talkProposalOpensAt"
+                    v-model:closes-at="form.talkProposalClosesAt"
+                    :event-id="props.eventId"
+                    :persisted-enabled="props.persistedTalkProposalsEnabled"
+                  />
+
                   <EventConfigApplicationFieldsTable
                     v-model:form="form"
                     class="mt-2"
@@ -1912,6 +1923,15 @@ const submitConfigForm = handleSubmit(() => {
               v-model="form.simplifiedClaimingEnabled"
               :event-id="props.eventId"
               :persisted-enabled="props.persistedSimplifiedClaimingEnabled"
+            />
+
+            <EventTalkProposalControl
+              v-if="isMeetup"
+              v-model:enabled="form.talkProposalsEnabled"
+              v-model:opens-at="form.talkProposalOpensAt"
+              v-model:closes-at="form.talkProposalClosesAt"
+              :event-id="props.eventId"
+              :persisted-enabled="props.persistedTalkProposalsEnabled"
             />
 
             <EventConfigApplicationFieldsTable

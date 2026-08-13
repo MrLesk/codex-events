@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import { requirePlatformAccountActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { recordPlatformDocumentAcceptance, serializePlatformDocument } from '#server/domains/platform/documents'
 import { parseValidatedBody } from '#server/http/validation'
@@ -11,7 +11,16 @@ const bodySchema = z.object({
   platformDocumentId: z.string().trim().min(1)
 })
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.platform-document-acceptances',
+  toolName: 'post_platform-document-acceptances',
+  description: 'POST /api/platform-document-acceptances',
+  rest: { method: 'POST', path: '/api/platform-document-acceptances' },
+  input: { body: bodySchema },
+  output: 'data',
+  capabilities: ['platform_account'],
+  effect: 'action'
+}, async (h3Event) => {
   const actor = await requirePlatformAccountActor(h3Event)
   const body = await parseValidatedBody(h3Event, bodySchema)
 
@@ -33,3 +42,5 @@ export default defineApiHandler(async (h3Event) => {
     document: serializePlatformDocument(document)
   })
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

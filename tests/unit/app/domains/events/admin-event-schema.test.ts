@@ -62,6 +62,35 @@ describe('event config form schema', () => {
     })
   })
 
+  test('validates Meetup Call for talks settings and includes its window in patches', () => {
+    const meetup = {
+      ...createValidEventFormState(),
+      eventType: 'meetup' as const,
+      talkProposalsEnabled: true,
+      talkProposalOpensAt: '2026-03-20T12:00',
+      talkProposalClosesAt: '2026-03-21T12:00'
+    }
+
+    expect(eventConfigFormSchema.safeParse(meetup).success).toBe(true)
+    expect(buildEventConfigurationPatch(meetup, 'meetup')).toMatchObject({
+      talkProposalsEnabled: true,
+      talkProposalOpensAt: expect.any(String),
+      talkProposalClosesAt: expect.any(String)
+    })
+    expect(eventConfigFormSchema.safeParse({
+      ...meetup,
+      talkProposalClosesAt: meetup.talkProposalOpensAt
+    }).success).toBe(false)
+    expect(buildEventConfigurationPatch({
+      ...meetup,
+      eventType: 'build'
+    }, 'build')).toMatchObject({
+      talkProposalsEnabled: false,
+      talkProposalOpensAt: null,
+      talkProposalClosesAt: null
+    })
+  })
+
   test('rejects non-http Discord server URLs', () => {
     const result = eventConfigFormSchema.safeParse({
       ...createValidEventFormState(),

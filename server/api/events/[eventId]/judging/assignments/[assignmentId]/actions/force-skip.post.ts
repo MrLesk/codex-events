@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 
 import { writeAuditLog } from '#server/database/audit-log'
 import { judgeAssignments } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   assertAssignmentReviewStageIsActive,
@@ -17,7 +17,16 @@ import {
 } from '#server/domains/judging'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.judging.assignments.by-assignmentId.actions.force-skip',
+  toolName: 'post_events_by_eventId_judging_assignments_by_assignmentId_actions_force-skip',
+  description: 'POST /api/events/:eventId/judging/assignments/:assignmentId/actions/force-skip',
+  rest: { method: 'POST', path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/force-skip' },
+  input: { params: judgingAssignmentParamsSchema, body: skipJudgeAssignmentBodySchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'destructive'
+}, async (h3Event) => {
   const { eventId, assignmentId } = parseValidatedParams(h3Event, judgingAssignmentParamsSchema)
   const body = await parseValidatedBody(h3Event, skipJudgeAssignmentBodySchema)
   const { actor, database, event, assignment } = await requireAdminAssignmentContext(h3Event, eventId, assignmentId)
@@ -93,3 +102,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData(await getJudgeAssignmentDetail(database, responseAssignment))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

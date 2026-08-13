@@ -47,12 +47,14 @@ describe('deploy Wrangler config generator', () => {
         custom_domain: true
       }
     ])
+    expect(config.triggers).toEqual({ crons: ['*/5 * * * *'] })
     expect(config.vars).toMatchObject({
       NUXT_AUTH0_DOMAIN: 'auth.test.example.com',
       NUXT_AUTH0_APP_BASE_URL: 'https://test.example.com',
       NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'Username-Password-Authentication',
       NUXT_FIRST_PLATFORM_ADMIN_EMAIL: 'admin@example.com',
       NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME: 'codex-events-test-application-review-email-delivery',
+      NUXT_TALK_PROPOSAL_DECISION_EMAILS_QUEUE_NAME: 'codex-events-test-talk-proposal-decision-email-delivery',
       NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME: 'codex-events-test-event-outcome-email-delivery',
       NUXT_LUMA_QUEUE_NAME: 'codex-events-test-application-luma-sync'
     })
@@ -79,6 +81,7 @@ describe('deploy Wrangler config generator', () => {
       BASE_DOMAIN: 'test.example.com',
       AUTH0_CUSTOM_DOMAIN: 'auth.test.example.com',
       NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS: '60',
+      NUXT_TALK_PROPOSAL_DECISION_EMAILS_RETRY_DELAY_SECONDS: '75',
       NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS: '90',
       NUXT_LUMA_RETRY_DELAY_SECONDS: '180'
     }))
@@ -90,6 +93,13 @@ describe('deploy Wrangler config generator', () => {
         max_batch_timeout: 5,
         max_retries: 10,
         retry_delay: 60
+      },
+      {
+        queue: 'codex-events-test-talk-proposal-decision-email-delivery',
+        max_batch_size: 10,
+        max_batch_timeout: 5,
+        max_retries: 10,
+        retry_delay: 75
       },
       {
         queue: 'codex-events-test-event-outcome-email-delivery',
@@ -126,7 +136,8 @@ describe('deploy Wrangler config generator', () => {
       '3001',
       '3002',
       '3003',
-      '3004'
+      '3004',
+      '3005'
     ])
     expect(config.ratelimits.find(rateLimit => rateLimit.name === 'AUTHENTICATED_UPLOAD_RATE_LIMITER')?.simple.limit).toBe(60)
     expect(config.ratelimits.find(rateLimit => rateLimit.name === 'SIMPLIFIED_CLAIMING_RATE_LIMITER')?.simple.limit).toBe(10)
@@ -140,6 +151,7 @@ describe('deploy Wrangler config generator', () => {
         head_sampling_rate: 0.1
       }
     })
+    expect(config.triggers).toEqual({ crons: ['*/5 * * * *'] })
   })
 
   test('uses the outbound from email as reply-to when no reply-to override is configured', () => {
@@ -200,6 +212,7 @@ describe('deploy Wrangler config generator', () => {
       CF_PROFILE_ICONS_BUCKET: 'custom-profile-icons',
       CF_EVENT_IMAGES_BUCKET: 'custom-event-images',
       CF_APPLICATION_REVIEW_EMAIL_QUEUE: 'custom-application-review',
+      CF_TALK_PROPOSAL_DECISION_EMAIL_QUEUE: 'custom-talk-proposal-decision',
       CF_EVENT_OUTCOME_EMAIL_QUEUE: 'custom-event-outcome',
       CF_LUMA_SYNC_QUEUE: 'custom-luma-sync',
       NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'custom-users'
@@ -213,6 +226,7 @@ describe('deploy Wrangler config generator', () => {
     expect(input.profileIconsBucket).toBe('custom-profile-icons')
     expect(input.eventImagesBucket).toBe('custom-event-images')
     expect(input.applicationReviewEmails.queue).toBe('custom-application-review')
+    expect(input.talkProposalDecisionEmails.queue).toBe('custom-talk-proposal-decision')
     expect(input.eventOutcomeEmails.queue).toBe('custom-event-outcome')
     expect(input.lumaSync.queue).toBe('custom-luma-sync')
     expect(input.auth0DatabaseConnectionName).toBe('custom-users')

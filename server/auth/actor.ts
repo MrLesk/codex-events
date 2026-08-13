@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
-import type { users } from '#server/database/schema'
+import { users } from '#server/database/schema'
+import { and, eq, isNull } from 'drizzle-orm'
 
 import { getDatabase } from '#server/database/client'
 import { ApiError } from '#server/http/api-error'
@@ -323,6 +324,30 @@ export async function resolveRequestActor(event: H3Event): Promise<RequestActor>
 export async function getRequestActor(event: H3Event): Promise<RequestActor> {
   event.context.requestActor ??= resolveRequestActor(event)
   return await event.context.requestActor
+}
+
+export async function resolveMcpPlatformActor(event: H3Event, userId: string): Promise<PlatformActor> {
+  const database = getDatabase(event)
+  const platformUser = await database.select().from(users)
+    .where(and(eq(users.id, userId), isNull(users.deletedAt)))
+    .get()
+
+  if (!platformUser) {
+    throw new ApiError({
+      statusCode: 401,
+      code: 'invalid_mcp_credential',
+      message: 'The MCP access credential is invalid.'
+    })
+  }
+
+  return await buildPlatformActor(database, {
+    sub: platformUser.auth0Subject,
+    email: platformUser.email,
+    email_verified: true,
+    name: platformUser.displayName,
+    githubProfileUrl: platformUser.githubProfileUrl,
+    linkedAuth0Subjects: []
+  }, platformUser)
 }
 
 export async function requireAuthenticatedActor(event: H3Event) {

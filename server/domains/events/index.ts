@@ -235,6 +235,7 @@ const maxTeamMembersSchema = z.coerce.number().int().min(1)
 const participantsLimitSchema = z.coerce.number().int().min(1).nullable()
 const autoApproveApplicationsSchema = z.coerce.boolean()
 const simplifiedClaimingEnabledSchema = z.coerce.boolean()
+const talkProposalsEnabledSchema = z.coerce.boolean()
 const blindReviewCountSchema = z.coerce.number().int().min(0).max(2)
 const pitchReviewEnabledSchema = z.coerce.boolean()
 const blindScoreWeightPercentSchema = z.coerce.number().int().min(0).max(100)
@@ -375,6 +376,39 @@ function addSimplifiedClaimingConfigurationIssues(
   }
 }
 
+function addTalkProposalConfigurationIssues(
+  input: Record<string, unknown>,
+  addIssue: (path: string[], message: string) => void
+) {
+  const enabled = input.talkProposalsEnabled === true
+  const opensAt = typeof input.talkProposalOpensAt === 'string' ? input.talkProposalOpensAt : null
+  const closesAt = typeof input.talkProposalClosesAt === 'string' ? input.talkProposalClosesAt : null
+
+  if (input.eventType !== undefined && input.eventType !== 'meetup' && (enabled || opensAt || closesAt)) {
+    addIssue(['talkProposalsEnabled'], 'Call for talks is available only for Meetup events.')
+  }
+
+  if (!enabled && (opensAt || closesAt)) {
+    addIssue(['talkProposalsEnabled'], 'Enable Call for talks before setting its schedule.')
+  }
+
+  if (!enabled) {
+    return
+  }
+
+  if (!opensAt) {
+    addIssue(['talkProposalOpensAt'], 'Call for talks opening time is required.')
+  }
+
+  if (!closesAt) {
+    addIssue(['talkProposalClosesAt'], 'Call for talks closing time is required.')
+  }
+
+  if (opensAt && closesAt && Date.parse(opensAt) >= Date.parse(closesAt)) {
+    addIssue(['talkProposalClosesAt'], 'Call for talks must close after it opens.')
+  }
+}
+
 const eventConfigShape = {
   eventType: eventTypeEnumSchema,
   name: z.string().trim().min(1),
@@ -400,6 +434,9 @@ const eventConfigShape = {
   participantsLimit: participantsLimitSchema.default(null),
   autoApproveApplications: autoApproveApplicationsSchema.default(false),
   simplifiedClaimingEnabled: simplifiedClaimingEnabledSchema.default(false),
+  talkProposalsEnabled: talkProposalsEnabledSchema.default(false),
+  talkProposalOpensAt: isoTimestampSchema.nullable().default(null),
+  talkProposalClosesAt: isoTimestampSchema.nullable().default(null),
   blindReviewCount: blindReviewCountSchema.default(1),
   pitchReviewEnabled: pitchReviewEnabledSchema.default(false),
   blindScoreWeightPercent: blindScoreWeightPercentSchema.default(70),
@@ -448,6 +485,9 @@ export const createEventBodySchema = z.preprocess(
         path
       })
     })
+    addTalkProposalConfigurationIssues(input as Record<string, unknown>, (path, message) => {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message, path })
+    })
 
     if (input.eventType !== 'hackathon') {
       return
@@ -495,6 +535,9 @@ export const updateEventBodySchema = z.object({
   participantsLimit: participantsLimitSchema.optional(),
   autoApproveApplications: autoApproveApplicationsSchema.optional(),
   simplifiedClaimingEnabled: simplifiedClaimingEnabledSchema.optional(),
+  talkProposalsEnabled: talkProposalsEnabledSchema.optional(),
+  talkProposalOpensAt: isoTimestampSchema.nullable().optional(),
+  talkProposalClosesAt: isoTimestampSchema.nullable().optional(),
   blindReviewCount: blindReviewCountSchema.optional(),
   pitchReviewEnabled: pitchReviewEnabledSchema.optional(),
   blindScoreWeightPercent: blindScoreWeightPercentSchema.optional(),
@@ -1253,6 +1296,24 @@ export function assertSimplifiedClaimingConfiguration(
   })
 }
 
+export function assertTalkProposalConfiguration(
+  input: Record<string, unknown>,
+  eventId?: string
+) {
+  const issues: Array<{ path: string[], message: string }> = []
+  addTalkProposalConfigurationIssues(input, (path, message) => issues.push({ path, message }))
+
+  assertGuard(issues.length === 0, {
+    statusCode: 409,
+    code: 'talk_proposal_configuration_invalid',
+    message: issues[0]?.message ?? 'The Call for talks configuration is invalid.',
+    details: {
+      ...(eventId ? { eventId } : {}),
+      fields: issues.map(issue => issue.path[0])
+    }
+  })
+}
+
 export function assertCompetitionEvent(event: Pick<EventRecord, 'id' | 'eventType'>) {
   if (event.eventType === 'hackathon') {
     return
@@ -1280,10 +1341,44 @@ export function assertEventNotHidden(event: Pick<EventRecord, 'id' | 'hiddenAt'>
   })
 }
 
+export function assertTalkProposalConfigurationChangeAllowed(
+  event: Pick<EventRecord, 'state' | 'talkProposalsEnabled'>,
+  patch: Pick<z.infer<typeof updateEventBodySchema>, 'talkProposalsEnabled' | 'talkProposalOpensAt' | 'talkProposalClosesAt'>,
+  hasExistingProposal: boolean
+) {
+  assertGuard(event.state !== 'completed' || (
+    patch.talkProposalsEnabled === undefined
+    && patch.talkProposalOpensAt === undefined
+    && patch.talkProposalClosesAt === undefined
+  ), {
+    statusCode: 409,
+    code: 'talk_proposal_configuration_completed',
+    message: 'Call for talks settings cannot be changed after the event is completed.'
+  })
+
+  assertGuard(!(hasExistingProposal && event.talkProposalsEnabled && patch.talkProposalsEnabled === false), {
+    statusCode: 409,
+    code: 'talk_proposals_disable_locked',
+    message: 'Call for talks cannot be disabled after the first Talk proposal is created.'
+  })
+}
+
 export function buildEventUpdatePayload(
   existingEvent: EventRecord,
   patch: z.infer<typeof updateEventBodySchema>
 ) {
+  assertTalkProposalConfigurationChangeAllowed(existingEvent, patch, false)
+
+  assertTalkProposalConfiguration({
+    eventType: existingEvent.eventType,
+    talkProposalsEnabled: patch.talkProposalsEnabled ?? existingEvent.talkProposalsEnabled,
+    talkProposalOpensAt: patch.talkProposalOpensAt === undefined
+      ? existingEvent.talkProposalOpensAt
+      : patch.talkProposalOpensAt,
+    talkProposalClosesAt: patch.talkProposalClosesAt === undefined
+      ? existingEvent.talkProposalClosesAt
+      : patch.talkProposalClosesAt
+  }, existingEvent.id)
   const hackathonOnlyPatchFields = [
     'submissionOpensAt',
     'submissionClosesAt',
@@ -1909,6 +2004,9 @@ export function serializeEvent(
     maxTeamMembers: event.maxTeamMembers,
     participantsLimit: event.participantsLimit,
     autoApproveApplications: event.autoApproveApplications,
+    talkProposalsEnabled: event.talkProposalsEnabled,
+    talkProposalOpensAt: event.talkProposalOpensAt,
+    talkProposalClosesAt: event.talkProposalClosesAt,
     blindReviewCount: isCompetitionEvent ? event.blindReviewCount : 0,
     pitchReviewEnabled: isCompetitionEvent ? event.pitchReviewEnabled : false,
     blindScoreWeightPercent: isCompetitionEvent ? event.blindScoreWeightPercent : 0,
@@ -1989,6 +2087,9 @@ export function serializeAdminEvent(
     hiddenByUserId: event.hiddenByUserId,
     hiddenReason: event.hiddenReason,
     simplifiedClaimingEnabled: event.simplifiedClaimingEnabled,
+    talkProposalsEnabled: event.talkProposalsEnabled,
+    talkProposalOpensAt: event.talkProposalOpensAt,
+    talkProposalClosesAt: event.talkProposalClosesAt,
     slidesUrl: event.slidesUrl,
     lumaApiKey: event.lumaApiKey,
     lumaWebhookStatus: event.lumaWebhookStatus,
@@ -2037,6 +2138,9 @@ export function serializePublicEvent(
     maxTeamMembers: event.maxTeamMembers,
     participantsLimit: event.participantsLimit,
     autoApproveApplications: event.autoApproveApplications,
+    talkProposalsEnabled: event.talkProposalsEnabled,
+    talkProposalOpensAt: event.talkProposalOpensAt,
+    talkProposalClosesAt: event.talkProposalClosesAt,
     inPersonEvent: event.inPersonEvent,
     applicationXProfileVisible: event.applicationXProfileVisible,
     applicationLinkedinProfileVisible: event.applicationLinkedinProfileVisible,

@@ -3,7 +3,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { teamMembers } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { ApiError } from '#server/http/api-error'
 import { apiData } from '#server/http/api-response'
 import {
@@ -13,7 +13,16 @@ import {
 } from '#server/domains/teams'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.teams.by-teamId.members.by-userId.actions.make-admin',
+  toolName: 'post_events_by_eventId_teams_by_teamId_members_by_userId_actions_make-admin',
+  description: 'POST /api/events/:eventId/teams/:teamId/members/:userId/actions/make-admin',
+  rest: { method: 'POST', path: '/api/events/:eventId/teams/:teamId/members/:userId/actions/make-admin' },
+  input: { params: teamMemberParamsSchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'action'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId, teamId, userId } = parseValidatedParams(h3Event, teamMemberParamsSchema)
   const { database } = await requireTeamAdminContext(h3Event, eventId, teamId)
@@ -78,3 +87,5 @@ export default defineApiHandler(async (h3Event) => {
     role: promotedMember.role
   })
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

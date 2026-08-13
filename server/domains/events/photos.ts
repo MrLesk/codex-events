@@ -742,7 +742,12 @@ function serializeEventPhotoRecord(
     height: photo.height,
     createdAt: photo.createdAt,
     uploadedByUserId: options.uploadedByUserId,
-    uploadedBy: options.uploader,
+    uploadedBy: options.uploader
+      ? {
+          id: options.uploader.id,
+          displayName: options.uploader.displayName
+        }
+      : null,
     previewUrl: options.imagePathBuilder(photo.id, 'preview', photo.createdAt),
     originalUrl: options.imagePathBuilder(photo.id, 'original', photo.createdAt)
   }

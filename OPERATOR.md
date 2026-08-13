@@ -173,6 +173,36 @@ Publish a **GitHub Release** from the commit you want to deploy. That triggers t
 5. runs D1 migrations;
 6. deploys the Worker and reconciles its Queue consumers.
 
+The MCP rollout is additive. Migration `0071_mcp_access_tokens.sql` must finish
+before the Worker serving `/mcp` is deployed; the checked-in workflow already
+preserves that ordering. The generated Wrangler configuration also installs
+the `MCP_RATE_LIMITER` binding at 120 requests per token per 60 seconds. Do not
+enable or route `/mcp` to a Worker version that lacks either resource.
+
+The Meetup Call for talks rollout is additive. Migration
+`0072_talk_proposals.sql` and the Talk proposal decision-email Queue must exist
+before the Worker is deployed. The workflow creates the queue, applies D1
+migrations, deploys the Worker producer, and then reconciles the consumer with
+a 120-second retry delay and up to 10 retries. The generated Worker also runs
+the pending-delivery reconciler every five minutes; each new Worker isolate
+runs the same bounded recovery once at startup.
+
+Monitor this queue and its durable delivery state by proposal ID, event ID,
+deterministic delivery ID, decision, attempt timestamp, lease expiry, and
+delivery outcome. Do not log or export proposal titles, abstracts, links,
+recipient details, or decision messages. A final decision and pending delivery
+remain stored when enqueue fails; startup and scheduled reconciliation publish
+the same delivery without repeating the decision.
+
+Cloudflare Queues delivers at least once. The consumer uses an expiring database
+claim so concurrent or already completed duplicate messages do not send again,
+and retryable provider failures remain eligible for reconciliation even after a
+Queue message exhausts its configured retries. A Worker failure after the email
+provider accepts a message but before `sent` is recorded can still cause a later
+retry. Every attempt supplies the same `X-Codex-Email-Key` so providers that
+support duplicate suppression can recognize it; use the deterministic delivery
+ID when investigating possible duplicates.
+
 If Auth0 rejects custom-domain creation because the tenant needs billing verification, add billing information in Auth0 and rerun the release workflow — it cannot finish custom-domain setup until Auth0 allows it for that tenant.
 
 ### 5.2 Create the first platform admin
@@ -212,6 +242,9 @@ As the first platform admin, use the platform admin workspace to:
 - `/auth/login` opens Auth0 on `https://auth.<BASE_DOMAIN>` (or your `AUTH0_CUSTOM_DOMAIN`).
 - The first platform admin can open `/account/platform-settings?tab=platform-admins`.
 - The first platform admin can create an event.
+- A signed-in user can create an MCP token in account settings, initialize a
+  Streamable HTTP client at `https://<BASE_DOMAIN>/mcp`, list role-appropriate
+  tools, revoke the token, and observe that the next request is rejected.
 
 ## 6. Advanced settings
 
@@ -241,6 +274,7 @@ Default production resource names:
 | `CF_PROFILE_ICONS_BUCKET`           | Profile-icons R2 bucket          | `codex-events-prod-profile-icons`                     |
 | `CF_EVENT_IMAGES_BUCKET`            | Event-images R2 bucket           | `codex-events-prod-event-images`                      |
 | `CF_APPLICATION_REVIEW_EMAIL_QUEUE` | Application decision email queue | `codex-events-prod-application-review-email-delivery` |
+| `CF_TALK_PROPOSAL_DECISION_EMAIL_QUEUE` | Talk proposal decision email queue | `codex-events-prod-talk-proposal-decision-email-delivery` |
 | `CF_EVENT_OUTCOME_EMAIL_QUEUE`      | Event outcome email queue        | `codex-events-prod-event-outcome-email-delivery`      |
 | `CF_LUMA_SYNC_QUEUE`                | Luma sync queue                  | `codex-events-prod-application-luma-sync`             |
 
@@ -259,8 +293,11 @@ Deployment defaults and resource names:
 | `CF_PROFILE_ICONS_BUCKET`           | Profile-icons R2 bucket name; created if it does not exist                           |
 | `CF_EVENT_IMAGES_BUCKET`            | Event-images R2 bucket name; created if it does not exist                            |
 | `CF_APPLICATION_REVIEW_EMAIL_QUEUE` | Application decision email queue name                                                |
+| `CF_TALK_PROPOSAL_DECISION_EMAIL_QUEUE` | Talk proposal decision email queue name                                           |
 | `CF_EVENT_OUTCOME_EMAIL_QUEUE`      | Event outcome email queue name                                                       |
 | `CF_LUMA_SYNC_QUEUE`                | Luma sync queue name                                                                 |
+| `NUXT_MCP_ALLOWED_HOSTNAMES`        | Comma-separated hostnames accepted by `/mcp`; defaults to `BASE_DOMAIN`              |
+| `NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES` | Comma-separated Origin hostnames accepted by `/mcp`; defaults to `BASE_DOMAIN`       |
 
 Auth0 and display:
 
@@ -278,6 +315,8 @@ Outbound email and queues:
 | `NUXT_OUTBOUND_EMAIL_FROM_NAME`                      | Sender display name. Defaults to `Codex Events`                                       |
 | `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING`       | Binding for application decision emails. Defaults to `APPLICATION_REVIEW_EMAIL_QUEUE` |
 | `NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS` | Retry delay for application decision email jobs. Defaults to `120`                    |
+| `NUXT_TALK_PROPOSAL_DECISION_EMAILS_QUEUE_BINDING` | Binding for Talk proposal decision emails. Defaults to `TALK_PROPOSAL_DECISION_EMAIL_QUEUE` |
+| `NUXT_TALK_PROPOSAL_DECISION_EMAILS_RETRY_DELAY_SECONDS` | Retry delay for Talk proposal decision email jobs. Defaults to `120`             |
 | `NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING`            | Binding for event outcome emails. Defaults to `EVENT_OUTCOME_EMAIL_QUEUE`             |
 | `NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS`      | Retry delay for event outcome email jobs. Defaults to `120`                           |
 | `NUXT_LUMA_QUEUE_BINDING`                            | Binding for Luma sync jobs. Defaults to `APPLICATION_LUMA_SYNC_QUEUE`                 |
@@ -336,6 +375,25 @@ or:
 bun run db:migrate:production
 bun run deploy:production
 ```
+
+Run the migration command before the deploy command. After deployment, create
+a fresh short-lived token for verification and revoke it immediately afterward.
+Never reuse an operator verification token as an application secret.
+
+### MCP monitoring
+
+Monitor `/mcp` request counts, latency, HTTP status, sanitized application
+error codes, and `MCP_RATE_LIMITER` outcomes. Alert on sustained authentication
+failures, rate-limit saturation, unexpected internal-error rates, and unusual
+mutation-attempt volume. Mutation audit records may contain token ID, tool
+name, outcome, and timestamp only. Worker logs, analytics, traces, support
+artifacts, and alerts must not contain bearer credentials, credential hashes,
+tool arguments, request bodies, or structured operation output.
+
+If MCP-specific errors rise after rollout, leave the database migration in
+place, revoke affected credentials when necessary, and roll the Worker back to
+the last known-good version. The token table is isolated from session login and
+does not need to be removed to disable the endpoint.
 
 ## References
 

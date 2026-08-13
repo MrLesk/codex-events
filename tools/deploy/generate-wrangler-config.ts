@@ -52,8 +52,11 @@ export interface ResolvedDeployConfigInput {
   outboundEmailReplyTo: string
   auth0DatabaseConnectionName: string
   applicationReviewEmails: QueueConfig
+  talkProposalDecisionEmails: QueueConfig
   eventOutcomeEmails: QueueConfig
   lumaSync: QueueConfig
+  mcpAllowedHostnames: string
+  mcpAllowedOriginHostnames: string
 }
 
 export interface GeneratedDeployWranglerConfig {
@@ -76,6 +79,9 @@ export interface GeneratedDeployWranglerConfig {
       enabled: boolean
       head_sampling_rate: number
     }
+  }
+  triggers: {
+    crons: string[]
   }
   ratelimits: Array<{
     name: string
@@ -139,18 +145,21 @@ const rateLimitNamespaceIdsByTarget: Record<DeployTarget, {
   authenticatedUpload: string
   publicEventFeedback: string
   simplifiedClaiming: string
+  mcp: string
 }> = {
   test: {
     publicContact: '2001',
     authenticatedUpload: '2002',
     publicEventFeedback: '2003',
-    simplifiedClaiming: '2004'
+    simplifiedClaiming: '2004',
+    mcp: '2005'
   },
   production: {
     publicContact: '3001',
     authenticatedUpload: '3002',
     publicEventFeedback: '3003',
-    simplifiedClaiming: '3004'
+    simplifiedClaiming: '3004',
+    mcp: '3005'
   }
 }
 
@@ -336,6 +345,13 @@ export function resolveDeployConfigInput(
       defaultBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE',
       defaultQueue: buildDefaultResourceName(environmentName, resourcePrefix, 'application-review-email-delivery')
     }),
+    talkProposalDecisionEmails: resolveQueueConfig(environment, {
+      bindingEnvName: 'NUXT_TALK_PROPOSAL_DECISION_EMAILS_QUEUE_BINDING',
+      queueEnvName: 'CF_TALK_PROPOSAL_DECISION_EMAIL_QUEUE',
+      retryDelayEnvName: 'NUXT_TALK_PROPOSAL_DECISION_EMAILS_RETRY_DELAY_SECONDS',
+      defaultBinding: 'TALK_PROPOSAL_DECISION_EMAIL_QUEUE',
+      defaultQueue: buildDefaultResourceName(environmentName, resourcePrefix, 'talk-proposal-decision-email-delivery')
+    }),
     eventOutcomeEmails: resolveQueueConfig(environment, {
       bindingEnvName: 'NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING',
       queueEnvName: 'CF_EVENT_OUTCOME_EMAIL_QUEUE',
@@ -349,7 +365,9 @@ export function resolveDeployConfigInput(
       retryDelayEnvName: 'NUXT_LUMA_RETRY_DELAY_SECONDS',
       defaultBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
       defaultQueue: buildDefaultResourceName(environmentName, resourcePrefix, 'application-luma-sync')
-    })
+    }),
+    mcpAllowedHostnames: readOptionalEnvironmentValue(environment, 'NUXT_MCP_ALLOWED_HOSTNAMES') || baseDomain,
+    mcpAllowedOriginHostnames: readOptionalEnvironmentValue(environment, 'NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES') || baseDomain
   }
 }
 
@@ -379,6 +397,9 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
         enabled: true,
         head_sampling_rate: 0.1
       }
+    },
+    triggers: {
+      crons: ['*/5 * * * *']
     },
     ratelimits: [
       {
@@ -412,6 +433,14 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
           limit: 10,
           period: 60
         }
+      },
+      {
+        name: 'MCP_RATE_LIMITER',
+        namespace_id: rateLimitNamespaceIds.mcp,
+        simple: {
+          limit: 120,
+          period: 60
+        }
       }
     ],
     assets: {
@@ -437,12 +466,17 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
       NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING: input.applicationReviewEmails.binding,
       NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME: input.applicationReviewEmails.queue,
       NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS: String(input.applicationReviewEmails.retryDelaySeconds),
+      NUXT_TALK_PROPOSAL_DECISION_EMAILS_QUEUE_BINDING: input.talkProposalDecisionEmails.binding,
+      NUXT_TALK_PROPOSAL_DECISION_EMAILS_QUEUE_NAME: input.talkProposalDecisionEmails.queue,
+      NUXT_TALK_PROPOSAL_DECISION_EMAILS_RETRY_DELAY_SECONDS: String(input.talkProposalDecisionEmails.retryDelaySeconds),
       NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING: input.eventOutcomeEmails.binding,
       NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME: input.eventOutcomeEmails.queue,
       NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS: String(input.eventOutcomeEmails.retryDelaySeconds),
       NUXT_LUMA_QUEUE_BINDING: input.lumaSync.binding,
       NUXT_LUMA_QUEUE_NAME: input.lumaSync.queue,
-      NUXT_LUMA_RETRY_DELAY_SECONDS: String(input.lumaSync.retryDelaySeconds)
+      NUXT_LUMA_RETRY_DELAY_SECONDS: String(input.lumaSync.retryDelaySeconds),
+      NUXT_MCP_ALLOWED_HOSTNAMES: input.mcpAllowedHostnames,
+      NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES: input.mcpAllowedOriginHostnames
     },
     d1_databases: [
       {
@@ -480,6 +514,10 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
           queue: input.applicationReviewEmails.queue
         },
         {
+          binding: input.talkProposalDecisionEmails.binding,
+          queue: input.talkProposalDecisionEmails.queue
+        },
+        {
           binding: input.eventOutcomeEmails.binding,
           queue: input.eventOutcomeEmails.queue
         },
@@ -501,6 +539,13 @@ export function buildDeployQueueConsumerConfigs(input: ResolvedDeployConfigInput
       max_batch_timeout: 5,
       max_retries: 10,
       retry_delay: input.applicationReviewEmails.retryDelaySeconds
+    },
+    {
+      queue: input.talkProposalDecisionEmails.queue,
+      max_batch_size: 10,
+      max_batch_timeout: 5,
+      max_retries: 10,
+      retry_delay: input.talkProposalDecisionEmails.retryDelaySeconds
     },
     {
       queue: input.eventOutcomeEmails.queue,

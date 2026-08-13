@@ -1,6 +1,6 @@
 import { getDatabase } from '#server/database/client'
 import { resolveEventAuthorization } from '#server/auth/authorization'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { hasEventPhotos } from '#server/domains/events/photos'
 import {
@@ -16,7 +16,16 @@ import {
 import { parseValidatedParams } from '#server/http/validation'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.events.slug.by-slug',
+  toolName: 'get_events_slug_by_slug',
+  description: 'GET /api/events/slug/:slug',
+  rest: { method: 'GET', path: '/api/events/slug/:slug' },
+  input: { params: routeSlugParamsSchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'read'
+}, async (h3Event) => {
   const { slug } = parseValidatedParams(h3Event, routeSlugParamsSchema)
   const event = await getVisibleEventBySlugOrThrow(h3Event, slug)
   const database = getDatabase(h3Event)
@@ -54,3 +63,5 @@ export default defineApiHandler(async (h3Event) => {
       : {})
   })
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

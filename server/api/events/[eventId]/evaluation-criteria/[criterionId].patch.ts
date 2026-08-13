@@ -4,7 +4,7 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { evaluationCriteria } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   assertCompetitionEvent,
@@ -17,7 +17,16 @@ import {
 } from '#server/domains/events'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'patch.events.by-eventId.evaluation-criteria.by-criterionId',
+  toolName: 'patch_events_by_eventId_evaluation-criteria_by_criterionId',
+  description: 'PATCH /api/events/:eventId/evaluation-criteria/:criterionId',
+  rest: { method: 'PATCH', path: '/api/events/:eventId/evaluation-criteria/:criterionId' },
+  input: { params: criterionParamsSchema, body: updateEvaluationCriterionBodySchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'update'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId, criterionId } = parseValidatedParams(h3Event, criterionParamsSchema)
   const body = await parseValidatedBody(h3Event, updateEvaluationCriterionBodySchema)
@@ -51,3 +60,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData(serializeEvaluationCriterion(updatedCriterion))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

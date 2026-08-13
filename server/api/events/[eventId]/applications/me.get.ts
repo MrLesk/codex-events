@@ -1,6 +1,6 @@
 import { requirePlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   getOwnUserApplication,
@@ -13,7 +13,16 @@ import {
 } from '#server/domains/events'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.events.by-eventId.applications.me',
+  toolName: 'get_events_by_eventId_applications_me',
+  description: 'GET /api/events/:eventId/applications/me',
+  rest: { method: 'GET', path: '/api/events/:eventId/applications/me' },
+  input: { params: routeIdParamsSchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'read'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const database = getDatabase(h3Event)
@@ -38,3 +47,5 @@ export default defineApiHandler(async (h3Event) => {
     applicationTermsDocument
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

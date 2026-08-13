@@ -16,6 +16,11 @@
 			"head_sampling_rate": 0.1
 		}
 	},
+	"triggers": {
+		"crons": [
+			"*/5 * * * *"
+		]
+	},
 	"ratelimits": [
 		{
 			"name": "PUBLIC_CONTACT_RATE_LIMITER",
@@ -46,6 +51,14 @@
 			"namespace_id": "1004",
 			"simple": {
 				"limit": 10,
+				"period": 60
+			}
+		},
+		{
+			"name": "MCP_RATE_LIMITER",
+			"namespace_id": "1005",
+			"simple": {
+				"limit": 120,
 				"period": 60
 			}
 		}
@@ -92,6 +105,10 @@
 			{
 				"binding": "APPLICATION_LUMA_SYNC_QUEUE",
 				"queue": "codex-events-application-luma-sync"
+			},
+			{
+				"binding": "TALK_PROPOSAL_DECISION_EMAIL_QUEUE",
+				"queue": "codex-events-talk-proposal-decision-email-delivery"
 			}
 		],
 		"consumers": [
@@ -111,6 +128,13 @@
 			},
 			{
 				"queue": "codex-events-application-luma-sync",
+				"max_batch_size": 10,
+				"max_batch_timeout": 5,
+				"max_retries": 10,
+				"retry_delay": 120
+			},
+			{
+				"queue": "codex-events-talk-proposal-decision-email-delivery",
 				"max_batch_size": 10,
 				"max_batch_timeout": 5,
 				"max_retries": 10,

@@ -4,7 +4,7 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { prizes } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { ApiError } from '#server/http/api-error'
 import { apiData } from '#server/http/api-response'
 import {
@@ -17,7 +17,16 @@ import {
 } from '#server/domains/events'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'patch.events.by-eventId.prizes.by-prizeId',
+  toolName: 'patch_events_by_eventId_prizes_by_prizeId',
+  description: 'PATCH /api/events/:eventId/prizes/:prizeId',
+  rest: { method: 'PATCH', path: '/api/events/:eventId/prizes/:prizeId' },
+  input: { params: prizeParamsSchema, body: updatePrizeBodySchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'update'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId, prizeId } = parseValidatedParams(h3Event, prizeParamsSchema)
   const body = await parseValidatedBody(h3Event, updatePrizeBodySchema)
@@ -62,3 +71,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData(serializePrize(updatedPrize))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

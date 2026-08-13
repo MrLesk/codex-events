@@ -6,6 +6,7 @@ import { writeAuditLog } from '#server/database/audit-log'
 import type { AppDatabase } from '#server/database/client'
 import {
   userApplications,
+  type AuditMetadata,
   type events,
   type users
 } from '#server/database/schema'
@@ -29,7 +30,7 @@ type UserRecord = typeof users.$inferSelect
 
 export type ApplicationReviewSource = 'pre_approval' | 'auto_approval'
 
-function getReviewSourceMetadata(source: ApplicationReviewSource) {
+function getReviewSourceMetadata(source: ApplicationReviewSource): AuditMetadata {
   return source === 'pre_approval'
     ? {
         reviewSource: source,

@@ -2,13 +2,12 @@ export interface ApiListMeta {
   page?: number
   pageSize?: number
   total?: number
-  [key: string]: unknown
 }
 
 export function apiData<T>(data: T) {
   return { data }
 }
 
-export function apiList<T>(data: T, meta: ApiListMeta) {
+export function apiList<T, TMeta extends ApiListMeta>(data: T, meta: TMeta) {
   return { data, meta }
 }

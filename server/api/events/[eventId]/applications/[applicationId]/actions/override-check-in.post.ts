@@ -11,7 +11,7 @@ import {
   serializeUserApplication
 } from '#server/domains/applications'
 import { ApiError } from '#server/http/api-error'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 import { applicationCheckInOverrideStatuses } from '#shared/domains/applications/check-in'
@@ -20,7 +20,16 @@ const overrideCheckInBodySchema = z.object({
   status: z.enum(applicationCheckInOverrideStatuses)
 })
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.applications.by-applicationId.actions.override-check-in',
+  toolName: 'post_events_by_eventId_applications_by_applicationId_actions_override-check-in',
+  description: 'POST /api/events/:eventId/applications/:applicationId/actions/override-check-in',
+  rest: { method: 'POST', path: '/api/events/:eventId/applications/:applicationId/actions/override-check-in' },
+  input: { params: applicationParamsSchema, body: overrideCheckInBodySchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'update'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId, applicationId } = parseValidatedParams(h3Event, applicationParamsSchema)
   const { status } = await parseValidatedBody(h3Event, overrideCheckInBodySchema)
@@ -85,3 +94,5 @@ export default defineApiHandler(async (h3Event) => {
     applicationTermsDocument
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

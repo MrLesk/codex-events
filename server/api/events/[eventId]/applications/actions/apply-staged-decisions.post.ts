@@ -2,7 +2,7 @@ import { and, asc, desc, eq, getTableColumns, isNotNull } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { userApplications, users } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   requireEventAdminApplicationContext,
@@ -12,7 +12,16 @@ import { finalizeUserApplicationReview } from '#server/domains/applications/revi
 import { routeIdParamsSchema } from '#server/domains/events'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.applications.actions.apply-staged-decisions',
+  toolName: 'post_events_by_eventId_applications_actions_apply-staged-decisions',
+  description: 'POST /api/events/:eventId/applications/actions/apply-staged-decisions',
+  rest: { method: 'POST', path: '/api/events/:eventId/applications/actions/apply-staged-decisions' },
+  input: { params: routeIdParamsSchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'destructive'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const { database, event } = await requireEventAdminApplicationContext(h3Event, eventId)
@@ -104,3 +113,5 @@ export default defineApiHandler(async (h3Event) => {
     applications: appliedApplications
   })
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

@@ -34,7 +34,7 @@ This document defines the canonical permissions for the Codex event platform.
 - A user acting through a blind `JudgeAssignment` uses the blind judging view even if that user is also an admin.
 - A user acting through a pitch `JudgeAssignment` uses the open pitch judging view even if that user is also an admin.
 - Admin visibility outside a judging assignment flow is not restricted by the assignment view.
-- Team, submission, judging, shortlist, winner, and prize permissions apply only to Hackathon events. Meetup and Build events expose application review, participant visibility, event credits, gallery, feedback, lifecycle completion, settings, staff, and event-admin role management.
+- Team, project-submission, judging, shortlist, winner, and prize permissions apply only to Hackathon events. Meetup and Build events expose application review, participant visibility, event credits, gallery, feedback, lifecycle completion, settings, staff, and event-admin role management. Meetup events can additionally expose private talk-proposal permissions.
 
 ## Global Platform Actions
 
@@ -117,6 +117,24 @@ This document defines the canonical permissions for the Codex event platform.
 | Send certificate emails | No | No | No | Yes, for currently available certificates that have not already had an email queued or sent | Yes, for currently available certificates that have not already had an email queued or sent |
 
 For Meetup and Build events, an approved application is the participation record. Team permissions below do not apply.
+
+## Talk Proposal Permissions
+
+Talk proposal permissions apply only to Meetups with an enabled Call for talks. Proposal content and decisions are private.
+
+| Action | Applicant / Owner | Staff | Event Admin | Platform Admin |
+| --- | --- | --- | --- | --- |
+| View own retained proposal | Yes | No | No | No |
+| Create proposal draft | Yes, while the Call for talks is open and own application is `submitted` or `approved` | No | No | No |
+| Edit proposal draft | Yes, while open and eligible | No | No | No |
+| Submit or resubmit proposal | Yes, while open and eligible | No | No | No |
+| Withdraw submitted proposal | Yes, while open and eligible | No | No | No |
+| Revise withdrawn proposal | Yes, while open and eligible | No | No | No |
+| List and inspect event proposals | No | Yes, read-only | Yes | Yes |
+| Accept or reject submitted proposal | No | No | Yes, before event completion, including after Call for talks close | Yes, before event completion, including after Call for talks close |
+| Publish proposal or create an agenda item from a decision | No | No | No | No |
+
+A later `rejected` or `withdrawn` application does not remove review access or owner visibility. It pauses owner mutations until application eligibility is restored before the Call for talks closes. Accepted and rejected decisions are final.
 
 ## Team Permissions
 
@@ -248,6 +266,21 @@ Simplified redemption requires an authenticated platform account with current le
 | Submit anonymous event feedback | Yes, only after `completed` | Yes, only after `completed` | Yes, only after `completed` | Yes, only after `completed` | Yes, only after `completed` |
 | View event feedback results in the account workspace | No | Yes | Yes | Yes | Yes |
 
+## MCP Access
+
+| Action | Platform User | Event Admin | Platform Admin |
+| --- | --- | --- | --- |
+| List, create, and revoke own MCP access tokens | Yes | Yes | Yes |
+| List or revoke another user's MCP access tokens | No | No | No |
+| Use public discovery tools | Yes | Yes | Yes |
+| Use signed-in structured tools | Only when the same REST operation permits the current actor | Only within current event and lifecycle authority | Only when the same REST operation permits the current actor |
+
+Tool discovery uses current coarse capabilities only. A tool call always
+re-runs the operation's exact user, event, team, assignment, consent, and
+lifecycle guards. Token ownership never grants authorization beyond the
+owner's current platform access, and role or required-document changes take
+effect on the next MCP request.
+
 ## Visibility Rules
 
 - Users can view only their own application records.
@@ -282,6 +315,8 @@ Simplified redemption requires an authenticated platform account with current le
 
 - Team formation is allowed during `registration_open` and `submission_open` for Hackathon events only.
 - Submission creation and editing are allowed only during `submission_open` for Hackathon events only.
+- Talk proposal owner mutations are allowed only during an enabled Meetup Call for talks window and only while the owner application is `submitted` or `approved`.
+- Talk proposal decisions remain available to event and platform admins after the Call for talks closes, but not after the Meetup is completed.
 - Blind review can require `0`, `1`, or `2` blind assignments per submission depending on Hackathon configuration.
 - Pitch review can be enabled independently from blind review for Hackathon events.
 - When pitch review is enabled, admins manually start the live `pitch` stage, advance the saved presentation lineup one team at a time, and only then manually start `pitch_review`.

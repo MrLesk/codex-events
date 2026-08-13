@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 
 import { writeAuditLog } from '#server/database/audit-log'
 import { judgeAssignments } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   assertJudgeAssignmentStatus,
@@ -17,7 +17,16 @@ import {
 } from '#server/domains/judging'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.judging.assignments.by-assignmentId.actions.reassign',
+  toolName: 'post_events_by_eventId_judging_assignments_by_assignmentId_actions_reassign',
+  description: 'POST /api/events/:eventId/judging/assignments/:assignmentId/actions/reassign',
+  rest: { method: 'POST', path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/reassign' },
+  input: { params: judgingAssignmentParamsSchema, body: reassignJudgeAssignmentBodySchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'destructive'
+}, async (h3Event) => {
   const { eventId, assignmentId } = parseValidatedParams(h3Event, judgingAssignmentParamsSchema)
   const body = await parseValidatedBody(h3Event, reassignJudgeAssignmentBodySchema)
   const { actor, database, event, assignment } = await requireAdminAssignmentContext(h3Event, eventId, assignmentId)
@@ -71,3 +80,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData(await getBlindAssignmentDetail(database, persistedReplacementAssignment))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

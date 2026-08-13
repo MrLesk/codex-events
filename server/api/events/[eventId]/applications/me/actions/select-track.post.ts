@@ -14,7 +14,7 @@ import {
   routeIdParamsSchema
 } from '#server/domains/events'
 import { ApiError } from '#server/http/api-error'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
@@ -22,7 +22,16 @@ const selectTrackBodySchema = z.object({
   trackId: z.string().trim().min(1)
 })
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.applications.me.actions.select-track',
+  toolName: 'post_events_by_eventId_applications_me_actions_select-track',
+  description: 'POST /api/events/:eventId/applications/me/actions/select-track',
+  rest: { method: 'POST', path: '/api/events/:eventId/applications/me/actions/select-track' },
+  input: { params: routeIdParamsSchema, body: selectTrackBodySchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'update'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const { trackId } = await parseValidatedBody(h3Event, selectTrackBodySchema)
@@ -115,3 +124,5 @@ export default defineApiHandler(async (h3Event) => {
     updatedAt
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

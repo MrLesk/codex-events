@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 
 import { teams } from '#server/database/schema'
 import { requirePlatformActor } from '#server/auth/actor'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   assertEventAllowsTeamFormation,
@@ -15,7 +15,16 @@ import {
 } from '#server/domains/teams'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'patch.events.by-eventId.teams.by-teamId',
+  toolName: 'patch_events_by_eventId_teams_by_teamId',
+  description: 'PATCH /api/events/:eventId/teams/:teamId',
+  rest: { method: 'PATCH', path: '/api/events/:eventId/teams/:teamId' },
+  input: { params: teamParamsSchema, body: updateTeamBodySchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'update'
+}, async (h3Event) => {
   await requirePlatformActor(h3Event)
   const { eventId, teamId } = parseValidatedParams(h3Event, teamParamsSchema)
   const body = await parseValidatedBody(h3Event, updateTeamBodySchema)
@@ -59,3 +68,5 @@ export default defineApiHandler(async (h3Event) => {
     members: updated.members
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

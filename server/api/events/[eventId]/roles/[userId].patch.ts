@@ -2,7 +2,7 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { eventRoleAssignments } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   assertCompetitionEvent,
@@ -18,7 +18,16 @@ import {
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 import { eq } from 'drizzle-orm'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'patch.events.by-eventId.roles.by-userId',
+  toolName: 'patch_events_by_eventId_roles_by_userId',
+  description: 'PATCH /api/events/:eventId/roles/:userId',
+  rest: { method: 'PATCH', path: '/api/events/:eventId/roles/:userId' },
+  input: { params: roleAssignmentParamsSchema, body: roleAssignmentPatchBodySchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'update'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
 
   const { eventId, userId } = parseValidatedParams(h3Event, roleAssignmentParamsSchema)
@@ -82,3 +91,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData(serializeEventRoleAssignment(updatedAssignment, user))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

@@ -4,7 +4,7 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { eventRoleAssignments } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   assertCompetitionEvent,
@@ -18,7 +18,16 @@ import {
 } from '#server/domains/events'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'put.events.by-eventId.roles.by-userId',
+  toolName: 'put_events_by_eventId_roles_by_userId',
+  description: 'PUT /api/events/:eventId/roles/:userId',
+  rest: { method: 'PUT', path: '/api/events/:eventId/roles/:userId' },
+  input: { params: roleAssignmentParamsSchema, body: roleAssignmentUpsertBodySchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'update'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
 
   const { eventId, userId } = parseValidatedParams(h3Event, roleAssignmentParamsSchema)
@@ -97,3 +106,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData(serializeEventRoleAssignment(assignment!, user))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

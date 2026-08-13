@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { events, submissions } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { ApiError } from '#server/http/api-error'
 import { apiData } from '#server/http/api-response'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
@@ -64,7 +64,16 @@ function pruneStoredSubmissionIdsJson(
   return JSON.stringify(parsedSubmissionIds.filter(value => value !== submissionId))
 }
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.teams.by-teamId.submission.actions.disqualify',
+  toolName: 'post_events_by_eventId_teams_by_teamId_submission_actions_disqualify',
+  description: 'POST /api/events/:eventId/teams/:teamId/submission/actions/disqualify',
+  rest: { method: 'POST', path: '/api/events/:eventId/teams/:teamId/submission/actions/disqualify' },
+  input: { params: submissionParamsSchema, body: disqualifySubmissionBodySchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'destructive'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId, teamId } = parseValidatedParams(h3Event, submissionParamsSchema)
   const body = await parseValidatedBody(h3Event, disqualifySubmissionBodySchema)
@@ -140,3 +149,5 @@ export default defineApiHandler(async (h3Event) => {
     disqualificationReason: body.reason ?? null
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

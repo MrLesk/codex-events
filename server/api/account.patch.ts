@@ -1,6 +1,6 @@
 import { requirePlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   platformAccountProfileBodySchema,
@@ -8,7 +8,16 @@ import {
 } from '#server/domains/accounts'
 import { parseValidatedBody } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'patch.account',
+  toolName: 'patch_account',
+  description: 'PATCH /api/account',
+  rest: { method: 'PATCH', path: '/api/account' },
+  input: { body: platformAccountProfileBodySchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'update'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const body = await parseValidatedBody(h3Event, platformAccountProfileBodySchema)
 
@@ -18,3 +27,5 @@ export default defineApiHandler(async (h3Event) => {
     user
   })
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

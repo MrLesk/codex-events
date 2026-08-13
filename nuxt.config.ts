@@ -67,6 +67,11 @@ export default defineNuxtConfig({
       queueName: 'codex-events-dev-application-review-email-delivery',
       retryDelaySeconds: 120
     },
+    talkProposalDecisionEmails: {
+      queueBinding: 'TALK_PROPOSAL_DECISION_EMAIL_QUEUE',
+      queueName: 'codex-events-dev-talk-proposal-decision-email-delivery',
+      retryDelaySeconds: 120
+    },
     eventOutcomeEmails: {
       queueBinding: 'EVENT_OUTCOME_EMAIL_QUEUE',
       queueName: 'codex-events-dev-event-outcome-email-delivery',
@@ -87,6 +92,10 @@ export default defineNuxtConfig({
     },
     eventImages: {
       binding: 'EVENT_IMAGES'
+    },
+    mcp: {
+      allowedHostnames: 'localhost',
+      allowedOriginHostnames: 'localhost'
     }
   },
   alias: {

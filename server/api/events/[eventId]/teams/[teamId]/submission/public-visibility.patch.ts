@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { prizeRedemptions, submissions } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { requireTeamAdminContext } from '#server/domains/teams'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
@@ -15,7 +15,16 @@ import {
 } from '#server/domains/submissions'
 import { refreshCompletedOutcomeCache } from '#server/domains/outcomes'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'patch.events.by-eventId.teams.by-teamId.submission.public-visibility',
+  toolName: 'patch_events_by_eventId_teams_by_teamId_submission_public-visibility',
+  description: 'PATCH /api/events/:eventId/teams/:teamId/submission/public-visibility',
+  rest: { method: 'PATCH', path: '/api/events/:eventId/teams/:teamId/submission/public-visibility' },
+  input: { params: submissionParamsSchema, body: updateSubmissionPublicVisibilityBodySchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'update'
+}, async (h3Event) => {
   await requirePlatformActor(h3Event)
   const { eventId, teamId } = parseValidatedParams(h3Event, submissionParamsSchema)
   const body = await parseValidatedBody(h3Event, updateSubmissionPublicVisibilityBodySchema)
@@ -50,3 +59,5 @@ export default defineApiHandler(async (h3Event) => {
     updatedAt
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

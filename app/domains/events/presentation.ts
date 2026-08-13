@@ -79,6 +79,9 @@ export interface PublicEvent {
   state: PublicEventState
   maxTeamMembers: number
   autoApproveApplications: boolean
+  talkProposalsEnabled: boolean
+  talkProposalOpensAt: string | null
+  talkProposalClosesAt: string | null
   inPersonEvent: boolean
   applicationXProfileVisible: boolean
   applicationLinkedinProfileVisible: boolean

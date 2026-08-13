@@ -106,6 +106,9 @@ It describes the intended persistent model at the level of entities, key fields,
 - `registration_closes_at`
 - `submission_opens_at`
 - `submission_closes_at`
+- `talk_proposals_enabled`
+- `talk_proposal_opens_at`
+- `talk_proposal_closes_at`
 - `state`
 - `hidden_at`
 - `hidden_by_user_id`
@@ -186,10 +189,12 @@ It describes the intended persistent model at the level of entities, key fields,
 - `participants_limit` is null or greater than or equal to 1.
 - For Hackathon events, `registration_opens_at < registration_closes_at <= submission_opens_at < submission_closes_at`.
 - For Meetup and Build events, `registration_opens_at < registration_closes_at`, and `submission_opens_at` and `submission_closes_at` are null.
+- For an enabled Meetup Call for talks, `talk_proposal_opens_at < talk_proposal_closes_at`.
+- Disabled Meetups and all non-Meetup events have `talk_proposals_enabled = false` with null talk-proposal timestamps.
 
 ### Notes
 
-- `event_type` determines which workflow surfaces are available. `hackathon` enables teams, submissions, judging, prizes, winner terms, and completed competition outcomes. All event types can use event credits. `meetup` and `build` are registration-only events.
+- `event_type` determines which workflow surfaces are available. `hackathon` enables teams, project submissions, judging, prizes, winner terms, and completed competition outcomes. All event types can use event credits. `meetup` and `build` are registration-focused events; only `meetup` can enable private talk proposals.
 - `registration_open` is manually activated by an admin while the configured registration window is open.
 - Meetup and Build events support only `draft`, `registration_open`, and `completed`.
 - Hackathon-only lifecycle states use the same shared `state` enum but are not valid operational states for Meetup and Build events.
@@ -210,6 +215,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `participants_limit` is an indicative planning target surfaced in admin approval workflows and does not enforce staged or applied admin approval writes by itself. When auto approval is enabled, it is also the capacity boundary for automatic approval.
 - `auto_approve_applications` controls whether newly submitted applications are approved immediately after required submission checks pass while approved participation is below `participants_limit` when one is configured. It defaults to false and does not affect already submitted applications when changed.
 - `simplified_claiming_enabled` is available only for Meetups. It requires no application terms, required registration fields, or Luma API Sync configuration. It uses the event slug and sole credit offer instead of a token or selected-offer field.
+- `talk_proposals_enabled` defaults to false. After the first `TalkProposal` exists for the event it cannot be set to false. Its closing timestamp can change until the event is completed.
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.
 - Application field visibility columns control whether each optional application field appears on the participant application form. First name and family name are always visible and required.
 - `require_x_profile`, `require_linkedin_profile`, `require_github_profile`, `require_chatgpt_email`, `require_openai_org_id`, `require_luma_profile`, `require_why_this_event`, `require_proof_of_execution`, `require_team_intent`, and `require_ai_knowledge` control whether the corresponding visible field is required.
@@ -559,6 +565,78 @@ It describes the intended persistent model at the level of entities, key fields,
 - `certificate_email_queued_at` records when an event admin or platform admin reserved the application for certificate email delivery, with `certificate_email_queued_by_user_id` recording the acting admin. `certificate_email_sent_at` records successful delivery. These fields make the admin send action rerunnable without emailing the same participant again.
 - `application_terms_document_id` and `application_terms_accepted_at` are null when the event has no current application terms at submission time.
 - Withdrawal retains the application record rather than deleting it so participation history, event-terms acceptance when present, and audit context remain available.
+
+## TalkProposal
+
+### Key Fields
+
+- `id`
+- `event_id`
+- `user_id`
+- `status`
+- `title`
+- `abstract`
+- `demo_or_slides_url`
+- `decision_message`
+- `reviewed_by_user_id`
+- `submitted_at`
+- `withdrawn_at`
+- `revised_at`
+- `decided_at`
+- `decision_email_queued_at`
+- `decision_email_delivery_id`
+- `decision_email_state`
+- `decision_email_enqueue_attempts`
+- `decision_email_last_enqueue_attempted_at`
+- `decision_email_enqueue_lease_token`
+- `decision_email_enqueue_lease_expires_at`
+- `decision_email_delivery_attempts`
+- `decision_email_delivery_lease_token`
+- `decision_email_delivery_lease_expires_at`
+- `decision_email_last_failure_code`
+- `decision_email_last_attempted_at`
+- `decision_email_sent_at`
+- `decision_email_failed_at`
+- `created_at`
+- `updated_at`
+
+### Enums
+
+- `status`
+  - `draft`
+  - `submitted`
+  - `withdrawn`
+  - `accepted`
+  - `rejected`
+- `decision_email_state`
+  - `pending`
+  - `enqueued`
+  - `delivering`
+  - `retryable`
+  - `sent`
+  - `failed`
+
+### Constraints And Indexes
+
+- `unique (event_id, user_id)`
+- `event_id` references `Event(id)` with `on delete cascade`
+- `user_id` references `User(id)` with `on delete cascade`
+- `reviewed_by_user_id` references `User(id)` with `on delete set null`
+- Review queries are indexed by `(event_id, status, submitted_at)` and `(event_id, updated_at)`.
+- Pending/retryable delivery reconciliation is indexed by `(decision_email_state, decision_email_enqueue_lease_expires_at, updated_at)`.
+- `decision_email_delivery_id` is null before a decision and unique after one is recorded.
+- `demo_or_slides_url` is null or uses `http` or `https`.
+
+### Notes
+
+- The row is private to its owner and authorized event reviewers.
+- Only `draft` content is editable. A withdrawn proposal must return to `draft` through the revise action before editing.
+- `decision_message`, `reviewed_by_user_id`, and `decided_at` are set only for accepted or rejected proposals.
+- A decision conditionally changes `status = submitted` and writes `decision_email_delivery_id` plus `decision_email_state = pending` in the same row update.
+- Delivery state, attempt counters, and expiring enqueue/delivery leases make producer recovery and concurrent queue consumption durable without a separate public delivery record.
+- Queue messages carry the proposal ID and deterministic delivery ID. Private recipient, event, and decision-message content is loaded from the retained database row at delivery time.
+- Account deletion removes the proposal and its private email state through the user foreign key.
+- No field creates or references an agenda item, public speaker record, project submission, or judging assignment.
 
 ## Team
 
@@ -984,6 +1062,31 @@ It describes the intended persistent model at the level of entities, key fields,
 - Outcome cache entries store one serialized winner or published-project row each.
 - `display_order` preserves the generated ordering within a cache generation.
 
+## McpAccessToken
+
+### Key Fields
+
+- `id`
+- `userId`
+- `name`
+- `displayPrefix`
+- `secretHash`
+- `expiresAt`
+- `lastUsedAt`
+- `revokedAt`
+- `createdAt`
+- `updatedAt`
+
+### Constraints
+
+- `userId` references `User` with cascading deletion.
+- `secretHash` is unique and plaintext credentials are never stored.
+- `displayPrefix` is non-secret and cannot authenticate a request.
+- `expiresAt` equals `createdAt + 30 days`.
+- A user can have no more than five unrevoked, unexpired MCP access tokens.
+- Verification selects by token ID, compares the credential hash, then checks
+  owner, expiry, and revocation state without exposing which check failed.
+
 ## AuditLog
 
 ### Key Fields
@@ -1011,6 +1114,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `UserPlatformDocumentAcceptance` belongs to `User` and `PlatformDocument`
 - `EventTermsDocument` belongs to `Event`
 - `UserApplication` belongs to `Event` and `User`
+- `TalkProposal` belongs to `Event` and `User` and may reference a reviewing `User`
+- `McpAccessToken` belongs to one `User` and is deleted with that user.
 - `Team` belongs to `Event`
 - `TeamMember` belongs to `Team` and `User`
 - `TeamJoinRequest` belongs to `Team` and `User`

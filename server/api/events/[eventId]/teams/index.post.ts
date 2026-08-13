@@ -1,6 +1,6 @@
 import { requirePlatformActor } from '#server/auth/actor'
 import { teamMembers, teams } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   assertNoActiveTeamMembershipForEvent,
@@ -13,7 +13,16 @@ import {
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 import { routeIdParamsSchema } from '#server/domains/events'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.teams',
+  toolName: 'post_events_by_eventId_teams',
+  description: 'POST /api/events/:eventId/teams',
+  rest: { method: 'POST', path: '/api/events/:eventId/teams' },
+  input: { params: routeIdParamsSchema, body: createTeamBodySchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'create'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const body = await parseValidatedBody(h3Event, createTeamBodySchema)
@@ -74,3 +83,5 @@ export default defineApiHandler(async (h3Event) => {
     ]
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

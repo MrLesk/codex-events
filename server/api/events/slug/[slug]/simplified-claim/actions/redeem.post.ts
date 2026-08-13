@@ -22,7 +22,7 @@ import {
 } from '#server/domains/credits/simplified-claiming'
 import { getVisibleEventBySlugOrThrow, routeSlugParamsSchema } from '#server/domains/events'
 import { assertGuard } from '#server/domains/lifecycle-guard'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { ApiError } from '#server/http/api-error'
 import { apiData } from '#server/http/api-response'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
@@ -41,7 +41,16 @@ function createUniqueClaimTimestamp() {
   return `${base.slice(0, -1)}${suffix}Z`
 }
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.slug.by-slug.simplified-claim.actions.redeem',
+  toolName: 'post_events_slug_by_slug_simplified-claim_actions_redeem',
+  description: 'POST /api/events/slug/:slug/simplified-claim/actions/redeem',
+  rest: { method: 'POST', path: '/api/events/slug/:slug/simplified-claim/actions/redeem' },
+  input: { params: routeSlugParamsSchema, body: redeemBodySchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'destructive'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { slug } = parseValidatedParams(h3Event, routeSlugParamsSchema)
   const body = await parseValidatedBody(h3Event, redeemBodySchema)
@@ -384,3 +393,5 @@ export default defineApiHandler(async (h3Event) => {
     claimedAt: claimedCode.claimedAt
   })
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

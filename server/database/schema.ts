@@ -49,6 +49,8 @@ export const teamWorkspaceModes = ['solo', 'team'] as const
 export const teamMemberRoles = ['member', 'admin'] as const
 export const teamJoinRequestStatuses = ['pending', 'approved', 'rejected', 'canceled'] as const
 export const submissionStatuses = ['draft', 'submitted', 'withdrawn', 'locked', 'disqualified'] as const
+export const talkProposalStatuses = ['draft', 'submitted', 'withdrawn', 'accepted', 'rejected'] as const
+export const talkProposalDecisionEmailStates = ['pending', 'enqueued', 'delivering', 'retryable', 'sent', 'failed'] as const
 export const judgeAssignmentStatuses = ['assigned', 'judge_started', 'judge_completed', 'skipped'] as const
 export const ineligibilityStatuses = ['eligible', 'ineligible'] as const
 export const prizeRewardTypes = ['api_credits', 'subscription', 'physical', 'other'] as const
@@ -88,6 +90,31 @@ export const users = sqliteTable(
     uniqueIndex('users_email_active_idx')
       .on(table.email)
       .where(sql`${table.deletedAt} is null`)
+  ]
+)
+
+export const mcpAccessTokens = sqliteTable(
+  'mcp_access_tokens',
+  {
+    id: idColumn(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    displayPrefix: text('display_prefix').notNull(),
+    secretHash: text('secret_hash').notNull(),
+    expiresAt: text('expires_at').notNull(),
+    lastUsedAt: text('last_used_at'),
+    revokedAt: text('revoked_at'),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn()
+  },
+  table => [
+    uniqueIndex('mcp_access_tokens_secret_hash_idx').on(table.secretHash),
+    index('mcp_access_tokens_user_created_idx').on(table.userId, table.createdAt),
+    index('mcp_access_tokens_user_active_idx')
+      .on(table.userId, table.expiresAt)
+      .where(sql`${table.revokedAt} is null`)
   ]
 )
 
@@ -135,6 +162,9 @@ export const events = sqliteTable(
     registrationClosesAt: text('registration_closes_at').notNull(),
     submissionOpensAt: text('submission_opens_at'),
     submissionClosesAt: text('submission_closes_at'),
+    talkProposalsEnabled: integer('talk_proposals_enabled', { mode: 'boolean' }).notNull().default(false),
+    talkProposalOpensAt: text('talk_proposal_opens_at'),
+    talkProposalClosesAt: text('talk_proposal_closes_at'),
     state: text('state', { enum: eventStates }).notNull().default('draft'),
     hiddenAt: text('hidden_at'),
     hiddenByUserId: text('hidden_by_user_id').references(() => users.id),
@@ -570,6 +600,64 @@ export const userApplications = sqliteTable(
   ]
 )
 
+export const talkProposals = sqliteTable(
+  'talk_proposals',
+  {
+    id: idColumn(),
+    eventId: text('event_id')
+      .notNull()
+      .references(() => events.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    status: text('status', { enum: talkProposalStatuses }).notNull().default('draft'),
+    title: text('title').notNull(),
+    abstract: text('abstract').notNull(),
+    demoOrSlidesUrl: text('demo_or_slides_url'),
+    decisionMessage: text('decision_message'),
+    reviewedByUserId: text('reviewed_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    submittedAt: text('submitted_at'),
+    withdrawnAt: text('withdrawn_at'),
+    revisedAt: text('revised_at'),
+    decidedAt: text('decided_at'),
+    decisionEmailDeliveryId: text('decision_email_delivery_id'),
+    decisionEmailState: text('decision_email_state', { enum: talkProposalDecisionEmailStates }),
+    decisionEmailEnqueueAttempts: integer('decision_email_enqueue_attempts').notNull().default(0),
+    decisionEmailLastEnqueueAttemptedAt: text('decision_email_last_enqueue_attempted_at'),
+    decisionEmailEnqueueLeaseToken: text('decision_email_enqueue_lease_token'),
+    decisionEmailEnqueueLeaseExpiresAt: text('decision_email_enqueue_lease_expires_at'),
+    decisionEmailQueuedAt: text('decision_email_queued_at'),
+    decisionEmailDeliveryAttempts: integer('decision_email_delivery_attempts').notNull().default(0),
+    decisionEmailDeliveryLeaseToken: text('decision_email_delivery_lease_token'),
+    decisionEmailDeliveryLeaseExpiresAt: text('decision_email_delivery_lease_expires_at'),
+    decisionEmailLastFailureCode: text('decision_email_last_failure_code'),
+    decisionEmailLastAttemptedAt: text('decision_email_last_attempted_at'),
+    decisionEmailSentAt: text('decision_email_sent_at'),
+    decisionEmailFailedAt: text('decision_email_failed_at'),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn()
+  },
+  table => [
+    uniqueIndex('talk_proposals_event_user_idx').on(table.eventId, table.userId),
+    uniqueIndex('talk_proposals_decision_email_delivery_idx').on(table.decisionEmailDeliveryId),
+    index('talk_proposals_event_status_submitted_idx').on(table.eventId, table.status, table.submittedAt),
+    index('talk_proposals_event_updated_idx').on(table.eventId, table.updatedAt),
+    index('talk_proposals_decision_email_recovery_idx').on(
+      table.decisionEmailState,
+      table.decisionEmailEnqueueLeaseExpiresAt,
+      table.updatedAt
+    ),
+    check(
+      'talk_proposals_status_check',
+      sql`${table.status} in ('draft', 'submitted', 'withdrawn', 'accepted', 'rejected')`
+    ),
+    check(
+      'talk_proposals_decision_email_state_check',
+      sql`${table.decisionEmailState} is null or ${table.decisionEmailState} in ('pending', 'enqueued', 'delivering', 'retryable', 'sent', 'failed')`
+    )
+  ]
+)
+
 export const teams = sqliteTable(
   'teams',
   {
@@ -970,6 +1058,12 @@ export const eventOutcomeCacheEntries = sqliteTable(
   ]
 )
 
+export type AuditMetadataScalar = string | number | boolean | null
+export type AuditMetadataLevelOne = AuditMetadataScalar | AuditMetadataScalar[] | Record<string, AuditMetadataScalar>
+export type AuditMetadataLevelTwo = AuditMetadataScalar | AuditMetadataLevelOne[] | Record<string, AuditMetadataLevelOne>
+export type AuditMetadataValue = AuditMetadataScalar | AuditMetadataLevelTwo[] | Record<string, AuditMetadataLevelTwo>
+export type AuditMetadata = Record<string, AuditMetadataValue>
+
 export const auditLogs = sqliteTable(
   'audit_logs',
   {
@@ -979,7 +1073,7 @@ export const auditLogs = sqliteTable(
     entityId: text('entity_id').notNull(),
     action: text('action').notNull(),
     metadata: text('metadata', { mode: 'json' })
-      .$type<Record<string, unknown>>()
+      .$type<AuditMetadata>()
       .notNull()
       .default(sql`'{}'`),
     createdAt: createdAtColumn()
@@ -1001,6 +1095,7 @@ export const auditLogs = sqliteTable(
 
 export const schema = {
   users,
+  mcpAccessTokens,
   userAuthIdentities,
   events,
   eventTracks,
@@ -1012,6 +1107,7 @@ export const schema = {
   eventTermsDocuments,
   eventAttendeeEligibilities,
   userApplications,
+  talkProposals,
   teams,
   teamMembers,
   teamJoinRequests,

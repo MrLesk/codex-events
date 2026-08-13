@@ -4,7 +4,7 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { userApplications, users } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   applicationParamsSchema,
@@ -17,7 +17,16 @@ import {
 import { applyPostRegistrationApplicationOutcome } from '#server/domains/applications/review-finalization'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.applications.by-applicationId.actions.undo-withdrawal',
+  toolName: 'post_events_by_eventId_applications_by_applicationId_actions_undo-withdrawal',
+  description: 'POST /api/events/:eventId/applications/:applicationId/actions/undo-withdrawal',
+  rest: { method: 'POST', path: '/api/events/:eventId/applications/:applicationId/actions/undo-withdrawal' },
+  input: { params: applicationParamsSchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'action'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId, applicationId } = parseValidatedParams(h3Event, applicationParamsSchema)
   const { database, event } = await requireEventAdminApplicationContext(h3Event, eventId)
@@ -105,3 +114,5 @@ export default defineApiHandler(async (h3Event) => {
     applicationTermsDocument
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

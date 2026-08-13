@@ -2,7 +2,7 @@ import { asc, eq, getTableColumns } from 'drizzle-orm'
 
 import { getDatabase } from '#server/database/client'
 import { eventRoleAssignments, users } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiList } from '#server/http/api-response'
 import {
   requireEventAdmin,
@@ -14,7 +14,16 @@ import { parseValidatedParams } from '#server/http/validation'
 type EventRoleAssignmentRecord = typeof eventRoleAssignments.$inferSelect
 type UserRecord = typeof users.$inferSelect
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.events.by-eventId.roles',
+  toolName: 'get_events_by_eventId_roles',
+  description: 'GET /api/events/:eventId/roles',
+  rest: { method: 'GET', path: '/api/events/:eventId/roles' },
+  input: { params: routeIdParamsSchema },
+  output: 'list',
+  capabilities: ['event_admin'],
+  effect: 'read'
+}, async (h3Event) => {
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const database = getDatabase(h3Event)
 
@@ -43,3 +52,5 @@ export default defineApiHandler(async (h3Event) => {
     }
   )
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

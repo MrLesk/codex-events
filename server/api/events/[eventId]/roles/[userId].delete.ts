@@ -4,12 +4,21 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { eventRoleAssignments } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { getRoleAssignmentOrThrow, requireEventAdmin, roleAssignmentParamsSchema } from '#server/domains/events'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'delete.events.by-eventId.roles.by-userId',
+  toolName: 'delete_events_by_eventId_roles_by_userId',
+  description: 'DELETE /api/events/:eventId/roles/:userId',
+  rest: { method: 'DELETE', path: '/api/events/:eventId/roles/:userId' },
+  input: { params: roleAssignmentParamsSchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'delete'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
 
   const { eventId, userId } = parseValidatedParams(h3Event, roleAssignmentParamsSchema)
@@ -41,3 +50,5 @@ export default defineApiHandler(async (h3Event) => {
     deleted: true
   })
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

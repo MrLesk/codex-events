@@ -4,12 +4,21 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { assertPlatformAdminAccess } from '#server/auth/authorization'
 import { getDatabase } from '#server/database/client'
 import { auditLogs } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiList } from '#server/http/api-response'
 
 const auditLogReadLimit = 200
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.audit',
+  toolName: 'get_audit',
+  description: 'GET /api/audit',
+  rest: { method: 'GET', path: '/api/audit' },
+  input: {},
+  output: 'list',
+  capabilities: ['platform_admin'],
+  effect: 'read'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const database = getDatabase(h3Event)
 
@@ -24,3 +33,5 @@ export default defineApiHandler(async (h3Event) => {
     total: auditRows.length
   })
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

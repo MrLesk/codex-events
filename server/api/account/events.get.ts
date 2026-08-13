@@ -16,7 +16,7 @@ import {
   resolveEventDisplayBackgroundImageUrl,
   type EventDisplayImageOptions
 } from '#server/domains/platform/settings'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { resolveEventCertificateDateIso } from '#shared/domains/events/certificates'
 
@@ -107,7 +107,16 @@ function serializeEventParticipation(
   }
 }
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.account.events',
+  toolName: 'get_account_events',
+  description: 'GET /api/account/events',
+  rest: { method: 'GET', path: '/api/account/events' },
+  input: {},
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'read'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const database = getDatabase(h3Event)
 
@@ -260,3 +269,5 @@ export default defineApiHandler(async (h3Event) => {
     past: payload.filter(item => pastParticipationStates.has(item.state))
   })
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

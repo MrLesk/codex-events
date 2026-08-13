@@ -1,11 +1,20 @@
 import { getDatabase } from '#server/database/client'
 import { getSimplifiedClaimingSummary } from '#server/domains/credits/simplified-claiming'
 import { requireEventAdmin, routeIdParamsSchema } from '#server/domains/events'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.events.by-eventId.simplified-claiming',
+  toolName: 'get_events_by_eventId_simplified-claiming',
+  description: 'GET /api/events/:eventId/simplified-claiming',
+  rest: { method: 'GET', path: '/api/events/:eventId/simplified-claiming' },
+  input: { params: routeIdParamsSchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'read'
+}, async (h3Event) => {
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const { event } = await requireEventAdmin(h3Event, eventId)
   const summary = await getSimplifiedClaimingSummary(getDatabase(h3Event), event)
@@ -26,3 +35,5 @@ export default defineApiHandler(async (h3Event) => {
       : null
   })
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

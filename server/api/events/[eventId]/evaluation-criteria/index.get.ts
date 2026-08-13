@@ -2,12 +2,21 @@ import { asc, eq } from 'drizzle-orm'
 
 import { getDatabase } from '#server/database/client'
 import { evaluationCriteria } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiList } from '#server/http/api-response'
 import { assertCompetitionEvent, getVisibleEventOrThrow, routeIdParamsSchema, serializeEvaluationCriterion } from '#server/domains/events'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.events.by-eventId.evaluation-criteria',
+  toolName: 'get_events_by_eventId_evaluation-criteria',
+  description: 'GET /api/events/:eventId/evaluation-criteria',
+  rest: { method: 'GET', path: '/api/events/:eventId/evaluation-criteria' },
+  input: { params: routeIdParamsSchema },
+  output: 'list',
+  capabilities: ['platform_user'],
+  effect: 'read'
+}, async (h3Event) => {
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const database = getDatabase(h3Event)
 
@@ -26,3 +35,5 @@ export default defineApiHandler(async (h3Event) => {
     }
   )
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

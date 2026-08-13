@@ -5,6 +5,7 @@ import {
 } from '#server/domains/applications/luma-sync-queue'
 import { defaultApplicationReviewEmailQueueName } from '#server/domains/applications/review-email-queue'
 import { defaultEventOutcomeEmailQueueName } from '#server/domains/outcomes/email-queue'
+import { defaultTalkProposalDecisionEmailQueueName } from '#server/domains/talk-proposals/email-queue'
 import { classifyCloudflareQueueBatch, retryCloudflareQueueBatch } from '#server/utils/cloudflare-queue-routing'
 
 export default defineNitroPlugin((nitroApp) => {
@@ -13,7 +14,8 @@ export default defineNitroPlugin((nitroApp) => {
     const expectedQueueName = runtimeConfig.luma?.queueName?.trim() || defaultApplicationLumaSyncQueueName
     const reviewEmailQueueName = runtimeConfig.applicationReviewEmails?.queueName?.trim() || defaultApplicationReviewEmailQueueName
     const outcomeQueueName = runtimeConfig.eventOutcomeEmails?.queueName?.trim() || defaultEventOutcomeEmailQueueName
-    const batchRoute = classifyCloudflareQueueBatch(batch.queue, expectedQueueName, [reviewEmailQueueName, outcomeQueueName])
+    const talkProposalQueueName = runtimeConfig.talkProposalDecisionEmails?.queueName?.trim() || defaultTalkProposalDecisionEmailQueueName
+    const batchRoute = classifyCloudflareQueueBatch(batch.queue, expectedQueueName, [reviewEmailQueueName, outcomeQueueName, talkProposalQueueName])
 
     if (batchRoute === 'ignore') {
       return
@@ -23,7 +25,7 @@ export default defineNitroPlugin((nitroApp) => {
       console.error('Unexpected Cloudflare queue batch reached the Luma sync consumer.', {
         batchQueue: batch.queue,
         expectedQueue: expectedQueueName,
-        ignoredQueues: [reviewEmailQueueName, outcomeQueueName]
+        ignoredQueues: [reviewEmailQueueName, outcomeQueueName, talkProposalQueueName]
       })
       retryCloudflareQueueBatch(batch, {
         delaySeconds: runtimeConfig.luma?.retryDelaySeconds ?? defaultApplicationLumaSyncRetryDelaySeconds

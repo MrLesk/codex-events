@@ -273,14 +273,14 @@ Testing:
 Purpose:
 - Expose public event discovery reads, caller-visible event reads, and admin lifecycle/configuration operations.
 - Support three event types: `hackathon`, `meetup`, and `build`.
-- Hackathon events expose competition workflows. Meetup and Build events are registration-only and reject competition-only routes and actions.
+- Hackathon events expose competition workflows. Meetup and Build events are registration-focused and reject competition-only routes and actions. Meetups can optionally expose a private Call for talks.
 
 Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
 | List public events | `GET /api/public/events` | public or authenticated user | Returns the canonical public-visible event set regardless of caller privileges, with pagination and discovery filters. Hidden events are excluded. |
-| Get public event detail | `GET /api/public/events/:slug` | public or authenticated user | Resolves by exact event slug and returns canonical public-safe event fields, including `eventType`, structured `agendaItems`, configured Hackathon or Build `tracks` with name, short description, and display order, plus current terms references. `tracks=full` additionally includes participant-facing full track descriptions and resource links for public sharing. Public track payloads never expose staff instructions, track IDs, resource IDs, or restricted workspace-only metadata such as the street `address`, `discordServerUrl`, and `slidesUrl`. Hidden events respond not found. |
+| Get public event detail | `GET /api/public/events/:slug` | public or authenticated user | Resolves by exact event slug and returns canonical public-safe event fields, including `eventType`, structured `agendaItems`, Meetup Call for talks configuration, configured Hackathon or Build `tracks` with name, short description, and display order, plus current terms references. `tracks=full` additionally includes participant-facing full track descriptions and resource links for public sharing. Public payloads never expose proposal content or decisions, staff instructions, track IDs, resource IDs, or restricted workspace-only metadata such as the street `address`, `discordServerUrl`, and `slidesUrl`. Hidden events respond not found. |
 | List public evaluation criteria | `GET /api/public/events/:slug/evaluation-criteria` | public or authenticated user | Returns the public evaluation criteria for the exact public Hackathon slug. Rejected for Meetup and Build events. |
 | List public prizes | `GET /api/public/events/:slug/prizes` | public or authenticated user | Returns the public prize definitions for the exact public Hackathon slug. Rejected for Meetup and Build events. |
 | List public winners | `GET /api/public/events/:slug/winners` | public or authenticated user after completion | Returns the completed winners showcase for the exact public Hackathon slug, including prize, project, and published team-member details for each winning project. Rejected for Meetup and Build events. |
@@ -296,8 +296,8 @@ Operations:
 | List caller-visible events | `GET /api/events` | public or authenticated user | Returns events visible to the caller. Authenticated admins can see draft events they are allowed to manage here, and staff-visible internal events are included when the caller has staff access to them. Hidden events are excluded unless the caller is an event admin for that event or a platform admin. |
 | List own event participation | `GET /api/events/participation` | authenticated user with a platform account | Returns the caller's current and past participation records across applications, team memberships, and submissions. Hidden events are excluded. For events in `pitch`, `pitch_review`, `final_deliberation`, `winners_announced`, or `completed`, the response also includes a self-scoped team outcome summary, including shortlist status and, after completion, awarded prizes plus final rank `X/Y`. |
 | Get caller-visible event detail | `GET /api/events/:eventId` | public or authenticated user | Returns canonical event fields, including `eventType`, structured `agendaItems`, configured Hackathon or Build `tracks` with short descriptions, full descriptions, resources, and current terms references for an event visible to the caller. Staff instructions are returned only to platform admins, event admins, whole-event staff, and staff assigned to the matching track. The street `address`, optional `discordServerUrl`, and optional `slidesUrl` are returned only to approved participants and to judges, staff, event admins, and platform admins. Staff-visible internal events are included when the caller has staff access to that event. Hidden events respond not found unless the caller is an event admin for that event or a platform admin. |
-| Create event | `POST /api/events` | event organizer or platform admin | Creates a `draft` event with `eventType`, canonical common configuration, structured `agendaItems`, optional event links such as `lumaEventUrl`, restricted `discordServerUrl`, and restricted `slidesUrl`, optional event Luma API ID and API key, location fields (`city`, `country`, and `address`), participant limit, `inPersonEvent`, application field visibility and requirement flags, and optional auto-approval. First name and family name are always visible and required. Supported optional application fields are X, LinkedIn, GitHub, ChatGPT email, OpenAI org ID, `why this event`, proof-of-execution links, participation mode, and AI Knowledge. Luma email is visible and required when Luma Sync is enabled. Hackathon and Build creation accept ordered `tracks` with short descriptions, optional full descriptions, optional staff instructions, and optional resource links. Hackathon creation also accepts submission schedule, team size, judging configuration, and submission-requirement toggles. Creation assigns the creator as `event_admin` for the new event and normalizes active platform-admin assignment coverage for the new event. When an event Luma API ID and API key are present, the app registers the event webhook and stores the returned webhook ID and signing secret. Luma registration failures do not roll back event creation; the event stores failed webhook status for admin follow-up. |
-| Update event configuration | `PATCH /api/events/:eventId` | event admin or platform admin | Updates canonical common configuration fields, including schedule, structured `agendaItems`, images, optional event links such as `lumaEventUrl`, restricted `discordServerUrl`, and restricted `slidesUrl`, optional event Luma API ID and API key, location fields (`city`, `country`, and `address`), participant limit, `inPersonEvent`, application field visibility and requirement flags, and optional auto-approval. Luma email remains visible and required while Luma Sync is enabled. A field cannot be required while hidden, and field configuration remains editable after applications exist. Hackathon and Build updates can update ordered `tracks` with short descriptions, optional full descriptions, optional staff instructions, and optional resource links. Hackathon updates can also update submission schedule, team size, judging configuration, and submission-requirement toggles. Competition workflow fields are unavailable for Meetup and Build events. Track removals are rejected when existing submissions still reference the removed track. Updating the event Luma API ID or API key retries event webhook registration and stores the latest webhook status. |
+| Create event | `POST /api/events` | event organizer or platform admin | Creates a `draft` event with `eventType`, canonical common configuration, structured `agendaItems`, optional event links such as `lumaEventUrl`, restricted `discordServerUrl`, and restricted `slidesUrl`, optional event Luma API ID and API key, location fields (`city`, `country`, and `address`), participant limit, `inPersonEvent`, application field visibility and requirement flags, and optional auto-approval. Meetup creation also accepts `talkProposalsEnabled`, `talkProposalOpensAt`, and `talkProposalClosesAt`; enabled calls require both timestamps with open before close, while disabled Meetups and non-Meetups require false and null timestamps. First name and family name are always visible and required. Supported optional application fields are X, LinkedIn, GitHub, ChatGPT email, OpenAI org ID, `why this event`, proof-of-execution links, participation mode, and AI Knowledge. Luma email is visible and required when Luma Sync is enabled. Hackathon and Build creation accept ordered `tracks` with short descriptions, optional full descriptions, optional staff instructions, and optional resource links. Hackathon creation also accepts submission schedule, team size, judging configuration, and submission-requirement toggles. Creation assigns the creator as `event_admin` for the new event and normalizes active platform-admin assignment coverage for the new event. When an event Luma API ID and API key are present, the app registers the event webhook and stores the returned webhook ID and signing secret. Luma registration failures do not roll back event creation; the event stores failed webhook status for admin follow-up. |
+| Update event configuration | `PATCH /api/events/:eventId` | event admin or platform admin | Updates canonical common configuration fields, including schedule, structured `agendaItems`, images, optional event links such as `lumaEventUrl`, restricted `discordServerUrl`, and restricted `slidesUrl`, optional event Luma API ID and API key, location fields (`city`, `country`, and `address`), participant limit, `inPersonEvent`, application field visibility and requirement flags, and optional auto-approval. Meetup updates can change the private Call for talks configuration before completion. After any proposal exists the feature cannot be disabled, but its closing timestamp can still change before completion. Luma email remains visible and required while Luma Sync is enabled. A field cannot be required while hidden, and field configuration remains editable after applications exist. Hackathon and Build updates can update ordered `tracks` with short descriptions, optional full descriptions, optional staff instructions, and optional resource links. Hackathon updates can also update submission schedule, team size, judging configuration, and submission-requirement toggles. Competition workflow fields are unavailable for Meetup and Build events. Track removals are rejected when existing submissions still reference the removed track. Updating the event Luma API ID or API key retries event webhook registration and stores the latest webhook status. |
 | Retry event Luma configuration | `POST /api/events/:eventId/luma/actions/retry-configuration` | event admin or platform admin | Re-runs event webhook registration using the event's stored Luma event API ID and API key. Success stores the webhook ID, signing secret, configured status, and event webhook URL for admin copy. Failure stores failed status and a concise error message while leaving the event configuration intact. |
 | Hide event | `POST /api/events/:eventId/actions/hide` | event admin or platform admin | Requires a non-empty reason. Sets hidden metadata without changing lifecycle state, removes the event from public and participant-facing reads, and writes an audit record. |
 | Make event visible | `POST /api/events/:eventId/actions/unhide` | event admin or platform admin | Clears hidden metadata, restores normal visibility according to the event lifecycle state, and writes an audit record. |
@@ -316,7 +316,7 @@ Operations:
 | Start pitch review | `POST /api/events/:eventId/actions/start-pitch-review` | event admin or platform admin | Allowed only from `pitch` after admins complete the full saved live pitch lineup. Creates one pitch assignment per finalist submission per judge in the frozen pitch panel. |
 | Start final deliberation | `POST /api/events/:eventId/actions/start-final-deliberation` | event admin or platform admin | Allowed from `blind_review` when pitch review is disabled after blind scoring is complete, or from `pitch_review` after at least one pitch review vote has been submitted and admins close pitch review using the submitted votes only. |
 | Announce winners | `POST /api/events/:eventId/actions/announce-winners` | event admin or platform admin | Allowed only from `final_deliberation`. Persists the final ranking operationally, creates prize redemptions, and enqueues winner emails for frozen prize-eligible members of winning teams. This action does not make the public or account winners showcase visible yet. |
-| Complete event | `POST /api/events/:eventId/actions/complete` | event admin or platform admin | For Hackathon events, allowed only after winners are announced and reveals the completed outcome showcase. For Meetup and Build events, allowed from `registration_open` and closes the registration-only event without outcome generation. |
+| Complete event | `POST /api/events/:eventId/actions/complete` | event admin or platform admin | For Hackathon events, allowed only after winners are announced and reveals the completed outcome showcase. For Meetup and Build events, allowed from `registration_open` and closes the registration-focused event without outcome generation. Unresolved Meetup talk proposals do not block completion, and decisions are unavailable afterward. |
 | List caller-visible evaluation criteria | `GET /api/events/:eventId/evaluation-criteria` | public or authenticated user | Returns configured criteria and display order for a visible Hackathon. Rejected for Meetup and Build events. |
 | Create evaluation criterion | `POST /api/events/:eventId/evaluation-criteria` | event admin or platform admin | Adds a criterion for a Hackathon. Rejected for Meetup and Build events. |
 | Update evaluation criterion | `PATCH /api/events/:eventId/evaluation-criteria/:criterionId` | event admin or platform admin | Updates criterion fields and ordering. |
@@ -469,6 +469,34 @@ Operational notes:
 - Public registration entry is available only while the event is in `registration_open`.
 - The public registration route `/events/:slug/register` is a narrow application-entry flow rather than a participant workspace. Anonymous visitors are sent to Auth0 login, authenticated users without a platform account are sent to account completion, existing applicants are sent to `/account/events/:slug`, and users without an application are sent back to the public event detail page when registration is no longer open.
 - Public registration copy should stay focused on completing and submitting an application. Application status, approval outcome, team formation follow-up, and other ongoing participant workflow belong in the account-scoped event workspace.
+
+## Talk Proposals
+
+Purpose:
+- Support one private Talk proposal per registered Meetup applicant and read-only staff review with final admin decisions.
+
+Operations:
+
+| Operation | Method And Path | Actor | Guards And Notes |
+| --- | --- | --- | --- |
+| Get own proposal | `GET /api/events/:eventId/talk-proposals/me` | authenticated applicant | Returns only the caller's retained proposal or null. A later rejected or withdrawn application does not hide it. |
+| Create own proposal draft | `POST /api/events/:eventId/talk-proposals/me` | submitted or approved Meetup applicant | Requires an enabled open Call for talks and no existing proposal. Accepts title, abstract, and optional HTTP(S) `demoOrSlidesUrl`. |
+| Update own proposal draft | `PATCH /api/events/:eventId/talk-proposals/me` | proposal owner | Requires `draft`, an open Call for talks, and a currently submitted or approved application. Submitted and decided content is read-only. |
+| Submit or resubmit own proposal | `POST /api/events/:eventId/talk-proposals/me/actions/submit` | proposal owner | Requires `draft`, an open Call for talks, current eligibility, and valid proposal content. Records submission time. |
+| Withdraw own proposal | `POST /api/events/:eventId/talk-proposals/me/actions/withdraw` | proposal owner | Requires `submitted`, an open Call for talks, and current eligibility. Decisions cannot be withdrawn. |
+| Revise own proposal | `POST /api/events/:eventId/talk-proposals/me/actions/revise` | proposal owner | Requires `withdrawn`, an open Call for talks, and current eligibility. Returns the proposal to editable `draft`. |
+| List event talk proposals | `GET /api/events/:eventId/talk-proposals` | staff, event admin, or platform admin | Returns paginated private proposals with `page`, `page_size` up to `100`, and optional status filter. Retains rows when owner application status later changes. |
+| Get talk proposal detail | `GET /api/events/:eventId/talk-proposals/:proposalId` | staff, event admin, or platform admin | Returns the exact private proposal and owner/application review context. Staff access is read-only. |
+| Accept talk proposal | `POST /api/events/:eventId/talk-proposals/:proposalId/actions/accept` | event admin or platform admin | Conditionally changes a still-`submitted` proposal when the event is not completed. Allowed after the Call for talks closes. Accepts an optional speaker-facing `message`, records reviewer metadata and durable pending email state together, and attempts enqueue without rolling back the decision if enqueue fails. |
+| Reject talk proposal | `POST /api/events/:eventId/talk-proposals/:proposalId/actions/reject` | event admin or platform admin | Conditionally changes a still-`submitted` proposal when the event is not completed. Allowed after the Call for talks closes. Accepts an optional speaker-facing `message`, records reviewer metadata and durable pending email state together, and attempts enqueue without rolling back the decision if enqueue fails. |
+
+Operational notes:
+- Acceptance and rejection are final and do not create, update, or synchronize public speaker records or agenda items.
+- Decision messages include the outcome, optional admin message, and account-workspace link.
+- A scheduled reconciler claims pending or retryable delivery rows and republishes the same deterministic delivery ID without repeating or changing the decision.
+- Queue delivery is at least once. Durable expiring claims prevent concurrent sends and completed duplicates; deterministic email metadata supports provider-side duplicate suppression. A crash after provider acceptance but before the sent-state write can still result in a later retry.
+- Enqueue and delivery attempts and outcomes are stored and audited without logging proposal title, abstract, demo-or-slides URL, or decision-message text.
+- Account deletion removes the caller's private proposal and delivery state.
 
 ## Teams
 
@@ -675,6 +703,41 @@ Operations:
 | List audit records for an event | `GET /api/events/:eventId/audit` | event admin or platform admin | Returns audit records relevant to the event scope. |
 | List platform audit records | `GET /api/audit` | platform admin | Returns platform-wide audit records for sensitive actions such as account deletion and admin operations. |
 
+## Model Context Protocol
+
+`POST /mcp` is the single stateless Streamable HTTP endpoint. It accepts only
+`Authorization: Bearer <credential>` issued from account settings; session
+cookies do not authenticate it. The endpoint handles initialization,
+`tools/list`, and `tools/call`. Deployment host and present browser Origin
+values must match configured allowlists.
+
+The application-operation registry is shared by REST and MCP. Each eligible
+operation has one stable ID, Zod input/output contracts, one REST binding, one
+MCP tool, coarse capability metadata, and accurate read-only, destructive, and
+idempotent annotations. REST and MCP preserve the same structured success
+envelope, side effects, authorization decisions, and sanitized expected errors.
+
+Eligible operations are public discovery and signed-in structured JSON work in
+account/profile, events, applications, teams, project submissions, judging,
+roles, settings, credits, outcomes, Meetup talk proposals, and platform
+administration. Authentication/account linking, MCP-token management, account
+deletion, public mutations, webhooks, queue/system consumers, integration
+backfills/retries, CSV imports, email-delivery controls, and raw binary transfer
+are not MCP tools. [mcp.md](mcp.md) defines the inventory and security boundary.
+
+Session-authenticated token management remains REST-only:
+
+| Operation | Method And Path | Notes |
+| --- | --- | --- |
+| List own MCP access tokens | `GET /api/account/mcp-tokens` | Paginated; omits hashes and full credentials. |
+| Create MCP access token | `POST /api/account/mcp-tokens` | Returns the full credential once; fixed 30-day expiry and five-active-token cap. |
+| Revoke MCP access token | `DELETE /api/account/mcp-tokens/:tokenId` | Owner-only and immediate. |
+
+The MCP envelope is limited to 120 requests per token per 60 seconds in
+addition to operation-specific limits. Each request reconstructs the current
+actor and required-document acceptance from D1. Mutation attempts record token
+ID, tool name, outcome, and timestamp without secrets or arguments.
+
 Testing:
 - Unit: visibility rules for audit access.
 - Integration: audit persistence and restricted reads.
@@ -683,6 +746,7 @@ Testing:
 ## Cross-Domain Rules
 
 - A user can have at most one `UserApplication` per event.
+- A user can have at most one `TalkProposal` per Meetup.
 - A user can have at most one active team membership per event.
 - Non-admin `staff` and `judge` assignments remain distinct.
 - A Hackathon must enable at least one judging stage: blind review, pitch review, or both.

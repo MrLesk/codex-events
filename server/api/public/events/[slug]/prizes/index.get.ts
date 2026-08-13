@@ -2,12 +2,21 @@ import { asc, desc, eq } from 'drizzle-orm'
 
 import { getDatabase } from '#server/database/client'
 import { prizes } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiList } from '#server/http/api-response'
 import { assertCompetitionEvent, getPublicEventBySlugOrThrow, routeSlugParamsSchema, serializePublicPrize } from '#server/domains/events'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.public.events.by-slug.prizes',
+  toolName: 'get_public_events_by_slug_prizes',
+  description: 'GET /api/public/events/:slug/prizes',
+  rest: { method: 'GET', path: '/api/public/events/:slug/prizes' },
+  input: { params: routeSlugParamsSchema },
+  output: 'list',
+  capabilities: ['public'],
+  effect: 'read'
+}, async (h3Event) => {
   const { slug } = parseValidatedParams(h3Event, routeSlugParamsSchema)
   const database = getDatabase(h3Event)
   const event = await getPublicEventBySlugOrThrow(database, slug)
@@ -25,3 +34,5 @@ export default defineApiHandler(async (h3Event) => {
     }
   )
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

@@ -1,9 +1,8 @@
-import { readBody } from 'h3'
 import { eq } from 'drizzle-orm'
 
 import { writeAuditLog } from '#server/database/audit-log'
 import { judgeAssignments } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation, readStructuredOperationBody } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   assertAssignmentReviewStageIsActive,
@@ -19,10 +18,19 @@ import {
 } from '#server/domains/judging'
 import { parseValidatedParams, validateWithSchema } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.judging.assignments.by-assignmentId.actions.complete',
+  toolName: 'post_events_by_eventId_judging_assignments_by_assignmentId_actions_complete',
+  description: 'POST /api/events/:eventId/judging/assignments/:assignmentId/actions/complete',
+  rest: { method: 'POST', path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/complete' },
+  input: { params: judgingAssignmentParamsSchema },
+  output: 'data',
+  capabilities: ['event_judge'],
+  effect: 'destructive'
+}, async (h3Event) => {
   const { eventId, assignmentId } = parseValidatedParams(h3Event, judgingAssignmentParamsSchema)
   const { actor, database, event, assignment } = await requireJudgeAssignmentContext(h3Event, eventId, assignmentId)
-  const body = await readBody(h3Event)
+  const body = await readStructuredOperationBody(h3Event)
 
   assertAssignmentReviewStageIsActive(event, assignment)
   assertJudgeAssignmentStatus(
@@ -103,3 +111,5 @@ export default defineApiHandler(async (h3Event) => {
     ...updatedAssignmentPatch
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

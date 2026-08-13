@@ -52,6 +52,8 @@ NUXT_FIRST_PLATFORM_ADMIN_EMAIL=
 NUXT_DATABASE_BINDING=DB
 NUXT_PROFILE_ICONS_BINDING=PROFILE_ICONS
 NUXT_EVENT_IMAGES_BINDING=EVENT_IMAGES
+NUXT_MCP_ALLOWED_HOSTNAMES=localhost
+NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES=localhost
 NUXT_OUTBOUND_EMAIL_BINDING=EMAIL
 NUXT_OUTBOUND_EMAIL_FROM_EMAIL=info@your-platform.example
 NUXT_OUTBOUND_EMAIL_FROM_NAME=Codex Events
@@ -59,6 +61,9 @@ NUXT_OUTBOUND_EMAIL_REPLY_TO=
 NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING=APPLICATION_REVIEW_EMAIL_QUEUE
 NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME=codex-events-dev-application-review-email-delivery
 NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS=120
+NUXT_TALK_PROPOSAL_DECISION_EMAILS_QUEUE_BINDING=TALK_PROPOSAL_DECISION_EMAIL_QUEUE
+NUXT_TALK_PROPOSAL_DECISION_EMAILS_QUEUE_NAME=codex-events-dev-talk-proposal-decision-email-delivery
+NUXT_TALK_PROPOSAL_DECISION_EMAILS_RETRY_DELAY_SECONDS=120
 NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING=EVENT_OUTCOME_EMAIL_QUEUE
 NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME=codex-events-dev-event-outcome-email-delivery
 NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS=120
@@ -177,9 +182,10 @@ Outbound email delivery uses Cloudflare Email Service through the Worker `send_e
 - `NUXT_OUTBOUND_EMAIL_REPLY_TO` optionally controls the reply destination for participant-facing notifications. When it is empty, replies go to `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`.
 - The sending domain must use Cloudflare DNS and be onboarded in Cloudflare Email Service before deployed email delivery works. Email Sending requires a Workers Paid plan.
 
-Application decision emails, event outcome emails, and optional Luma guest-status sync use Cloudflare Queues at runtime:
+Application decision emails, Talk proposal decisions, event outcome emails, and optional Luma guest-status sync use Cloudflare Queues at runtime:
 
 - `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING` and `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME` should match the producer and consumer queue configuration for participant decision emails.
+- `NUXT_TALK_PROPOSAL_DECISION_EMAILS_QUEUE_BINDING` and `NUXT_TALK_PROPOSAL_DECISION_EMAILS_QUEUE_NAME` should match the producer and consumer queue configuration for private Talk proposal decision emails.
 - `NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING` and `NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME` should match the producer and consumer queue configuration for shortlist and winner emails.
 - `NUXT_LUMA_QUEUE_BINDING` and `NUXT_LUMA_QUEUE_NAME` should match the producer and consumer queue configuration for Luma sync jobs.
 - Luma API keys, webhook IDs, and webhook signing secrets are stored per event after an event admin saves the Luma event API ID and API key in event settings.
@@ -191,6 +197,50 @@ Start the development server:
 ```bash
 bun run dev
 ```
+
+To verify the Meetup Call for talks locally, create a Meetup with an enabled
+proposal window, open registration, submit an application as a participant,
+and use the account event workspace's **Call for talks** tab. The focused
+domain/API coverage is in `tests/unit/server/domains/talk-proposals/` and
+`tests/integration/server/api/talk-proposal-routes.test.ts`; the browser flow is
+in `tests/bdd/features/authenticated/talk-proposals.feature`. Run the standard
+unit and integration suites, then `bun run test:bdd` for the local personas and
+isolated D1 fixture. Local Queue delivery uses the producer binding from
+`wrangler.jsonc`; inspect identifiers and delivery outcomes only, never the
+proposal body. Talk decision enqueue failures remain durable in D1 and are
+retried by bounded startup recovery plus the five-minute scheduled reconciler.
+The focused queue tests exercise producer failure, duplicate and concurrent
+delivery, active and expired claims, retryable provider outcomes, and the
+at-least-once crash-recovery boundary.
+
+### Local MCP client testing
+
+Sign in and create an MCP token from **Account settings → MCP access**. Copy
+the full credential when it is shown; only a safe prefix remains visible
+afterward. Use `http://localhost:3000/mcp` as the Streamable HTTP endpoint and
+send the credential as `Authorization: Bearer <token>`. Do not put the token in
+a URL, source file, shell history, screenshot, or test fixture.
+
+For MCP Inspector, configure a Streamable HTTP connection to that endpoint
+with the bearer header. Verify initialization, inspect the role-filtered tool
+list, call a read-only discovery tool, then revoke the token in account
+settings and confirm the next request is rejected.
+
+For Codex, add a Streamable HTTP MCP server using that URL and supply the
+bearer token from a local secret environment variable. Start a new Codex
+session after changing or revoking a token, list the available tools, and call
+a read-only operation appropriate to the signed-in user's role. The repository
+does not store local MCP credentials or provide a permanent development token.
+
+When a shared structured operation changes its serialized response, run
+`bun run mcp:generate-output-schemas`. The generator derives the exact MCP
+output contract from every shared executor; the registry unit test fails when
+the checked-in schemas are stale.
+
+When the independently maintained MCP eligibility manifest changes, run
+`bun run mcp:generate-operation-catalog`. The generated loader catalog contains
+only manifest entries explicitly marked for inclusion; tests compare the
+manifest with every concrete API route and reject missing catalog bindings.
 
 The interface layer uses `shadcn-vue` primitives plus Tailwind CSS.
 Generated `shadcn-vue` primitives live under `app/components/ui/`.

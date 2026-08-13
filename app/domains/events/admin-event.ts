@@ -30,6 +30,9 @@ export interface EventFormState {
   participantsLimit: number | null
   autoApproveApplications: boolean
   simplifiedClaimingEnabled: boolean
+  talkProposalsEnabled: boolean
+  talkProposalOpensAt: string
+  talkProposalClosesAt: string
   blindReviewCount: number
   pitchReviewEnabled: boolean
   blindScoreWeightPercent: number
@@ -319,7 +322,10 @@ function normalizeEventConfigFormInput(candidate: unknown) {
     shortlistFinalistCount: 1,
     requireSubmissionSummary: false,
     requireSubmissionRepositoryUrl: false,
-    requireSubmissionDemoUrl: false
+    requireSubmissionDemoUrl: false,
+    talkProposalsEnabled: input.eventType === 'meetup' && input.talkProposalsEnabled === true,
+    talkProposalOpensAt: input.eventType === 'meetup' ? input.talkProposalOpensAt : '',
+    talkProposalClosesAt: input.eventType === 'meetup' ? input.talkProposalClosesAt : ''
   }
 }
 
@@ -348,6 +354,9 @@ const eventConfigFormBaseSchema = z.object({
   participantsLimit: z.number().int().min(1).nullable(),
   autoApproveApplications: z.boolean(),
   simplifiedClaimingEnabled: z.boolean(),
+  talkProposalsEnabled: z.boolean(),
+  talkProposalOpensAt: z.string().trim(),
+  talkProposalClosesAt: z.string().trim(),
   blindReviewCount: z.number().int().min(0).max(2),
   pitchReviewEnabled: z.boolean(),
   blindScoreWeightPercent: z.number().int().min(0).max(100),
@@ -383,6 +392,8 @@ const eventConfigFormBaseSchema = z.object({
   const submissionOpensAt = Date.parse(input.submissionOpensAt)
   const submissionClosesAt = Date.parse(input.submissionClosesAt)
   const isHackathon = input.eventType === 'hackathon'
+  const talkProposalOpensAt = Date.parse(input.talkProposalOpensAt)
+  const talkProposalClosesAt = Date.parse(input.talkProposalClosesAt)
   const hasLumaSyncConfiguration = input.lumaEventApiId.length > 0 || input.lumaApiKey.length > 0
   const hasLumaRegistrationEmail = input.applicationLumaEmailVisible && input.requireLumaEmail
   const hasRequiredRegistrationFields = applicationFieldRequirementPairs
@@ -470,6 +481,40 @@ const eventConfigFormBaseSchema = z.object({
         code: z.ZodIssueCode.custom,
         path: ['simplifiedClaimingEnabled'],
         message: 'Remove required registration fields before enabling simplified claiming.'
+      })
+    }
+  }
+
+  if (input.talkProposalsEnabled) {
+    if (input.eventType !== 'meetup') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['talkProposalsEnabled'],
+        message: 'Call for talks is available only for Meetup events.'
+      })
+    }
+
+    if (Number.isNaN(talkProposalOpensAt)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['talkProposalOpensAt'],
+        message: 'Provide a valid Call for talks open date and time.'
+      })
+    }
+
+    if (Number.isNaN(talkProposalClosesAt)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['talkProposalClosesAt'],
+        message: 'Provide a valid Call for talks close date and time.'
+      })
+    }
+
+    if (!Number.isNaN(talkProposalOpensAt) && !Number.isNaN(talkProposalClosesAt) && talkProposalOpensAt >= talkProposalClosesAt) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['talkProposalClosesAt'],
+        message: 'Call for talks must close after it opens.'
       })
     }
   }
@@ -610,6 +655,9 @@ export function createEmptyEventFormState(): EventFormState {
     participantsLimit: null,
     autoApproveApplications: false,
     simplifiedClaimingEnabled: false,
+    talkProposalsEnabled: false,
+    talkProposalOpensAt: '',
+    talkProposalClosesAt: '',
     blindReviewCount: 1,
     pitchReviewEnabled: false,
     blindScoreWeightPercent: 70,
@@ -722,6 +770,9 @@ export function createEventFormState(event: EventRecord): EventFormState {
     participantsLimit: event.participantsLimit ?? null,
     autoApproveApplications: event.autoApproveApplications,
     simplifiedClaimingEnabled: event.simplifiedClaimingEnabled,
+    talkProposalsEnabled: event.talkProposalsEnabled ?? false,
+    talkProposalOpensAt: toDateTimeLocalValue(event.talkProposalOpensAt),
+    talkProposalClosesAt: toDateTimeLocalValue(event.talkProposalClosesAt),
     blindReviewCount: event.blindReviewCount,
     pitchReviewEnabled: event.pitchReviewEnabled,
     blindScoreWeightPercent: event.blindScoreWeightPercent,
@@ -776,6 +827,13 @@ export function buildEventConfigurationPatch(configForm: EventFormState, eventTy
     participantsLimit: configForm.participantsLimit,
     autoApproveApplications: configForm.autoApproveApplications,
     simplifiedClaimingEnabled: eventType === 'meetup' && configForm.simplifiedClaimingEnabled,
+    talkProposalsEnabled: eventType === 'meetup' && configForm.talkProposalsEnabled,
+    talkProposalOpensAt: eventType === 'meetup' && configForm.talkProposalsEnabled
+      ? fromDateTimeLocalValue(configForm.talkProposalOpensAt)
+      : null,
+    talkProposalClosesAt: eventType === 'meetup' && configForm.talkProposalsEnabled
+      ? fromDateTimeLocalValue(configForm.talkProposalClosesAt)
+      : null,
     inPersonEvent: configForm.inPersonEvent,
     applicationXProfileVisible: configForm.applicationXProfileVisible,
     applicationLinkedinProfileVisible: configForm.applicationLinkedinProfileVisible,

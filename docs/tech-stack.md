@@ -15,13 +15,25 @@ This document defines the canonical technology stack for the Codex event platfor
 - `Cloudflare D1` for the primary relational database
 - `Cloudflare R2` for file storage, including account profile icons, event background/banner images, platform default event background images, and public event gallery image delivery through custom domains
 - `Cloudflare Images` bindings for protected event photo preview transformations
-- `Cloudflare Queues` for asynchronous jobs
+- `Cloudflare Queues` for asynchronous jobs, including retryable private Meetup talk-proposal decision email delivery
 - `Cloudflare Cron Triggers` for scheduled platform tasks
 - `Cloudflare Email Service` for outbound transactional email delivery
 - `Auth0` for user authentication and identity
+- `@modelcontextprotocol/server@2.0.0` for stateless Streamable HTTP MCP
+  handling on Cloudflare Workers. `agents@0.20.0` remains compatibility-pinned;
+  its MCP wrapper is not used because that release peers against a prerelease
+  MCP protocol package.
 
 ## Architecture Notes
 
 - Auth0 is responsible for authentication and identity.
 - Application authorization remains in the platform database through event roles, team roles, approvals, and related business rules.
 - `Cloudflare D1` is the primary relational database.
+- Meetup talk proposals and their decision-delivery state remain private canonical data in D1. Cloudflare Queue messages reference proposal records and never make proposal bodies public or synchronize agenda entries.
+- Remote MCP uses the stable `createMcpHandler` from
+  `@modelcontextprotocol/server`, creates a fresh MCP server for every request,
+  and stores no protocol session. D1 holds only application data and hashed MCP
+  credentials.
+- A dedicated Cloudflare Workers rate-limit binding applies the 120-token/minute
+  MCP envelope limit. The binding is protective and eventually consistent, not
+  an accounting ledger.

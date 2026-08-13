@@ -3,7 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getD1Binding } from '#server/database/client'
 import { eventCreditCodes } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { ApiError } from '#server/http/api-error'
 import { apiData } from '#server/http/api-response'
 import {
@@ -14,7 +14,16 @@ import {
 } from '#server/domains/credits'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.credits.by-creditId.actions.claim',
+  toolName: 'post_events_by_eventId_credits_by_creditId_actions_claim',
+  description: 'POST /api/events/:eventId/credits/:creditId/actions/claim',
+  rest: { method: 'POST', path: '/api/events/:eventId/credits/:creditId/actions/claim' },
+  input: { params: creditParamsSchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'destructive'
+}, async (h3Event) => {
   const { eventId, creditId } = parseValidatedParams(h3Event, creditParamsSchema)
   const {
     actor,
@@ -160,3 +169,5 @@ export default defineApiHandler(async (h3Event) => {
     actor.platformUser.id
   ))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

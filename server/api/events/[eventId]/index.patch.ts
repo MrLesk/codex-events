@@ -1,12 +1,13 @@
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
-import { events } from '#server/database/schema'
+import { events, talkProposals } from '#server/database/schema'
 import { getSimplifiedClaimingSummary } from '#server/domains/credits/simplified-claiming'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   assertEventTrackReplacementAllowed,
+  assertTalkProposalConfigurationChangeAllowed,
   assertEventSlugAvailable,
   buildEventUpdatePayload,
   listEventTracks,
@@ -20,9 +21,18 @@ import { reconcileEventLumaWebhook } from '#server/domains/events/luma-webhook-r
 import { assertGuard } from '#server/domains/lifecycle-guard'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
-import { eq } from 'drizzle-orm'
+import { and, eq, notExists } from 'drizzle-orm'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'patch.events.by-eventId',
+  toolName: 'patch_events_by_eventId',
+  description: 'PATCH /api/events/:eventId',
+  rest: { method: 'PATCH', path: '/api/events/:eventId' },
+  input: { params: routeIdParamsSchema, body: updateEventBodySchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'update'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const body = await parseValidatedBody(h3Event, updateEventBodySchema)
@@ -30,6 +40,15 @@ export default defineApiHandler(async (h3Event) => {
   const { event } = await requireEventAdmin(h3Event, eventId)
   const shouldReconcileLuma = Object.hasOwn(body, 'lumaApiKey') || Object.hasOwn(body, 'lumaEventApiId')
   const simplifiedClaiming = await getSimplifiedClaimingSummary(database, event)
+
+  if (body.talkProposalsEnabled === false && event.talkProposalsEnabled) {
+    const existingProposal = await database.query.talkProposals.findFirst({
+      where: eq(talkProposals.eventId, eventId),
+      columns: { id: true }
+    })
+
+    assertTalkProposalConfigurationChangeAllowed(event, body, Boolean(existingProposal))
+  }
 
   if (simplifiedClaiming.locked) {
     assertGuard(body.simplifiedClaimingEnabled === undefined || body.simplifiedClaimingEnabled === event.simplifiedClaimingEnabled, {
@@ -69,10 +88,21 @@ export default defineApiHandler(async (h3Event) => {
 
   const patch = buildEventUpdatePayload(event, body)
 
-  await database
+  const eventWriteWhere = body.talkProposalsEnabled === false && event.talkProposalsEnabled
+    ? and(
+        eq(events.id, eventId),
+        notExists(database.select({ id: talkProposals.id }).from(talkProposals).where(eq(talkProposals.eventId, eventId)))
+      )
+    : eq(events.id, eventId)
+  const [updatedEventWrite] = await database
     .update(events)
     .set(patch)
-    .where(eq(events.id, eventId))
+    .where(eventWriteWhere)
+    .returning({ id: events.id })
+
+  if (!updatedEventWrite) {
+    assertTalkProposalConfigurationChangeAllowed(event, body, true)
+  }
 
   if (replacementTracks !== undefined) {
     await replaceEventTracks(database, eventId, replacementTracks)
@@ -115,3 +145,5 @@ export default defineApiHandler(async (h3Event) => {
     ...imageOptions
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

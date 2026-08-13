@@ -2,7 +2,7 @@ import { and, desc, eq } from 'drizzle-orm'
 
 import { getDatabase } from '#server/database/client'
 import { eventTermsDocuments } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiList } from '#server/http/api-response'
 import {
   assertCompetitionEvent,
@@ -12,7 +12,16 @@ import {
 } from '#server/domains/events'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.events.by-eventId.terms.by-documentType.versions',
+  toolName: 'get_events_by_eventId_terms_by_documentType_versions',
+  description: 'GET /api/events/:eventId/terms/:documentType/versions',
+  rest: { method: 'GET', path: '/api/events/:eventId/terms/:documentType/versions' },
+  input: { params: termsDocumentParamsSchema },
+  output: 'list',
+  capabilities: ['event_admin'],
+  effect: 'read'
+}, async (h3Event) => {
   const { eventId, documentType } = parseValidatedParams(h3Event, termsDocumentParamsSchema)
   const database = getDatabase(h3Event)
 
@@ -36,3 +45,5 @@ export default defineApiHandler(async (h3Event) => {
     }
   )
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

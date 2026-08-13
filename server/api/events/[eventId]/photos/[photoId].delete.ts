@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 
 import { writeAuditLog } from '#server/database/audit-log'
 import { eventPhotos } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   deleteEventPhotoObject,
@@ -12,7 +12,16 @@ import {
 } from '#server/domains/events/photos'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'delete.events.by-eventId.photos.by-photoId',
+  toolName: 'delete_events_by_eventId_photos_by_photoId',
+  description: 'DELETE /api/events/:eventId/photos/:photoId',
+  rest: { method: 'DELETE', path: '/api/events/:eventId/photos/:photoId' },
+  input: { params: eventPhotoParamsSchema },
+  output: 'data',
+  capabilities: ['event_judge', 'event_staff', 'event_admin'],
+  effect: 'delete'
+}, async (h3Event) => {
   const { eventId, photoId } = parseValidatedParams(h3Event, eventPhotoParamsSchema)
   const { actor, database } = await requireEventPhotoManageAccess(h3Event, eventId)
   const photo = await getEventPhotoRecordOrThrow(database, eventId, photoId)
@@ -41,3 +50,5 @@ export default defineApiHandler(async (h3Event) => {
     id: photo.id
   })
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

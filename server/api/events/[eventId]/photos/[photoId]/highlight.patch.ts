@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 
 import { writeAuditLog } from '#server/database/audit-log'
 import { eventPhotos } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   eventPhotoParamsSchema,
@@ -13,7 +13,16 @@ import {
 } from '#server/domains/events/photos'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'patch.events.by-eventId.photos.by-photoId.highlight',
+  toolName: 'patch_events_by_eventId_photos_by_photoId_highlight',
+  description: 'PATCH /api/events/:eventId/photos/:photoId/highlight',
+  rest: { method: 'PATCH', path: '/api/events/:eventId/photos/:photoId/highlight' },
+  input: { params: eventPhotoParamsSchema, body: updateEventPhotoHighlightBodySchema },
+  output: 'data',
+  capabilities: ['event_judge', 'event_staff', 'event_admin'],
+  effect: 'update'
+}, async (h3Event) => {
   const { eventId, photoId } = parseValidatedParams(h3Event, eventPhotoParamsSchema)
   const body = await parseValidatedBody(h3Event, updateEventPhotoHighlightBodySchema)
   const { actor, database } = await requireEventPhotoManageAccess(h3Event, eventId)
@@ -42,3 +51,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData(updatedPhoto!)
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

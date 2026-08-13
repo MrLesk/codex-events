@@ -46,6 +46,8 @@ import {
   LazyAccountEventsAccountEventParticipantWorkspacePanel as LazyAccountEventParticipantWorkspacePanel,
   LazyAccountEventsAccountEventPublishedRosterPanel as LazyAccountEventPublishedRosterPanel,
   LazyAccountEventsAccountEventRoleRosterPanel as LazyAccountEventRoleRosterPanel,
+  LazyAccountEventsAccountEventTalkProposalPanel as LazyAccountEventTalkProposalPanel,
+  LazyAccountEventsAccountEventTalkProposalReviewPanel as LazyAccountEventTalkProposalReviewPanel,
   LazyAccountEventsAccountEventTracksPanel as LazyAccountEventTracksPanel,
   LazyPublicEventsEventAgendaPanel as LazyEventAgendaPanel,
   LazyPublicEventsEventPrizeList as LazyEventPrizeList,
@@ -93,6 +95,7 @@ import {
 import {
   hasEventEnteredSubmissionPhase
 } from '~/domains/submissions/team-submission'
+import type { TalkProposalRecord } from '~/domains/talk-proposals'
 import { normalizeJudgeAssignmentIdQueryValue } from '~/domains/judging/query'
 import { buildAccountEventTeamsTabHref, normalizeTeamSlugQueryValue } from '~/domains/teams/query'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
@@ -223,13 +226,17 @@ const initialEvent = eventResponse.value.data
 const [
   prizesResponse,
   accountEventsResponse,
-  participationResponse
+  participationResponse,
+  ownTalkProposalResponse
 ] = await Promise.all([
   initialEvent.eventType === 'hackathon'
     ? requestFetch<PublicApiListResponse<AccountPrizeSummary>>(`/api/events/${initialEvent.id}/prizes`)
     : Promise.resolve({ data: [] }),
   requestFetch<AccountEventsResponse>('/api/account/events'),
-  requestFetch<EventParticipationApiDataResponse<EventParticipationPayload>>('/api/events/participation')
+  requestFetch<EventParticipationApiDataResponse<EventParticipationPayload>>('/api/events/participation'),
+  initialEvent.eventType === 'meetup' && initialEvent.talkProposalsEnabled
+    ? requestFetch<PublicApiDataResponse<TalkProposalRecord | null>>(`/api/events/${initialEvent.id}/talk-proposals/me`)
+    : Promise.resolve({ data: null })
 ])
 const initialAccessRecord = [
   ...accountEventsResponse.data.current,
@@ -252,6 +259,7 @@ const toast = useToast()
 const accountEventsData = ref(accountEventsResponse.data)
 const participationData = ref(participationResponse.data)
 const participantCreditOffers = ref(initialParticipantCreditsResponse.data)
+const hasRetainedTalkProposal = ref(Boolean(ownTalkProposalResponse.data))
 const isWithdrawApplicationPending = ref(false)
 const withdrawApplicationErrorMessage = ref('')
 const lumaEmailForm = ref('')
@@ -477,12 +485,15 @@ const publishedStaffRoster = computed(() =>
 const tabAccess = computed(() =>
   getAccountEventTabAccess({
     hasApprovedParticipantAccess: applicationStatus.value === 'approved',
+    hasEligibleTalkProposalApplicant: applicationStatus.value === 'submitted' || applicationStatus.value === 'approved',
+    hasRetainedTalkProposal: hasRetainedTalkProposal.value,
     hasCreditInventory: hasCreditInventory.value,
     hasGallery: Boolean(event.value.hasGallery),
     hasPublishedPrizes: hasPublishedPrizes.value,
     hasPublishedStaff: publishedStaffRoster.value.members.length > 0,
     eventType: event.value.eventType,
     eventState: event.value.state,
+    talkProposalsEnabled: event.value.talkProposalsEnabled,
     canJudge: canJudge.value,
     canManage: canAdmin.value,
     showCredits: !event.value.simplifiedClaimingEnabled,
@@ -1550,6 +1561,30 @@ useSeoMeta({
           :event-id="event.id"
           :can-manage="canAdmin"
           :can-claim="canClaimCredits"
+        />
+      </section>
+
+      <section
+        v-else-if="activeSection === 'call-for-talks'"
+        id="account-tab-panel-call-for-talks"
+        role="tabpanel"
+        aria-labelledby="account-tab-call-for-talks"
+        class="space-y-8"
+      >
+        <LazyAccountEventTalkProposalPanel
+          v-if="applicationStatus === 'submitted' || applicationStatus === 'approved' || hasRetainedTalkProposal"
+          :event-id="event.id"
+          :application-status="applicationStatus"
+          :opens-at="event.talkProposalOpensAt"
+          :closes-at="event.talkProposalClosesAt"
+          @has-proposal-change="hasRetainedTalkProposal = $event"
+        />
+
+        <LazyAccountEventTalkProposalReviewPanel
+          v-if="canViewParticipantsAndTeams"
+          :event-id="event.id"
+          :event-state="event.state"
+          :can-decide="canAdmin"
         />
       </section>
 

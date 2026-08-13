@@ -1,3 +1,4 @@
+import type { AuditMetadata } from './schema'
 import { auditLogs } from './schema'
 
 type InsertableExecutor = Pick<ReturnType<typeof import('./client').createDatabase>, 'insert'>
@@ -7,7 +8,7 @@ export interface AuditLogEntry {
   entityType: string
   entityId: string
   action: string
-  metadata?: Record<string, unknown>
+  metadata?: AuditMetadata
   createdAt?: string
   id?: string
 }

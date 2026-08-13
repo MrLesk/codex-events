@@ -9,10 +9,10 @@ The platform supports multiple typed events running in parallel. Users have a pl
 Supported event types are:
 
 - `hackathon`: a competition event with team formation, submissions, judging, winner selection, prizes, and completed project showcases.
-- `meetup`: a registration-only community event.
+- `meetup`: a registration-focused community event that can optionally run a private Call for talks.
 - `build`: a registration-only community build event.
 
-Meetups and Builds use the same application, review, attendance, Luma sync, profile requirement, optional event-terms acceptance, participant-limit, and event-credit model as Hackathons. They do not expose team formation, submissions, judging, prizes, winners, or competition lifecycle actions.
+Meetups and Builds use the same application, review, attendance, Luma sync, profile requirement, optional event-terms acceptance, participant-limit, and event-credit model as Hackathons. They do not expose team formation, project submissions, judging, prizes, winners, or competition lifecycle actions. A Meetup can separately enable private talk proposals without becoming a competition event.
 
 ## Core Entities
 
@@ -96,6 +96,7 @@ Key characteristics:
 - Each event can optionally define a participant approval limit used as an indicative planning target during admin review and as the capacity boundary for automatic approval.
 - Each event can approve new participant applications automatically after required submission checks pass while approved participation is below the participant approval limit when one is configured.
 - A Meetup can enable simplified attendee claiming. This setting uses the event slug, one credit offer, imported approved Luma attendee eligibility, and HTTPS coupon-link inventory without a redemption token.
+- A Meetup can enable one private Call for talks with its own opening and closing timestamps. Existing Meetups and newly created Meetups default to disabled with null Call for talks timestamps.
 - Simplified claiming is incompatible with event application terms, required registration fields, and Luma API Sync configuration. It is ready to share only after one offer, at least one eligible attendee, and HTTPS coupon inventory exist.
 - Each event can optionally reference a restricted Discord server URL.
 - Each event has a fixed application field configuration. First name and family name are always visible and required. Event admins can mark X, LinkedIn, GitHub, ChatGPT email, OpenAI org ID, `why this event`, proof-of-execution links, participation mode, and AI Knowledge as visible or hidden.
@@ -140,8 +141,33 @@ Meetup and Build rules:
 - Build tracks organize selected-track resource links and do not create submission, judging, or outcome workflows.
 - Build registration asks the applicant to choose a track when the Build event has configured tracks.
 - Build registration keeps the AI Knowledge question as the applicant-routing fallback when the Build event has no configured tracks and AI Knowledge is visible.
-- Meetups and Builds do not create teams, submissions, judging assignments, prizes, winner records, or completed competition outcomes.
+- Meetups and Builds do not create teams, project submissions, judging assignments, prizes, winner records, or completed competition outcomes.
 - Competition-only APIs and UI surfaces are unavailable for Meetups and Builds.
+- Only Meetups can enable talk proposals. Enabling requires a Call for talks opening timestamp strictly before its closing timestamp; disabled Meetups and all non-Meetup events store both timestamps as null.
+- After the first talk proposal exists, the Call for talks cannot be disabled. Proposal creation and disabling use mutually exclusive conditional writes so a concurrent first proposal cannot be created after a successful disable. Event admins can adjust its closing timestamp before event completion.
+- Completing a Meetup does not require every talk proposal to have a decision.
+
+### TalkProposal
+
+A private proposal from one registered Meetup applicant to speak at that Meetup.
+
+Rules:
+
+- A user can have at most one talk proposal per Meetup.
+- A Talk proposal contains a title, an abstract, and an optional demo-or-slides URL using `http` or `https`.
+- The owner application must be `submitted` or `approved` to create, edit, submit, withdraw, revise, or resubmit a proposal.
+- A later `rejected` or `withdrawn` application preserves the proposal for the owner and reviewers but pauses owner mutations. Mutations can resume only if eligibility is restored before the Call for talks closes.
+- A participant can create or edit a `draft` before the closing timestamp. Submitting changes it to `submitted` and makes its content read-only.
+- Before the closing timestamp, the owner can withdraw a submitted proposal, revise the withdrawn proposal back to draft, edit it, and resubmit it.
+- A withdrawn proposal remains private and retained. It is not reviewable for a decision until resubmitted.
+- Event staff, event admins, and platform admins can list and inspect retained talk proposals. Staff review is read-only.
+- Event admins and platform admins can accept or reject a `submitted` proposal before event completion, including after the Call for talks closes. A decision can include an optional speaker-facing message.
+- `accepted` and `rejected` are final. The decision write changes only a currently `submitted` proposal, so concurrent decision attempts cannot replace the first result or create multiple decision deliveries.
+- The same write that records a decision creates durable pending decision-email delivery state. Enqueue or delivery failure does not roll back a decision; reconciliation can enqueue pending delivery without repeating the decision.
+- Cloudflare Queues provides at-least-once delivery. Consumers use a durable lease and deterministic delivery identity to prevent concurrent sends and to recognize completed duplicates. A process failure after the email provider accepts a message but before the sent state is stored can still cause a later retry; the deterministic email key lets supporting providers suppress that duplicate.
+- Enqueue and delivery attempts and outcomes are recorded without placing proposal title, abstract, demo-or-slides URL, or decision message in infrastructure logs or audit metadata.
+- Talk proposal content and decisions are never public. Acceptance does not create, update, or synchronize an agenda item.
+- Account deletion removes the user's private talk proposal and its private delivery state.
 
 ### EventTrack
 
@@ -751,3 +777,17 @@ Judging applies only to Hackathon events.
 - The platform must support GDPR-compliant account deletion.
 - The platform must retain the auditability needed for operational and legal review.
 - Acceptance of platform registration documents, event application terms when present, and winner terms must be recorded against the accepted document version.
+
+## MCP Access Tokens
+
+An `McpAccessToken` is a revocable, user-named credential that belongs to one
+active platform `User`. It authenticates the same actor as that user at the
+stateless `/mcp` endpoint; it does not carry roles, scopes, or cached consent.
+The platform stores only the token identifier, a safe display prefix, a
+cryptographic secret hash, fixed expiry, coalesced last-use time, revocation
+time, and timestamps. The complete credential is returned only when created.
+
+A user can have at most five unrevoked, unexpired MCP access tokens. Each token
+expires exactly 30 days after creation and cannot be renewed or made permanent.
+Deleting an account removes its MCP access tokens. See [mcp.md](mcp.md) for the
+operation and security boundary.

@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 
 import { writeAuditLog } from '#server/database/audit-log'
 import { judgeAssignments } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   assertJudgeReviewLifecycleState,
@@ -13,7 +13,16 @@ import {
 import { assertGuard } from '#server/domains/lifecycle-guard'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.judging.assignments.by-assignmentId.actions.revert-ineligibility',
+  toolName: 'post_events_by_eventId_judging_assignments_by_assignmentId_actions_revert-ineligibility',
+  description: 'POST /api/events/:eventId/judging/assignments/:assignmentId/actions/revert-ineligibility',
+  rest: { method: 'POST', path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/revert-ineligibility' },
+  input: { params: judgingAssignmentParamsSchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'action'
+}, async (h3Event) => {
   const { eventId, assignmentId } = parseValidatedParams(h3Event, judgingAssignmentParamsSchema)
   const { actor, database, event, assignment } = await requireAdminAssignmentContext(h3Event, eventId, assignmentId)
 
@@ -63,3 +72,5 @@ export default defineApiHandler(async (h3Event) => {
     ineligibilityMarkedByUserId: null
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

@@ -9,7 +9,7 @@ import {
   platformDocumentTypeSchema,
   serializePlatformDocument
 } from '#server/domains/platform/documents'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
@@ -17,7 +17,16 @@ const paramsSchema = z.object({
   documentType: platformDocumentTypeSchema
 })
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.platform-documents.by-documentType.versions',
+  toolName: 'post_platform-documents_by_documentType_versions',
+  description: 'POST /api/platform-documents/:documentType/versions',
+  rest: { method: 'POST', path: '/api/platform-documents/:documentType/versions' },
+  input: { params: paramsSchema, body: createPlatformDocumentVersionBodySchema },
+  output: 'data',
+  capabilities: ['platform_admin'],
+  effect: 'create'
+}, async (h3Event) => {
   const actor = await requirePlatformAccountActor(h3Event)
   assertPlatformAdminAccess(actor)
 
@@ -33,3 +42,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData(serializePlatformDocument(document))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

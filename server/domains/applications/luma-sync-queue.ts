@@ -7,6 +7,7 @@ import { writeAuditLog } from '#server/database/audit-log'
 import { createDatabase, resolveD1Binding, type AppDatabase, type D1DatabaseBinding } from '#server/database/client'
 import {
   events,
+  type AuditMetadata,
   userApplications,
   users
 } from '#server/database/schema'
@@ -789,7 +790,7 @@ async function recordTerminalLumaSyncOutcome(
     applicationId: string
     status: ApplicationLumaSyncStatus
     action: 'user_application.luma_sync_completed' | 'user_application.luma_sync_failed'
-    metadata: Record<string, unknown>
+    metadata: AuditMetadata
   }
 ) {
   const updatedAt = await setApplicationLumaSyncStatus(database, input.applicationId, input.status)

@@ -6,6 +6,7 @@ export const accountEventWorkspaceTabs = [
   'credits',
   'prizes',
   'details',
+  'call-for-talks',
   'gallery',
   'feedback',
   'judges',
@@ -24,12 +25,15 @@ export type AccountEventWorkspaceTab = (typeof accountEventWorkspaceTabs)[number
 
 export interface AccountEventTabAccessOptions {
   hasApprovedParticipantAccess: boolean
+  hasEligibleTalkProposalApplicant?: boolean
+  hasRetainedTalkProposal?: boolean
   hasCreditInventory?: boolean
   hasGallery: boolean
   hasPublishedPrizes: boolean
   hasPublishedStaff: boolean
   eventType?: EventType | null
   eventState?: PublicEventState | null
+  talkProposalsEnabled?: boolean
   canJudge: boolean
   canManage: boolean
   showCredits?: boolean
@@ -48,22 +52,23 @@ export interface AccountEventWorkspaceBackLink {
 }
 
 const defaultAccountEventTabLabels: Record<AccountEventWorkspaceTab, string> = {
-  overview: 'Overview',
-  credits: 'Credits',
-  workspace: 'Workspace',
-  prizes: 'Prizes',
-  details: 'Details',
-  gallery: 'Gallery',
-  feedback: 'Feedback',
-  judges: 'Judges',
-  staff: 'Staff',
-  judging: 'Judging',
-  participants: 'Participants',
-  certificates: 'Certificates',
-  teams: 'Teams',
-  submissions: 'Submissions',
-  operations: 'Operations',
-  settings: 'Settings'
+  'overview': 'Overview',
+  'credits': 'Credits',
+  'workspace': 'Workspace',
+  'prizes': 'Prizes',
+  'details': 'Details',
+  'call-for-talks': 'Call for talks',
+  'gallery': 'Gallery',
+  'feedback': 'Feedback',
+  'judges': 'Judges',
+  'staff': 'Staff',
+  'judging': 'Judging',
+  'participants': 'Participants',
+  'certificates': 'Certificates',
+  'teams': 'Teams',
+  'submissions': 'Submissions',
+  'operations': 'Operations',
+  'settings': 'Settings'
 }
 
 export function getAccountEventTabLabel(
@@ -128,6 +133,8 @@ export function getAccountEventTabAccess(
 ): AccountEventTabAccess {
   const {
     hasApprovedParticipantAccess,
+    hasEligibleTalkProposalApplicant = hasApprovedParticipantAccess,
+    hasRetainedTalkProposal = false,
     hasCreditInventory = false,
     hasGallery,
     hasPublishedPrizes,
@@ -151,6 +158,15 @@ export function getAccountEventTabAccess(
   }
 
   availableTabs.push('details')
+
+  if (eventType === 'meetup' && options.talkProposalsEnabled && (
+    hasEligibleTalkProposalApplicant
+    || hasRetainedTalkProposal
+    || canManage
+    || canViewParticipantsAndTeams
+  )) {
+    availableTabs.push('call-for-talks')
+  }
 
   if (canJudge || canManage || canViewParticipantsAndTeams || (hasApprovedParticipantAccess && hasGallery)) {
     availableTabs.push('gallery')

@@ -3,7 +3,7 @@ import { and, desc, eq } from 'drizzle-orm'
 import { requirePlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
 import { teamMembers, teams } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   assertCompetitionEvent,
@@ -33,7 +33,16 @@ function getMembershipActivityAt(membership: MembershipRow) {
   return membership.leftAt ?? membership.joinedAt ?? membership.createdAt
 }
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.events.by-eventId.rank.me',
+  toolName: 'get_events_by_eventId_rank_me',
+  description: 'GET /api/events/:eventId/rank/me',
+  rest: { method: 'GET', path: '/api/events/:eventId/rank/me' },
+  input: { params: routeIdParamsSchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'read'
+}, async (h3Event) => {
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const actor = await requirePlatformActor(h3Event)
   const database = getDatabase(h3Event)
@@ -70,3 +79,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData(outcome?.rankSummary ?? null)
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

@@ -1,4 +1,4 @@
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   getTeamWithMembersOrThrow,
@@ -8,7 +8,16 @@ import {
 } from '#server/domains/teams'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.events.by-eventId.teams.by-teamId',
+  toolName: 'get_events_by_eventId_teams_by_teamId',
+  description: 'GET /api/events/:eventId/teams/:teamId',
+  rest: { method: 'GET', path: '/api/events/:eventId/teams/:teamId' },
+  input: { params: teamParamsSchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'read'
+}, async (h3Event) => {
   const { eventId, teamId } = parseValidatedParams(h3Event, teamParamsSchema)
   const { database, eventAuthorization, membership } = await requireTeamVisibilityContext(h3Event, eventId)
   const { team, members } = await getTeamWithMembersOrThrow(database, eventId, teamId, {
@@ -21,3 +30,5 @@ export default defineApiHandler(async (h3Event) => {
     members
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

@@ -32,13 +32,16 @@ export function validateWithSchema<TSchema extends z.ZodTypeAny>(
 }
 
 export async function parseValidatedBody<TSchema extends z.ZodTypeAny>(event: H3Event, schema: TSchema) {
-  return validateWithSchema(schema, await readBody(event), 'body')
+  const operationInput = event.context.applicationOperationInput as { body?: unknown } | undefined
+  return validateWithSchema(schema, operationInput ? operationInput.body : await readBody(event), 'body')
 }
 
 export function parseValidatedQuery<TSchema extends z.ZodTypeAny>(event: H3Event, schema: TSchema) {
-  return validateWithSchema(schema, getQuery(event), 'query')
+  const operationInput = event.context.applicationOperationInput as { query?: unknown } | undefined
+  return validateWithSchema(schema, operationInput?.query ?? getQuery(event), 'query')
 }
 
 export function parseValidatedParams<TSchema extends z.ZodTypeAny>(event: H3Event, schema: TSchema) {
-  return validateWithSchema(schema, event.context.params ?? {}, 'params')
+  const operationInput = event.context.applicationOperationInput as { params?: unknown } | undefined
+  return validateWithSchema(schema, operationInput?.params ?? event.context.params ?? {}, 'params')
 }

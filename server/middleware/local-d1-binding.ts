@@ -5,6 +5,7 @@ import {
   authenticatedUploadRateLimitBindingName,
   publicContactRateLimitBindingName,
   publicEventFeedbackRateLimitBindingName,
+  mcpRateLimitBindingName,
   simplifiedClaimingRateLimitBindingName
 } from '#server/utils/rate-limit'
 import { createLocalPlatformProxy } from '#server/database/local-platform-proxy'
@@ -104,6 +105,7 @@ export default defineEventHandler(async (event) => {
   const imagesBindingName = 'IMAGES'
   const outboundEmailBindingName = runtimeConfig.outboundEmail?.binding ?? defaultOutboundEmailBinding
   const applicationReviewEmailQueueBindingName = runtimeConfig.applicationReviewEmails?.queueBinding ?? 'APPLICATION_REVIEW_EMAIL_QUEUE'
+  const talkProposalDecisionEmailQueueBindingName = runtimeConfig.talkProposalDecisionEmails?.queueBinding ?? 'TALK_PROPOSAL_DECISION_EMAIL_QUEUE'
   const eventOutcomeEmailQueueBindingName = runtimeConfig.eventOutcomeEmails?.queueBinding ?? 'EVENT_OUTCOME_EMAIL_QUEUE'
   const applicationLumaSyncQueueBindingName = runtimeConfig.luma?.queueBinding ?? 'APPLICATION_LUMA_SYNC_QUEUE'
   const cloudflareEnv = event.context.cloudflare?.env as Record<string, unknown> | undefined
@@ -146,6 +148,12 @@ export default defineEventHandler(async (event) => {
       ? undefined
       : proxyEnv.APPLICATION_REVIEW_EMAIL_QUEUE)
   const applicationReviewEmailQueue = existingApplicationReviewEmailQueue ?? proxyApplicationReviewEmailQueue
+  const existingTalkProposalDecisionEmailQueue = cloudflareEnv?.[talkProposalDecisionEmailQueueBindingName]
+  const proxyTalkProposalDecisionEmailQueue = proxyEnv[talkProposalDecisionEmailQueueBindingName]
+    ?? (talkProposalDecisionEmailQueueBindingName === 'TALK_PROPOSAL_DECISION_EMAIL_QUEUE'
+      ? undefined
+      : proxyEnv.TALK_PROPOSAL_DECISION_EMAIL_QUEUE)
+  const talkProposalDecisionEmailQueue = existingTalkProposalDecisionEmailQueue ?? proxyTalkProposalDecisionEmailQueue
   const existingEventOutcomeEmailQueue = cloudflareEnv?.[eventOutcomeEmailQueueBindingName]
   const proxyEventOutcomeEmailQueue = proxyEnv[eventOutcomeEmailQueueBindingName]
     ?? (eventOutcomeEmailQueueBindingName === 'EVENT_OUTCOME_EMAIL_QUEUE'
@@ -168,6 +176,7 @@ export default defineEventHandler(async (event) => {
   const existingSimplifiedClaimingRateLimiter = cloudflareEnv?.[simplifiedClaimingRateLimitBindingName]
   const simplifiedClaimingRateLimiter = existingSimplifiedClaimingRateLimiter
     ?? proxyEnv[simplifiedClaimingRateLimitBindingName]
+  const mcpRateLimiter = cloudflareEnv?.[mcpRateLimitBindingName] ?? proxyEnv[mcpRateLimitBindingName]
 
   if (!d1Database) {
     throw new ApiError({
@@ -205,6 +214,10 @@ export default defineEventHandler(async (event) => {
     event.context.cloudflare.env[applicationReviewEmailQueueBindingName] = applicationReviewEmailQueue as never
   }
 
+  if (!event.context.cloudflare.env[talkProposalDecisionEmailQueueBindingName] && isQueueProducerLike(talkProposalDecisionEmailQueue)) {
+    event.context.cloudflare.env[talkProposalDecisionEmailQueueBindingName] = talkProposalDecisionEmailQueue as never
+  }
+
   if (!event.context.cloudflare.env[eventOutcomeEmailQueueBindingName] && isQueueProducerLike(eventOutcomeEmailQueue)) {
     event.context.cloudflare.env[eventOutcomeEmailQueueBindingName] = eventOutcomeEmailQueue as never
   }
@@ -236,6 +249,10 @@ export default defineEventHandler(async (event) => {
     && isRateLimitBindingLike(simplifiedClaimingRateLimiter)
   ) {
     event.context.cloudflare.env[simplifiedClaimingRateLimitBindingName] = simplifiedClaimingRateLimiter as never
+  }
+
+  if (!event.context.cloudflare.env[mcpRateLimitBindingName] && isRateLimitBindingLike(mcpRateLimiter)) {
+    event.context.cloudflare.env[mcpRateLimitBindingName] = mcpRateLimiter as never
   }
 
   const profileIconContext = event.context as typeof event.context & { profileIconsBucket?: R2BucketLike }

@@ -26,6 +26,7 @@ import EventPublishedProjectsShowcase from '~/components/public/events/EventPubl
 import EventTracksPanel from '~/components/public/events/EventTracksPanel.vue'
 import EventTimeline from '~/components/public/events/EventTimeline.vue'
 import EventWinnersShowcase from '~/components/public/events/EventWinnersShowcase.vue'
+import EventTalkProposalCallout from '~/components/public/events/EventTalkProposalCallout.vue'
 import { resolvePublicEventPrimaryAction } from '~/domains/applications/participant-application'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
 
@@ -232,6 +233,11 @@ const showPrimaryAction = computed(() => Boolean(primaryAction.value))
 const primaryActionHref = computed(() => primaryAction.value?.to ?? '')
 const isPrimaryActionExternal = computed(() => primaryAction.value?.external ?? false)
 const primaryActionLabel = computed(() => primaryAction.value?.label ?? '')
+const talkProposalWorkspaceHref = computed(() => `/account/events/${slug.value}?tab=call-for-talks`)
+const talkProposalAction = computed(() => hasEventWorkspaceAccess.value
+  ? { label: 'Open Talk proposal', to: talkProposalWorkspaceHref.value, external: false }
+  : primaryAction.value
+)
 const publicSectionTabs = ['overview', 'prizes', 'details', 'gallery'] as const
 type PublicSectionTab = (typeof publicSectionTabs)[number]
 const activePublicSection = computed<PublicSectionTab>(() =>
@@ -440,6 +446,15 @@ useSeoMeta({
         aria-labelledby="public-tab-overview"
         class="space-y-7"
       >
+        <EventTalkProposalCallout
+          v-if="event.eventType === 'meetup' && event.talkProposalsEnabled && event.talkProposalOpensAt && event.talkProposalClosesAt"
+          :opens-at="event.talkProposalOpensAt"
+          :closes-at="event.talkProposalClosesAt"
+          :action-href="talkProposalAction?.to"
+          :action-label="talkProposalAction?.label"
+          :action-external="talkProposalAction?.external"
+        />
+
         <EventOverviewPanel :description="event.description" />
       </section>
 

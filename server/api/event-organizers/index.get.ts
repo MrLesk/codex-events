@@ -1,12 +1,21 @@
 import { requirePlatformActor } from '#server/auth/actor'
 import { assertPlatformAdminAccess } from '#server/auth/authorization'
 import { getDatabase } from '#server/database/client'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiList } from '#server/http/api-response'
 import { serializeEventRoleUserSummary } from '#server/domains/events'
 import { listEventOrganizers } from '#server/domains/platform/event-organizers'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.event-organizers',
+  toolName: 'get_event-organizers',
+  description: 'GET /api/event-organizers',
+  rest: { method: 'GET', path: '/api/event-organizers' },
+  input: {},
+  output: 'list',
+  capabilities: ['platform_admin'],
+  effect: 'read'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   assertPlatformAdminAccess(actor)
 
@@ -19,3 +28,5 @@ export default defineApiHandler(async (h3Event) => {
     }
   )
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

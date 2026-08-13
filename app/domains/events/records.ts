@@ -80,6 +80,9 @@ export interface EventRecord {
   participantsLimit?: number | null
   autoApproveApplications: boolean
   simplifiedClaimingEnabled: boolean
+  talkProposalsEnabled?: boolean
+  talkProposalOpensAt?: string | null
+  talkProposalClosesAt?: string | null
   blindReviewCount: number
   pitchReviewEnabled: boolean
   blindScoreWeightPercent: number

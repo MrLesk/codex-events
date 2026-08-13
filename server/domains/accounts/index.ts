@@ -5,7 +5,9 @@ import type { AuthenticatedIdentityActor } from '#server/auth/actor'
 import type { AppDatabase } from '#server/database/client'
 import {
   eventRoleAssignments,
+  mcpAccessTokens,
   platformDocuments,
+  talkProposals,
   userAuthIdentities,
   userPlatformDocumentAcceptances,
   users
@@ -609,6 +611,12 @@ export async function deletePlatformAccount(
     database
       .delete(eventRoleAssignments)
       .where(eq(eventRoleAssignments.userId, actor.userId)),
+    database
+      .delete(mcpAccessTokens)
+      .where(eq(mcpAccessTokens.userId, actor.userId)),
+    database
+      .delete(talkProposals)
+      .where(eq(talkProposals.userId, actor.userId)),
     buildAuditLogInsert(database, {
       actorUserId: actor.userId,
       entityType: 'user',

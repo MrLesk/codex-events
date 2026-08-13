@@ -161,15 +161,50 @@ state.
   and judge are never modeled as identity-provider roles.
 - Event-type behavior is tested through `/events` and `/api/events`.
 - Hackathon-only workflows are tested only against `eventType = hackathon`.
-- Meetup and Build workflows are registration-only and reject team,
-  submission, judging, prize, and winner operations while allowing event-credit
-  operations.
+- Meetup and Build workflows are registration-focused and reject team,
+  project-submission, judging, prize, and winner operations while allowing
+  event-credit operations. Meetup coverage also verifies that private talk
+  proposals are available only when explicitly enabled and never appear as
+  public speaker or agenda content.
+- Meetup Call for talks coverage includes Meetup-only configuration and
+  independent-window validation; one proposal per event/user; HTTP(S) link
+  validation; submitted/approved applicant eligibility; draft, submit,
+  withdraw, revise, resubmit, accept, and reject transitions; owner mutation
+  pauses after application rejection or withdrawal; retained owner/reviewer
+  visibility; staff read-only and admin-only decisions; close/completion
+  guards; unresolved completion; concurrent decision compare-and-swap; durable
+  enqueue recovery; expiring delivery claims; at-least-once duplicate delivery
+  and crash-retry states; conditional create-versus-disable races;
+  public upcoming/open callout visibility; and account deletion.
 - Simplified Meetup claiming coverage includes bounded and appendable reward
   and attendee imports, normalized-email and duplicate handling, PII
   minimization, offer visibility, configuration locking, authenticated email
   matching, idempotent coupon allocation, receipt delivery, attendance-source
   precedence, certificate eligibility, rate limiting, and the external coupon
   redirect.
+
+## MCP Validation
+
+MCP coverage uses the same local D1 actors and product fixtures as REST. Tests
+create credentials through session-authenticated APIs and never place plaintext
+tokens in fixture source, snapshots, logs, or audit metadata.
+
+- Unit tests cover credential generation/hash verification, fixed expiry,
+  active-token cap, revocation, last-use coalescing, registry uniqueness,
+  annotations, capability filtering, and error sanitization.
+- Integration tests cover token APIs and account deletion, protocol
+  initialize/list/call, bearer-only authentication, invalid/expired/revoked and
+  deleted-owner failures, current role and consent changes, host/origin checks,
+  rate limiting, mutation audits, and representative REST/MCP parity.
+- Completeness tests fail for missing or duplicate eligible REST/tool mappings
+  and for advertised excluded operations, including binary, token-management,
+  account-deletion, public-mutation, webhook, and system routes.
+- BDD covers create/copy/revoke behavior and representative participant,
+  event-admin, and platform-admin calls.
+- Manual smoke tests use short-lived credentials and record only tool names and
+  objective outcomes.
+
+The Cloudflare build is part of the MCP validation gate.
 
 ## Unsupported Patterns
 

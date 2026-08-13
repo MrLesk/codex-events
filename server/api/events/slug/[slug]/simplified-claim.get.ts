@@ -8,12 +8,21 @@ import {
   isHttpsCouponUrl
 } from '#server/domains/credits/simplified-claiming'
 import { getVisibleEventBySlugOrThrow, routeSlugParamsSchema } from '#server/domains/events'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { ApiError } from '#server/http/api-error'
 import { apiData } from '#server/http/api-response'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.events.slug.by-slug.simplified-claim',
+  toolName: 'get_events_slug_by_slug_simplified-claim',
+  description: 'GET /api/events/slug/:slug/simplified-claim',
+  rest: { method: 'GET', path: '/api/events/slug/:slug/simplified-claim' },
+  input: { params: routeSlugParamsSchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'read'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { slug } = parseValidatedParams(h3Event, routeSlugParamsSchema)
   const database = getDatabase(h3Event)
@@ -89,3 +98,5 @@ export default defineApiHandler(async (h3Event) => {
     lumaEmail: actor.platformUser.lumaEmail
   })
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

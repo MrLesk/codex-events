@@ -1,14 +1,23 @@
 import { requirePlatformActor } from '#server/auth/actor'
 import { resolveEventAuthorization } from '#server/auth/authorization'
 import { getDatabase } from '#server/database/client'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiList } from '#server/http/api-response'
 import { assertCompetitionEvent, getVisibleEventOrThrow, routeIdParamsSchema } from '#server/domains/events'
 import { assertGuard } from '#server/domains/lifecycle-guard'
 import { listLeaderboardEntries, serializeLeaderboardEntry } from '#server/domains/outcomes'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.events.by-eventId.leaderboard',
+  toolName: 'get_events_by_eventId_leaderboard',
+  description: 'GET /api/events/:eventId/leaderboard',
+  rest: { method: 'GET', path: '/api/events/:eventId/leaderboard' },
+  input: { params: routeIdParamsSchema },
+  output: 'list',
+  capabilities: ['event_judge', 'event_admin'],
+  effect: 'read'
+}, async (h3Event) => {
   await requirePlatformActor(h3Event)
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const database = getDatabase(h3Event)
@@ -36,3 +45,5 @@ export default defineApiHandler(async (h3Event) => {
     }
   )
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

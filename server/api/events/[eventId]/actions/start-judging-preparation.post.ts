@@ -4,7 +4,7 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { events } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   assertStartJudgingPreparationAllowed,
@@ -18,7 +18,16 @@ import {
 } from '#server/domains/events'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.actions.start-judging-preparation',
+  toolName: 'post_events_by_eventId_actions_start-judging-preparation',
+  description: 'POST /api/events/:eventId/actions/start-judging-preparation',
+  rest: { method: 'POST', path: '/api/events/:eventId/actions/start-judging-preparation' },
+  input: { params: routeIdParamsSchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'destructive'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const database = getDatabase(h3Event)
@@ -58,3 +67,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData(serializeEvent(updatedEvent!))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

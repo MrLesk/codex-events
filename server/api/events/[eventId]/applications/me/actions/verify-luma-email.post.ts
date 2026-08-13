@@ -23,7 +23,7 @@ import {
   routeIdParamsSchema
 } from '#server/domains/events'
 import { ApiError } from '#server/http/api-error'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   parseValidatedBody,
@@ -52,7 +52,16 @@ function getVerificationStatus(application: typeof userApplications.$inferSelect
   return application.lumaSyncStatus === 'approve_synced' ? 'synced' : 'not_synced'
 }
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.applications.me.actions.verify-luma-email',
+  toolName: 'post_events_by_eventId_applications_me_actions_verify-luma-email',
+  description: 'POST /api/events/:eventId/applications/me/actions/verify-luma-email',
+  rest: { method: 'POST', path: '/api/events/:eventId/applications/me/actions/verify-luma-email' },
+  input: { params: routeIdParamsSchema, body: verifyOwnApplicationLumaEmailBodySchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'action'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const body = await parseValidatedBody(h3Event, verifyOwnApplicationLumaEmailBodySchema)
@@ -207,3 +216,5 @@ export default defineApiHandler(async (h3Event) => {
     verificationStatus: getVerificationStatus(updatedApplication)
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

@@ -81,6 +81,7 @@ function submitForm() {
       :image-version="imageVersion"
       :event-id="initialEvent?.id ?? null"
       :persisted-simplified-claiming-enabled="initialEvent?.simplifiedClaimingEnabled ?? false"
+      :persisted-talk-proposals-enabled="initialEvent?.talkProposalsEnabled ?? false"
       :luma-webhook-url="initialEvent?.lumaWebhookUrl ?? null"
       :luma-webhook-status="initialEvent?.lumaWebhookStatus ?? null"
       :luma-webhook-error="initialEvent?.lumaWebhookError ?? null"

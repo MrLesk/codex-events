@@ -4,7 +4,7 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { prizes } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   assertPrizeConfigurationEditable,
@@ -15,7 +15,16 @@ import {
 } from '#server/domains/events'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.prizes',
+  toolName: 'post_events_by_eventId_prizes',
+  description: 'POST /api/events/:eventId/prizes',
+  rest: { method: 'POST', path: '/api/events/:eventId/prizes' },
+  input: { params: routeIdParamsSchema, body: createPrizeBodySchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'create'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const body = await parseValidatedBody(h3Event, createPrizeBodySchema)
@@ -66,3 +75,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData(serializePrize(prize!))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

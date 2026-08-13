@@ -3,12 +3,21 @@ import { writeAuditLog } from '#server/database/audit-log'
 import { getD1Binding, getDatabase } from '#server/database/client'
 import { creditParamsSchema, getEventCreditOfferOrThrow } from '#server/domains/credits'
 import { requireEventAdmin } from '#server/domains/events'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { ApiError } from '#server/http/api-error'
 import { apiData } from '#server/http/api-response'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'delete.events.by-eventId.credits.by-creditId',
+  toolName: 'delete_events_by_eventId_credits_by_creditId',
+  description: 'DELETE /api/events/:eventId/credits/:creditId',
+  rest: { method: 'DELETE', path: '/api/events/:eventId/credits/:creditId' },
+  input: { params: creditParamsSchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'delete'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId, creditId } = parseValidatedParams(h3Event, creditParamsSchema)
   const database = getDatabase(h3Event)
@@ -46,3 +55,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData({ deleted: true })
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

@@ -26,6 +26,7 @@ import {
   events,
   eventRoleAssignments,
   eventTermsDocuments,
+  mcpAccessTokens,
   platformDocuments,
   platformLegalSettings,
   platformSettings,
@@ -219,7 +220,6 @@ describe('TASK-3.5 actor-facing API routes', () => {
       isInJudgePool: true,
       createdAt: fixtureTimestamp()
     })
-
     const response = await harness.request('/api/session')
 
     expect(response.status).toBe(200)
@@ -3700,6 +3700,14 @@ describe('TASK-3.5 actor-facing API routes', () => {
       isInJudgePool: false,
       createdAt: fixtureTimestamp()
     })
+    await harness.database.insert(mcpAccessTokens).values({
+      id: '00000000-0000-4000-8000-000000000001',
+      userId: 'user_delete',
+      name: 'Delete with account',
+      displayPrefix: 'ce_mcp_00000000',
+      secretHash: 'a'.repeat(64),
+      expiresAt: '2026-09-12T00:00:00.000Z'
+    })
 
     const response = await harness.request('/api/account', {
       method: 'DELETE'
@@ -3718,6 +3726,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     const deletedIdentities = await harness.database.select().from(userAuthIdentities)
     const deletedAcceptances = await harness.database.select().from(userPlatformDocumentAcceptances)
     const deletedAssignments = await harness.database.select().from(eventRoleAssignments)
+    const deletedMcpTokens = await harness.database.select().from(mcpAccessTokens)
     const auditEntries = await harness.database.select().from(auditLogs)
 
     expect(deletedUser?.deletedAt).toBeTruthy()
@@ -3727,6 +3736,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(deletedIdentities).toHaveLength(0)
     expect(deletedAcceptances).toHaveLength(0)
     expect(deletedAssignments).toHaveLength(0)
+    expect(deletedMcpTokens).toHaveLength(0)
     expect(await profileIconsBucket.get('users/user_delete/profile-icon')).toBeNull()
     expect(auditEntries).toEqual([
       expect.objectContaining({

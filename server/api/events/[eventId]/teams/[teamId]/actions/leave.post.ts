@@ -3,7 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { teamJoinRequests, teamMembers, teams } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { ApiError } from '#server/http/api-error'
 import {
@@ -16,7 +16,16 @@ import {
 } from '#server/domains/teams'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.teams.by-teamId.actions.leave',
+  toolName: 'post_events_by_eventId_teams_by_teamId_actions_leave',
+  description: 'POST /api/events/:eventId/teams/:teamId/actions/leave',
+  rest: { method: 'POST', path: '/api/events/:eventId/teams/:teamId/actions/leave' },
+  input: { params: teamParamsSchema },
+  output: 'data',
+  capabilities: ['platform_user'],
+  effect: 'destructive'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId, teamId } = parseValidatedParams(h3Event, teamParamsSchema)
   const { database, event } = await requireTeamVisibilityContext(h3Event, eventId)
@@ -94,3 +103,5 @@ export default defineApiHandler(async (h3Event) => {
     teamDissolved: leaveDecision.teamDissolved
   })
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

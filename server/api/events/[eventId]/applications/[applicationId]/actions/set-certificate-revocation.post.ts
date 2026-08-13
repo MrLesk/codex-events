@@ -11,7 +11,7 @@ import {
   serializeUserApplication
 } from '#server/domains/applications'
 import { ApiError } from '#server/http/api-error'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
@@ -20,7 +20,16 @@ const setCertificateRevocationBodySchema = z.object({
   revoked: z.boolean()
 })
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.applications.by-applicationId.actions.set-certificate-revocation',
+  toolName: 'post_events_by_eventId_applications_by_applicationId_actions_set-certificate-revocation',
+  description: 'POST /api/events/:eventId/applications/:applicationId/actions/set-certificate-revocation',
+  rest: { method: 'POST', path: '/api/events/:eventId/applications/:applicationId/actions/set-certificate-revocation' },
+  input: { params: applicationParamsSchema, body: setCertificateRevocationBodySchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'destructive_update'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId, applicationId } = parseValidatedParams(h3Event, applicationParamsSchema)
   const { revoked } = await parseValidatedBody(h3Event, setCertificateRevocationBodySchema)
@@ -96,3 +105,5 @@ export default defineApiHandler(async (h3Event) => {
     applicationTermsDocument
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

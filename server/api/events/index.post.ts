@@ -5,11 +5,12 @@ import { assertEventCreatorAccess } from '#server/auth/authorization'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { events } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   assertEventApplicationFieldConfiguration,
   assertEventSchedule,
+  assertTalkProposalConfiguration,
   assertEventSlugAvailable,
   createEventAdminAssignmentsForNewEvent,
   createEventTracks,
@@ -22,7 +23,16 @@ import { reconcileEventLumaWebhook } from '#server/domains/events/luma-webhook-r
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { parseValidatedBody } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events',
+  toolName: 'post_events',
+  description: 'POST /api/events',
+  rest: { method: 'POST', path: '/api/events' },
+  input: { body: createEventBodySchema },
+  output: 'data',
+  capabilities: ['event_organizer', 'platform_admin'],
+  effect: 'create'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   assertEventCreatorAccess(actor)
 
@@ -31,6 +41,7 @@ export default defineApiHandler(async (h3Event) => {
 
   assertEventSchedule(body)
   assertEventApplicationFieldConfiguration(body as Record<string, unknown>)
+  assertTalkProposalConfiguration(body as Record<string, unknown>)
   await assertEventSlugAvailable(database, body.slug)
 
   const eventId = crypto.randomUUID()
@@ -59,6 +70,9 @@ export default defineApiHandler(async (h3Event) => {
     registrationClosesAt: body.registrationClosesAt,
     submissionOpensAt: isHackathon ? body.submissionOpensAt! : null,
     submissionClosesAt: isHackathon ? body.submissionClosesAt! : null,
+    talkProposalsEnabled: body.eventType === 'meetup' ? body.talkProposalsEnabled : false,
+    talkProposalOpensAt: body.eventType === 'meetup' ? body.talkProposalOpensAt : null,
+    talkProposalClosesAt: body.eventType === 'meetup' ? body.talkProposalClosesAt : null,
     maxTeamMembers: isHackathon ? body.maxTeamMembers : 1,
     participantsLimit: body.participantsLimit,
     autoApproveApplications: body.autoApproveApplications,
@@ -137,3 +151,5 @@ export default defineApiHandler(async (h3Event) => {
     ...imageOptions
   }))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

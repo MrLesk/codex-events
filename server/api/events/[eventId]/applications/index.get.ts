@@ -1,4 +1,4 @@
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiList } from '#server/http/api-response'
 import {
   listApplicationsQuerySchema,
@@ -8,7 +8,16 @@ import {
 import { parseValidatedParams, parseValidatedQuery } from '#server/http/validation'
 import { routeIdParamsSchema } from '#server/domains/events'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.events.by-eventId.applications',
+  toolName: 'get_events_by_eventId_applications',
+  description: 'GET /api/events/:eventId/applications',
+  rest: { method: 'GET', path: '/api/events/:eventId/applications' },
+  input: { params: routeIdParamsSchema, query: listApplicationsQuerySchema },
+  output: 'list',
+  capabilities: ['event_staff'],
+  effect: 'read'
+}, async (h3Event) => {
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const query = parseValidatedQuery(h3Event, listApplicationsQuerySchema)
   const { database } = await requireEventApplicationVisibilityContext(h3Event, eventId)
@@ -21,3 +30,5 @@ export default defineApiHandler(async (h3Event) => {
     statusCounts: result.statusCounts
   })
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

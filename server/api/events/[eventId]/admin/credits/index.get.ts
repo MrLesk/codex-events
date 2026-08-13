@@ -2,7 +2,7 @@ import { and, eq, getTableColumns, isNotNull } from 'drizzle-orm'
 
 import { getDatabase } from '#server/database/client'
 import { eventCreditCodes, eventCreditOffers, users } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiList } from '#server/http/api-response'
 import { requireEventAdmin, routeIdParamsSchema } from '#server/domains/events'
 import {
@@ -16,7 +16,16 @@ type EventCreditOfferRecord = typeof eventCreditOffers.$inferSelect
 type EventCreditCodeRecord = typeof eventCreditCodes.$inferSelect
 type UserRecord = typeof users.$inferSelect
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.events.by-eventId.admin.credits',
+  toolName: 'get_events_by_eventId_admin_credits',
+  description: 'GET /api/events/:eventId/admin/credits',
+  rest: { method: 'GET', path: '/api/events/:eventId/admin/credits' },
+  input: { params: routeIdParamsSchema },
+  output: 'list',
+  capabilities: ['event_admin'],
+  effect: 'read'
+}, async (h3Event) => {
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   await requireEventAdmin(h3Event, eventId)
 
@@ -53,3 +62,5 @@ export default defineApiHandler(async (h3Event) => {
     }
   )
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

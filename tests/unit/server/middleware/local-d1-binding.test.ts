@@ -43,6 +43,9 @@ function createEvent(options?: {
         applicationReviewEmails: {
           queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
         },
+        talkProposalDecisionEmails: {
+          queueBinding: 'TALK_PROPOSAL_DECISION_EMAIL_QUEUE'
+        },
         eventOutcomeEmails: {
           queueBinding: 'EVENT_OUTCOME_EMAIL_QUEUE'
         },
@@ -133,6 +136,9 @@ describe('local D1 binding middleware', () => {
     const applicationReviewEmailQueue = {
       send: vi.fn()
     }
+    const talkProposalDecisionEmailQueue = {
+      send: vi.fn()
+    }
     const eventOutcomeEmailQueue = {
       send: vi.fn()
     }
@@ -157,6 +163,7 @@ describe('local D1 binding middleware', () => {
         IMAGES: imagesBinding,
         EMAIL: outboundEmailBinding,
         APPLICATION_REVIEW_EMAIL_QUEUE: applicationReviewEmailQueue,
+        TALK_PROPOSAL_DECISION_EMAIL_QUEUE: talkProposalDecisionEmailQueue,
         EVENT_OUTCOME_EMAIL_QUEUE: eventOutcomeEmailQueue,
         APPLICATION_LUMA_SYNC_QUEUE: applicationLumaSyncQueue,
         [publicContactRateLimitBindingName]: publicContactRateLimiter,
@@ -177,6 +184,7 @@ describe('local D1 binding middleware', () => {
     expect(event.context.cloudflare?.env.IMAGES).toBe(imagesBinding)
     expect(event.context.cloudflare?.env.EMAIL).toBe(outboundEmailBinding)
     expect(event.context.cloudflare?.env.APPLICATION_REVIEW_EMAIL_QUEUE).toBe(applicationReviewEmailQueue)
+    expect(event.context.cloudflare?.env.TALK_PROPOSAL_DECISION_EMAIL_QUEUE).toBe(talkProposalDecisionEmailQueue)
     expect(event.context.cloudflare?.env.EVENT_OUTCOME_EMAIL_QUEUE).toBe(eventOutcomeEmailQueue)
     expect(event.context.cloudflare?.env.APPLICATION_LUMA_SYNC_QUEUE).toBe(applicationLumaSyncQueue)
     expect(event.context.cloudflare?.env[publicContactRateLimitBindingName]).toBe(publicContactRateLimiter)

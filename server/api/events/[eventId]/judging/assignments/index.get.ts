@@ -4,7 +4,7 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { resolveEventAuthorization } from '#server/auth/authorization'
 import { getDatabase } from '#server/database/client'
 import { judgeAssignments } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiList } from '#server/http/api-response'
 import { assertGuard } from '#server/domains/lifecycle-guard'
 import { getVisibleEventOrThrow, routeIdParamsSchema } from '#server/domains/events'
@@ -15,7 +15,16 @@ import {
 } from '#server/domains/judging'
 import { parseValidatedParams, parseValidatedQuery } from '#server/http/validation'
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.events.by-eventId.judging.assignments',
+  toolName: 'get_events_by_eventId_judging_assignments',
+  description: 'GET /api/events/:eventId/judging/assignments',
+  rest: { method: 'GET', path: '/api/events/:eventId/judging/assignments' },
+  input: { params: routeIdParamsSchema, query: listJudgeAssignmentsQuerySchema },
+  output: 'list',
+  capabilities: ['event_judge', 'event_admin'],
+  effect: 'read'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const query = parseValidatedQuery(h3Event, listJudgeAssignmentsQuerySchema)
@@ -63,3 +72,5 @@ export default defineApiHandler(async (h3Event) => {
     total: data.length
   })
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)

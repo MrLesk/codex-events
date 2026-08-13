@@ -5,7 +5,7 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { events, prizeRedemptions, prizes } from '#server/database/schema'
-import { defineApiHandler } from '#server/http/api-handler'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
   enqueueWinnerOutcomeEmails
@@ -42,7 +42,16 @@ const announceWinnersBodySchema = z.object({
   orderedSubmissionIds: z.array(z.string().trim().min(1)).min(1).optional()
 }).default({})
 
-export default defineApiHandler(async (h3Event) => {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'post.events.by-eventId.actions.announce-winners',
+  toolName: 'post_events_by_eventId_actions_announce-winners',
+  description: 'POST /api/events/:eventId/actions/announce-winners',
+  rest: { method: 'POST', path: '/api/events/:eventId/actions/announce-winners' },
+  input: { params: routeIdParamsSchema, body: announceWinnersBodySchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'destructive'
+}, async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
   const body = await parseValidatedBody(h3Event, announceWinnersBodySchema)
@@ -155,3 +164,5 @@ export default defineApiHandler(async (h3Event) => {
 
   return apiData(serializeEvent(updatedEvent!))
 })
+
+export default defineStructuredOperationApiHandler(applicationOperation)
