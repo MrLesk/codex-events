@@ -87,7 +87,7 @@ Local Auth0 dashboard settings:
 
 - Allowed Callback URLs: `http://localhost:3000/auth/callback, http://localhost:3000/auth/link/callback`
 - Allowed Logout URLs: `http://localhost:3000`
-- If you enable GitHub social login, create an Auth0 GitHub social connection for the same application and configure the GitHub OAuth app callback URL as `https://<your-auth0-domain>/login/callback`.
+- If you enable Google social login, create an Auth0 Google connection and configure the Google OAuth Web application's authorized redirect URI as `https://<your-auth0-domain>/login/callback`. Set `AUTH0_GOOGLE_CONNECTION_NAME` to that connection's Auth0 name when running the bootstrap.
 
 Local Auth0 runtime notes:
 
@@ -111,15 +111,16 @@ These commands enforce required Auth0 tenant configuration:
 - a default third-party user grant for the MCP API permission without post-login scope mutation
 - Dynamic Client Registration for standards-compliant MCP clients
 - administrator-managed import of configured trusted HTTPS Client ID Metadata Document URLs
+- optional promotion of the configured Google social connection to a domain-level connection for the web application and strict third-party MCP OAuth clients
 - required callback/logout/origin URL inclusion on the Auth0 application
 - default login URI (`initiate_login_uri`) for password-reset return routing
 - tenant default redirection URI fallback (`default_redirection_uri`) for reset-password error states
 - required callback inclusion for the account-linking ownership check at `/auth/link/callback`
 
-The checked-in Auth0 bootstrap automation does not currently create or manage the GitHub social connection. Configure that connection in Auth0 separately when you want `/auth/login/github` enabled in a deployment.
+The checked-in bootstrap does not create a Google connection or handle its provider credentials. Create the connection in Auth0 first; when `AUTH0_GOOGLE_CONNECTION_NAME` is set, the bootstrap verifies that it uses the `google-oauth2` strategy and makes it domain-level without reading or replacing its credential options.
 If a tenant lacks the paid Universal Login page-template feature, the bootstrap now warns and skips page-template-dependent login prompt customization instead of failing outright. Custom domains, branding, client URLs, and Actions remain required and still fail on drift or API errors.
 
-The script reads explicit tenant automation variables: `AUTH0_MANAGEMENT_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `NUXT_AUTH0_CLIENT_ID`, `AUTH0_APP_BASE_URL`, and `AUTH0_MCP_CLIENT_METADATA_URLS` are required. The metadata setting accepts comma- or whitespace-separated trusted HTTPS Client ID Metadata Document URLs and is reconciled through Auth0's idempotent CIMD import endpoint. `AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` defaults to the same generated value as `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` when it is omitted. `AUTH0_CUSTOM_DOMAIN` defaults to `auth.<AUTH0_APP_BASE_URL host>` when `AUTH0_APP_BASE_URL` is HTTPS. `AUTH0_DATABASE_CONNECTION_NAME` defaults to `Username-Password-Authentication`.
+The script reads explicit tenant automation variables: `AUTH0_MANAGEMENT_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `NUXT_AUTH0_CLIENT_ID`, `AUTH0_APP_BASE_URL`, and `AUTH0_MCP_CLIENT_METADATA_URLS` are required. The metadata setting accepts comma- or whitespace-separated trusted HTTPS Client ID Metadata Document URLs and is reconciled through Auth0's idempotent CIMD import endpoint. `AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` defaults to the same generated value as `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` when it is omitted. `AUTH0_CUSTOM_DOMAIN` defaults to `auth.<AUTH0_APP_BASE_URL host>` when `AUTH0_APP_BASE_URL` is HTTPS. `AUTH0_DATABASE_CONNECTION_NAME` defaults to `Username-Password-Authentication`. `AUTH0_GOOGLE_CONNECTION_NAME` is optional and names an existing Auth0 Google connection to expose to both the app and third-party MCP clients.
 `AUTH0_LOGIN_URI` is mandatory whenever `AUTH0_APP_BASE_URL` is not HTTPS, and must always be an HTTPS URL.
 When `AUTH0_APP_BASE_URL` is HTTPS and explicit branding URLs are omitted, the bootstrap defaults to `${AUTH0_APP_BASE_URL}/auth0/codex-events-wordmark.svg` for the Auth0 wordmark and `${AUTH0_APP_BASE_URL}/favicon.ico` for the favicon.
 

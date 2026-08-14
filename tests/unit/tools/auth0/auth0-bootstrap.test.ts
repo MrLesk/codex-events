@@ -13,6 +13,7 @@ import {
   buildExpectedLoginCustomText,
   buildPostLoginActionSecrets,
   buildUniversalLoginPageTemplate,
+  ensureMcpDomainConnections,
   ensureTrustedMcpCimdClients,
   isAuth0DefaultBrandingThemeUnavailable,
   isPaidAuth0LoginCustomizationUnavailable,
@@ -69,6 +70,7 @@ describe('auth0 bootstrap config', () => {
 
     expect(config.appDisplayName).toBe('Codex Events')
     expect(config.databaseConnectionName).toBe('Username-Password-Authentication')
+    expect(config.googleConnectionName).toBe('')
     expect(config.loginUri).toBe('https://test.codex-events.com/auth/login')
     expect(config.brandingPrimaryColor).toBe('#030213')
     expect(config.brandingPrimaryButtonLabelColor).toBe('#ffffff')
@@ -202,6 +204,115 @@ describe('auth0 bootstrap config', () => {
     }))
 
     expect(config.databaseConnectionName).toBe('Username-Password-Authentication')
+  })
+
+  test('preserves an explicitly configured Google connection name', () => {
+    const config = resolveConfig(createAuth0BootstrapEnvironment({
+      AUTH0_GOOGLE_CONNECTION_NAME: 'google-oauth2'
+    }))
+
+    expect(config.googleConnectionName).toBe('google-oauth2')
+  })
+
+  test('promotes configured identity connections without reading or updating provider options', async () => {
+    let googleIsDomainConnection = false
+    const fetchMock = vi.fn().mockImplementation(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+
+      if (url.includes('/api/v2/connections?') && url.includes('name=Username-Password-Authentication')) {
+        return Response.json([{
+          id: 'con_database',
+          name: 'Username-Password-Authentication',
+          strategy: 'auth0',
+          is_domain_connection: true
+        }])
+      }
+
+      if (url.includes('/api/v2/connections?') && url.includes('name=google-oauth2')) {
+        return Response.json([{
+          id: 'con_google',
+          name: 'google-oauth2',
+          strategy: 'google-oauth2',
+          is_domain_connection: googleIsDomainConnection
+        }])
+      }
+
+      if (url.endsWith('/api/v2/connections/con_google') && method === 'PATCH') {
+        googleIsDomainConnection = true
+        return Response.json({ id: 'con_google' })
+      }
+
+      throw new Error(`Unexpected Auth0 request: ${method} ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const failures: string[] = []
+
+    await ensureMcpDomainConnections(
+      resolveConfig(createAuth0BootstrapEnvironment({ AUTH0_GOOGLE_CONNECTION_NAME: 'google-oauth2' })),
+      'management-token',
+      'apply',
+      failures
+    )
+
+    expect(failures).toEqual([])
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    const connectionReads = fetchMock.mock.calls
+      .map(([url]) => String(url))
+      .filter(url => url.includes('/api/v2/connections?'))
+    expect(connectionReads).toHaveLength(3)
+    expect(connectionReads.every(url => url.includes('fields=id%2Cname%2Cstrategy'))).toBe(true)
+    expect(connectionReads.every(url => url.includes('include_fields=true'))).toBe(true)
+    expect(connectionReads.every(url => !url.includes('options'))).toBe(true)
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://codex-events-test.eu.auth0.com/api/v2/connections/con_google',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ is_domain_connection: true })
+      })
+    )
+  })
+
+  test('reports a configured Google connection that is missing or has the wrong strategy', async () => {
+    const responses = new Map([
+      ['Username-Password-Authentication', [{
+        id: 'con_database',
+        name: 'Username-Password-Authentication',
+        strategy: 'auth0',
+        is_domain_connection: true
+      }]],
+      ['missing-google', []],
+      ['not-google', [{
+        id: 'con_not_google',
+        name: 'not-google',
+        strategy: 'github',
+        is_domain_connection: false
+      }]]
+    ])
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: string | URL | Request) => {
+      const name = new URL(String(input)).searchParams.get('name') ?? ''
+      return Response.json(responses.get(name) ?? [])
+    }))
+
+    const missingFailures: string[] = []
+    await ensureMcpDomainConnections(
+      resolveConfig(createAuth0BootstrapEnvironment({ AUTH0_GOOGLE_CONNECTION_NAME: 'missing-google' })),
+      'management-token',
+      'check',
+      missingFailures
+    )
+    expect(missingFailures).toEqual(['Auth0 Google connection missing-google was not found.'])
+
+    const strategyFailures: string[] = []
+    await ensureMcpDomainConnections(
+      resolveConfig(createAuth0BootstrapEnvironment({ AUTH0_GOOGLE_CONNECTION_NAME: 'not-google' })),
+      'management-token',
+      'check',
+      strategyFailures
+    )
+    expect(strategyFailures).toEqual([
+      'Auth0 Google connection not-google uses strategy github, expected google-oauth2.'
+    ])
   })
 
   test('preserves explicit branding overrides', () => {

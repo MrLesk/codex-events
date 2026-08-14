@@ -16,6 +16,7 @@ interface TenantConfig {
   mcpScope: string
   mcpClientMetadataUrls: string[]
   databaseConnectionName: string
+  googleConnectionName: string
   accountLinkChallengeSecret: string
   loginUri: string
   customDomain: string
@@ -93,6 +94,7 @@ interface Auth0ClientGrant {
 interface Auth0Connection {
   id: string
   name: string
+  strategy?: string
   is_domain_connection?: boolean
 }
 
@@ -180,6 +182,7 @@ const defaultActionName = 'codex-post-login'
 const defaultActionRuntime = 'node22'
 const defaultAuth0AppDisplayName = 'Codex Events'
 const defaultAuth0DatabaseConnectionName = 'Username-Password-Authentication'
+const defaultAuth0GoogleConnectionName = 'google-oauth2'
 const defaultMcpScope = 'mcp'
 const defaultBrandingPrimaryColor = '#030213'
 const lightButtonLabelColor = '#ffffff'
@@ -529,6 +532,7 @@ Environment variables:
 - AUTH0_LOGIN_URI (required when AUTH0_APP_BASE_URL is not https; must be https)
 - AUTH0_CUSTOM_DOMAIN (default: auth.<AUTH0_APP_BASE_URL host> when AUTH0_APP_BASE_URL is https)
 - AUTH0_DATABASE_CONNECTION_NAME (default: ${defaultAuth0DatabaseConnectionName})
+- AUTH0_GOOGLE_CONNECTION_NAME (optional; expected Auth0 Google connection name, usually ${defaultAuth0GoogleConnectionName})
 - AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET (optional; defaults from NUXT_AUTH0_CLIENT_SECRET)
 - AUTH0_TERMS_URL (default: <AUTH0_APP_BASE_URL>/terms-and-conditions)
 - AUTH0_PRIVACY_URL (default: <AUTH0_APP_BASE_URL>/privacy-policy)
@@ -894,6 +898,7 @@ export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
     mcpScope: firstDefinedValue(environment.AUTH0_MCP_SCOPE, defaultMcpScope),
     mcpClientMetadataUrls: parseMcpClientMetadataUrls(environment.AUTH0_MCP_CLIENT_METADATA_URLS),
     databaseConnectionName: firstDefinedValue(environment.AUTH0_DATABASE_CONNECTION_NAME, defaultAuth0DatabaseConnectionName),
+    googleConnectionName: firstDefinedValue(environment.AUTH0_GOOGLE_CONNECTION_NAME),
     accountLinkChallengeSecret: resolveAuth0AccountLinkChallengeSecret(environment),
     loginUri: normalizeHttpsUrlString(
       requireConfigField(
@@ -1434,32 +1439,75 @@ async function ensureMcpDefaultClientGrant(config: TenantConfig, token: string, 
   }
 }
 
-async function getDatabaseConnection(config: TenantConfig, token: string) {
+async function getConnection(config: TenantConfig, token: string, connectionName: string) {
+  const query = new URLSearchParams({
+    name: connectionName,
+    fields: 'id,name,strategy',
+    include_fields: 'true'
+  })
   const response = await auth0ManagementRequest(
     config,
     token,
-    `/api/v2/connections?name=${encodeURIComponent(config.databaseConnectionName)}`,
+    `/api/v2/connections?${query.toString()}`,
     { method: 'GET' }
   )
   const connections = await response.json() as Auth0Connection[]
-  return connections.find(connection => connection.name === config.databaseConnectionName) ?? null
+  return connections.find(connection => connection.name === connectionName) ?? null
 }
 
-async function ensureMcpDomainConnection(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
-  let connection = await getDatabaseConnection(config, token)
+async function ensureDomainConnection(options: {
+  config: TenantConfig
+  token: string
+  mode: CommandMode
+  failures: string[]
+  connectionName: string
+  label: string
+  expectedStrategy?: string
+}) {
+  const { config, token, mode, failures, connectionName, label, expectedStrategy } = options
+  let connection = await getConnection(config, token, connectionName)
+
+  if (connection && expectedStrategy && connection.strategy !== expectedStrategy) {
+    failures.push(`Auth0 ${label} connection ${connectionName} uses strategy ${connection.strategy ?? 'unknown'}, expected ${expectedStrategy}.`)
+    return
+  }
+
   if (mode === 'apply' && connection && connection.is_domain_connection !== true) {
     await auth0ManagementRequest(config, token, `/api/v2/connections/${encodeURIComponent(connection.id)}`, {
       method: 'PATCH',
       body: JSON.stringify({ is_domain_connection: true })
     })
-    connection = await getDatabaseConnection(config, token)
-    console.log(`Applied: made Auth0 connection ${config.databaseConnectionName} available to third-party MCP clients.`)
+    connection = await getConnection(config, token, connectionName)
+    console.log(`Applied: made Auth0 ${label} connection ${connectionName} available to third-party MCP clients.`)
   }
 
   if (!connection) {
-    failures.push(`Auth0 database connection ${config.databaseConnectionName} was not found.`)
+    failures.push(`Auth0 ${label} connection ${connectionName} was not found.`)
   } else if (connection.is_domain_connection !== true) {
-    failures.push(`Auth0 database connection ${config.databaseConnectionName} is not a domain-level connection for third-party MCP clients.`)
+    failures.push(`Auth0 ${label} connection ${connectionName} is not a domain-level connection for third-party MCP clients.`)
+  }
+}
+
+export async function ensureMcpDomainConnections(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
+  await ensureDomainConnection({
+    config,
+    token,
+    mode,
+    failures,
+    connectionName: config.databaseConnectionName,
+    label: 'database'
+  })
+
+  if (config.googleConnectionName) {
+    await ensureDomainConnection({
+      config,
+      token,
+      mode,
+      failures,
+      connectionName: config.googleConnectionName,
+      label: 'Google',
+      expectedStrategy: 'google-oauth2'
+    })
   }
 }
 
@@ -2160,7 +2208,7 @@ export async function main() {
     await ensureMcpDefaultClientGrant(config, managementToken, mode, failures)
     await ensureMcpTenantSettings(config, managementToken, mode, failures)
     await ensureTrustedMcpCimdClients(config, managementToken, mode, failures)
-    await ensureMcpDomainConnection(config, managementToken, mode, failures)
+    await ensureMcpDomainConnections(config, managementToken, mode, failures)
     await ensureBranding(config, managementToken, mode, failures)
     await ensureDefaultBrandingTheme(config, managementToken, mode, failures)
     await runOptionalPaidAuth0LoginCustomization(async () => {

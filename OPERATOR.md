@@ -66,7 +66,15 @@ Create or choose an Auth0 tenant for production.
 
 Create or choose a **Regular Web Application** for Codex Events. (The Auth0-created default application is usually a Regular Web Application and you can use it if you are comfortable dedicating it to this platform.)
 
-Auth0 usually creates a database connection named `Username-Password-Authentication` and enables it by default; just confirm it's enabled for this application. To offer social sign-in (e.g. Google or GitHub), configure those connections for the application too.
+Auth0 usually creates a database connection named `Username-Password-Authentication` and enables it by default; just confirm it's enabled for this application.
+
+To offer Google sign-in, create a Google OAuth 2.0 Web application in Google Cloud and add the Auth0 login-domain callback URL as an authorized redirect URI:
+
+```text
+https://auth.<BASE_DOMAIN>/login/callback
+```
+
+Use the explicit `AUTH0_CUSTOM_DOMAIN` instead of `auth.<BASE_DOMAIN>` when configured. Create the Google social connection in Auth0, store the Google client ID and secret there, and set `AUTH0_GOOGLE_CONNECTION_NAME` to its Auth0 connection name (normally `google-oauth2`). The deploy workflow verifies the connection strategy and makes that existing connection domain-level, so it is available to the Codex Events application and strict third-party MCP OAuth clients. The automation never reads or replaces the Google provider credentials.
 
 The deploy workflow configures the application's callback URLs, logout URLs, web origins, login URI, Universal Login branding, signup prompt behavior, and post-login Action — you do not set these by hand.
 
@@ -130,6 +138,7 @@ Add these only when they apply:
 | Key                                   | Platform | Where to find it                                                                       |
 |---------------------------------------|----------|----------------------------------------------------------------------------------------|
 | `AUTH0_CUSTOM_DOMAIN`                 | Auth0    | Only if your login hostname is not `auth.<BASE_DOMAIN>`, e.g. `auth.example.com`       |
+| `AUTH0_GOOGLE_CONNECTION_NAME`        | Auth0    | Existing Google social connection name, normally `google-oauth2`, when Google sign-in is enabled |
 | `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0    | Only if your database connection is not named `Username-Password-Authentication`       |
 | `NUXT_OUTBOUND_EMAIL_REPLY_TO`        | -        | Only if replies should go to a different address than `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` |
 
@@ -334,6 +343,7 @@ Auth0 and display:
 |---------------------------------------|--------------------------------------------------------------------------------|
 | `AUTH0_CUSTOM_DOMAIN`                 | Login hostname override. Defaults to `auth.<BASE_DOMAIN>`                      |
 | `AUTH0_APP_DISPLAY_NAME`              | Name shown in Auth0-hosted login copy. Defaults to `Codex Events`              |
+| `AUTH0_GOOGLE_CONNECTION_NAME`        | Existing Auth0 Google social connection to expose in Universal Login and MCP OAuth |
 | `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0 database connection name. Defaults to `Username-Password-Authentication` |
 | `AUTH0_MCP_RESOURCE_IDENTIFIER`     | Auth0 MCP API identifier. Defaults to `https://<BASE_DOMAIN>/mcp`               |
 | `AUTH0_MCP_SCOPE`                   | Auth0 MCP API permission. Defaults to `mcp`                                     |
@@ -368,6 +378,8 @@ Create a GitHub environment named `test` only if pushes to `main` should deploy 
 Use environment-specific values for the same variable and secret groups as production, with `BASE_DOMAIN` set to the test app hostname. The test job defaults `ENV_NAME` to `test`. Like production, it configures `auth.<BASE_DOMAIN>` by default, writes the DNS-only verification record, and waits for Auth0 verification; set `AUTH0_CUSTOM_DOMAIN` only when the test login hostname should differ.
 
 Test requires its own Auth0 tenant — production and test cannot share one on the free or standard plans (see [section 3.1](#31-tenant)). Point the test environment's `AUTH0_MANAGEMENT_DOMAIN`, `NUXT_AUTH0_CLIENT_ID`, and `NUXT_AUTH0_CLIENT_SECRET` at that tenant and its application.
+
+To enable Google in test without changing production, create the Google connection in the test Auth0 tenant, configure Google Cloud with `https://auth.<test BASE_DOMAIN>/login/callback`, and set only the test environment's `AUTH0_GOOGLE_CONNECTION_NAME` variable.
 
 Required test variables:
 
