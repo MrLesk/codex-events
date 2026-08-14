@@ -880,8 +880,8 @@ export function buildMcpResourceServerPayload(config: Pick<TenantConfig, 'appDis
     name: `${config.appDisplayName} MCP`,
     identifier: config.mcpResourceIdentifier,
     signing_alg: 'RS256',
-    token_dialect: 'rfc9068_profile_authz',
-    enforce_policies: true,
+    token_dialect: 'rfc9068_profile',
+    enforce_policies: false,
     scopes: [{ value: config.mcpScope, description: 'Access Codex Events through MCP' }]
   }
 }
@@ -1294,7 +1294,7 @@ async function ensureMcpResourceServer(config: TenantConfig, token: string, mode
   }
 
   if (!resource || !resourceServerMatches(resource, expected)) {
-    failures.push(`Auth0 MCP resource server ${config.mcpResourceIdentifier} is missing or does not match its required RS256, RFC 9068, and scope configuration.`)
+    failures.push(`Auth0 MCP resource server ${config.mcpResourceIdentifier} is missing or does not match its required RS256, RFC 9068, non-RBAC, and scope configuration.`)
   }
 }
 

@@ -80,8 +80,8 @@ describe('auth0 bootstrap config', () => {
       name: 'Codex Events MCP',
       identifier: 'https://test.codex-events.com/mcp',
       signing_alg: 'RS256',
-      token_dialect: 'rfc9068_profile_authz',
-      enforce_policies: true,
+      token_dialect: 'rfc9068_profile',
+      enforce_policies: false,
       scopes: [{ value: 'mcp:access', description: 'Access Codex Events through MCP' }]
     })
     expect(buildMcpDefaultClientGrant(config)).toEqual({

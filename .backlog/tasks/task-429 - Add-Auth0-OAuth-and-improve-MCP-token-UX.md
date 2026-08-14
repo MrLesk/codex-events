@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-08-14 16:11'
-updated_date: '2026-08-14 18:15'
+updated_date: '2026-08-14 18:54'
 labels:
   - mcp
   - auth0
@@ -80,4 +80,6 @@ Local implementation validation is green: OAuth discovery and JWT verification u
 Test deployment run 31820537533 initially stopped before migrations/deploy because the existing Auth0 automation client lacked the newly required Management API scopes. The test tenant grant was updated with exactly those eight scopes. The rerun then exposed Auth0 tenant-settings PATCH rejecting read-only flags echoed from the GET response; the update payload now contains only the supported MCP settings, with a regression test using the reported disable_impersonation and allow_changing_enable_sso flags. Lint, typecheck, the 22-test Auth0 bootstrap unit file, and diff check pass for the fix.
 
 The next test apply created the MCP resource server and default grant, enabled DCR/CIMD/resource settings, and made the database connection domain-wide. Auth0 then omitted dynamic_client_registration_security_mode from GET despite accepting the PATCH. A temporary test-only DCR probe produced a tpc_ client with third_party_security_mode=strict, authorization_code+refresh_token, PKCE/public token endpoint; that exact temporary client was deleted immediately. Bootstrap now creates the default third-party grant before tenant DCR settings and accepts Auth0's documented strict-default omission while still rejecting explicit permissive mode. Lint, typecheck, the 22-test Auth0 bootstrap unit file, and diff check pass.
+
+Live Codex OAuth exposed that the Auth0 consent grant had an empty scope: the MCP resource server enabled Auth0 RBAC even though platform authorization is owned by D1, so Auth0 stripped mcp:access from an otherwise successful user-delegated token. Canonical and operator docs now make the boundary explicit; the resource server uses RFC 9068 without Auth0 RBAC while the strict third-party default grant continues to authorize only mcp:access. Focused Auth0 bootstrap tests 22/22, lint, typecheck, and diff check pass.
 <!-- SECTION:NOTES:END -->

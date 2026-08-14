@@ -185,7 +185,9 @@ The MCP rollout is additive. Migration `0071_mcp_access_tokens.sql` must finish
 before the Worker serving `/mcp` is deployed; the checked-in workflow already
 preserves that ordering. The Auth0 bootstrap creates the MCP resource server,
 `mcp:access` scope, strict third-party client grant, OAuth discovery settings,
-and domain-level login connection. The generated Wrangler configuration also
+and domain-level login connection. It leaves Auth0 RBAC disabled for this API
+because Codex Events evaluates platform authorization from D1 after OAuth
+authentication. The generated Wrangler configuration also
 installs the `MCP_RATE_LIMITER` binding at 120 requests per credential or OAuth
 user/client pair per 60 seconds. Do not enable or route `/mcp` to a Worker
 version that lacks those resources.

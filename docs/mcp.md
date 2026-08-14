@@ -14,6 +14,11 @@ unauthenticated requests with a link to that metadata. Compatible clients use
 Authorization Code with PKCE against the configured Auth0 authorization server
 and request the `mcp:access` scope for the canonical MCP resource.
 
+The Auth0 MCP resource server grants that authentication scope to strict
+third-party clients without applying Auth0 RBAC. Platform roles, event roles,
+team membership, judging assignments, and legal-document acceptance remain
+authoritative in D1 and are evaluated for every request.
+
 The endpoint validates the OAuth access token signature through the Auth0 JWKS,
 then validates its issuer, expiry, audience, required scope, and subject. The
 subject must map to an active platform user. Auth0 owns OAuth grants, access and
