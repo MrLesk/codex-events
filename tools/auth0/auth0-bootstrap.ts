@@ -909,6 +909,11 @@ export function buildMcpTenantSettingsUpdate(_current: Auth0TenantSettings) {
   return buildMcpTenantSettings()
 }
 
+export function isMcpDcrSecurityModeAccepted(value: string | undefined) {
+  // Auth0 omits this field on tenants where strict mode is the fixed default.
+  return value === undefined || value === 'strict'
+}
+
 function buildExpectedConsentText() {
   return ''
 }
@@ -1239,7 +1244,7 @@ async function ensureMcpTenantSettings(config: TenantConfig, token: string, mode
   if (verified.client_id_metadata_document_supported !== true) {
     failures.push('Auth0 client ID metadata documents are not enabled.')
   }
-  if (verified.dynamic_client_registration_security_mode !== 'strict') {
+  if (!isMcpDcrSecurityModeAccepted(verified.dynamic_client_registration_security_mode)) {
     failures.push('Auth0 dynamic client registration security mode is not strict.')
   }
   if (verified.flags?.enable_dynamic_client_registration !== true) {
@@ -2058,9 +2063,9 @@ export async function main() {
     await ensureCustomDomain(config, managementToken, mode, failures)
     await ensureClientUrls(config, managementToken, mode, failures)
     await ensureTenantDefaultRedirection(config, managementToken, mode, failures)
-    await ensureMcpTenantSettings(config, managementToken, mode, failures)
     await ensureMcpResourceServer(config, managementToken, mode, failures)
     await ensureMcpDefaultClientGrant(config, managementToken, mode, failures)
+    await ensureMcpTenantSettings(config, managementToken, mode, failures)
     await ensureMcpDomainConnection(config, managementToken, mode, failures)
     await ensureBranding(config, managementToken, mode, failures)
     await ensureDefaultBrandingTheme(config, managementToken, mode, failures)

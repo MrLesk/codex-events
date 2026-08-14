@@ -14,6 +14,7 @@ import {
   buildPostLoginActionSecrets,
   buildUniversalLoginPageTemplate,
   isAuth0DefaultBrandingThemeUnavailable,
+  isMcpDcrSecurityModeAccepted,
   isPaidAuth0LoginCustomizationUnavailable,
   requiredManagementApiScopes,
   resolveConfig,
@@ -103,6 +104,9 @@ describe('auth0 bootstrap config', () => {
         allow_changing_enable_sso: false
       }
     })).toEqual(buildMcpTenantSettings())
+    expect(isMcpDcrSecurityModeAccepted('strict')).toBe(true)
+    expect(isMcpDcrSecurityModeAccepted(undefined)).toBe(true)
+    expect(isMcpDcrSecurityModeAccepted('permissive')).toBe(false)
   })
 
   test('defaults the Auth0 custom domain from the app base url host', () => {

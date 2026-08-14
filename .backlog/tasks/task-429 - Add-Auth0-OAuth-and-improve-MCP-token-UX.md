@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-08-14 16:11'
-updated_date: '2026-08-14 18:08'
+updated_date: '2026-08-14 18:15'
 labels:
   - mcp
   - auth0
@@ -78,4 +78,6 @@ Implementation checkpoint: canonical docs now define OAuth-first dual authentica
 Local implementation validation is green: OAuth discovery and JWT verification unit coverage; dual-auth MCP protocol integration 10/10; Auth0/deployment configuration unit matrix 35/35; full lint and typecheck; full unit 122 files/829 tests; full integration 28 files/382 tests; full browser suite 58 regular/authenticated plus 2 destructive scenarios, including OAuth-first settings and create/copy/Done/revoke; Cloudflare build; MCP generator freshness; and git diff checks. The built Worker contains the protected-resource discovery route. Remote Auth0 apply/check and real Codex OAuth smoke remain gated on the test-only deployment.
 
 Test deployment run 31820537533 initially stopped before migrations/deploy because the existing Auth0 automation client lacked the newly required Management API scopes. The test tenant grant was updated with exactly those eight scopes. The rerun then exposed Auth0 tenant-settings PATCH rejecting read-only flags echoed from the GET response; the update payload now contains only the supported MCP settings, with a regression test using the reported disable_impersonation and allow_changing_enable_sso flags. Lint, typecheck, the 22-test Auth0 bootstrap unit file, and diff check pass for the fix.
+
+The next test apply created the MCP resource server and default grant, enabled DCR/CIMD/resource settings, and made the database connection domain-wide. Auth0 then omitted dynamic_client_registration_security_mode from GET despite accepting the PATCH. A temporary test-only DCR probe produced a tpc_ client with third_party_security_mode=strict, authorization_code+refresh_token, PKCE/public token endpoint; that exact temporary client was deleted immediately. Bootstrap now creates the default third-party grant before tenant DCR settings and accepts Auth0's documented strict-default omission while still rejecting explicit permissive mode. Lint, typecheck, the 22-test Auth0 bootstrap unit file, and diff check pass.
 <!-- SECTION:NOTES:END -->
