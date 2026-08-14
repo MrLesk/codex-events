@@ -545,7 +545,7 @@ Behavior:
 An MCP client obtains an OAuth access token through Authorization Code with
 PKCE. Auth0 owns authorization-code, access-token, refresh-token, consent, and
 revocation lifecycles. The platform validates the access token's signature,
-issuer, expiry, audience, and required MCP scope on every `/mcp` request, then
+issuer, expiry, exact audience, subject, and client identity on every `/mcp` request, then
 resolves its subject to the current active platform user. Platform role and
 required-document changes therefore take effect without waiting for the OAuth
 grant to expire.

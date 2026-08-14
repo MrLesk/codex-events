@@ -785,7 +785,9 @@ client. The OAuth access token identifies the Auth0 subject and the `/mcp`
 endpoint resolves that subject to the active platform `User` on every request.
 OAuth credentials do not contain platform roles or cached consent, and the
 platform does not persist OAuth access tokens, refresh tokens, or authorization
-codes. Auth0 supports Dynamic Client Registration for standards clients and
+codes. The resource validates the signed token's exact audience and Auth0
+subject; platform permissions come from the live user record rather than OAuth
+scope claims. Auth0 supports Dynamic Client Registration for standards clients and
 administrator-approved HTTPS Client ID Metadata Documents for clients that use
 CIMD. Both paths target the same canonical MCP resource and platform actor.
 

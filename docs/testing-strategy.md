@@ -196,7 +196,8 @@ source, snapshots, logs, or audit metadata.
   annotations, capability filtering, and error sanitization.
 - Integration tests cover token APIs and account deletion, protocol
   initialize/list/call, protected-resource discovery, OAuth issuer/signature/
-  expiry/audience/identity-scope validation, invalid/expired/revoked manual
+  expiry/audience/subject/client validation including scope-less strict-third-party
+  tokens, invalid/expired/revoked manual
   credentials and deleted-owner failures, OAuth subject mapping, current role and consent
   changes, host/origin checks, rate limiting, mutation audits, and
   representative REST/MCP parity across both authentication methods.

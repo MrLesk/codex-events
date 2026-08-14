@@ -55,7 +55,6 @@ NUXT_EVENT_IMAGES_BINDING=EVENT_IMAGES
 NUXT_MCP_ALLOWED_HOSTNAMES=localhost
 NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES=localhost
 NUXT_MCP_RESOURCE_URL=http://localhost:3000/mcp
-NUXT_MCP_OAUTH_REQUIRED_SCOPES="openid email"
 NUXT_OUTBOUND_EMAIL_BINDING=EMAIL
 NUXT_OUTBOUND_EMAIL_FROM_EMAIL=info@your-platform.example
 NUXT_OUTBOUND_EMAIL_FROM_NAME=Codex Events
@@ -242,9 +241,11 @@ Use MCP Inspector against the deployed test endpoint for the protocol and OAuth
 baseline. Configure `https://test.codex-events.com/mcp` as Streamable HTTP and
 complete its OAuth flow. Inspector registers its client through DCR and uses
 Authorization Code with PKCE. Verify discovery, token issuance for the exact
-resource, the role-filtered tool list, and one read-only call. Its web callback
-is `http://localhost:6274/oauth/callback`; its CLI/TUI callback defaults to
-`http://127.0.0.1:6276/oauth/callback`.
+resource, the role-filtered tool list, and one read-only call. Open the web UI
+with the same hostname used by its registered callback: `http://localhost:6274`
+uses `http://localhost:6274/oauth/callback`, while `http://127.0.0.1:6274` is a
+different redirect URI and requires a separate registration. Its CLI/TUI
+callback defaults to `http://127.0.0.1:6276/oauth/callback`.
 
 ```bash
 bunx @modelcontextprotocol/inspector --web
@@ -259,7 +260,9 @@ a manual bearer token. Codex opens Authorization Code with PKCE and returns to
 the server-specific local callback it derives from its configured callback
 base. Register that exact derived redirect when using a predefined or CIMD
 client; otherwise let Codex use DCR. Verify the exact MCP audience, the
-`openid` and `email` scopes, `tools/list`, and one read-only call.
+signed subject and client identity, `tools/list`, and one read-only call. Do not
+expect strict third-party Auth0 access tokens to contain OIDC scopes or support
+`/userinfo`.
 
 For a ChatGPT hosted connector, use the MCP-specific CIMD URL and the HTTPS
 `https://chatgpt.com/connector/oauth/{callback_id}` redirect shown in ChatGPT.

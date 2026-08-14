@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-08-14 16:11'
-updated_date: '2026-08-14 21:03'
+updated_date: '2026-08-14 21:49'
 labels:
   - mcp
   - auth0
@@ -31,20 +31,20 @@ Codex Events users should be able to connect standards-compliant MCP clients thr
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 An unauthenticated /mcp response advertises OAuth protected-resource metadata and a standards-compliant WWW-Authenticate challenge with the configured Auth0 issuer, exact MCP resource, and required identity scopes.
+- [ ] #1 An unauthenticated /mcp response advertises OAuth protected-resource metadata and a standards-compliant WWW-Authenticate challenge with the configured Auth0 issuer and exact MCP resource; no resource scope is advertised because platform authorization is not scope-based.
 - [ ] #2 The deployed test endpoint completes OAuth 2.1 Authorization Code with PKCE in MCP Inspector and supports discovery, token issuance, tools/list, and a representative tool call.
-- [ ] #3 The MCP endpoint validates Auth0 issuer, signature, expiry, exact audience/resource, required identity scopes, subject, and client identity while continuing to accept valid unexpired and unrevoked proprietary MCP bearer tokens; browser cookies remain rejected.
+- [ ] #3 The MCP endpoint validates Auth0 issuer, signature, expiry, exact audience/resource, subject, and client identity without requiring OIDC or custom API scope claims, while continuing to accept valid unexpired and unrevoked proprietary MCP bearer tokens; browser cookies remain rejected.
 - [ ] #4 Both authentication paths reconstruct the current platform actor on every request and share identical tool filtering, exact domain authorization, lifecycle guards, side effects, response contracts, and sanitized errors.
 - [ ] #5 Account settings presents OAuth as the recommended connection method and manual tokens as a secondary method without nested card surfaces or duplicated connection instructions.
 - [ ] #6 After manual token creation, a focused one-time completion state shows the token name, one-time warning, credential with adjacent Copy action, canonical /mcp URL and Authorization Bearer instruction, and a Done action before returning to token management.
 - [ ] #7 Existing token listing, five-active-token cap, 30-day expiry, last-used display, immediate revocation, one-time secret storage rules, and account-deletion cleanup remain intact; revoked tokens are omitted from refreshed account UI even when active rows occur on later API pages.
 - [ ] #8 OAuth and token rate limiting and mutation-attempt audits use safe credential/client identifiers and never persist or log OAuth access tokens, refresh tokens, authorization codes, manual credential plaintext, or tool arguments.
-- [ ] #9 Auth0 bootstrap/check supports standards clients through DCR and administrator-approved CIMD, provisions the exact MCP resource and third-party user grant, promotes the identity connection to domain level, and configures test runtime values without changing production resources.
+- [ ] #9 Auth0 bootstrap/check supports standards clients through DCR and administrator-approved CIMD, provisions the exact MCP resource and third-party user grant, promotes the identity connections to domain level, and configures test runtime values without changing production resources.
 - [ ] #10 Trusted HTTPS CIMD URLs are validated, deduplicated, and idempotently registered through POST /api/v2/clients/cimd/register; ChatGPT hosted connector redirect URIs and Codex local redirect URIs are treated as different client contracts.
-- [ ] #11 Every advertised MCP tool declares the OAuth security scheme expected by ChatGPT, and authentication failures expose a standards-compliant challenge including mcp/www_authenticate where tool-level reauthorization is applicable.
+- [ ] #11 Every advertised MCP tool declares the OAuth security scheme expected by ChatGPT with an empty resource-scope set, and authentication failures expose a standards-compliant challenge including mcp/www_authenticate where tool-level reauthorization is applicable.
 - [ ] #12 ChatGPT connector testing uses its MCP-specific HTTPS callback and CIMD client identity; Codex direct testing uses its documented local callback behavior. Neither client-specific callback is incorrectly substituted for the other.
 - [ ] #13 Canonical docs, README, OPERATOR.md, and DEVELOPMENT.md describe OAuth as recommended, manual tokens as supported, cross-client registration/callback behavior, MCP Inspector testing, revocation, and test deployment.
-- [ ] #14 Unit and integration coverage includes OAuth discovery, valid and invalid tokens, wrong audience or issuer, missing identity scopes, manual-token parity, subject mapping, role and consent changes, rate limiting, sanitized audits, registry completeness, DCR, CIMD, and ChatGPT authentication metadata.
+- [ ] #14 Unit and integration coverage includes OAuth discovery, scope-less strict-third-party tokens, invalid tokens, wrong audience or issuer, manual-token parity, subject mapping, client identity, role and consent changes, rate limiting, sanitized audits, registry completeness, DCR, CIMD, and ChatGPT authentication metadata.
 - [ ] #15 Browser coverage exercises OAuth-first settings plus create, copy, Done, revoke, and revoked-after-refresh token behavior.
 - [ ] #16 Lint, typecheck, unit, integration, BDD, Cloudflare build, Auth0 configuration check, migration checks, MCP Inspector smoke, and git diff checks pass before the test-only release.
 - [ ] #17 Only the test environment is deployed; production workflows and production Auth0 or Cloudflare resources remain untouched.
@@ -74,6 +74,10 @@ Codex Events users should be able to connect standards-compliant MCP clients thr
 7. Update canonical and operator/developer docs to describe standards behavior and the separate ChatGPT hosted versus Codex local callback models.
 8. Run all validation, commit and push main, deploy test only, then smoke with MCP Inspector and the applicable real client surfaces through the user Chrome.
 9. Finalize TASK-429 only after objective test deployment evidence; record production as untouched.
+
+After OAuth is proven end-to-end with a standards-compliant client, send task 01a0010a-2a0f-7c11-bbbd-a92f0950afdc a concise implementation handoff covering the final Auth0 strict-third-party configuration, CIMD/DCR handling, identity reconstruction and scope policy, connection setup, relevant commits/deploy run, and live Inspector/Codex verification.
+
+Replace the incorrect identity-scope requirement with the actual Auth0 strict-third-party contract: treat the exact MCP audience plus signed issuer/expiry/sub/client identity as the OAuth credential boundary, advertise no resource scopes when the platform has no scope-based authorization, and continue resolving all authorization from the live D1 actor.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -112,4 +116,10 @@ Standards baseline correction: MCP Inspector is the primary OAuth acceptance cli
 Full validation checkpoint after the Inspector/DCR correction: lint and typecheck pass; unit 122 files/832 tests pass; integration 28 files/382 tests pass when rerun with the required local loopback/Wrangler permissions (the initial sandbox-only EPERM was infrastructure-only); Cloudflare build passes; diff check passes. Automated BDD rerun is awaiting confirmation because the user requires Chrome for interactive browser work.
 
 Approved full browser validation passes on the combined tree: 58 regular/authenticated scenarios plus 2 destructive scenarios. Existing verbose local SSR/hydration warnings did not fail assertions and are unrelated to the MCP/Auth0 correction.
+
+User explicitly requested a final cross-task handoff to 01a0010a-2a0f-7c11-bbbd-a92f0950afdc. Do not send premature guidance: wait until token issuance plus MCP tools/list and tools/call are proven, then share the exact working implementation and evidence.
+
+Live Inspector evidence on 2026-08-14: a stale callback-host mismatch was resolved by using the registered localhost callback; Auth0 then completed consent and returned to Inspector, but Inspector remained disconnected. The deployed resource still requires openid/email in the access-token scope claim, while strict third-party Auth0 tokens may omit OIDC scope claims and do not support /userinfo. Canonical contract and runtime must remove this false requirement without weakening issuer/signature/expiry/exact-audience/sub/client validation.
+
+First-party Google roundtrip is now proven in the user Chrome: real /auth/login state and PKCE setup, Continue with Google, and successful return to /account. The earlier 500 used a synthetic callback state and did not represent a valid application login. Inspector also exposed hostname-sensitive redirect registration: localhost and 127.0.0.1 are distinct OAuth redirect URIs.
 <!-- SECTION:NOTES:END -->

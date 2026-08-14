@@ -152,8 +152,7 @@ export default defineEventHandler(async (event) => {
   const database = getDatabase(event)
   const oauthConfiguration = resolveMcpOAuthConfiguration({
     auth0Domain: useRuntimeConfig(event).auth0.domain,
-    resourceUrl: config?.resourceUrl,
-    requiredScopes: config?.oauthRequiredScopes
+    resourceUrl: config?.resourceUrl
   })
   const authenticated = credential
     ? await authenticateMcpRequest(database, credential, oauthConfiguration)
@@ -163,7 +162,7 @@ export default defineEventHandler(async (event) => {
       setResponseHeader(
         event,
         'www-authenticate',
-        `Bearer resource_metadata="${mcpProtectedResourceMetadataUrl(oauthConfiguration)}", scope="${oauthConfiguration.requiredScopes.join(' ')}"`
+        `Bearer resource_metadata="${mcpProtectedResourceMetadataUrl(oauthConfiguration)}"`
       )
     }
     setResponseStatus(event, 401)
@@ -225,7 +224,7 @@ export default defineEventHandler(async (event) => {
     const response = await addMcpToolSecuritySchemes(
       await handler.fetch(request),
       payload?.method,
-      oauthConfiguration?.requiredScopes ?? []
+      []
     )
     if (attemptedOperation && !attemptedOperation.annotations.readOnlyHint) {
       const result = await readProtocolResponse(response)

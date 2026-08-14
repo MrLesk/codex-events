@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-08-14 21:16'
-updated_date: '2026-08-14 21:28'
+updated_date: '2026-08-14 21:49'
 labels: []
 dependencies: []
 modified_files:
@@ -69,4 +69,8 @@ L2 Auth0/deployment change. Discovery found the test tenant already has connecti
 Implemented optional AUTH0_GOOGLE_CONNECTION_NAME in Auth0 bootstrap and both deployment workflows. The bootstrap queries only id/name/strategy fields, validates google-oauth2, and PATCHes only is_domain_connection; provider credential options are neither requested nor changed. Added focused config/apply/check/missing/strategy/workflow tests. Set AUTH0_GOOGLE_CONNECTION_NAME=google-oauth2 only on the GitHub test environment; production environment was not changed. Validation so far: focused 30/30, lint, typecheck, unit 122 files/835 tests, elevated integration 28 files/382 tests, Cloudflare build, and diff check pass. Full BDD awaits the user-approved Playwright run.
 
 User approved Playwright for the remainder of this session. Full BDD passed: 58 regular/authenticated scenarios plus 2 destructive scenarios. Existing dev-only D1-binding/hydration warnings did not fail assertions.
+
+Implementation commit a5ea23e4418b8e28974326fcf9b2611d5f4455a9 pushed to main. Test-only workflow 31842568981 succeeded: backend-checks 4m55s and deploy-test 2m53s; no production workflow ran. Deploy log records Auth0 Google connection promotion and bootstrap success. A post-deploy metadata query confirms both google-oauth2 and Username-Password-Authentication are domain-level. Live user-Chrome checks show Continue with Google on both the first-party Codex Events login and strict third-party MCP Inspector tpc client login. Final provider round-trip awaits action-time browser confirmation because selecting Google may transmit the user's Google identity to the test Auth0 tenant.
+
+Live provider roundtrip completed in the user Chrome on 2026-08-14: logged out of the test application, entered through the real /auth/login route, selected Continue with Google, and returned authenticated to /account. The observed 500 came from a synthetic /auth/callback URL with an invented state and no PKCE transaction cookie; the supported application flow is healthy.
 <!-- SECTION:NOTES:END -->

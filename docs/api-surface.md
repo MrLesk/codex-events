@@ -707,15 +707,14 @@ Operations:
 
 `POST /mcp` is the single stateless Streamable HTTP endpoint. It accepts only
 `Authorization: Bearer <credential>`. The credential can be an Auth0 OAuth
-access token for the configured MCP resource and identity scopes, or a named
+access token for the configured MCP resource, or a named
 manual MCP access token issued from account settings. Session cookies do not
 authenticate it. The endpoint handles initialization, `tools/list`, and `tools/call`.
 Deployment host and present browser Origin values must match configured
 allowlists.
 
 `GET /.well-known/oauth-protected-resource` publishes the canonical MCP
-resource, Auth0 authorization server, required `openid` and `email` identity
-scopes, and supported bearer method. An unauthenticated `/mcp` response links to that metadata through
+resource, Auth0 authorization server, and supported bearer method. An unauthenticated `/mcp` response links to that metadata through
 `WWW-Authenticate`. Auth0 publishes its own authorization-server discovery and
 owns Authorization Code with PKCE, refresh, and revocation. Auth0 enables
 Dynamic Client Registration for standards clients and deployment automation
@@ -724,15 +723,16 @@ Unknown metadata URLs are rejected. Each registered client supplies its own
 redirect contract: Inspector and Codex use their documented loopback callbacks,
 while ChatGPT hosted connectors use their MCP-specific HTTPS callback. A default third-party user grant
 allows the `mcp` API permission for that resource, while `/mcp` validates the
-issued token's signature, issuer, expiry, exact audience, and `openid` and
-`email` identity scopes. It does not require an unrequested custom permission
-claim.
+issued token's signature, issuer, expiry, exact audience, subject, and client
+identity. It does not require OIDC or custom permission scopes that strict
+third-party Auth0 clients may not place in the access-token `scope` claim.
 
 The application-operation registry is shared by REST and MCP. Each eligible
 operation has one stable ID, Zod input/output contracts, one REST binding, one
 MCP tool, coarse capability metadata, and accurate read-only, destructive, and
-idempotent annotations. Every advertised tool also declares its OAuth identity
-scopes through `securitySchemes`. REST and MCP preserve the same structured success
+idempotent annotations. Every advertised tool also declares OAuth through
+`securitySchemes` with an empty scope set because platform permissions are not
+OAuth scopes. REST and MCP preserve the same structured success
 envelope, side effects, authorization decisions, and sanitized expected errors.
 
 Eligible operations are public discovery and signed-in structured JSON work in

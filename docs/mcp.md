@@ -37,15 +37,13 @@ authoritative in D1 and are evaluated for every request.
 Auth0's default third-party user grant allows the `mcp` API permission for the
 canonical resource. The grant authorizes trusted third-party clients to request
 that resource; it is not an application role and is not required as a scope
-claim because Codex does not request custom API permissions. The access token
-must instead contain the `openid` and `email` identity scopes requested by the
-client. The platform never broadens access for an unknown client or another
-resource.
+claim because clients do not consistently request or receive custom API or OIDC
+scopes in strict third-party access tokens. The platform never broadens access
+for an unknown client or another resource.
 
 The endpoint validates the OAuth access token signature through the Auth0 JWKS,
-then validates its issuer, expiry, exact audience, required identity scopes,
-and subject. The
-subject must map to an active platform user. Auth0 owns OAuth grants, access and
+then validates its issuer, expiry, exact audience, subject, and client identity.
+The subject must map to an active platform user. Auth0 owns OAuth grants, access and
 refresh tokens, client registration, and revocation; Codex Events stores none
 of those credentials.
 
@@ -99,8 +97,8 @@ Every operation declares:
   are used only for discovery;
 - an explicit domain-effect classification from which read-only, destructive,
   and idempotent annotations are derived;
-- an OAuth `securitySchemes` declaration for the `openid` and `email` identity
-  scopes required by the resource server;
+- an OAuth `securitySchemes` declaration with no resource scopes, because D1
+  actor permissions rather than OAuth scopes authorize operations;
 - one executor containing validation, exact authorization, lifecycle rules,
   persistence, side effects, domain audit, and serialization.
 

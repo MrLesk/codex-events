@@ -198,9 +198,10 @@ preserves that ordering. The Auth0 bootstrap creates the MCP resource server,
 and domain-level login connection. It enables Dynamic Client Registration for
 standards clients and imports every configured trusted HTTPS Client ID Metadata
 Document URL through Auth0's idempotent CIMD registration endpoint. `/mcp`
-requires the exact
-resource audience and the `openid` and `email` identity scopes clients request;
-it does not require the unrequested `mcp` permission in the token scope claim.
+requires a signed Auth0 token for the exact resource audience with a subject and
+client identity. It does not require OIDC or custom API scopes in the token
+scope claim because strict third-party clients may omit them; D1 remains
+authoritative for all application authorization.
 Auth0 RBAC remains disabled for this API because Codex Events evaluates
 platform authorization from D1 after OAuth authentication. The generated
 Wrangler configuration also installs the `MCP_RATE_LIMITER` binding at 120 requests per credential or OAuth
@@ -335,7 +336,6 @@ Deployment defaults and resource names:
 | `NUXT_MCP_ALLOWED_HOSTNAMES`        | Comma-separated hostnames accepted by `/mcp`; defaults to `BASE_DOMAIN`              |
 | `NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES` | Comma-separated Origin hostnames accepted by `/mcp`; defaults to `BASE_DOMAIN`       |
 | `NUXT_MCP_RESOURCE_URL`             | Canonical OAuth resource URL; defaults to `https://<BASE_DOMAIN>/mcp`                 |
-| `NUXT_MCP_OAUTH_REQUIRED_SCOPES`    | Space-separated OAuth identity scopes required by `/mcp`; defaults to `openid email`  |
 
 Auth0 and display:
 
@@ -422,12 +422,12 @@ bun run deploy:production
 
 Run the migration command before the deploy command. After deployment, use MCP
 Inspector to verify protected-resource discovery, DCR, Authorization Code with
-PKCE, the exact MCP audience, the `openid` and `email` identity scopes,
-`tools/list`, and one representative call. Test configured CIMD clients
+PKCE, the exact MCP audience, signed subject and client identity, `tools/list`,
+and one representative call. Test configured CIMD clients
 separately with their own metadata URL and declared redirect URI. ChatGPT hosted
 connectors use their MCP-specific HTTPS callback; Codex and Inspector use their
-documented local callbacks. Do not expect an unrequested custom API permission
-in the token. Use a non-admin test account. Also
+documented local callbacks. Do not expect OIDC or custom API permissions in a
+strict third-party token's `scope` claim. Use a non-admin test account. Also
 create a fresh short-lived manual token for verification and revoke it
 immediately afterward. Never reuse an operator verification token as an
 application secret.

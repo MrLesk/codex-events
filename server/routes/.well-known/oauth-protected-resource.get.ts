@@ -9,8 +9,7 @@ export default defineEventHandler((event) => {
   const runtimeConfig = useRuntimeConfig(event)
   const configuration = resolveMcpOAuthConfiguration({
     auth0Domain: runtimeConfig.auth0.domain,
-    resourceUrl: runtimeConfig.mcp.resourceUrl,
-    requiredScopes: runtimeConfig.mcp.oauthRequiredScopes
+    resourceUrl: runtimeConfig.mcp.resourceUrl
   })
 
   if (!configuration) {
