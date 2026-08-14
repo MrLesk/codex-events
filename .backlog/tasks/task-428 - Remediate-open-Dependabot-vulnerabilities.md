@@ -1,16 +1,23 @@
 ---
 id: TASK-428
 title: Remediate open Dependabot vulnerabilities
-status: In Progress
+status: Done
 assignee:
   - '@codex-security'
 created_date: '2026-08-14 06:50'
-updated_date: '2026-08-14 07:11'
+updated_date: '2026-08-14 07:20'
 labels:
   - security
   - dependencies
   - github
 dependencies: []
+references:
+  - 'https://github.com/MrLesk/codex-events/actions/runs/31779036567'
+modified_files:
+  - package.json
+  - bun.lock
+  - tests/bdd/steps/admin-operations.steps.ts
+  - .backlog/tasks/task-428 - Remediate-open-Dependabot-vulnerabilities.md
 priority: high
 type: bug
 ordinal: 123000
@@ -29,12 +36,12 @@ After remediation, verify the GitHub alert state and deliver directly to main fo
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 The live GitHub Dependabot alert inventory is recorded with advisory identifiers, severities, vulnerable packages, dependency paths, and patched versions.
-- [ ] #2 All five high-severity and two moderate-severity alerts are closed by supported dependency or lockfile updates, or any genuinely blocked alert is reported before delivery with objective evidence.
+- [x] #2 All five high-severity and two moderate-severity alerts are closed by supported dependency or lockfile updates, or any genuinely blocked alert is reported before delivery with objective evidence.
 - [x] #3 Dependency updates are minimal, preserve the canonical stack, and do not introduce broad overrides, fallback behavior, or unrelated upgrades.
 - [x] #4 Lockfile integrity and generated/framework state remain consistent after installation.
 - [x] #5 bun run lint, bun run typecheck, bun run test:unit, bun run test:integration, bun run test:bdd, bun run build:cloudflare, and git diff --check pass.
-- [ ] #6 Changes are committed and pushed directly to main; the resulting test workflow is monitored and succeeds without invoking production deployment.
-- [ ] #7 GitHub Dependabot confirms the targeted alerts are no longer open after the fix reaches the default branch.
+- [x] #6 Changes are committed and pushed directly to main; the resulting test workflow is monitored and succeeds without invoking production deployment.
+- [x] #7 GitHub Dependabot confirms the targeted alerts are no longer open after the fix reaches the default branch.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -77,4 +84,12 @@ The common minimum patched version is Nuxt 4.5.1. This is a supported patch/mino
 Nuxt 4.5.1 validation exposed a deterministic local BDD harness failure in the existing admin rejection step: the target button was present and enabled, but `scrollIntoViewIfNeeded()` left it outside the viewport while a sibling application card intercepted pointer events. An isolated clean HEAD checkout using Nuxt 4.4.7, its original bun.lock, a fresh `bun ci`, reset fixtures, and the exact original pointer scenario reproduced the same `toBeInViewport()` ratio 0 failure. This proves the pointer/overlap condition predates the security upgrade and is not a Nuxt 4.5.1 regression. The BDD step now activates the native button with keyboard focus and Enter, retaining enabled-state, staged-decision, API persistence, save-button, and final rejected-state assertions. Browser-plugin validation could not represent the BDD-only saved persona context; the repository Playwright project supplied DOM, geometry, screenshot, and interaction evidence. Remaining risk: the pre-existing local-dev hydration warnings and pointer overlap are outside this dependency-remediation scope; production Cloudflare SSR has the D1 request binding unavailable to plain Nuxt dev in this harness.
 
 Validation passed on Nuxt 4.5.1: bun ci; bun run lint; bun run typecheck; bun run test:unit (121 files, 824 tests); bun run test:integration (28 files, 379 tests); bun run test:bdd (58 regular scenarios and 2 destructive scenarios); bun run build:cloudflare; git diff --check. The initial integration attempt failed only because the sandbox denied Wrangler loopback/log access; the complete unrestricted rerun passed. Bun dependency inspection confirms direct exact nuxt 4.5.1, and the intentional MCP pins remain agents 0.20.1 and @modelcontextprotocol/server 2.0.0. Diff inspection found only package.json, the Nuxt-owned bun.lock graph, the scoped BDD interaction step, and this task record; build and Playwright artifacts remain ignored.
+
+Delivery evidence: commit 69e182d4 was pushed directly to origin/main. Push-triggered deploy-test workflow 31779036567 succeeded: backend-checks completed in 5m17s and the test-only deployment completed in 2m39s, including test Worker deploy and Queue reconciliation. No production workflow was dispatched or invoked. The live Dependabot API reports alerts #4-#10 all state fixed with dismissed_at and auto_dismissed_at null; #4-#9 fixed_at 2026-08-14T07:12:21Z and #10 fixed_at 2026-08-14T07:12:22Z.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Upgraded the exact direct Nuxt dependency from 4.4.7 to the common minimum patched release 4.5.1 and refreshed its Bun lockfile graph, closing five high and two moderate Nuxt advisories without overrides or unrelated direct upgrades. Adapted one BDD interaction to keyboard activation after an isolated Nuxt 4.4.7 baseline proved the local pointer-overlap failure pre-existing. All required local gates passed, deploy-test workflow 31779036567 succeeded, and GitHub records alerts #4-#10 as fixed without dismissal. Remaining risk is limited to the documented pre-existing local-dev hydration/pointer-overlap harness behavior.
+<!-- SECTION:FINAL_SUMMARY:END -->
