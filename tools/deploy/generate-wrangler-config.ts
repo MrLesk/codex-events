@@ -57,6 +57,8 @@ export interface ResolvedDeployConfigInput {
   lumaSync: QueueConfig
   mcpAllowedHostnames: string
   mcpAllowedOriginHostnames: string
+  mcpResourceUrl: string
+  mcpOAuthScope: string
 }
 
 export interface GeneratedDeployWranglerConfig {
@@ -367,7 +369,9 @@ export function resolveDeployConfigInput(
       defaultQueue: buildDefaultResourceName(environmentName, resourcePrefix, 'application-luma-sync')
     }),
     mcpAllowedHostnames: readOptionalEnvironmentValue(environment, 'NUXT_MCP_ALLOWED_HOSTNAMES') || baseDomain,
-    mcpAllowedOriginHostnames: readOptionalEnvironmentValue(environment, 'NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES') || baseDomain
+    mcpAllowedOriginHostnames: readOptionalEnvironmentValue(environment, 'NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES') || baseDomain,
+    mcpResourceUrl: readOptionalEnvironmentValue(environment, 'NUXT_MCP_RESOURCE_URL') || `${appBaseUrl}/mcp`,
+    mcpOAuthScope: readOptionalEnvironmentValue(environment, 'NUXT_MCP_OAUTH_SCOPE') || 'mcp:access'
   }
 }
 
@@ -476,7 +480,9 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
       NUXT_LUMA_QUEUE_NAME: input.lumaSync.queue,
       NUXT_LUMA_RETRY_DELAY_SECONDS: String(input.lumaSync.retryDelaySeconds),
       NUXT_MCP_ALLOWED_HOSTNAMES: input.mcpAllowedHostnames,
-      NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES: input.mcpAllowedOriginHostnames
+      NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES: input.mcpAllowedOriginHostnames,
+      NUXT_MCP_RESOURCE_URL: input.mcpResourceUrl,
+      NUXT_MCP_OAUTH_SCOPE: input.mcpOAuthScope
     },
     d1_databases: [
       {

@@ -538,7 +538,19 @@ Behavior:
 - The first simplified claim locks the event slug, claiming setting, and simplified-only offer identity. Before that claim, the setting can be disabled without exposing or converting the private reward inventory.
 - Reward-link and approved-attendee imports remain additive while claiming is active. Reward imports skip exact links already uploaded for the offer; attendee imports merge normalized emails and refresh names without removing prior eligibility.
 
-## MCP Access Token
+## MCP Authentication
+
+### Auth0 OAuth
+
+An MCP client obtains an OAuth access token through Authorization Code with
+PKCE. Auth0 owns authorization-code, access-token, refresh-token, consent, and
+revocation lifecycles. The platform validates the access token's signature,
+issuer, expiry, audience, and required MCP scope on every `/mcp` request, then
+resolves its subject to the current active platform user. Platform role and
+required-document changes therefore take effect without waiting for the OAuth
+grant to expire.
+
+### Manual MCP Access Token
 
 MCP access tokens have two independent terminal conditions: expiry at the
 creation timestamp plus exactly 30 days, and explicit revocation. A token is

@@ -140,10 +140,10 @@ export async function assertSimplifiedClaimingRateLimit(event: H3Event, key: str
   })
 }
 
-export async function assertMcpRateLimit(event: H3Event, tokenId: string) {
+export async function assertMcpRateLimit(event: H3Event, credentialKey: string) {
   await assertRateLimitAllowed(event, {
     bindingName: mcpRateLimitBindingName,
-    key: `mcp-token:${tokenId}`,
+    key: `mcp-credential:${credentialKey}`,
     retryAfterSeconds: mcpRateLimitPeriodSeconds,
     errorCode: 'mcp_rate_limited',
     message: 'Too many MCP requests were submitted. Please wait before trying again.'

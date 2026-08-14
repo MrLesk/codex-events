@@ -270,6 +270,7 @@ Simplified redemption requires an authenticated platform account with current le
 
 | Action | Platform User | Event Admin | Platform Admin |
 | --- | --- | --- | --- |
+| Connect an MCP client through Auth0 OAuth | Yes | Yes | Yes |
 | List, create, and revoke own MCP access tokens | Yes | Yes | Yes |
 | List or revoke another user's MCP access tokens | No | No | No |
 | Use public discovery tools | Yes | Yes | Yes |
@@ -277,9 +278,9 @@ Simplified redemption requires an authenticated platform account with current le
 
 Tool discovery uses current coarse capabilities only. A tool call always
 re-runs the operation's exact user, event, team, assignment, consent, and
-lifecycle guards. Token ownership never grants authorization beyond the
-owner's current platform access, and role or required-document changes take
-effect on the next MCP request.
+lifecycle guards. OAuth grants and manual-token ownership never grant
+authorization beyond the user's current platform access, and role or
+required-document changes take effect on the next MCP request.
 
 ## Visibility Rules
 

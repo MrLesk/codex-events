@@ -1064,6 +1064,10 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ## McpAccessToken
 
+Auth0 owns OAuth grants and credentials. OAuth access tokens, refresh tokens,
+authorization codes, and client secrets are not stored in D1. This entity
+exists only for the secondary manual-token connection method.
+
 ### Key Fields
 
 - `id`

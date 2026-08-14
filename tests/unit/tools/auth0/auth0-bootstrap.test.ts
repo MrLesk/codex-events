@@ -4,6 +4,9 @@ import {
   Auth0ManagementRequestError,
   assertManagementAccessTokenScopes,
   buildDefaultBrandingTheme,
+  buildMcpDefaultClientGrant,
+  buildMcpResourceServerPayload,
+  buildMcpTenantSettings,
   buildRequiredClientUrls,
   buildClearedSignupPartials,
   buildExpectedLoginCustomText,
@@ -64,6 +67,34 @@ describe('auth0 bootstrap config', () => {
     expect(config.brandingPageBackgroundColor).toBe('#f3f3f5')
     expect(config.brandingLogoUrl).toBe('https://test.codex-events.com/auth0/codex-events-wordmark.svg')
     expect(config.brandingFaviconUrl).toBe('https://test.codex-events.com/favicon.ico')
+    expect(config.mcpResourceIdentifier).toBe('https://test.codex-events.com/mcp')
+    expect(config.mcpScope).toBe('mcp:access')
+  })
+
+  test('builds the strict Auth0 OAuth configuration for third-party MCP clients', () => {
+    const config = resolveConfig(createAuth0BootstrapEnvironment())
+
+    expect(buildMcpResourceServerPayload(config)).toEqual({
+      name: 'Codex Events MCP',
+      identifier: 'https://test.codex-events.com/mcp',
+      signing_alg: 'RS256',
+      token_dialect: 'rfc9068_profile_authz',
+      enforce_policies: true,
+      scopes: [{ value: 'mcp:access', description: 'Access Codex Events through MCP' }]
+    })
+    expect(buildMcpDefaultClientGrant(config)).toEqual({
+      audience: 'https://test.codex-events.com/mcp',
+      scope: ['mcp:access'],
+      subject_type: 'user',
+      default_for: 'third_party_clients'
+    })
+    expect(buildMcpTenantSettings()).toEqual({
+      resource_parameter_profile: 'compatibility',
+      authorization_response_iss_parameter_supported: true,
+      client_id_metadata_document_supported: true,
+      dynamic_client_registration_security_mode: 'strict',
+      flags: { enable_dynamic_client_registration: true }
+    })
   })
 
   test('defaults the Auth0 custom domain from the app base url host', () => {
@@ -296,6 +327,15 @@ describe('auth0 bootstrap config', () => {
     expect(() => assertManagementAccessTokenScopes({
       accessToken
     })).toThrow('update:users')
+  })
+
+  test('requires MCP resource, client-grant, and connection management scopes', () => {
+    for (const missing of ['create:resource_servers', 'create:client_grants', 'update:connections']) {
+      const accessToken = createFixtureJwt({
+        permissions: requiredManagementApiScopes.filter(scope => scope !== missing)
+      })
+      expect(() => assertManagementAccessTokenScopes({ accessToken })).toThrow(missing)
+    }
   })
 
   test('accepts management tokens that include the full required scope set', () => {

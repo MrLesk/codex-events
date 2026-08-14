@@ -1,7 +1,7 @@
 import { McpServer, validateHostHeader } from '@modelcontextprotocol/server'
 import { createMcpHandler } from 'agents/mcp/server'
 import { eq } from 'drizzle-orm'
-import { defineEventHandler, getRequestHeader, setResponseStatus, toWebRequest } from 'h3'
+import { defineEventHandler, getRequestHeader, setResponseHeader, setResponseStatus, toWebRequest } from 'h3'
 
 import { loadApplicationOperationCatalog } from '#server/application/operations/catalog'
 import { executeApplicationOperation } from '#server/application/operations/execute'
@@ -10,8 +10,12 @@ import type { OperationCapability } from '#server/application/operations/types'
 import { resolveMcpPlatformActor, setRequestActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
 import { eventRoleAssignments } from '#server/database/schema'
+import { authenticateMcpRequest } from '#server/domains/mcp/authentication'
 import {
-  authenticateMcpCredential,
+  mcpProtectedResourceMetadataUrl,
+  resolveMcpOAuthConfiguration
+} from '#server/domains/mcp/oauth'
+import {
   coalesceMcpTokenLastUse,
   recordMcpMutationAttempt
 } from '#server/domains/mcp/tokens'
@@ -105,16 +109,30 @@ export default defineEventHandler(async (event) => {
 
   const credential = bearerCredential(getRequestHeader(event, 'authorization'))
   const database = getDatabase(event)
-  const authenticated = credential ? await authenticateMcpCredential(database, credential) : null
+  const oauthConfiguration = resolveMcpOAuthConfiguration({
+    auth0Domain: useRuntimeConfig(event).auth0.domain,
+    resourceUrl: config?.resourceUrl,
+    scope: config?.oauthScope
+  })
+  const authenticated = credential
+    ? await authenticateMcpRequest(database, credential, oauthConfiguration)
+    : null
   if (!authenticated) {
+    if (oauthConfiguration) {
+      setResponseHeader(
+        event,
+        'www-authenticate',
+        `Bearer resource_metadata="${mcpProtectedResourceMetadataUrl(oauthConfiguration)}", scope="${oauthConfiguration.scope}"`
+      )
+    }
     setResponseStatus(event, 401)
     return { error: { code: 'invalid_mcp_credential', message: 'The MCP access credential is invalid.' } }
   }
 
-  await assertMcpRateLimit(event, authenticated.token.id)
-  const actor = await resolveMcpPlatformActor(event, authenticated.user.id)
+  await assertMcpRateLimit(event, authenticated.rateLimitKey)
+  const actor = await resolveMcpPlatformActor(event, authenticated.userId)
   setRequestActor(event, actor)
-  await coalesceMcpTokenLastUse(database, authenticated.token.id)
+  if (authenticated.tokenId) await coalesceMcpTokenLastUse(database, authenticated.tokenId)
   await loadApplicationOperationCatalog()
   const capabilities = await actorCapabilities(event, actor.platformUser.id, actor.platformUser.isPlatformAdmin)
   const operations = listApplicationOperationsForCapabilities(capabilities)
@@ -171,7 +189,9 @@ export default defineEventHandler(async (event) => {
     if (attemptedOperation && !attemptedOperation.annotations.readOnlyHint) {
       await recordMcpMutationAttempt(database, {
         userId: actor.platformUser.id,
-        tokenId: authenticated.token.id,
+        authenticationMethod: authenticated.method,
+        entityType: authenticated.auditEntityType,
+        entityId: authenticated.auditEntityId,
         toolName: attemptedOperation.toolName,
         outcome
       })

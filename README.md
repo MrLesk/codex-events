@@ -84,7 +84,7 @@ You run three kinds of event from the same platform. Every event shares the same
 | **Event credits** | Offer redeemable credits — such as API or tooling credits — to approved participants from uploaded inventory. |
 | **Galleries and feedback** | Share a private event gallery, publish selected photos, and collect anonymous post-event feedback. |
 | **Explicit roles and audit** | Platform admins, event admins, event organizers, and staff are separate actors with scoped permissions and an audit trail. |
-| **MCP access** | Let signed-in users connect compatible AI clients to structured discovery and account operations with revocable, 30-day bearer tokens and the same platform permissions as the web app. |
+| **MCP access** | Let signed-in users connect compatible AI clients through Auth0 OAuth or optional 30-day manual tokens, with the same platform permissions as the web app. |
 
 ### Hackathons also add
 
@@ -131,11 +131,12 @@ The repository includes automation for recurring setup and maintenance:
 
 Remote test and production deployments are generated from environment-specific deployment variables, Cloudflare IDs, and runtime settings. Local Cloudflare bindings are documented in `wrangler.jsonc`.
 
-Compatible MCP clients connect to the deployment's `/mcp` endpoint with a
-bearer token created in account settings. Tool discovery follows the user's
-current role, and every call rechecks the same authorization and lifecycle
-rules as the web app. See the [MCP API and security model](docs/mcp.md) for the
-credential, operation, and audit contract.
+Compatible MCP clients connect to the deployment's `/mcp` endpoint. Auth0
+OAuth is the recommended connection method; named 30-day bearer tokens remain
+available for clients that require a manual credential. Tool discovery follows
+the user's current role, and every call rechecks the same authorization and
+lifecycle rules as the web app. See the [MCP API and security model](docs/mcp.md)
+for the authentication, operation, and audit contract.
 
 ## Where It Fits
 
@@ -180,7 +181,7 @@ The canonical product and engineering docs live in [`docs/`](docs/README.md). St
 | [`docs/permissions-matrix.md`](docs/permissions-matrix.md) | Actor permissions, visibility rules, and state-based action constraints. |
 | [`docs/schema-outline.md`](docs/schema-outline.md) | Canonical fields, enums, constraints, and key relationships. |
 | [`docs/api-surface.md`](docs/api-surface.md) | Backend API domains, operations, contract conventions, and validation expectations. |
-| [`docs/mcp.md`](docs/mcp.md) | MCP credentials, eligible operations, authorization, security, and auditing. |
+| [`docs/mcp.md`](docs/mcp.md) | MCP OAuth and manual credentials, eligible operations, authorization, security, and auditing. |
 | [`docs/tech-stack.md`](docs/tech-stack.md) | Application stack and infrastructure choices. |
 | [`docs/testing-strategy.md`](docs/testing-strategy.md) | Validation layers and Auth0-backed end-to-end strategy. |
 

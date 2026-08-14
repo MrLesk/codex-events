@@ -186,23 +186,29 @@ state.
 ## MCP Validation
 
 MCP coverage uses the same local D1 actors and product fixtures as REST. Tests
-create credentials through session-authenticated APIs and never place plaintext
-tokens in fixture source, snapshots, logs, or audit metadata.
+create manual credentials through session-authenticated APIs and mint test-only
+OAuth JWTs from an isolated signing key. Plaintext manual credentials, OAuth
+access tokens, refresh tokens, and authorization codes never appear in fixture
+source, snapshots, logs, or audit metadata.
 
 - Unit tests cover credential generation/hash verification, fixed expiry,
   active-token cap, revocation, last-use coalescing, registry uniqueness,
   annotations, capability filtering, and error sanitization.
 - Integration tests cover token APIs and account deletion, protocol
-  initialize/list/call, bearer-only authentication, invalid/expired/revoked and
-  deleted-owner failures, current role and consent changes, host/origin checks,
-  rate limiting, mutation audits, and representative REST/MCP parity.
+  initialize/list/call, protected-resource discovery, OAuth issuer/signature/
+  expiry/audience/scope validation, invalid/expired/revoked manual credentials
+  and deleted-owner failures, OAuth subject mapping, current role and consent
+  changes, host/origin checks, rate limiting, mutation audits, and
+  representative REST/MCP parity across both authentication methods.
 - Completeness tests fail for missing or duplicate eligible REST/tool mappings
   and for advertised excluded operations, including binary, token-management,
   account-deletion, public-mutation, webhook, and system routes.
-- BDD covers create/copy/revoke behavior and representative participant,
-  event-admin, and platform-admin calls.
-- Manual smoke tests use short-lived credentials and record only tool names and
-  objective outcomes.
+- BDD covers the OAuth-first settings presentation, focused
+  create/copy/done/revoke manual-token behavior, and representative
+  participant, event-admin, and platform-admin calls.
+- Test-environment smoke covers OAuth discovery, Authorization Code with PKCE,
+  list/call through Codex, and a short-lived manual credential. It records only
+  tool names and objective outcomes.
 
 The Cloudflare build is part of the MCP validation gate.
 
@@ -210,7 +216,7 @@ The Cloudflare build is part of the MCP validation gate.
 
 The following are not part of the supported testing strategy:
 
-- Auth0 or Codex login automation for BDD or local load tests
+- Live Auth0 or Codex login automation in the deterministic local BDD suite
 - test-only authentication endpoints
 - bypass headers that impersonate users
 - hard-coded JWTs or alternate application tokens

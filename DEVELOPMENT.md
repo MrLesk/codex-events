@@ -54,6 +54,8 @@ NUXT_PROFILE_ICONS_BINDING=PROFILE_ICONS
 NUXT_EVENT_IMAGES_BINDING=EVENT_IMAGES
 NUXT_MCP_ALLOWED_HOSTNAMES=localhost
 NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES=localhost
+NUXT_MCP_RESOURCE_URL=http://localhost:3000/mcp
+NUXT_MCP_OAUTH_SCOPE=mcp:access
 NUXT_OUTBOUND_EMAIL_BINDING=EMAIL
 NUXT_OUTBOUND_EMAIL_FROM_EMAIL=info@your-platform.example
 NUXT_OUTBOUND_EMAIL_FROM_NAME=Codex Events
@@ -218,22 +220,30 @@ at-least-once crash-recovery boundary.
 The local endpoint uses the stateless `agents@0.20.1` handler with
 `@modelcontextprotocol/server@2.0.0` and MCP 2026-07-28.
 
-Sign in and create an MCP token from **Account settings → MCP access**. Copy
-the full credential when it is shown; only a safe prefix remains visible
-afterward. Use `http://localhost:3000/mcp` as the Streamable HTTP endpoint and
-send the credential as `Authorization: Bearer <token>`. Do not put the token in
-a URL, source file, shell history, screenshot, or test fixture.
+Auth0 OAuth is the recommended remote-client flow. The local deterministic
+environment does not run an authorization server, so use the deployed test
+environment to verify browser authorization with Codex. The protected-resource
+metadata remains locally testable at
+`http://localhost:3000/.well-known/oauth-protected-resource` when Auth0 runtime
+configuration is present.
+
+For local protocol work, sign in and create a manual token from **Account
+settings → MCP connections**. Copy the full credential when it is shown; only
+a safe prefix remains visible after selecting **Done**. Use
+`http://localhost:3000/mcp` as the Streamable HTTP endpoint and send the
+credential as `Authorization: Bearer <token>`. Do not put credentials in a URL,
+source file, shell history, screenshot, or test fixture.
 
 For MCP Inspector, configure a Streamable HTTP connection to that endpoint
 with the bearer header. Verify initialization, inspect the role-filtered tool
 list, call a read-only discovery tool, then revoke the token in account
 settings and confirm the next request is rejected.
 
-For Codex, add a Streamable HTTP MCP server using that URL and supply the
-bearer token from a local secret environment variable. Start a new Codex
-session after changing or revoking a token, list the available tools, and call
-a read-only operation appropriate to the signed-in user's role. The repository
-does not store local MCP credentials or provide a permanent development token.
+For Codex against the test deployment, add the Streamable HTTP MCP URL without
+a manual bearer token. Codex discovers Auth0, opens Authorization Code with
+PKCE in the browser, and stores its OAuth grant. Verify `tools/list` and one
+read-only call, then repeat with a manual token to confirm both paths. The
+repository stores neither OAuth credentials nor a permanent development token.
 
 When a shared structured operation changes its serialized response, run
 `bun run mcp:generate-output-schemas`. The generator derives the exact MCP

@@ -95,7 +95,9 @@ export default defineNuxtConfig({
     },
     mcp: {
       allowedHostnames: 'localhost',
-      allowedOriginHostnames: 'localhost'
+      allowedOriginHostnames: 'localhost',
+      resourceUrl: 'http://localhost:3000/mcp',
+      oauthScope: 'mcp:access'
     }
   },
   alias: {

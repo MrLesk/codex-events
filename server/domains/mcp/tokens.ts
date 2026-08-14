@@ -206,16 +206,19 @@ export async function coalesceMcpTokenLastUse(database: AppDatabase, tokenId: st
 
 export async function recordMcpMutationAttempt(database: AppDatabase, input: {
   userId: string
-  tokenId: string
+  authenticationMethod: 'manual_token' | 'oauth'
+  entityType: 'mcp_access_token' | 'mcp_oauth_client'
+  entityId: string
   toolName: string
   outcome: 'succeeded' | 'failed'
 }) {
   await writeAuditLog(database, {
     actorUserId: input.userId,
-    entityType: 'mcp_access_token',
-    entityId: input.tokenId,
+    entityType: input.entityType,
+    entityId: input.entityId,
     action: 'mcp.mutation_attempted',
     metadata: {
+      authenticationMethod: input.authenticationMethod,
       toolName: input.toolName,
       outcome: input.outcome
     }

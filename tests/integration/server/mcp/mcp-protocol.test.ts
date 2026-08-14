@@ -1,9 +1,12 @@
+import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 
 import accountPatchHandler from '../../../../server/api/account.patch'
+import protectedResourceHandler from '../../../../server/routes/.well-known/oauth-protected-resource.get'
 import mcpHandler from '../../../../server/routes/mcp.post'
 import { auditLogs, eventRoleAssignments, events, mcpAccessTokens, platformDocuments, userPlatformDocumentAcceptances, users } from '../../../../server/database/schema'
+import { authenticateMcpOAuthCredential } from '../../../../server/domains/mcp/oauth'
 import { createMcpAccessToken } from '../../../../server/domains/mcp/tokens'
 import { mcpRateLimitBindingName } from '../../../../server/utils/rate-limit'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
@@ -20,11 +23,16 @@ describe('stateless MCP protocol', () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/mcp', handler: mcpHandler },
+        { method: 'get', path: '/.well-known/oauth-protected-resource', handler: protectedResourceHandler },
         { method: 'patch', path: '/api/account', handler: accountPatchHandler }
       ],
       sessionUser: { sub: 'auth0|mcp-user', email: 'mcp@example.com', name: 'MCP User' },
       autoAcceptCurrentPlatformDocuments: false,
-      cloudflareEnv: { [mcpRateLimitBindingName]: rateLimiter }
+      cloudflareEnv: { [mcpRateLimitBindingName]: rateLimiter },
+      runtimeConfig: {
+        auth0: { domain: 'https://auth.example.test' },
+        mcp: { resourceUrl: 'http://localhost:3000/mcp', oauthScope: 'mcp:access' }
+      }
     })
     harnesses.push(harness)
     await harness.database.insert(users).values({
@@ -58,6 +66,38 @@ describe('stateless MCP protocol', () => {
     }
     const created = await createMcpAccessToken(harness.database, 'mcp_user', { name: 'Test client' })
     return { harness, credential: created.credential, rateLimiter }
+  }
+
+  async function oauthCredential(harness: ReturnType<typeof createApiRouteTestHarness>, overrides: {
+    issuer?: string
+    audience?: string
+    scope?: string
+    subject?: string
+    clientId?: string
+    expiresAt?: number
+  } = {}) {
+    const { publicKey, privateKey } = await generateKeyPair('RS256')
+    const publicJwk = await exportJWK(publicKey)
+    const now = Math.floor(Date.now() / 1000)
+    const issuer = overrides.issuer ?? 'https://auth.example.test/'
+    const audience = overrides.audience ?? 'http://localhost:3000/mcp'
+    const credential = await new SignJWT({
+      scope: overrides.scope ?? 'mcp:access',
+      client_id: overrides.clientId ?? 'codex-test-client'
+    })
+      .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
+      .setIssuer(issuer)
+      .setAudience(audience)
+      .setSubject(overrides.subject ?? 'auth0|mcp-user')
+      .setIssuedAt(now)
+      .setExpirationTime(overrides.expiresAt ?? now + 300)
+      .sign(privateKey)
+    const authenticated = await authenticateMcpOAuthCredential(harness.database, credential, {
+      issuer: 'https://auth.example.test/',
+      resourceUrl: 'http://localhost:3000/mcp',
+      scope: 'mcp:access'
+    }, createLocalJWKSet({ keys: [{ ...publicJwk, kid: 'test-key' }] }))
+    return { credential, authenticated, publicJwk: { ...publicJwk, kid: 'test-key' } }
   }
 
   async function rpc(harness: ReturnType<typeof createApiRouteTestHarness>, credential: string, body: unknown) {
@@ -161,7 +201,91 @@ describe('stateless MCP protocol', () => {
     })
     expect(called.status).toBe(200)
     expect(await rpcPayload(called)).toMatchObject({ result: { structuredContent: { data: [] } } })
-    expect(rateLimiter.limit).toHaveBeenCalledWith({ key: expect.stringContaining('mcp-token:') })
+    expect(rateLimiter.limit).toHaveBeenCalledWith({ key: expect.stringContaining('mcp-credential:manual:') })
+  })
+
+  test('publishes OAuth protected-resource metadata and challenges unauthenticated clients', async () => {
+    const { harness } = await setup()
+    const metadata = await harness.request('/.well-known/oauth-protected-resource')
+    expect(metadata.status).toBe(200)
+    expect(await metadata.json()).toEqual({
+      resource: 'http://localhost:3000/mcp',
+      authorization_servers: ['https://auth.example.test/'],
+      scopes_supported: ['mcp:access'],
+      bearer_methods_supported: ['header']
+    })
+
+    const response = await rpc(harness, 'invalid', { jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} })
+    expect(response.status).toBe(401)
+    expect(response.headers.get('www-authenticate')).toBe(
+      'Bearer resource_metadata="http://localhost:3000/.well-known/oauth-protected-resource", scope="mcp:access"'
+    )
+  })
+
+  test('validates OAuth claims and maps the subject to the current platform user', async () => {
+    const { harness } = await setup()
+    const valid = await oauthCredential(harness)
+    expect(valid.authenticated).toMatchObject({
+      subject: 'auth0|mcp-user',
+      clientId: 'codex-test-client',
+      user: { id: 'mcp_user' }
+    })
+
+    expect((await oauthCredential(harness, { issuer: 'https://wrong.example.test/' })).authenticated).toBeNull()
+    expect((await oauthCredential(harness, { audience: 'https://wrong.example.test/mcp' })).authenticated).toBeNull()
+    expect((await oauthCredential(harness, { scope: 'profile' })).authenticated).toBeNull()
+    expect((await oauthCredential(harness, { subject: 'auth0|missing-user' })).authenticated).toBeNull()
+    expect((await oauthCredential(harness, { expiresAt: Math.floor(Date.now() / 1000) - 1 })).authenticated).toBeNull()
+  })
+
+  test('uses a valid Auth0 OAuth access token for the same MCP operation pipeline', async () => {
+    const { harness, rateLimiter } = await setup()
+    const fixture = await oauthCredential(harness)
+    const originalFetch = globalThis.fetch
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === 'https://auth.example.test/.well-known/jwks.json') {
+        return Response.json({ keys: [fixture.publicJwk] })
+      }
+      return await originalFetch(input)
+    }))
+
+    try {
+      const response = await rpc(harness, fixture.credential, {
+        jsonrpc: '2.0', id: 1, method: 'tools/list', params: {}
+      })
+      const payload = await rpcPayload(response) as { result: { tools: Array<{ name: string }> } }
+      expect(response.status, JSON.stringify(payload)).toBe(200)
+      expect(payload.result.tools.some(tool => tool.name === 'patch_account')).toBe(true)
+      expect(rateLimiter.limit).toHaveBeenCalledWith({
+        key: expect.stringContaining('mcp-credential:oauth:mcp_user:codex-test-client')
+      })
+
+      const mutation = await rpc(harness, fixture.credential, {
+        jsonrpc: '2.0', id: 2, method: 'tools/call',
+        params: {
+          name: 'patch_account',
+          arguments: { body: { firstName: 'OAuth', familyName: 'User' } }
+        }
+      })
+      expect(mutation.status).toBe(200)
+      expect(await rpcPayload(mutation)).toMatchObject({
+        result: { structuredContent: { data: { user: { firstName: 'OAuth', familyName: 'User' } } } }
+      })
+      const audit = await harness.database.select().from(auditLogs)
+        .where(eq(auditLogs.action, 'mcp.mutation_attempted')).get()
+      expect(audit).toMatchObject({
+        entityType: 'mcp_oauth_client',
+        entityId: 'codex-test-client',
+        metadata: {
+          authenticationMethod: 'oauth',
+          toolName: 'patch_account',
+          outcome: 'succeeded'
+        }
+      })
+      expect(JSON.stringify(audit)).not.toContain(fixture.credential)
+    } finally {
+      vi.stubGlobal('fetch', originalFetch)
+    }
   })
 
   test('rejects cookies and invalid, expired, revoked, or deleted-owner credentials', async () => {
@@ -242,7 +366,11 @@ describe('stateless MCP protocol', () => {
 
     const mutationAudit = await harness.database.select().from(auditLogs)
       .where(eq(auditLogs.action, 'mcp.mutation_attempted')).get()
-    expect(mutationAudit?.metadata).toMatchObject({ toolName: 'patch_account', outcome: 'failed' })
+    expect(mutationAudit?.metadata).toMatchObject({
+      authenticationMethod: 'manual_token',
+      toolName: 'patch_account',
+      outcome: 'failed'
+    })
     expect(JSON.stringify(mutationAudit?.metadata)).not.toContain('firstName')
     expect(JSON.stringify(mutationAudit?.metadata)).not.toContain(credential)
   })

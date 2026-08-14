@@ -180,6 +180,12 @@ Then('I should see the profile settings heading', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Profile settings' })).toBeVisible()
 })
 
+Then('OAuth should be the recommended MCP connection', async ({ page }) => {
+  await expect(page.getByRole('heading', { name: 'Connect with OAuth' })).toBeVisible()
+  await expect(page.getByText('Recommended', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Copy server URL' })).toBeVisible()
+})
+
 When('I create and copy an MCP access token named {string}', async ({ page }, tokenName: string) => {
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
   await page.getByLabel('Token name').fill(tokenName)
@@ -192,6 +198,15 @@ Then('the copied MCP credential should be shown only once', async ({ page }) => 
   await expect(page.getByRole('button', { name: 'Copied' })).toBeVisible()
   expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/^ce_mcp_/u)
   await expect(page.locator('code').filter({ hasText: /^ce_mcp_/u })).toHaveCount(1)
+})
+
+When('I finish the MCP token setup', async ({ page }) => {
+  await page.getByRole('button', { name: 'Done' }).click()
+})
+
+Then('the MCP access token named {string} should be listed', async ({ page }, tokenName: string) => {
+  await expect(page.getByText(tokenName, { exact: true })).toBeVisible()
+  await expect(page.locator('code').filter({ hasText: /^ce_mcp_/u })).toHaveCount(0)
 })
 
 When('I revoke the MCP access token named {string}', async ({ page }, tokenName: string) => {

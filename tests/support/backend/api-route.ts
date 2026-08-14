@@ -33,6 +33,12 @@ export function createApiRouteTestHarness(options: {
     firstPlatformAdminEmail?: string
     localCodexAuth?: boolean
     auth0?: Record<string, unknown>
+    mcp?: {
+      allowedHostnames?: string
+      allowedOriginHostnames?: string
+      resourceUrl?: string
+      oauthScope?: string
+    }
     database?: {
       binding?: string
     }
@@ -205,6 +211,12 @@ export function createApiRouteTestHarness(options: {
       localCodexAuth: options.runtimeConfig?.localCodexAuth ?? false,
       auth0: {
         ...(options.runtimeConfig?.auth0 ?? {})
+      },
+      mcp: {
+        allowedHostnames: options.runtimeConfig?.mcp?.allowedHostnames ?? 'localhost',
+        allowedOriginHostnames: options.runtimeConfig?.mcp?.allowedOriginHostnames ?? 'localhost',
+        resourceUrl: options.runtimeConfig?.mcp?.resourceUrl ?? 'http://localhost:3000/mcp',
+        oauthScope: options.runtimeConfig?.mcp?.oauthScope ?? 'mcp:access'
       },
       database: {
         binding: databaseBinding

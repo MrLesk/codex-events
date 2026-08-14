@@ -6,21 +6,34 @@ input/output, annotation, and error adapter around the same application
 operations used by REST. It does not own authorization, lifecycle rules,
 persistence, side effects, domain auditing, or serialization.
 
-## Credentials
+## Authentication
 
-Users create named MCP access tokens from account settings through
-session-authenticated REST APIs. A credential contains a public token identifier
-and high-entropy secret. The full value is shown once. D1 stores only a secure
-one-way hash and a safe display prefix. A user can have five active tokens;
-creation enforces that limit atomically so concurrent requests cannot exceed
-it. Each token expires exactly 30 days after creation and can only be revoked,
-not renewed. Account deletion deletes the credentials.
+Auth0 OAuth is the recommended connection method. The server publishes OAuth
+protected-resource metadata for the canonical `/mcp` URL and challenges
+unauthenticated requests with a link to that metadata. Compatible clients use
+Authorization Code with PKCE against the configured Auth0 authorization server
+and request the `mcp:access` scope for the canonical MCP resource.
+
+The endpoint validates the OAuth access token signature through the Auth0 JWKS,
+then validates its issuer, expiry, audience, required scope, and subject. The
+subject must map to an active platform user. Auth0 owns OAuth grants, access and
+refresh tokens, client registration, and revocation; Codex Events stores none
+of those credentials.
+
+Manual MCP access tokens are a secondary method for clients that require a
+copied bearer credential. Users create named tokens from account settings
+through session-authenticated REST APIs. A manual credential contains a public
+token identifier and high-entropy secret. The full value is shown once. D1
+stores only a secure one-way hash and a safe display prefix. A user can have
+five active tokens; creation enforces that limit atomically so concurrent
+requests cannot exceed it. Each token expires exactly 30 days after creation
+and can only be revoked, not renewed. Account deletion deletes the credentials.
 
 The endpoint rejects absent, malformed, unknown, expired, revoked, or
-deleted-owner credentials without distinguishing those states to callers.
-Cookies never authenticate `/mcp`. Actor reconstruction loads the token owner,
-current platform and event roles, current team and judging relationships, and
-current required-document acceptance on every request.
+deleted-owner manual credentials and invalid OAuth credentials with sanitized
+errors. Cookies never authenticate `/mcp`. Both methods resolve the current
+platform user, roles, team and judging relationships, and required-document
+acceptance on every request.
 
 ## Operation Inventory
 
@@ -84,21 +97,23 @@ internal error.
   allowlists before bearer authentication, database access, rate limiting,
   token-use updates, or catalog loading. Malformed and disallowed values fail
   closed with a sanitized client error.
-- `MCP_RATE_LIMITER` enforces 120 envelope requests per token per 60 seconds;
-  operation-specific limits still apply.
+- `MCP_RATE_LIMITER` enforces 120 envelope requests per manual credential or
+  OAuth user/client pair per 60 seconds; operation-specific limits still apply.
 - Tool lists are filtered by current coarse capabilities. Each call reruns all
   exact event, team, assignment, consent, and lifecycle guards.
-- `lastUsedAt` writes are coalesced so ordinary traffic does not write on every
-  call.
-- Every mutation attempt writes token ID, tool name, outcome, and timestamp to
-  audit storage. Tool inputs, request bodies, credentials, hashes, and secrets
-  are never logged or audited.
+- Manual-token `lastUsedAt` writes are coalesced so ordinary traffic does not
+  write on every call.
+- Every mutation attempt writes the authentication method, a safe token ID or
+  OAuth client reference, tool name, outcome, and timestamp to audit storage.
+  Tool inputs, request bodies, OAuth credentials, authorization codes, refresh
+  tokens, manual credentials, hashes, and secrets are never logged or audited.
 - Observability may record HTTP status, sanitized error code, operation ID,
   latency, and rate-limit outcomes only.
 
 The supported server stack pins `agents@0.20.1` and
 `@modelcontextprotocol/server@2.0.0`. The `/mcp` endpoint uses
 `createMcpHandler` from `agents/mcp/server`, negotiates MCP 2026-07-28, and
-creates a fresh stateless server for every request. OAuth, scopes, permanent
-credentials, ChatGPT web-plugin submission, legacy SSE, and protocol-session
-storage are not part of the platform.
+creates a fresh stateless server for every request. Auth0 OAuth and optional
+30-day manual tokens are supported. Permanent credentials, ChatGPT web-plugin
+submission, legacy SSE, and protocol-session storage are not part of the
+platform.

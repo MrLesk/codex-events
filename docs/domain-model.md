@@ -778,7 +778,19 @@ Judging applies only to Hackathon events.
 - The platform must retain the auditability needed for operational and legal review.
 - Acceptance of platform registration documents, event application terms when present, and winner terms must be recorded against the accepted document version.
 
-## MCP Access Tokens
+## MCP Authentication
+
+Auth0 OAuth is the recommended way for a platform user to connect an MCP
+client. The OAuth access token identifies the Auth0 subject and the `/mcp`
+endpoint resolves that subject to the active platform `User` on every request.
+OAuth credentials do not contain platform roles or cached consent, and the
+platform does not persist OAuth access tokens, refresh tokens, or authorization
+codes.
+
+Named MCP access tokens remain available as a secondary connection method for
+clients that require a manually supplied bearer credential.
+
+### MCP Access Tokens
 
 An `McpAccessToken` is a revocable, user-named credential that belongs to one
 active platform `User`. It authenticates the same actor as that user at the

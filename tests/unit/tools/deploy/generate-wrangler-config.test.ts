@@ -52,6 +52,8 @@ describe('deploy Wrangler config generator', () => {
       NUXT_AUTH0_DOMAIN: 'auth.test.example.com',
       NUXT_AUTH0_APP_BASE_URL: 'https://test.example.com',
       NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'Username-Password-Authentication',
+      NUXT_MCP_RESOURCE_URL: 'https://test.example.com/mcp',
+      NUXT_MCP_OAUTH_SCOPE: 'mcp:access',
       NUXT_FIRST_PLATFORM_ADMIN_EMAIL: 'admin@example.com',
       NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME: 'codex-events-test-application-review-email-delivery',
       NUXT_TALK_PROPOSAL_DECISION_EMAILS_QUEUE_NAME: 'codex-events-test-talk-proposal-decision-email-delivery',

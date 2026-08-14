@@ -12,6 +12,8 @@ interface TenantConfig {
   appClientId: string
   appDisplayName: string
   appBaseUrl: string
+  mcpResourceIdentifier: string
+  mcpScope: string
   databaseConnectionName: string
   accountLinkChallengeSecret: string
   loginUri: string
@@ -53,6 +55,37 @@ interface Auth0Client {
 
 interface Auth0TenantSettings {
   default_redirection_uri?: string | null
+  resource_parameter_profile?: string
+  authorization_response_iss_parameter_supported?: boolean
+  client_id_metadata_document_supported?: boolean
+  dynamic_client_registration_security_mode?: string
+  flags?: {
+    enable_dynamic_client_registration?: boolean
+  }
+}
+
+interface Auth0ResourceServer {
+  id: string
+  name?: string
+  identifier: string
+  signing_alg?: string
+  token_dialect?: string
+  enforce_policies?: boolean
+  scopes?: Array<{ value: string, description?: string }>
+}
+
+interface Auth0ClientGrant {
+  id: string
+  audience: string
+  scope?: string[]
+  subject_type?: string
+  default_for?: string
+}
+
+interface Auth0Connection {
+  id: string
+  name: string
+  is_domain_connection?: boolean
 }
 
 interface Auth0Branding {
@@ -128,6 +161,7 @@ const defaultActionName = 'codex-post-login'
 const defaultActionRuntime = 'node22'
 const defaultAuth0AppDisplayName = 'Codex Events'
 const defaultAuth0DatabaseConnectionName = 'Username-Password-Authentication'
+const defaultMcpScope = 'mcp:access'
 const defaultBrandingPrimaryColor = '#030213'
 const lightButtonLabelColor = '#ffffff'
 const darkButtonLabelColor = '#030213'
@@ -142,6 +176,14 @@ type SignupPromptKey = typeof signupPromptKeys[number]
 export const requiredManagementApiScopes = [
   'read:clients',
   'update:clients',
+  'read:resource_servers',
+  'create:resource_servers',
+  'update:resource_servers',
+  'read:client_grants',
+  'create:client_grants',
+  'update:client_grants',
+  'read:connections',
+  'update:connections',
   'read:tenant_settings',
   'update:tenant_settings',
   'read:branding',
@@ -461,6 +503,8 @@ Environment variables:
 - NUXT_AUTH0_CLIENT_SECRET (required when AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET is omitted)
 - AUTH0_APP_DISPLAY_NAME (default: ${defaultAuth0AppDisplayName})
 - AUTH0_APP_BASE_URL
+- AUTH0_MCP_RESOURCE_IDENTIFIER (default: <AUTH0_APP_BASE_URL>/mcp)
+- AUTH0_MCP_SCOPE (default: ${defaultMcpScope})
 - AUTH0_LOGIN_URI (required when AUTH0_APP_BASE_URL is not https; must be https)
 - AUTH0_CUSTOM_DOMAIN (default: auth.<AUTH0_APP_BASE_URL host> when AUTH0_APP_BASE_URL is https)
 - AUTH0_DATABASE_CONNECTION_NAME (default: ${defaultAuth0DatabaseConnectionName})
@@ -798,6 +842,11 @@ export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
     ),
     appDisplayName: firstDefinedValue(environment.AUTH0_APP_DISPLAY_NAME, defaultAuth0AppDisplayName),
     appBaseUrl: normalizedAppBaseUrl,
+    mcpResourceIdentifier: normalizeUrlString(firstDefinedValue(
+      environment.AUTH0_MCP_RESOURCE_IDENTIFIER,
+      `${normalizedAppBaseUrl}/mcp`
+    )),
+    mcpScope: firstDefinedValue(environment.AUTH0_MCP_SCOPE, defaultMcpScope),
     databaseConnectionName: firstDefinedValue(environment.AUTH0_DATABASE_CONNECTION_NAME, defaultAuth0DatabaseConnectionName),
     accountLinkChallengeSecret: resolveAuth0AccountLinkChallengeSecret(environment),
     loginUri: normalizeHttpsUrlString(
@@ -823,6 +872,36 @@ export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
     ),
     brandingLogoUrl: normalizeOptionalUrl(firstDefinedValue(environment.AUTH0_BRANDING_LOGO_URL, inferredBrandingLogoUrl)),
     brandingFaviconUrl: normalizeOptionalUrl(firstDefinedValue(environment.AUTH0_BRANDING_FAVICON_URL, inferredBrandingFaviconUrl))
+  }
+}
+
+export function buildMcpResourceServerPayload(config: Pick<TenantConfig, 'appDisplayName' | 'mcpResourceIdentifier' | 'mcpScope'>) {
+  return {
+    name: `${config.appDisplayName} MCP`,
+    identifier: config.mcpResourceIdentifier,
+    signing_alg: 'RS256',
+    token_dialect: 'rfc9068_profile_authz',
+    enforce_policies: true,
+    scopes: [{ value: config.mcpScope, description: 'Access Codex Events through MCP' }]
+  }
+}
+
+export function buildMcpDefaultClientGrant(config: Pick<TenantConfig, 'mcpResourceIdentifier' | 'mcpScope'>) {
+  return {
+    audience: config.mcpResourceIdentifier,
+    scope: [config.mcpScope],
+    subject_type: 'user',
+    default_for: 'third_party_clients'
+  }
+}
+
+export function buildMcpTenantSettings() {
+  return {
+    resource_parameter_profile: 'compatibility',
+    authorization_response_iss_parameter_supported: true,
+    client_id_metadata_document_supported: true,
+    dynamic_client_registration_security_mode: 'strict',
+    flags: { enable_dynamic_client_registration: true }
   }
 }
 
@@ -1124,6 +1203,164 @@ async function getTenantSettings(config: TenantConfig, token: string) {
   })
 
   return await response.json() as Auth0TenantSettings
+}
+
+async function ensureMcpTenantSettings(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
+  const settings = await getTenantSettings(config, token)
+  const expected = buildMcpTenantSettings()
+  const hasExpectedSettings = settings.resource_parameter_profile === expected.resource_parameter_profile
+    && settings.authorization_response_iss_parameter_supported === expected.authorization_response_iss_parameter_supported
+    && settings.client_id_metadata_document_supported === expected.client_id_metadata_document_supported
+    && settings.dynamic_client_registration_security_mode === expected.dynamic_client_registration_security_mode
+    && settings.flags?.enable_dynamic_client_registration === true
+
+  if (mode === 'apply' && !hasExpectedSettings) {
+    await auth0ManagementRequest(config, token, '/api/v2/tenants/settings', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        ...expected,
+        flags: { ...(settings.flags ?? {}), ...expected.flags }
+      })
+    })
+    console.log('Applied: enabled strict third-party OAuth discovery and registration settings for MCP.')
+  }
+
+  const verified = mode === 'apply' && !hasExpectedSettings
+    ? await getTenantSettings(config, token)
+    : settings
+  if (verified.resource_parameter_profile !== expected.resource_parameter_profile) {
+    failures.push(`Auth0 resource_parameter_profile is ${verified.resource_parameter_profile ?? 'unset'}, expected compatibility.`)
+  }
+  if (verified.authorization_response_iss_parameter_supported !== true) {
+    failures.push('Auth0 authorization responses do not include the issuer parameter.')
+  }
+  if (verified.client_id_metadata_document_supported !== true) {
+    failures.push('Auth0 client ID metadata documents are not enabled.')
+  }
+  if (verified.dynamic_client_registration_security_mode !== 'strict') {
+    failures.push('Auth0 dynamic client registration security mode is not strict.')
+  }
+  if (verified.flags?.enable_dynamic_client_registration !== true) {
+    failures.push('Auth0 dynamic client registration is not enabled.')
+  }
+}
+
+async function getMcpResourceServer(config: TenantConfig, token: string) {
+  const response = await auth0ManagementRequest(
+    config,
+    token,
+    `/api/v2/resource-servers?identifier=${encodeURIComponent(config.mcpResourceIdentifier)}`,
+    { method: 'GET' }
+  )
+  const resources = await response.json() as Auth0ResourceServer[]
+  return resources.find(resource => resource.identifier === config.mcpResourceIdentifier) ?? null
+}
+
+function resourceServerMatches(resource: Auth0ResourceServer, expected: ReturnType<typeof buildMcpResourceServerPayload>) {
+  return resource.name === expected.name
+    && resource.identifier === expected.identifier
+    && resource.signing_alg === expected.signing_alg
+    && resource.token_dialect === expected.token_dialect
+    && resource.enforce_policies === expected.enforce_policies
+    && resource.scopes?.some(scope => scope.value === expected.scopes[0]!.value) === true
+}
+
+async function ensureMcpResourceServer(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
+  const expected = buildMcpResourceServerPayload(config)
+  let resource = await getMcpResourceServer(config, token)
+
+  if (mode === 'apply' && !resource) {
+    await auth0ManagementRequest(config, token, '/api/v2/resource-servers', {
+      method: 'POST',
+      body: JSON.stringify(expected)
+    })
+    resource = await getMcpResourceServer(config, token)
+    console.log(`Applied: created Auth0 MCP resource server ${config.mcpResourceIdentifier}.`)
+  } else if (mode === 'apply' && resource && !resourceServerMatches(resource, expected)) {
+    const { identifier: _identifier, ...resourceUpdates } = expected
+    await auth0ManagementRequest(config, token, `/api/v2/resource-servers/${encodeURIComponent(resource.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(resourceUpdates)
+    })
+    resource = await getMcpResourceServer(config, token)
+    console.log(`Applied: updated Auth0 MCP resource server ${config.mcpResourceIdentifier}.`)
+  }
+
+  if (!resource || !resourceServerMatches(resource, expected)) {
+    failures.push(`Auth0 MCP resource server ${config.mcpResourceIdentifier} is missing or does not match its required RS256, RFC 9068, and scope configuration.`)
+  }
+}
+
+async function getMcpDefaultClientGrant(config: TenantConfig, token: string) {
+  const response = await auth0ManagementRequest(
+    config,
+    token,
+    `/api/v2/client-grants?audience=${encodeURIComponent(config.mcpResourceIdentifier)}&per_page=100`,
+    { method: 'GET' }
+  )
+  const grants = await response.json() as Auth0ClientGrant[]
+  return grants.find(grant => grant.default_for === 'third_party_clients') ?? null
+}
+
+function defaultClientGrantMatches(grant: Auth0ClientGrant, expected: ReturnType<typeof buildMcpDefaultClientGrant>) {
+  return grant.audience === expected.audience
+    && grant.subject_type === expected.subject_type
+    && grant.default_for === expected.default_for
+    && expected.scope.every(scope => grant.scope?.includes(scope))
+}
+
+async function ensureMcpDefaultClientGrant(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
+  const expected = buildMcpDefaultClientGrant(config)
+  let grant = await getMcpDefaultClientGrant(config, token)
+
+  if (mode === 'apply' && !grant) {
+    await auth0ManagementRequest(config, token, '/api/v2/client-grants', {
+      method: 'POST',
+      body: JSON.stringify(expected)
+    })
+    grant = await getMcpDefaultClientGrant(config, token)
+    console.log(`Applied: granted ${config.mcpScope} to strict third-party MCP clients.`)
+  } else if (mode === 'apply' && grant && !defaultClientGrantMatches(grant, expected)) {
+    await auth0ManagementRequest(config, token, `/api/v2/client-grants/${encodeURIComponent(grant.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ scope: expected.scope })
+    })
+    grant = await getMcpDefaultClientGrant(config, token)
+    console.log(`Applied: updated the default third-party MCP client grant for ${config.mcpResourceIdentifier}.`)
+  }
+
+  if (!grant || !defaultClientGrantMatches(grant, expected)) {
+    failures.push(`Auth0 has no strict default third-party user grant for ${config.mcpResourceIdentifier} with scope ${config.mcpScope}.`)
+  }
+}
+
+async function getDatabaseConnection(config: TenantConfig, token: string) {
+  const response = await auth0ManagementRequest(
+    config,
+    token,
+    `/api/v2/connections?name=${encodeURIComponent(config.databaseConnectionName)}`,
+    { method: 'GET' }
+  )
+  const connections = await response.json() as Auth0Connection[]
+  return connections.find(connection => connection.name === config.databaseConnectionName) ?? null
+}
+
+async function ensureMcpDomainConnection(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
+  let connection = await getDatabaseConnection(config, token)
+  if (mode === 'apply' && connection && connection.is_domain_connection !== true) {
+    await auth0ManagementRequest(config, token, `/api/v2/connections/${encodeURIComponent(connection.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_domain_connection: true })
+    })
+    connection = await getDatabaseConnection(config, token)
+    console.log(`Applied: made Auth0 connection ${config.databaseConnectionName} available to third-party MCP clients.`)
+  }
+
+  if (!connection) {
+    failures.push(`Auth0 database connection ${config.databaseConnectionName} was not found.`)
+  } else if (connection.is_domain_connection !== true) {
+    failures.push(`Auth0 database connection ${config.databaseConnectionName} is not a domain-level connection for third-party MCP clients.`)
+  }
 }
 
 function addAll(values: Set<string>, additions: string[]) {
@@ -1814,10 +2051,15 @@ export async function main() {
     console.log(`Tenant domain: ${config.tenantDomain}`)
     console.log(`Custom domain target: ${config.customDomain}`)
     console.log(`App base URL target: ${config.appBaseUrl}`)
+    console.log(`MCP resource target: ${config.mcpResourceIdentifier}`)
 
     await ensureCustomDomain(config, managementToken, mode, failures)
     await ensureClientUrls(config, managementToken, mode, failures)
     await ensureTenantDefaultRedirection(config, managementToken, mode, failures)
+    await ensureMcpTenantSettings(config, managementToken, mode, failures)
+    await ensureMcpResourceServer(config, managementToken, mode, failures)
+    await ensureMcpDefaultClientGrant(config, managementToken, mode, failures)
+    await ensureMcpDomainConnection(config, managementToken, mode, failures)
     await ensureBranding(config, managementToken, mode, failures)
     await ensureDefaultBrandingTheme(config, managementToken, mode, failures)
     await runOptionalPaidAuth0LoginCustomization(async () => {

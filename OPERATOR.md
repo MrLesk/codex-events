@@ -78,6 +78,14 @@ Grant these Management API scopes:
 
 - `read:clients`
 - `update:clients`
+- `read:resource_servers`
+- `create:resource_servers`
+- `update:resource_servers`
+- `read:client_grants`
+- `create:client_grants`
+- `update:client_grants`
+- `read:connections`
+- `update:connections`
 - `read:tenant_settings`
 - `update:tenant_settings`
 - `read:branding`
@@ -175,9 +183,12 @@ Publish a **GitHub Release** from the commit you want to deploy. That triggers t
 
 The MCP rollout is additive. Migration `0071_mcp_access_tokens.sql` must finish
 before the Worker serving `/mcp` is deployed; the checked-in workflow already
-preserves that ordering. The generated Wrangler configuration also installs
-the `MCP_RATE_LIMITER` binding at 120 requests per token per 60 seconds. Do not
-enable or route `/mcp` to a Worker version that lacks either resource.
+preserves that ordering. The Auth0 bootstrap creates the MCP resource server,
+`mcp:access` scope, strict third-party client grant, OAuth discovery settings,
+and domain-level login connection. The generated Wrangler configuration also
+installs the `MCP_RATE_LIMITER` binding at 120 requests per credential or OAuth
+user/client pair per 60 seconds. Do not enable or route `/mcp` to a Worker
+version that lacks those resources.
 The Worker uses the stateless `agents@0.20.1` handler with
 `@modelcontextprotocol/server@2.0.0` and MCP 2026-07-28.
 
@@ -244,9 +255,11 @@ As the first platform admin, use the platform admin workspace to:
 - `/auth/login` opens Auth0 on `https://auth.<BASE_DOMAIN>` (or your `AUTH0_CUSTOM_DOMAIN`).
 - The first platform admin can open `/account/platform-settings?tab=platform-admins`.
 - The first platform admin can create an event.
-- A signed-in user can create an MCP token in account settings, initialize a
-  Streamable HTTP client at `https://<BASE_DOMAIN>/mcp`, list role-appropriate
-  tools, revoke the token, and observe that the next request is rejected.
+- Codex discovers OAuth from `https://<BASE_DOMAIN>/mcp`, completes browser
+  sign-in through Auth0, and can list and call role-appropriate tools.
+- A signed-in user can also create a manual MCP token in account settings,
+  initialize a Streamable HTTP client, revoke the token, and observe that the
+  next request is rejected.
 
 ## 6. Advanced settings
 
@@ -300,6 +313,8 @@ Deployment defaults and resource names:
 | `CF_LUMA_SYNC_QUEUE`                | Luma sync queue name                                                                 |
 | `NUXT_MCP_ALLOWED_HOSTNAMES`        | Comma-separated hostnames accepted by `/mcp`; defaults to `BASE_DOMAIN`              |
 | `NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES` | Comma-separated Origin hostnames accepted by `/mcp`; defaults to `BASE_DOMAIN`       |
+| `NUXT_MCP_RESOURCE_URL`             | Canonical OAuth resource URL; defaults to `https://<BASE_DOMAIN>/mcp`                 |
+| `NUXT_MCP_OAUTH_SCOPE`              | Required OAuth scope; defaults to `mcp:access`                                        |
 
 Auth0 and display:
 
@@ -308,6 +323,8 @@ Auth0 and display:
 | `AUTH0_CUSTOM_DOMAIN`                 | Login hostname override. Defaults to `auth.<BASE_DOMAIN>`                      |
 | `AUTH0_APP_DISPLAY_NAME`              | Name shown in Auth0-hosted login copy. Defaults to `Codex Events`              |
 | `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0 database connection name. Defaults to `Username-Password-Authentication` |
+| `AUTH0_MCP_RESOURCE_IDENTIFIER`     | Auth0 MCP API identifier. Defaults to `https://<BASE_DOMAIN>/mcp`               |
+| `AUTH0_MCP_SCOPE`                   | Auth0 MCP permission. Defaults to `mcp:access`                                  |
 
 Outbound email and queues:
 
@@ -378,24 +395,29 @@ bun run db:migrate:production
 bun run deploy:production
 ```
 
-Run the migration command before the deploy command. After deployment, create
-a fresh short-lived token for verification and revoke it immediately afterward.
-Never reuse an operator verification token as an application secret.
+Run the migration command before the deploy command. After deployment, verify
+OAuth discovery and browser authorization with a non-admin test account. Also
+create a fresh short-lived manual token for verification and revoke it
+immediately afterward. Never reuse an operator verification token as an
+application secret.
 
 ### MCP monitoring
 
 Monitor `/mcp` request counts, latency, HTTP status, sanitized application
 error codes, and `MCP_RATE_LIMITER` outcomes. Alert on sustained authentication
 failures, rate-limit saturation, unexpected internal-error rates, and unusual
-mutation-attempt volume. Mutation audit records may contain token ID, tool
-name, outcome, and timestamp only. Worker logs, analytics, traces, support
-artifacts, and alerts must not contain bearer credentials, credential hashes,
-tool arguments, request bodies, or structured operation output.
+mutation-attempt volume. Mutation audit records may contain authentication
+method, safe token ID or OAuth client reference, tool name, outcome, and
+timestamp only. Worker logs, analytics, traces, support artifacts, and alerts
+must not contain access or refresh tokens, authorization codes, manual bearer
+credentials, credential hashes, tool arguments, request bodies, or structured
+operation output.
 
 If MCP-specific errors rise after rollout, leave the database migration in
-place, revoke affected credentials when necessary, and roll the Worker back to
-the last known-good version. The token table is isolated from session login and
-does not need to be removed to disable the endpoint.
+place, revoke affected grants or manual credentials when necessary, and roll
+the Worker back to the last known-good version. The manual-token table is
+isolated from session login and does not need to be removed to disable the
+endpoint.
 
 ## References
 

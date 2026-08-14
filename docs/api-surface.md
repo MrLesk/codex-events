@@ -706,10 +706,19 @@ Operations:
 ## Model Context Protocol
 
 `POST /mcp` is the single stateless Streamable HTTP endpoint. It accepts only
-`Authorization: Bearer <credential>` issued from account settings; session
-cookies do not authenticate it. The endpoint handles initialization,
-`tools/list`, and `tools/call`. Deployment host and present browser Origin
-values must match configured allowlists.
+`Authorization: Bearer <credential>`. The credential can be an Auth0 OAuth
+access token for the configured MCP resource and scope, or a named manual MCP
+access token issued from account settings. Session cookies do not authenticate
+it. The endpoint handles initialization, `tools/list`, and `tools/call`.
+Deployment host and present browser Origin values must match configured
+allowlists.
+
+`GET /.well-known/oauth-protected-resource` publishes the canonical MCP
+resource, Auth0 authorization server, required scope, and supported bearer
+method. An unauthenticated `/mcp` response links to that metadata through
+`WWW-Authenticate`. Auth0 publishes its own authorization-server discovery and
+owns Authorization Code with PKCE, client registration, refresh, and
+revocation.
 
 The application-operation registry is shared by REST and MCP. Each eligible
 operation has one stable ID, Zod input/output contracts, one REST binding, one
@@ -733,10 +742,13 @@ Session-authenticated token management remains REST-only:
 | Create MCP access token | `POST /api/account/mcp-tokens` | Returns the full credential once; fixed 30-day expiry and five-active-token cap. |
 | Revoke MCP access token | `DELETE /api/account/mcp-tokens/:tokenId` | Owner-only and immediate. |
 
-The MCP envelope is limited to 120 requests per token per 60 seconds in
+The MCP envelope is limited to 120 requests per manual credential or OAuth
+user/client pair per 60 seconds in
 addition to operation-specific limits. Each request reconstructs the current
-actor and required-document acceptance from D1. Mutation attempts record token
-ID, tool name, outcome, and timestamp without secrets or arguments.
+actor and required-document acceptance from D1. Mutation attempts record the
+authentication method, a safe manual-token or OAuth-client reference, tool
+name, outcome, and timestamp without credentials, authorization codes, refresh
+tokens, secrets, or arguments.
 
 Testing:
 - Unit: visibility rules for audit access.
