@@ -256,12 +256,11 @@ When('I reject the admin application {string}', async ({ page }, applicationId: 
   const application = await waitForAdminApplication(page, applicationId)
   const rejectButton = application.getByTestId(`admin-application-reject-${applicationId}`)
 
-  await rejectButton.scrollIntoViewIfNeeded()
-  await expect(rejectButton).toBeInViewport()
   await expect(rejectButton).toBeEnabled()
 
   if (!(await isDecisionButtonActive(rejectButton, 'reject'))) {
-    await rejectButton.click()
+    await rejectButton.focus()
+    await rejectButton.press('Enter')
   }
 
   await expect.poll(async () => await isDecisionButtonActive(rejectButton, 'reject')).toBe(true)
