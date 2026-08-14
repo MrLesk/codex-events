@@ -77,6 +77,7 @@ Create a **Machine-to-Machine** application authorized for the Auth0 Management 
 Grant these Management API scopes:
 
 - `read:clients`
+- `create:clients`
 - `update:clients`
 - `read:resource_servers`
 - `create:resource_servers`
@@ -184,11 +185,15 @@ Publish a **GitHub Release** from the commit you want to deploy. That triggers t
 The MCP rollout is additive. Migration `0071_mcp_access_tokens.sql` must finish
 before the Worker serving `/mcp` is deployed; the checked-in workflow already
 preserves that ordering. The Auth0 bootstrap creates the MCP resource server,
-`mcp:access` scope, strict third-party client grant, OAuth discovery settings,
-and domain-level login connection. It leaves Auth0 RBAC disabled for this API
-because Codex Events evaluates platform authorization from D1 after OAuth
-authentication. The generated Wrangler configuration also
-installs the `MCP_RATE_LIMITER` binding at 120 requests per credential or OAuth
+`mcp` permission, strict third-party user grant, OAuth discovery settings,
+and domain-level login connection. It imports every configured trusted HTTPS
+Client ID Metadata Document URL through Auth0's idempotent CIMD registration
+endpoint and disables Dynamic Client Registration. `/mcp` requires the exact
+resource audience and the `openid` and `email` identity scopes Codex requests;
+it does not require the unrequested `mcp` permission in the token scope claim.
+Auth0 RBAC remains disabled for this API because Codex Events evaluates
+platform authorization from D1 after OAuth authentication. The generated
+Wrangler configuration also installs the `MCP_RATE_LIMITER` binding at 120 requests per credential or OAuth
 user/client pair per 60 seconds. Do not enable or route `/mcp` to a Worker
 version that lacks those resources.
 The Worker uses the stateless `agents@0.20.1` handler with
@@ -258,7 +263,8 @@ As the first platform admin, use the platform admin workspace to:
 - The first platform admin can open `/account/platform-settings?tab=platform-admins`.
 - The first platform admin can create an event.
 - Codex discovers OAuth from `https://<BASE_DOMAIN>/mcp`, completes browser
-  sign-in through Auth0, and can list and call role-appropriate tools.
+  sign-in through Auth0 using its registered Client ID Metadata Document URL
+  and loopback callback, and can list and call role-appropriate tools.
 - A signed-in user can also create a manual MCP token in account settings,
   initialize a Streamable HTTP client, revoke the token, and observe that the
   next request is rejected.
@@ -316,7 +322,7 @@ Deployment defaults and resource names:
 | `NUXT_MCP_ALLOWED_HOSTNAMES`        | Comma-separated hostnames accepted by `/mcp`; defaults to `BASE_DOMAIN`              |
 | `NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES` | Comma-separated Origin hostnames accepted by `/mcp`; defaults to `BASE_DOMAIN`       |
 | `NUXT_MCP_RESOURCE_URL`             | Canonical OAuth resource URL; defaults to `https://<BASE_DOMAIN>/mcp`                 |
-| `NUXT_MCP_OAUTH_SCOPE`              | Required OAuth scope; defaults to `mcp:access`                                        |
+| `NUXT_MCP_OAUTH_REQUIRED_SCOPES`    | Space-separated OAuth identity scopes required by `/mcp`; defaults to `openid email`  |
 
 Auth0 and display:
 
@@ -326,7 +332,8 @@ Auth0 and display:
 | `AUTH0_APP_DISPLAY_NAME`              | Name shown in Auth0-hosted login copy. Defaults to `Codex Events`              |
 | `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0 database connection name. Defaults to `Username-Password-Authentication` |
 | `AUTH0_MCP_RESOURCE_IDENTIFIER`     | Auth0 MCP API identifier. Defaults to `https://<BASE_DOMAIN>/mcp`               |
-| `AUTH0_MCP_SCOPE`                   | Auth0 MCP permission. Defaults to `mcp:access`                                  |
+| `AUTH0_MCP_SCOPE`                   | Auth0 MCP API permission. Defaults to `mcp`                                     |
+| `AUTH0_MCP_CLIENT_METADATA_URLS`    | Comma- or whitespace-separated trusted HTTPS Client ID Metadata Document URLs imported into Auth0 |
 
 Outbound email and queues:
 
@@ -398,7 +405,10 @@ bun run deploy:production
 ```
 
 Run the migration command before the deploy command. After deployment, verify
-OAuth discovery and browser authorization with a non-admin test account. Also
+the configured CIMD URL is used as `client_id`, the browser flow returns through
+the client's loopback callback, and the issued token has the exact MCP audience
+plus the `openid` and `email` identity scopes. Do not expect an unrequested
+custom API permission in the token. Use a non-admin test account. Also
 create a fresh short-lived manual token for verification and revoke it
 immediately afterward. Never reuse an operator verification token as an
 application secret.

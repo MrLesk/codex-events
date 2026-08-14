@@ -55,7 +55,7 @@ NUXT_EVENT_IMAGES_BINDING=EVENT_IMAGES
 NUXT_MCP_ALLOWED_HOSTNAMES=localhost
 NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES=localhost
 NUXT_MCP_RESOURCE_URL=http://localhost:3000/mcp
-NUXT_MCP_OAUTH_SCOPE=mcp:access
+NUXT_MCP_OAUTH_REQUIRED_SCOPES="openid email"
 NUXT_OUTBOUND_EMAIL_BINDING=EMAIL
 NUXT_OUTBOUND_EMAIL_FROM_EMAIL=info@your-platform.example
 NUXT_OUTBOUND_EMAIL_FROM_NAME=Codex Events
@@ -108,6 +108,8 @@ These commands enforce required Auth0 tenant configuration:
 - login prompt subtitle copy
 - signup prompt consent text/partials cleared so platform consent stays app-owned at `/account/register`
 - post-login Action deployment and trigger binding for consent claims and Auth0 account linking
+- a default third-party user grant for the MCP API permission without post-login scope mutation
+- administrator-managed import of configured trusted HTTPS Client ID Metadata Document URLs
 - required callback/logout/origin URL inclusion on the Auth0 application
 - default login URI (`initiate_login_uri`) for password-reset return routing
 - tenant default redirection URI fallback (`default_redirection_uri`) for reset-password error states
@@ -116,7 +118,7 @@ These commands enforce required Auth0 tenant configuration:
 The checked-in Auth0 bootstrap automation does not currently create or manage the GitHub social connection. Configure that connection in Auth0 separately when you want `/auth/login/github` enabled in a deployment.
 If a tenant lacks the paid Universal Login page-template feature, the bootstrap now warns and skips page-template-dependent login prompt customization instead of failing outright. Custom domains, branding, client URLs, and Actions remain required and still fail on drift or API errors.
 
-The script reads explicit tenant automation variables: `AUTH0_MANAGEMENT_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `NUXT_AUTH0_CLIENT_ID`, and `AUTH0_APP_BASE_URL` are required. `AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` defaults to the same generated value as `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` when it is omitted. `AUTH0_CUSTOM_DOMAIN` defaults to `auth.<AUTH0_APP_BASE_URL host>` when `AUTH0_APP_BASE_URL` is HTTPS. `AUTH0_DATABASE_CONNECTION_NAME` defaults to `Username-Password-Authentication`.
+The script reads explicit tenant automation variables: `AUTH0_MANAGEMENT_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `NUXT_AUTH0_CLIENT_ID`, `AUTH0_APP_BASE_URL`, and `AUTH0_MCP_CLIENT_METADATA_URLS` are required. The metadata setting accepts comma- or whitespace-separated trusted HTTPS Client ID Metadata Document URLs and is reconciled through Auth0's idempotent CIMD import endpoint. `AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` defaults to the same generated value as `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` when it is omitted. `AUTH0_CUSTOM_DOMAIN` defaults to `auth.<AUTH0_APP_BASE_URL host>` when `AUTH0_APP_BASE_URL` is HTTPS. `AUTH0_DATABASE_CONNECTION_NAME` defaults to `Username-Password-Authentication`.
 `AUTH0_LOGIN_URI` is mandatory whenever `AUTH0_APP_BASE_URL` is not HTTPS, and must always be an HTTPS URL.
 When `AUTH0_APP_BASE_URL` is HTTPS and explicit branding URLs are omitted, the bootstrap defaults to `${AUTH0_APP_BASE_URL}/auth0/codex-events-wordmark.svg` for the Auth0 wordmark and `${AUTH0_APP_BASE_URL}/favicon.ico` for the favicon.
 
@@ -239,11 +241,16 @@ with the bearer header. Verify initialization, inspect the role-filtered tool
 list, call a read-only discovery tool, then revoke the token in account
 settings and confirm the next request is rejected.
 
-For Codex against the test deployment, add the Streamable HTTP MCP URL without
-a manual bearer token. Codex discovers Auth0, opens Authorization Code with
-PKCE in the browser, and stores its OAuth grant. Verify `tools/list` and one
-read-only call, then repeat with a manual token to confirm both paths. The
-repository stores neither OAuth credentials nor a permanent development token.
+For Codex against the test deployment, first add Codex's HTTPS Client ID
+Metadata Document URL to the test environment's
+`AUTH0_MCP_CLIENT_METADATA_URLS`, then run the test deployment so Auth0 imports
+it. Add the Streamable HTTP MCP URL without a manual bearer token. Codex uses
+the metadata URL as `client_id`, opens Authorization Code with PKCE in the
+browser, and returns through an ephemeral loopback callback. Verify the issued
+token has the exact MCP audience and the `openid` and `email` scopes, then
+verify `tools/list` and one read-only call.
+Repeat with a manual token to confirm both paths. The repository stores neither
+OAuth credentials nor a permanent development token.
 
 When a shared structured operation changes its serialized response, run
 `bun run mcp:generate-output-schemas`. The generator derives the exact MCP

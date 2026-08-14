@@ -707,18 +707,24 @@ Operations:
 
 `POST /mcp` is the single stateless Streamable HTTP endpoint. It accepts only
 `Authorization: Bearer <credential>`. The credential can be an Auth0 OAuth
-access token for the configured MCP resource and scope, or a named manual MCP
-access token issued from account settings. Session cookies do not authenticate
-it. The endpoint handles initialization, `tools/list`, and `tools/call`.
+access token for the configured MCP resource and identity scopes, or a named
+manual MCP access token issued from account settings. Session cookies do not
+authenticate it. The endpoint handles initialization, `tools/list`, and `tools/call`.
 Deployment host and present browser Origin values must match configured
 allowlists.
 
 `GET /.well-known/oauth-protected-resource` publishes the canonical MCP
-resource, Auth0 authorization server, required scope, and supported bearer
-method. An unauthenticated `/mcp` response links to that metadata through
+resource, Auth0 authorization server, required `openid` and `email` identity
+scopes, and supported bearer method. An unauthenticated `/mcp` response links to that metadata through
 `WWW-Authenticate`. Auth0 publishes its own authorization-server discovery and
-owns Authorization Code with PKCE, client registration, refresh, and
-revocation.
+owns Authorization Code with PKCE, refresh, and revocation. Deployment
+automation idempotently imports configured trusted HTTPS Client ID Metadata
+Document URLs into Auth0. Unknown metadata URLs are rejected; imported clients
+may use their declared loopback callbacks. A default third-party user grant
+allows the `mcp` API permission for that resource, while `/mcp` validates the
+issued token's signature, issuer, expiry, exact audience, and `openid` and
+`email` identity scopes. It does not require an unrequested custom permission
+claim.
 
 The application-operation registry is shared by REST and MCP. Each eligible
 operation has one stable ID, Zod input/output contracts, one REST binding, one

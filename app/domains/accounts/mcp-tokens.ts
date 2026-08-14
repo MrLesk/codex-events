@@ -23,13 +23,13 @@ export async function listAccountMcpTokens(request: McpTokenRequester, page = 1,
   })
 }
 
-export async function listAllAccountMcpTokens(request: McpTokenRequester) {
+export async function listAllActiveAccountMcpTokens(request: McpTokenRequester) {
   const tokens: McpAccessToken[] = []
   let page = 1
   while (true) {
     const response = await listAccountMcpTokens(request, page)
-    tokens.push(...response.data)
-    if (tokens.length >= response.meta.total || response.data.length === 0) return tokens
+    tokens.push(...response.data.filter(token => token.revokedAt === null))
+    if (page * response.meta.pageSize >= response.meta.total || response.data.length === 0) return tokens
     page += 1
   }
 }

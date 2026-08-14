@@ -42,6 +42,7 @@ jobs:
       AUTH0_DATABASE_CONNECTION_NAME: ${{ vars.NUXT_AUTH0_DATABASE_CONNECTION_NAME || 'Username-Password-Authentication' }}
       AUTH0_MGMT_CLIENT_ID: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
       AUTH0_MGMT_CLIENT_SECRET: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
+      AUTH0_MCP_CLIENT_METADATA_URLS: ${{ vars.AUTH0_MCP_CLIENT_METADATA_URLS }}
       # Auth0 runtime settings.
       NUXT_AUTH0_DOMAIN: ${{ vars.AUTH0_CUSTOM_DOMAIN || format('auth.{0}', vars.BASE_DOMAIN) }}
       NUXT_AUTH0_APP_BASE_URL: https://${{ vars.BASE_DOMAIN }}
@@ -50,7 +51,7 @@ jobs:
       NUXT_MCP_ALLOWED_HOSTNAMES: ${{ vars.NUXT_MCP_ALLOWED_HOSTNAMES || vars.BASE_DOMAIN }}
       NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES: ${{ vars.NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES || vars.BASE_DOMAIN }}
       NUXT_MCP_RESOURCE_URL: https://${{ vars.BASE_DOMAIN }}/mcp
-      NUXT_MCP_OAUTH_SCOPE: mcp:access
+      NUXT_MCP_OAUTH_REQUIRED_SCOPES: openid email
       # Cloudflare Email Service and Queues runtime settings.
       NUXT_OUTBOUND_EMAIL_BINDING: ${{ vars.NUXT_OUTBOUND_EMAIL_BINDING }}
       NUXT_OUTBOUND_EMAIL_FROM_EMAIL: ${{ vars.NUXT_OUTBOUND_EMAIL_FROM_EMAIL }}

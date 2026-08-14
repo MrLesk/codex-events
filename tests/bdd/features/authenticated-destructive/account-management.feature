@@ -12,7 +12,7 @@ Feature: TASK-4.3 platform account registration recovery and profile management
     When I finish the MCP token setup
     Then the MCP access token named "BDD Codex client" should be listed
     When I revoke the MCP access token named "BDD Codex client"
-    Then the MCP access token named "BDD Codex client" should be revoked
+    Then the revoked MCP access token named "BDD Codex client" should be hidden after refresh
     When I update the account profile links
     Then the account profile should show the updated links
     When I upload a profile icon from account settings

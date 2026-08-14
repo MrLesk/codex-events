@@ -4,12 +4,12 @@ import { createRemoteJWKSet, jwtVerify } from 'jose'
 import type { AppDatabase } from '#server/database/client'
 import { findPlatformUserByAuth0Subject } from '#server/domains/accounts/auth-identities'
 
-export const defaultMcpOAuthScope = 'mcp:access'
+export const defaultMcpOAuthRequiredScopes = ['openid', 'email'] as const
 
 export interface McpOAuthConfiguration {
   issuer: string
   resourceUrl: string
-  scope: string
+  requiredScopes: string[]
 }
 
 export interface McpOAuthIdentity {
@@ -51,19 +51,25 @@ function normalizeResourceUrl(value: string | undefined) {
 export function resolveMcpOAuthConfiguration(input: {
   auth0Domain?: string
   resourceUrl?: string
-  scope?: string
+  requiredScopes?: string
 }): McpOAuthConfiguration | null {
   const issuer = normalizeIssuer(input.auth0Domain)
   const resourceUrl = normalizeResourceUrl(input.resourceUrl)
-  const scope = input.scope?.trim() || defaultMcpOAuthScope
-  return issuer && resourceUrl ? { issuer, resourceUrl, scope } : null
+  const requiredScopes = [...new Set(
+    (input.requiredScopes?.trim() || defaultMcpOAuthRequiredScopes.join(' '))
+      .split(/\s+/u)
+      .filter(Boolean)
+  )]
+  return issuer && resourceUrl && requiredScopes.length > 0
+    ? { issuer, resourceUrl, requiredScopes }
+    : null
 }
 
 export function buildMcpProtectedResourceMetadata(configuration: McpOAuthConfiguration) {
   return {
     resource: configuration.resourceUrl,
     authorization_servers: [configuration.issuer],
-    scopes_supported: [configuration.scope],
+    scopes_supported: configuration.requiredScopes,
     bearer_methods_supported: ['header']
   }
 }
@@ -92,7 +98,7 @@ export async function verifyMcpOAuthAccessToken(
     requiredClaims: ['sub', 'exp', 'iat']
   })
   const scopes = new Set(typeof payload.scope === 'string' ? payload.scope.split(/\s+/u).filter(Boolean) : [])
-  if (!scopes.has(configuration.scope)) return null
+  if (!configuration.requiredScopes.every(scope => scopes.has(scope))) return null
 
   const subject = payload.sub?.trim() ?? ''
   const clientId = typeof payload.client_id === 'string'

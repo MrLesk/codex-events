@@ -215,10 +215,11 @@ When('I revoke the MCP access token named {string}', async ({ page }, tokenName:
   await row.getByRole('button', { name: 'Revoke' }).click()
 })
 
-Then('the MCP access token named {string} should be revoked', async ({ page }, tokenName: string) => {
-  const row = page.locator('div').filter({ has: page.getByText(tokenName, { exact: true }) }).filter({ hasText: 'Revoked' }).last()
-  await expect(row.getByText('Revoked', { exact: true })).toBeVisible()
-  await expect(row.getByRole('button', { name: 'Revoke' })).toHaveCount(0)
+Then('the revoked MCP access token named {string} should be hidden after refresh', async ({ page }, tokenName: string) => {
+  await page.reload()
+  await waitForNuxtHydration(page)
+  await expect(page.getByRole('heading', { name: 'MCP connections' })).toBeVisible()
+  await expect(page.getByText(tokenName, { exact: true })).toHaveCount(0)
 })
 
 When('I update the account profile links', async ({ page }) => {

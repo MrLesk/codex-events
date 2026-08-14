@@ -37,7 +37,7 @@ export function createApiRouteTestHarness(options: {
       allowedHostnames?: string
       allowedOriginHostnames?: string
       resourceUrl?: string
-      oauthScope?: string
+      oauthRequiredScopes?: string
     }
     database?: {
       binding?: string
@@ -216,7 +216,7 @@ export function createApiRouteTestHarness(options: {
         allowedHostnames: options.runtimeConfig?.mcp?.allowedHostnames ?? 'localhost',
         allowedOriginHostnames: options.runtimeConfig?.mcp?.allowedOriginHostnames ?? 'localhost',
         resourceUrl: options.runtimeConfig?.mcp?.resourceUrl ?? 'http://localhost:3000/mcp',
-        oauthScope: options.runtimeConfig?.mcp?.oauthScope ?? 'mcp:access'
+        oauthRequiredScopes: options.runtimeConfig?.mcp?.oauthRequiredScopes ?? 'openid email'
       },
       database: {
         binding: databaseBinding

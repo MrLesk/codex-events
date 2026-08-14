@@ -12,20 +12,20 @@ describe('MCP OAuth', () => {
   const configuration = {
     issuer: 'https://auth.example.test/',
     resourceUrl: 'https://events.example.test/mcp',
-    scope: 'mcp:access'
+    requiredScopes: ['openid', 'email']
   }
 
   test('normalizes configuration and publishes protected-resource metadata', () => {
     const resolved = resolveMcpOAuthConfiguration({
       auth0Domain: 'auth.example.test',
       resourceUrl: 'https://events.example.test/mcp',
-      scope: 'mcp:access'
+      requiredScopes: 'openid email openid'
     })
     expect(resolved).toEqual(configuration)
     expect(buildMcpProtectedResourceMetadata(configuration)).toEqual({
       resource: 'https://events.example.test/mcp',
       authorization_servers: ['https://auth.example.test/'],
-      scopes_supported: ['mcp:access'],
+      scopes_supported: ['openid', 'email'],
       bearer_methods_supported: ['header']
     })
     expect(mcpProtectedResourceMetadataUrl(configuration))
@@ -43,7 +43,7 @@ describe('MCP OAuth', () => {
     })).toBeNull()
   })
 
-  test('validates signature, issuer, audience, expiry, subject, client, and scope', async () => {
+  test('validates signature, issuer, audience, expiry, subject, client, and identity scopes', async () => {
     const { publicKey, privateKey } = await generateKeyPair('RS256')
     const publicJwk = await exportJWK(publicKey)
     const keySet = createLocalJWKSet({ keys: [{ ...publicJwk, kid: 'mcp-key' }] })
@@ -57,7 +57,7 @@ describe('MCP OAuth', () => {
       clientId?: string
       expiry?: number
     } = {}) {
-      return await new SignJWT({ scope: overrides.scope ?? 'mcp:access', client_id: overrides.clientId ?? 'codex-client' })
+      return await new SignJWT({ scope: overrides.scope ?? 'openid email', client_id: overrides.clientId ?? 'codex-client' })
         .setProtectedHeader({ alg: 'RS256', kid: 'mcp-key' })
         .setIssuer(overrides.issuer ?? configuration.issuer)
         .setAudience(overrides.audience ?? configuration.resourceUrl)
@@ -69,7 +69,7 @@ describe('MCP OAuth', () => {
 
     await expect(verifyMcpOAuthAccessToken(await sign(), configuration, keySet))
       .resolves.toEqual({ subject: 'auth0|user', clientId: 'codex-client' })
-    await expect(verifyMcpOAuthAccessToken(await sign({ scope: 'profile' }), configuration, keySet))
+    await expect(verifyMcpOAuthAccessToken(await sign({ scope: 'openid' }), configuration, keySet))
       .resolves.toBeNull()
     await expect(verifyMcpOAuthAccessToken(await sign({ issuer: 'https://wrong.example/' }), configuration, keySet))
       .rejects.toThrow()
@@ -79,7 +79,7 @@ describe('MCP OAuth', () => {
       .rejects.toThrow()
 
     const { privateKey: untrustedKey } = await generateKeyPair('RS256')
-    const untrustedToken = await new SignJWT({ scope: 'mcp:access', client_id: 'codex-client' })
+    const untrustedToken = await new SignJWT({ scope: 'openid email', client_id: 'codex-client' })
       .setProtectedHeader({ alg: 'RS256', kid: 'mcp-key' })
       .setIssuer(configuration.issuer)
       .setAudience(configuration.resourceUrl)

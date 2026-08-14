@@ -12,15 +12,33 @@ Auth0 OAuth is the recommended connection method. The server publishes OAuth
 protected-resource metadata for the canonical `/mcp` URL and challenges
 unauthenticated requests with a link to that metadata. Compatible clients use
 Authorization Code with PKCE against the configured Auth0 authorization server
-and request the `mcp:access` scope for the canonical MCP resource.
+for the canonical MCP resource.
 
-The Auth0 MCP resource server grants that authentication scope to strict
-third-party clients without applying Auth0 RBAC. Platform roles, event roles,
-team membership, judging assignments, and legal-document acceptance remain
+MCP 2026-07-28 clients identify themselves with an HTTPS Client ID Metadata
+Document URL. A tenant administrator must explicitly trust each supported
+client by importing that URL through Auth0 before the client can start an OAuth
+flow. Deployment configuration contains the allowlisted metadata URLs and
+reconciles them idempotently; Auth0 does not discover or approve unknown client
+URLs automatically. The imported metadata supplies the client's redirect URIs,
+including Codex's ephemeral loopback callback.
+
+The Auth0 MCP resource server allows user-delegated access only through a client
+grant, denies machine-only access, permits offline refresh for interactive
+clients, and does not apply Auth0 RBAC. Platform roles, event roles, team
+membership, judging assignments, and legal-document acceptance remain
 authoritative in D1 and are evaluated for every request.
 
+Auth0's default third-party user grant allows the `mcp` API permission for the
+canonical resource. The grant authorizes trusted third-party clients to request
+that resource; it is not an application role and is not required as a scope
+claim because Codex does not request custom API permissions. The access token
+must instead contain the `openid` and `email` identity scopes requested by the
+client. The platform never broadens access for an unknown client or another
+resource.
+
 The endpoint validates the OAuth access token signature through the Auth0 JWKS,
-then validates its issuer, expiry, audience, required scope, and subject. The
+then validates its issuer, expiry, exact audience, required identity scopes,
+and subject. The
 subject must map to an active platform user. Auth0 owns OAuth grants, access and
 refresh tokens, client registration, and revocation; Codex Events stores none
 of those credentials.

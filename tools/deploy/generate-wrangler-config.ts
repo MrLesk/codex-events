@@ -58,7 +58,7 @@ export interface ResolvedDeployConfigInput {
   mcpAllowedHostnames: string
   mcpAllowedOriginHostnames: string
   mcpResourceUrl: string
-  mcpOAuthScope: string
+  mcpOAuthRequiredScopes: string
 }
 
 export interface GeneratedDeployWranglerConfig {
@@ -371,7 +371,7 @@ export function resolveDeployConfigInput(
     mcpAllowedHostnames: readOptionalEnvironmentValue(environment, 'NUXT_MCP_ALLOWED_HOSTNAMES') || baseDomain,
     mcpAllowedOriginHostnames: readOptionalEnvironmentValue(environment, 'NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES') || baseDomain,
     mcpResourceUrl: readOptionalEnvironmentValue(environment, 'NUXT_MCP_RESOURCE_URL') || `${appBaseUrl}/mcp`,
-    mcpOAuthScope: readOptionalEnvironmentValue(environment, 'NUXT_MCP_OAUTH_SCOPE') || 'mcp:access'
+    mcpOAuthRequiredScopes: readOptionalEnvironmentValue(environment, 'NUXT_MCP_OAUTH_REQUIRED_SCOPES') || 'openid email'
   }
 }
 
@@ -482,7 +482,7 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
       NUXT_MCP_ALLOWED_HOSTNAMES: input.mcpAllowedHostnames,
       NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES: input.mcpAllowedOriginHostnames,
       NUXT_MCP_RESOURCE_URL: input.mcpResourceUrl,
-      NUXT_MCP_OAUTH_SCOPE: input.mcpOAuthScope
+      NUXT_MCP_OAUTH_REQUIRED_SCOPES: input.mcpOAuthRequiredScopes
     },
     d1_databases: [
       {

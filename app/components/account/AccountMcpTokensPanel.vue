@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { normalizeApiError } from '~/lib/api'
 import type { McpAccessToken } from '~/domains/accounts/mcp-tokens'
-import { copyMcpCredential, createAccountMcpToken, listAllAccountMcpTokens, revokeAccountMcpToken } from '~/domains/accounts/mcp-tokens'
+import { copyMcpCredential, createAccountMcpToken, listAllActiveAccountMcpTokens, revokeAccountMcpToken } from '~/domains/accounts/mcp-tokens'
 
 const tokens = ref<McpAccessToken[]>([])
 const name = ref('')
@@ -15,7 +15,7 @@ const revokingId = ref<string | null>(null)
 const serverUrl = new URL('/mcp', useRequestURL()).toString()
 
 async function loadTokens() {
-  tokens.value = await listAllAccountMcpTokens($fetch)
+  tokens.value = await listAllActiveAccountMcpTokens($fetch)
 }
 
 async function createToken() {
@@ -168,14 +168,7 @@ onMounted(async () => {
               Expires {{ formatDate(token.expiresAt) }} · Last used {{ formatDate(token.lastUsedAt) }}
             </p>
           </div>
-          <div
-            v-if="token.revokedAt"
-            class="text-xs font-medium text-muted"
-          >
-            Revoked
-          </div>
           <AppButton
-            v-else
             color="error"
             variant="outline"
             label="Revoke"

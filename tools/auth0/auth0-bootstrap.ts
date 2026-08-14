@@ -14,6 +14,7 @@ interface TenantConfig {
   appBaseUrl: string
   mcpResourceIdentifier: string
   mcpScope: string
+  mcpClientMetadataUrls: string[]
   databaseConnectionName: string
   accountLinkChallengeSecret: string
   loginUri: string
@@ -45,6 +46,9 @@ interface Auth0CustomDomain {
 
 interface Auth0Client {
   client_id: string
+  external_client_id?: string
+  external_metadata_type?: string
+  external_metadata_created_by?: string
   name?: string
   callbacks?: string[]
   allowed_logout_urls?: string[]
@@ -58,7 +62,6 @@ interface Auth0TenantSettings {
   resource_parameter_profile?: string
   authorization_response_iss_parameter_supported?: boolean
   client_id_metadata_document_supported?: boolean
-  dynamic_client_registration_security_mode?: string
   flags?: Record<string, boolean | undefined> & {
     enable_dynamic_client_registration?: boolean
   }
@@ -70,7 +73,12 @@ interface Auth0ResourceServer {
   identifier: string
   signing_alg?: string
   token_dialect?: string
+  allow_offline_access?: boolean
   enforce_policies?: boolean
+  subject_type_authorization?: {
+    user?: { policy?: string }
+    client?: { policy?: string }
+  }
   scopes?: Array<{ value: string, description?: string }>
 }
 
@@ -86,6 +94,17 @@ interface Auth0Connection {
   id: string
   name: string
   is_domain_connection?: boolean
+}
+
+interface Auth0CimdRegistrationResponse {
+  client_id: string
+  mapped_fields?: {
+    external_client_id?: string
+  }
+  validation?: {
+    valid?: boolean
+    violations?: string[]
+  }
 }
 
 interface Auth0Branding {
@@ -161,7 +180,7 @@ const defaultActionName = 'codex-post-login'
 const defaultActionRuntime = 'node22'
 const defaultAuth0AppDisplayName = 'Codex Events'
 const defaultAuth0DatabaseConnectionName = 'Username-Password-Authentication'
-const defaultMcpScope = 'mcp:access'
+const defaultMcpScope = 'mcp'
 const defaultBrandingPrimaryColor = '#030213'
 const lightButtonLabelColor = '#ffffff'
 const darkButtonLabelColor = '#030213'
@@ -175,6 +194,7 @@ type SignupPromptKey = typeof signupPromptKeys[number]
 
 export const requiredManagementApiScopes = [
   'read:clients',
+  'create:clients',
   'update:clients',
   'read:resource_servers',
   'create:resource_servers',
@@ -505,6 +525,7 @@ Environment variables:
 - AUTH0_APP_BASE_URL
 - AUTH0_MCP_RESOURCE_IDENTIFIER (default: <AUTH0_APP_BASE_URL>/mcp)
 - AUTH0_MCP_SCOPE (default: ${defaultMcpScope})
+- AUTH0_MCP_CLIENT_METADATA_URLS (comma- or whitespace-separated trusted HTTPS CIMD URLs)
 - AUTH0_LOGIN_URI (required when AUTH0_APP_BASE_URL is not https; must be https)
 - AUTH0_CUSTOM_DOMAIN (default: auth.<AUTH0_APP_BASE_URL host> when AUTH0_APP_BASE_URL is https)
 - AUTH0_DATABASE_CONNECTION_NAME (default: ${defaultAuth0DatabaseConnectionName})
@@ -531,6 +552,30 @@ function splitScopeString(value: string | undefined) {
     .split(/\s+/)
     .map(scope => scope.trim())
     .filter(Boolean)
+}
+
+export function parseMcpClientMetadataUrls(value: string | undefined) {
+  const urls = [...new Set((value ?? '').split(/[\s,]+/u).map(candidate => candidate.trim()).filter(Boolean))]
+
+  if (urls.length === 0) {
+    throw new Error('AUTH0_MCP_CLIENT_METADATA_URLS must contain at least one trusted HTTPS Client ID Metadata Document URL.')
+  }
+
+  for (const value of urls) {
+    let url: URL
+
+    try {
+      url = new URL(value)
+    } catch {
+      throw new Error(`AUTH0_MCP_CLIENT_METADATA_URLS contains an invalid URL: ${value}`)
+    }
+
+    if (url.protocol !== 'https:' || url.username || url.password || url.hash || value.length > 120) {
+      throw new Error(`AUTH0_MCP_CLIENT_METADATA_URLS contains an invalid trusted CIMD URL: ${value}`)
+    }
+  }
+
+  return urls
 }
 
 function readJwtScopeClaims(accessToken: string) {
@@ -847,6 +892,7 @@ export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
       `${normalizedAppBaseUrl}/mcp`
     )),
     mcpScope: firstDefinedValue(environment.AUTH0_MCP_SCOPE, defaultMcpScope),
+    mcpClientMetadataUrls: parseMcpClientMetadataUrls(environment.AUTH0_MCP_CLIENT_METADATA_URLS),
     databaseConnectionName: firstDefinedValue(environment.AUTH0_DATABASE_CONNECTION_NAME, defaultAuth0DatabaseConnectionName),
     accountLinkChallengeSecret: resolveAuth0AccountLinkChallengeSecret(environment),
     loginUri: normalizeHttpsUrlString(
@@ -881,7 +927,12 @@ export function buildMcpResourceServerPayload(config: Pick<TenantConfig, 'appDis
     identifier: config.mcpResourceIdentifier,
     signing_alg: 'RS256',
     token_dialect: 'rfc9068_profile',
+    allow_offline_access: true,
     enforce_policies: false,
+    subject_type_authorization: {
+      user: { policy: 'require_client_grant' },
+      client: { policy: 'deny_all' }
+    },
     scopes: [{ value: config.mcpScope, description: 'Access Codex Events through MCP' }]
   }
 }
@@ -900,18 +951,12 @@ export function buildMcpTenantSettings() {
     resource_parameter_profile: 'compatibility',
     authorization_response_iss_parameter_supported: true,
     client_id_metadata_document_supported: true,
-    dynamic_client_registration_security_mode: 'strict',
-    flags: { enable_dynamic_client_registration: true }
+    flags: { enable_dynamic_client_registration: false }
   }
 }
 
 export function buildMcpTenantSettingsUpdate(_current: Auth0TenantSettings) {
   return buildMcpTenantSettings()
-}
-
-export function isMcpDcrSecurityModeAccepted(value: string | undefined) {
-  // Auth0 omits this field on tenants where strict mode is the fixed default.
-  return value === undefined || value === 'strict'
 }
 
 function buildExpectedConsentText() {
@@ -1220,8 +1265,7 @@ async function ensureMcpTenantSettings(config: TenantConfig, token: string, mode
   const hasExpectedSettings = settings.resource_parameter_profile === expected.resource_parameter_profile
     && settings.authorization_response_iss_parameter_supported === expected.authorization_response_iss_parameter_supported
     && settings.client_id_metadata_document_supported === expected.client_id_metadata_document_supported
-    && settings.dynamic_client_registration_security_mode === expected.dynamic_client_registration_security_mode
-    && settings.flags?.enable_dynamic_client_registration === true
+    && settings.flags?.enable_dynamic_client_registration !== true
 
   if (mode === 'apply' && !hasExpectedSettings) {
     const update = buildMcpTenantSettingsUpdate(settings)
@@ -1229,7 +1273,7 @@ async function ensureMcpTenantSettings(config: TenantConfig, token: string, mode
       method: 'PATCH',
       body: JSON.stringify(update)
     })
-    console.log('Applied: enabled strict third-party OAuth discovery and registration settings for MCP.')
+    console.log('Applied: enabled MCP resource and CIMD discovery settings and disabled dynamic client registration.')
   }
 
   const verified = mode === 'apply' && !hasExpectedSettings
@@ -1244,11 +1288,57 @@ async function ensureMcpTenantSettings(config: TenantConfig, token: string, mode
   if (verified.client_id_metadata_document_supported !== true) {
     failures.push('Auth0 client ID metadata documents are not enabled.')
   }
-  if (!isMcpDcrSecurityModeAccepted(verified.dynamic_client_registration_security_mode)) {
-    failures.push('Auth0 dynamic client registration security mode is not strict.')
+  if (verified.flags?.enable_dynamic_client_registration === true) {
+    failures.push('Auth0 dynamic client registration is enabled; trusted CIMD import must be the MCP client-registration path.')
   }
-  if (verified.flags?.enable_dynamic_client_registration !== true) {
-    failures.push('Auth0 dynamic client registration is not enabled.')
+}
+
+function cimdClientMatches(client: Auth0Client, externalClientId: string) {
+  return client.external_client_id === externalClientId
+    && client.external_metadata_type === 'cimd'
+    && client.external_metadata_created_by === 'admin'
+}
+
+async function getMcpCimdClient(config: TenantConfig, token: string, externalClientId: string) {
+  const response = await auth0ManagementRequest(
+    config,
+    token,
+    `/api/v2/clients?external_client_id=${encodeURIComponent(externalClientId)}&per_page=100`,
+    { method: 'GET' }
+  )
+  const clients = await response.json() as Auth0Client[]
+  return clients.find(client => client.external_client_id === externalClientId) ?? null
+}
+
+export async function ensureTrustedMcpCimdClients(
+  config: TenantConfig,
+  token: string,
+  mode: CommandMode,
+  failures: string[]
+) {
+  for (const externalClientId of config.mcpClientMetadataUrls) {
+    if (mode === 'apply') {
+      const response = await auth0ManagementRequest(config, token, '/api/v2/clients/cimd/register', {
+        method: 'POST',
+        body: JSON.stringify({ external_client_id: externalClientId })
+      })
+      const registration = await response.json() as Auth0CimdRegistrationResponse
+
+      if (!registration.client_id
+        || registration.mapped_fields?.external_client_id !== externalClientId
+        || registration.validation?.valid !== true) {
+        failures.push(`Auth0 did not validate and register trusted MCP client metadata ${externalClientId}.`)
+        continue
+      }
+
+      console.log(`Applied: registered or refreshed trusted MCP client metadata ${externalClientId}.`)
+      continue
+    }
+
+    const client = await getMcpCimdClient(config, token, externalClientId)
+    if (!client || !cimdClientMatches(client, externalClientId)) {
+      failures.push(`Auth0 has not registered trusted MCP client metadata ${externalClientId} as an administrator-managed CIMD client.`)
+    }
   }
 }
 
@@ -1268,7 +1358,10 @@ function resourceServerMatches(resource: Auth0ResourceServer, expected: ReturnTy
     && resource.identifier === expected.identifier
     && resource.signing_alg === expected.signing_alg
     && resource.token_dialect === expected.token_dialect
+    && resource.allow_offline_access === expected.allow_offline_access
     && resource.enforce_policies === expected.enforce_policies
+    && resource.subject_type_authorization?.user?.policy === expected.subject_type_authorization.user.policy
+    && resource.subject_type_authorization?.client?.policy === expected.subject_type_authorization.client.policy
     && resource.scopes?.some(scope => scope.value === expected.scopes[0]!.value) === true
 }
 
@@ -1294,7 +1387,7 @@ async function ensureMcpResourceServer(config: TenantConfig, token: string, mode
   }
 
   if (!resource || !resourceServerMatches(resource, expected)) {
-    failures.push(`Auth0 MCP resource server ${config.mcpResourceIdentifier} is missing or does not match its required RS256, RFC 9068, non-RBAC, and scope configuration.`)
+    failures.push(`Auth0 MCP resource server ${config.mcpResourceIdentifier} is missing or does not match its required RS256, RFC 9068, offline-access, user-client-grant, machine-deny, non-RBAC, and scope configuration.`)
   }
 }
 
@@ -2066,6 +2159,7 @@ export async function main() {
     await ensureMcpResourceServer(config, managementToken, mode, failures)
     await ensureMcpDefaultClientGrant(config, managementToken, mode, failures)
     await ensureMcpTenantSettings(config, managementToken, mode, failures)
+    await ensureTrustedMcpCimdClients(config, managementToken, mode, failures)
     await ensureMcpDomainConnection(config, managementToken, mode, failures)
     await ensureBranding(config, managementToken, mode, failures)
     await ensureDefaultBrandingTheme(config, managementToken, mode, failures)

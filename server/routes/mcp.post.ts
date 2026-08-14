@@ -112,7 +112,7 @@ export default defineEventHandler(async (event) => {
   const oauthConfiguration = resolveMcpOAuthConfiguration({
     auth0Domain: useRuntimeConfig(event).auth0.domain,
     resourceUrl: config?.resourceUrl,
-    scope: config?.oauthScope
+    requiredScopes: config?.oauthRequiredScopes
   })
   const authenticated = credential
     ? await authenticateMcpRequest(database, credential, oauthConfiguration)
@@ -122,7 +122,7 @@ export default defineEventHandler(async (event) => {
       setResponseHeader(
         event,
         'www-authenticate',
-        `Bearer resource_metadata="${mcpProtectedResourceMetadataUrl(oauthConfiguration)}", scope="${oauthConfiguration.scope}"`
+        `Bearer resource_metadata="${mcpProtectedResourceMetadataUrl(oauthConfiguration)}", scope="${oauthConfiguration.requiredScopes.join(' ')}"`
       )
     }
     setResponseStatus(event, 401)

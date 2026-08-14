@@ -33,7 +33,7 @@ describe('stateless MCP protocol', () => {
         auth0: { domain: 'https://auth.example.test' },
         mcp: {
           resourceUrl: 'http://localhost:3000/mcp',
-          oauthScope: 'mcp:access',
+          oauthRequiredScopes: 'openid email',
           allowedHostnames: 'localhost,test.example',
           allowedOriginHostnames: 'localhost,test.example'
         }
@@ -87,7 +87,7 @@ describe('stateless MCP protocol', () => {
     const issuer = overrides.issuer ?? 'https://auth.example.test/'
     const audience = overrides.audience ?? 'http://localhost:3000/mcp'
     const credential = await new SignJWT({
-      scope: overrides.scope ?? 'mcp:access',
+      scope: overrides.scope ?? 'openid email',
       client_id: overrides.clientId ?? 'codex-test-client'
     })
       .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
@@ -100,7 +100,7 @@ describe('stateless MCP protocol', () => {
     const authenticated = await authenticateMcpOAuthCredential(harness.database, credential, {
       issuer: 'https://auth.example.test/',
       resourceUrl: 'http://localhost:3000/mcp',
-      scope: 'mcp:access'
+      requiredScopes: ['openid', 'email']
     }, createLocalJWKSet({ keys: [{ ...publicJwk, kid: 'test-key' }] }))
     return { credential, authenticated, publicJwk: { ...publicJwk, kid: 'test-key' } }
   }
@@ -216,14 +216,14 @@ describe('stateless MCP protocol', () => {
     expect(await metadata.json()).toEqual({
       resource: 'http://localhost:3000/mcp',
       authorization_servers: ['https://auth.example.test/'],
-      scopes_supported: ['mcp:access'],
+      scopes_supported: ['openid', 'email'],
       bearer_methods_supported: ['header']
     })
 
     const response = await rpc(harness, 'invalid', { jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} })
     expect(response.status).toBe(401)
     expect(response.headers.get('www-authenticate')).toBe(
-      'Bearer resource_metadata="http://localhost:3000/.well-known/oauth-protected-resource", scope="mcp:access"'
+      'Bearer resource_metadata="http://localhost:3000/.well-known/oauth-protected-resource", scope="openid email"'
     )
   })
 
@@ -238,7 +238,7 @@ describe('stateless MCP protocol', () => {
 
     expect((await oauthCredential(harness, { issuer: 'https://wrong.example.test/' })).authenticated).toBeNull()
     expect((await oauthCredential(harness, { audience: 'https://wrong.example.test/mcp' })).authenticated).toBeNull()
-    expect((await oauthCredential(harness, { scope: 'profile' })).authenticated).toBeNull()
+    expect((await oauthCredential(harness, { scope: 'openid' })).authenticated).toBeNull()
     expect((await oauthCredential(harness, { subject: 'auth0|missing-user' })).authenticated).toBeNull()
     expect((await oauthCredential(harness, { expiresAt: Math.floor(Date.now() / 1000) - 1 })).authenticated).toBeNull()
   })

@@ -196,17 +196,23 @@ source, snapshots, logs, or audit metadata.
   annotations, capability filtering, and error sanitization.
 - Integration tests cover token APIs and account deletion, protocol
   initialize/list/call, protected-resource discovery, OAuth issuer/signature/
-  expiry/audience/scope validation, invalid/expired/revoked manual credentials
-  and deleted-owner failures, OAuth subject mapping, current role and consent
+  expiry/audience/identity-scope validation, invalid/expired/revoked manual
+  credentials and deleted-owner failures, OAuth subject mapping, current role and consent
   changes, host/origin checks, rate limiting, mutation audits, and
   representative REST/MCP parity across both authentication methods.
+- Auth0 configuration tests cover trusted Client ID Metadata Document URL
+  validation, idempotent import, domain-level connection access, the default
+  third-party user grant for the `mcp` permission, and absence of post-login
+  custom-scope injection.
 - Completeness tests fail for missing or duplicate eligible REST/tool mappings
   and for advertised excluded operations, including binary, token-management,
   account-deletion, public-mutation, webhook, and system routes.
 - BDD covers the OAuth-first settings presentation, focused
   create/copy/done/revoke manual-token behavior, and representative
   participant, event-admin, and platform-admin calls.
-- Test-environment smoke covers OAuth discovery, Authorization Code with PKCE,
+- Test-environment smoke covers OAuth discovery, a configured CIMD URL as
+  `client_id`, Authorization Code with PKCE and an ephemeral loopback callback,
+  an access token with the exact MCP audience plus `openid` and `email`,
   list/call through Codex, and a short-lived manual credential. It records only
   tool names and objective outcomes.
 

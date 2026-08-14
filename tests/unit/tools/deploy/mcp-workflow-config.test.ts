@@ -8,6 +8,7 @@ describe('MCP deployment workflow configuration', () => {
     expect(source).toContain('NUXT_MCP_ALLOWED_HOSTNAMES: ${{ vars.NUXT_MCP_ALLOWED_HOSTNAMES || vars.BASE_DOMAIN }}')
     expect(source).toContain('NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES: ${{ vars.NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES || vars.BASE_DOMAIN }}')
     expect(source).toContain('NUXT_MCP_RESOURCE_URL: https://${{ vars.BASE_DOMAIN }}/mcp')
-    expect(source).toContain('NUXT_MCP_OAUTH_SCOPE: mcp:access')
+    expect(source).toContain('NUXT_MCP_OAUTH_REQUIRED_SCOPES: openid email')
+    expect(source).toContain('AUTH0_MCP_CLIENT_METADATA_URLS: ${{ vars.AUTH0_MCP_CLIENT_METADATA_URLS }}')
   })
 })

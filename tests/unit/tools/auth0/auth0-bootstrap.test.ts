@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import {
   Auth0ManagementRequestError,
@@ -13,9 +13,10 @@ import {
   buildExpectedLoginCustomText,
   buildPostLoginActionSecrets,
   buildUniversalLoginPageTemplate,
+  ensureTrustedMcpCimdClients,
   isAuth0DefaultBrandingThemeUnavailable,
-  isMcpDcrSecurityModeAccepted,
   isPaidAuth0LoginCustomizationUnavailable,
+  parseMcpClientMetadataUrls,
   requiredManagementApiScopes,
   resolveConfig,
   resolvePrimaryButtonLabelColor,
@@ -42,9 +43,14 @@ function createAuth0BootstrapEnvironment(overrides: Record<string, string> = {})
     AUTH0_CUSTOM_DOMAIN: 'auth.test.codex-events.com',
     AUTH0_DATABASE_CONNECTION_NAME: 'Username-Password-Authentication',
     AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: 'link-secret',
+    AUTH0_MCP_CLIENT_METADATA_URLS: 'https://chatgpt.com/oauth/codex/test/client.json',
     ...overrides
   }
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe('auth0 bootstrap config', () => {
   test('keeps localhost Auth0 configuration limited to the application origin', () => {
@@ -70,7 +76,10 @@ describe('auth0 bootstrap config', () => {
     expect(config.brandingLogoUrl).toBe('https://test.codex-events.com/auth0/codex-events-wordmark.svg')
     expect(config.brandingFaviconUrl).toBe('https://test.codex-events.com/favicon.ico')
     expect(config.mcpResourceIdentifier).toBe('https://test.codex-events.com/mcp')
-    expect(config.mcpScope).toBe('mcp:access')
+    expect(config.mcpScope).toBe('mcp')
+    expect(config.mcpClientMetadataUrls).toEqual([
+      'https://chatgpt.com/oauth/codex/test/client.json'
+    ])
   })
 
   test('builds the strict Auth0 OAuth configuration for third-party MCP clients', () => {
@@ -81,12 +90,17 @@ describe('auth0 bootstrap config', () => {
       identifier: 'https://test.codex-events.com/mcp',
       signing_alg: 'RS256',
       token_dialect: 'rfc9068_profile',
+      allow_offline_access: true,
       enforce_policies: false,
-      scopes: [{ value: 'mcp:access', description: 'Access Codex Events through MCP' }]
+      subject_type_authorization: {
+        user: { policy: 'require_client_grant' },
+        client: { policy: 'deny_all' }
+      },
+      scopes: [{ value: 'mcp', description: 'Access Codex Events through MCP' }]
     })
     expect(buildMcpDefaultClientGrant(config)).toEqual({
       audience: 'https://test.codex-events.com/mcp',
-      scope: ['mcp:access'],
+      scope: ['mcp'],
       subject_type: 'user',
       default_for: 'third_party_clients'
     })
@@ -94,8 +108,7 @@ describe('auth0 bootstrap config', () => {
       resource_parameter_profile: 'compatibility',
       authorization_response_iss_parameter_supported: true,
       client_id_metadata_document_supported: true,
-      dynamic_client_registration_security_mode: 'strict',
-      flags: { enable_dynamic_client_registration: true }
+      flags: { enable_dynamic_client_registration: false }
     })
     expect(buildMcpTenantSettingsUpdate({
       flags: {
@@ -104,9 +117,75 @@ describe('auth0 bootstrap config', () => {
         allow_changing_enable_sso: false
       }
     })).toEqual(buildMcpTenantSettings())
-    expect(isMcpDcrSecurityModeAccepted('strict')).toBe(true)
-    expect(isMcpDcrSecurityModeAccepted(undefined)).toBe(true)
-    expect(isMcpDcrSecurityModeAccepted('permissive')).toBe(false)
+  })
+
+  test('validates and deduplicates trusted MCP Client ID Metadata Document URLs', () => {
+    expect(parseMcpClientMetadataUrls([
+      'https://chatgpt.com/oauth/codex/one/client.json',
+      'https://chatgpt.com/oauth/codex/two/client.json',
+      'https://chatgpt.com/oauth/codex/one/client.json'
+    ].join(', '))).toEqual([
+      'https://chatgpt.com/oauth/codex/one/client.json',
+      'https://chatgpt.com/oauth/codex/two/client.json'
+    ])
+
+    expect(() => parseMcpClientMetadataUrls('')).toThrow('must contain at least one')
+    expect(() => parseMcpClientMetadataUrls('http://chatgpt.com/client.json')).toThrow('invalid trusted CIMD URL')
+    expect(() => parseMcpClientMetadataUrls('https://user:pass@chatgpt.com/client.json')).toThrow('invalid trusted CIMD URL')
+    expect(() => parseMcpClientMetadataUrls('https://chatgpt.com/client.json#fragment')).toThrow('invalid trusted CIMD URL')
+  })
+
+  test('registers configured CIMD clients through the idempotent Auth0 upsert endpoint', async () => {
+    const externalClientId = 'https://chatgpt.com/oauth/codex/test/client.json'
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(JSON.stringify({
+      client_id: 'tpc_test',
+      mapped_fields: { external_client_id: externalClientId },
+      validation: { valid: true, violations: [] }
+    }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+    const config = resolveConfig(createAuth0BootstrapEnvironment())
+    const firstFailures: string[] = []
+    const secondFailures: string[] = []
+
+    await ensureTrustedMcpCimdClients(config, 'management-token', 'apply', firstFailures)
+    await ensureTrustedMcpCimdClients(config, 'management-token', 'apply', secondFailures)
+
+    expect(firstFailures).toEqual([])
+    expect(secondFailures).toEqual([])
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    for (const call of fetchMock.mock.calls) {
+      expect(call[0]).toBe('https://codex-events-test.eu.auth0.com/api/v2/clients/cimd/register')
+      expect(call[1]).toMatchObject({
+        method: 'POST',
+        body: JSON.stringify({ external_client_id: externalClientId })
+      })
+    }
+  })
+
+  test('checks that trusted metadata is an administrator-managed CIMD client', async () => {
+    const externalClientId = 'https://chatgpt.com/oauth/codex/test/client.json'
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify([{
+      client_id: 'tpc_test',
+      external_client_id: externalClientId,
+      external_metadata_type: 'cimd',
+      external_metadata_created_by: 'admin'
+    }]), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    })))
+    const failures: string[] = []
+
+    await ensureTrustedMcpCimdClients(
+      resolveConfig(createAuth0BootstrapEnvironment()),
+      'management-token',
+      'check',
+      failures
+    )
+
+    expect(failures).toEqual([])
   })
 
   test('defaults the Auth0 custom domain from the app base url host', () => {
@@ -183,7 +262,8 @@ describe('auth0 bootstrap config', () => {
   test('builds Auth0 Action secrets for account linking without app-runtime management names', () => {
     const config = resolveConfig(createAuth0BootstrapEnvironment())
 
-    expect(buildPostLoginActionSecrets(config).map(secret => secret.name)).toEqual([
+    const secrets = buildPostLoginActionSecrets(config)
+    expect(secrets.map(secret => secret.name)).toEqual([
       'APP_BASE_URL',
       'APP_CLIENT_ID',
       'DATABASE_CONNECTION_NAME',
@@ -342,7 +422,7 @@ describe('auth0 bootstrap config', () => {
   })
 
   test('requires MCP resource, client-grant, and connection management scopes', () => {
-    for (const missing of ['create:resource_servers', 'create:client_grants', 'update:connections']) {
+    for (const missing of ['create:clients', 'create:resource_servers', 'create:client_grants', 'update:connections']) {
       const accessToken = createFixtureJwt({
         permissions: requiredManagementApiScopes.filter(scope => scope !== missing)
       })

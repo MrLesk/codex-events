@@ -3,7 +3,7 @@ import { describe, expect, test, vi } from 'vitest'
 import {
   copyMcpCredential,
   createAccountMcpToken,
-  listAllAccountMcpTokens,
+  listAllActiveAccountMcpTokens,
   listAccountMcpTokens,
   revokeAccountMcpToken
 } from '../../../../../app/domains/accounts/mcp-tokens'
@@ -33,7 +33,7 @@ describe('account MCP token panel actions', () => {
     expect(request).toHaveBeenCalledWith('/api/account/mcp-tokens/token_1', { method: 'DELETE' })
   })
 
-  test('loads every historical page so active tokens remain visible and revocable', async () => {
+  test('loads every historical page while omitting revoked tokens from the account UI', async () => {
     const tokens = Array.from({ length: 101 }, (_, index) => ({
       id: `token_${index}`, name: `Token ${index}`, displayPrefix: `ce_mcp_${index}`,
       expiresAt: '2026-09-12T00:00:00.000Z', lastUsedAt: null,
@@ -48,9 +48,8 @@ describe('account MCP token panel actions', () => {
       }
     })
 
-    const listed = await listAllAccountMcpTokens(request)
-    expect(listed).toHaveLength(101)
-    expect(listed.at(-1)).toMatchObject({ id: 'token_100', revokedAt: null })
+    const listed = await listAllActiveAccountMcpTokens(request)
+    expect(listed).toEqual([expect.objectContaining({ id: 'token_100', revokedAt: null })])
     expect(request).toHaveBeenCalledTimes(2)
   })
 })
