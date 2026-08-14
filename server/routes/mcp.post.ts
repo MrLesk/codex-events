@@ -64,6 +64,47 @@ async function readProtocolResponse(response: Response) {
   }
 }
 
+export async function addMcpToolSecuritySchemes(response: Response, method: unknown, scopes: string[]) {
+  if (method !== 'tools/list' || !response.ok) return response
+
+  function addSecuritySchemes(payload: {
+    result?: { tools?: Array<Record<string, unknown>> }
+  } | null) {
+    if (!payload?.result?.tools) return null
+    payload.result.tools = payload.result.tools.map(tool => ({
+      ...tool,
+      securitySchemes: [{ type: 'oauth2', scopes }]
+    }))
+    return payload
+  }
+
+  const contentType = response.headers.get('content-type') ?? ''
+  let body: string | null = null
+  if (contentType.includes('application/json')) {
+    const payload = addSecuritySchemes(await response.clone().json().catch(() => null))
+    if (payload) body = JSON.stringify(payload)
+  } else if (contentType.includes('text/event-stream')) {
+    body = (await response.clone().text()).split('\n').map((line) => {
+      if (!line.startsWith('data: ')) return line
+      try {
+        const payload = addSecuritySchemes(JSON.parse(line.slice(6)))
+        return payload ? `data: ${JSON.stringify(payload)}` : line
+      } catch {
+        return line
+      }
+    }).join('\n')
+  }
+  if (body === null) return response
+
+  const headers = new Headers(response.headers)
+  headers.delete('content-length')
+  return new Response(body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  })
+}
+
 async function actorCapabilities(event: Parameters<typeof getDatabase>[0], userId: string, isPlatformAdmin: boolean) {
   const actor = await resolveMcpPlatformActor(event, userId)
   const capabilities = new Set<OperationCapability>(['public', 'platform_account'])
@@ -181,7 +222,11 @@ export default defineEventHandler(async (event) => {
     : undefined
   let outcome: 'succeeded' | 'failed' = 'failed'
   try {
-    const response = await handler.fetch(request)
+    const response = await addMcpToolSecuritySchemes(
+      await handler.fetch(request),
+      payload?.method,
+      oauthConfiguration?.requiredScopes ?? []
+    )
     if (attemptedOperation && !attemptedOperation.annotations.readOnlyHint) {
       const result = await readProtocolResponse(response)
       outcome = response.ok && !result?.error && result?.result?.isError !== true ? 'succeeded' : 'failed'

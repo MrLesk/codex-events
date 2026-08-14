@@ -14,13 +14,19 @@ unauthenticated requests with a link to that metadata. Compatible clients use
 Authorization Code with PKCE against the configured Auth0 authorization server
 for the canonical MCP resource.
 
-MCP 2026-07-28 clients identify themselves with an HTTPS Client ID Metadata
-Document URL. A tenant administrator must explicitly trust each supported
-client by importing that URL through Auth0 before the client can start an OAuth
-flow. Deployment configuration contains the allowlisted metadata URLs and
-reconciles them idempotently; Auth0 does not discover or approve unknown client
-URLs automatically. The imported metadata supplies the client's redirect URIs,
-including Codex's ephemeral loopback callback.
+The authorization server supports both standard client-registration paths.
+Clients such as MCP Inspector can register an instance through Dynamic Client
+Registration (DCR). Clients that publish an HTTPS Client ID Metadata Document
+(CIMD), including ChatGPT, can use that document URL as `client_id` after a
+tenant administrator imports it through Auth0. Deployment configuration lists
+the trusted metadata URLs and reconciles them idempotently; Auth0 does not
+approve an unknown metadata URL merely because it advertises CIMD support.
+
+Redirect URIs belong to the registering client. MCP Inspector uses its own
+loopback callback, Codex local clients derive a local callback for the server,
+and a ChatGPT hosted connector uses the MCP-specific HTTPS callback shown in
+ChatGPT. One client's callback or metadata URL must not be substituted for
+another client's contract.
 
 The Auth0 MCP resource server allows user-delegated access only through a client
 grant, denies machine-only access, permits offline refresh for interactive
@@ -93,6 +99,8 @@ Every operation declares:
   are used only for discovery;
 - an explicit domain-effect classification from which read-only, destructive,
   and idempotent annotations are derived;
+- an OAuth `securitySchemes` declaration for the `openid` and `email` identity
+  scopes required by the resource server;
 - one executor containing validation, exact authorization, lifecycle rules,
   persistence, side effects, domain audit, and serialization.
 
@@ -137,6 +145,5 @@ The supported server stack pins `agents@0.20.1` and
 `@modelcontextprotocol/server@2.0.0`. The `/mcp` endpoint uses
 `createMcpHandler` from `agents/mcp/server`, negotiates MCP 2026-07-28, and
 creates a fresh stateless server for every request. Auth0 OAuth and optional
-30-day manual tokens are supported. Permanent credentials, ChatGPT web-plugin
-submission, legacy SSE, and protocol-session storage are not part of the
-platform.
+30-day manual tokens are supported. Permanent credentials, legacy SSE, and
+protocol-session storage are not part of the platform.

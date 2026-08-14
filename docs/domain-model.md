@@ -785,9 +785,9 @@ client. The OAuth access token identifies the Auth0 subject and the `/mcp`
 endpoint resolves that subject to the active platform `User` on every request.
 OAuth credentials do not contain platform roles or cached consent, and the
 platform does not persist OAuth access tokens, refresh tokens, or authorization
-codes. OAuth clients are trusted deployment configuration: an administrator
-imports each approved HTTPS Client ID Metadata Document URL into Auth0 before
-the client can use the canonical MCP resource.
+codes. Auth0 supports Dynamic Client Registration for standards clients and
+administrator-approved HTTPS Client ID Metadata Documents for clients that use
+CIMD. Both paths target the same canonical MCP resource and platform actor.
 
 Named MCP access tokens remain available as a secondary connection method for
 clients that require a manually supplied bearer credential.

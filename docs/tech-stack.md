@@ -31,9 +31,10 @@ This document defines the canonical technology stack for the Codex event platfor
 - Meetup talk proposals and their decision-delivery state remain private canonical data in D1. Cloudflare Queue messages reference proposal records and never make proposal bodies public or synchronize agenda entries.
 - Remote MCP uses `createMcpHandler` from `agents/mcp/server`, creates a fresh
   MCP server for every request, and stores no protocol session. Auth0 owns OAuth
-  grants and credentials. Trusted MCP clients are registered from administrator-
-  configured HTTPS Client ID Metadata Documents; D1 holds application data and
-  hashes for optional manual MCP access tokens only.
+  grants and credentials. Standards clients can use Auth0 Dynamic Client
+  Registration, while configured HTTPS Client ID Metadata Documents are
+  administrator-approved and reconciled for clients that use CIMD. D1 holds
+  application data and hashes for optional manual MCP access tokens only.
 - A dedicated Cloudflare Workers rate-limit binding applies the 120-request per
   manual credential or OAuth user/client pair per minute MCP envelope limit. The binding is
   protective and eventually consistent, not an accounting ledger.

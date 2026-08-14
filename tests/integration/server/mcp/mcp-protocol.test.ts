@@ -169,9 +169,16 @@ describe('stateless MCP protocol', () => {
     })
 
     const modernList = await modernRpc(harness, credential, 2, 'tools/list')
-    const modernListPayload = await rpcPayload(modernList) as { result: { tools: Array<{ name: string }> } }
+    const modernListPayload = await rpcPayload(modernList) as {
+      result: { tools: Array<{ name: string, securitySchemes: Array<{ type: string, scopes: string[] }> }> }
+    }
     expect(modernList.status, JSON.stringify(modernListPayload)).toBe(200)
     expect(modernListPayload.result.tools.some(tool => tool.name === 'get_events')).toBe(true)
+    expect(modernListPayload.result.tools.every(tool => (
+      tool.securitySchemes.length === 1
+      && tool.securitySchemes[0]?.type === 'oauth2'
+      && tool.securitySchemes[0]?.scopes.join(' ') === 'openid email'
+    ))).toBe(true)
 
     const initialized = await rpc(harness, credential, {
       jsonrpc: '2.0', id: 3, method: 'initialize',
@@ -184,7 +191,7 @@ describe('stateless MCP protocol', () => {
     })
 
     const listed = await rpc(harness, credential, { jsonrpc: '2.0', id: 4, method: 'tools/list', params: {} })
-    const listPayload = await rpcPayload(listed) as { result: { tools: Array<{ name: string, inputSchema: Record<string, unknown>, outputSchema: Record<string, unknown>, annotations: Record<string, unknown> }> } }
+    const listPayload = await rpcPayload(listed) as { result: { tools: Array<{ name: string, inputSchema: Record<string, unknown>, outputSchema: Record<string, unknown>, annotations: Record<string, unknown>, securitySchemes: Array<{ type: string, scopes: string[] }> }> } }
     expect(listPayload.result.tools.some(tool => tool.name === 'get_events')).toBe(true)
     const eventsTool = listPayload.result.tools.find(tool => tool.name === 'get_events')!
     expect(eventsTool.inputSchema).toMatchObject({ type: 'object', properties: { query: expect.any(Object) } })
@@ -199,6 +206,7 @@ describe('stateless MCP protocol', () => {
       }
     })
     expect(eventsTool.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false, idempotentHint: true })
+    expect(eventsTool.securitySchemes).toEqual([{ type: 'oauth2', scopes: ['openid', 'email'] }])
 
     const called = await rpc(harness, credential, {
       jsonrpc: '2.0', id: 5, method: 'tools/call',

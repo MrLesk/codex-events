@@ -109,6 +109,7 @@ These commands enforce required Auth0 tenant configuration:
 - signup prompt consent text/partials cleared so platform consent stays app-owned at `/account/register`
 - post-login Action deployment and trigger binding for consent claims and Auth0 account linking
 - a default third-party user grant for the MCP API permission without post-login scope mutation
+- Dynamic Client Registration for standards-compliant MCP clients
 - administrator-managed import of configured trusted HTTPS Client ID Metadata Document URLs
 - required callback/logout/origin URL inclusion on the Auth0 application
 - default login URI (`initiate_login_uri`) for password-reset return routing
@@ -236,21 +237,35 @@ a safe prefix remains visible after selecting **Done**. Use
 credential as `Authorization: Bearer <token>`. Do not put credentials in a URL,
 source file, shell history, screenshot, or test fixture.
 
-For MCP Inspector, configure a Streamable HTTP connection to that endpoint
-with the bearer header. Verify initialization, inspect the role-filtered tool
-list, call a read-only discovery tool, then revoke the token in account
-settings and confirm the next request is rejected.
+Use MCP Inspector against the deployed test endpoint for the protocol and OAuth
+baseline. Configure `https://test.codex-events.com/mcp` as Streamable HTTP and
+complete its OAuth flow. Inspector registers its client through DCR and uses
+Authorization Code with PKCE. Verify discovery, token issuance for the exact
+resource, the role-filtered tool list, and one read-only call. Its web callback
+is `http://localhost:6274/oauth/callback`; its CLI/TUI callback defaults to
+`http://127.0.0.1:6276/oauth/callback`.
 
-For Codex against the test deployment, first add Codex's HTTPS Client ID
-Metadata Document URL to the test environment's
-`AUTH0_MCP_CLIENT_METADATA_URLS`, then run the test deployment so Auth0 imports
-it. Add the Streamable HTTP MCP URL without a manual bearer token. Codex uses
-the metadata URL as `client_id`, opens Authorization Code with PKCE in the
-browser, and returns through an ephemeral loopback callback. Verify the issued
-token has the exact MCP audience and the `openid` and `email` scopes, then
-verify `tools/list` and one read-only call.
-Repeat with a manual token to confirm both paths. The repository stores neither
-OAuth credentials nor a permanent development token.
+```bash
+bunx @modelcontextprotocol/inspector --web
+```
+
+Repeat Inspector protocol checks with a manual bearer credential when changing
+the secondary authentication path. Revoke that token in account settings and
+confirm the next request is rejected.
+
+For Codex against the test deployment, add the Streamable HTTP MCP URL without
+a manual bearer token. Codex opens Authorization Code with PKCE and returns to
+the server-specific local callback it derives from its configured callback
+base. Register that exact derived redirect when using a predefined or CIMD
+client; otherwise let Codex use DCR. Verify the exact MCP audience, the
+`openid` and `email` scopes, `tools/list`, and one read-only call.
+
+For a ChatGPT hosted connector, use the MCP-specific CIMD URL and the HTTPS
+`https://chatgpt.com/connector/oauth/{callback_id}` redirect shown in ChatGPT.
+Add that metadata URL to test `AUTH0_MCP_CLIENT_METADATA_URLS`, deploy test so
+Auth0 imports it, and verify the hosted flow separately. Never reuse the
+ChatGPT client identity for a Codex or Inspector loopback test. The repository
+stores neither OAuth credentials nor a permanent development token.
 
 When a shared structured operation changes its serialized response, run
 `bun run mcp:generate-output-schemas`. The generator derives the exact MCP

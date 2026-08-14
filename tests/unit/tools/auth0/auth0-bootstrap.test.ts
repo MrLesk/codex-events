@@ -108,7 +108,7 @@ describe('auth0 bootstrap config', () => {
       resource_parameter_profile: 'compatibility',
       authorization_response_iss_parameter_supported: true,
       client_id_metadata_document_supported: true,
-      flags: { enable_dynamic_client_registration: false }
+      flags: { enable_dynamic_client_registration: true }
     })
     expect(buildMcpTenantSettingsUpdate({
       flags: {

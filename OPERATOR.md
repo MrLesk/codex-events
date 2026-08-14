@@ -186,10 +186,11 @@ The MCP rollout is additive. Migration `0071_mcp_access_tokens.sql` must finish
 before the Worker serving `/mcp` is deployed; the checked-in workflow already
 preserves that ordering. The Auth0 bootstrap creates the MCP resource server,
 `mcp` permission, strict third-party user grant, OAuth discovery settings,
-and domain-level login connection. It imports every configured trusted HTTPS
-Client ID Metadata Document URL through Auth0's idempotent CIMD registration
-endpoint and disables Dynamic Client Registration. `/mcp` requires the exact
-resource audience and the `openid` and `email` identity scopes Codex requests;
+and domain-level login connection. It enables Dynamic Client Registration for
+standards clients and imports every configured trusted HTTPS Client ID Metadata
+Document URL through Auth0's idempotent CIMD registration endpoint. `/mcp`
+requires the exact
+resource audience and the `openid` and `email` identity scopes clients request;
 it does not require the unrequested `mcp` permission in the token scope claim.
 Auth0 RBAC remains disabled for this API because Codex Events evaluates
 platform authorization from D1 after OAuth authentication. The generated
@@ -262,9 +263,12 @@ As the first platform admin, use the platform admin workspace to:
 - `/auth/login` opens Auth0 on `https://auth.<BASE_DOMAIN>` (or your `AUTH0_CUSTOM_DOMAIN`).
 - The first platform admin can open `/account/platform-settings?tab=platform-admins`.
 - The first platform admin can create an event.
-- Codex discovers OAuth from `https://<BASE_DOMAIN>/mcp`, completes browser
-  sign-in through Auth0 using its registered Client ID Metadata Document URL
-  and loopback callback, and can list and call role-appropriate tools.
+- MCP Inspector discovers OAuth from `https://<BASE_DOMAIN>/mcp`, registers
+  through DCR, completes browser sign-in through Auth0 with PKCE, and can list
+  and call role-appropriate tools.
+- ChatGPT hosted connectors and Codex local clients each complete the same
+  OAuth resource flow using their own documented client identity and redirect
+  URI; a hosted HTTPS callback is never substituted for a local loopback callback.
 - A signed-in user can also create a manual MCP token in account settings,
   initialize a Streamable HTTP client, revoke the token, and observe that the
   next request is rejected.
@@ -404,11 +408,14 @@ bun run db:migrate:production
 bun run deploy:production
 ```
 
-Run the migration command before the deploy command. After deployment, verify
-the configured CIMD URL is used as `client_id`, the browser flow returns through
-the client's loopback callback, and the issued token has the exact MCP audience
-plus the `openid` and `email` identity scopes. Do not expect an unrequested
-custom API permission in the token. Use a non-admin test account. Also
+Run the migration command before the deploy command. After deployment, use MCP
+Inspector to verify protected-resource discovery, DCR, Authorization Code with
+PKCE, the exact MCP audience, the `openid` and `email` identity scopes,
+`tools/list`, and one representative call. Test configured CIMD clients
+separately with their own metadata URL and declared redirect URI. ChatGPT hosted
+connectors use their MCP-specific HTTPS callback; Codex and Inspector use their
+documented local callbacks. Do not expect an unrequested custom API permission
+in the token. Use a non-admin test account. Also
 create a fresh short-lived manual token for verification and revoke it
 immediately afterward. Never reuse an operator verification token as an
 application secret.

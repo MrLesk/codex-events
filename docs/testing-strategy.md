@@ -200,21 +200,23 @@ source, snapshots, logs, or audit metadata.
   credentials and deleted-owner failures, OAuth subject mapping, current role and consent
   changes, host/origin checks, rate limiting, mutation audits, and
   representative REST/MCP parity across both authentication methods.
-- Auth0 configuration tests cover trusted Client ID Metadata Document URL
-  validation, idempotent import, domain-level connection access, the default
-  third-party user grant for the `mcp` permission, and absence of post-login
-  custom-scope injection.
+- Auth0 configuration tests cover Dynamic Client Registration, trusted Client
+  ID Metadata Document URL validation and idempotent import, domain-level
+  connection access, the default third-party user grant for the `mcp`
+  permission, and absence of post-login custom-scope injection.
 - Completeness tests fail for missing or duplicate eligible REST/tool mappings
   and for advertised excluded operations, including binary, token-management,
   account-deletion, public-mutation, webhook, and system routes.
 - BDD covers the OAuth-first settings presentation, focused
   create/copy/done/revoke manual-token behavior, and representative
   participant, event-admin, and platform-admin calls.
-- Test-environment smoke covers OAuth discovery, a configured CIMD URL as
-  `client_id`, Authorization Code with PKCE and an ephemeral loopback callback,
-  an access token with the exact MCP audience plus `openid` and `email`,
-  list/call through Codex, and a short-lived manual credential. It records only
-  tool names and objective outcomes.
+- Test-environment smoke uses MCP Inspector as the protocol baseline and covers
+  protected-resource and authorization-server discovery, DCR, Authorization
+  Code with PKCE, token issuance for the exact MCP audience, `tools/list`, and
+  a representative `tools/call`. Separate ChatGPT and Codex checks use their
+  own client identities and redirect contracts. A short-lived manual credential
+  confirms the secondary authentication path. Smoke evidence records only tool
+  names and objective outcomes.
 
 The Cloudflare build is part of the MCP validation gate.
 

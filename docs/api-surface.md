@@ -717,10 +717,12 @@ allowlists.
 resource, Auth0 authorization server, required `openid` and `email` identity
 scopes, and supported bearer method. An unauthenticated `/mcp` response links to that metadata through
 `WWW-Authenticate`. Auth0 publishes its own authorization-server discovery and
-owns Authorization Code with PKCE, refresh, and revocation. Deployment
-automation idempotently imports configured trusted HTTPS Client ID Metadata
-Document URLs into Auth0. Unknown metadata URLs are rejected; imported clients
-may use their declared loopback callbacks. A default third-party user grant
+owns Authorization Code with PKCE, refresh, and revocation. Auth0 enables
+Dynamic Client Registration for standards clients and deployment automation
+idempotently imports configured trusted HTTPS Client ID Metadata Document URLs.
+Unknown metadata URLs are rejected. Each registered client supplies its own
+redirect contract: Inspector and Codex use their documented loopback callbacks,
+while ChatGPT hosted connectors use their MCP-specific HTTPS callback. A default third-party user grant
 allows the `mcp` API permission for that resource, while `/mcp` validates the
 issued token's signature, issuer, expiry, exact audience, and `openid` and
 `email` identity scopes. It does not require an unrequested custom permission
@@ -729,7 +731,8 @@ claim.
 The application-operation registry is shared by REST and MCP. Each eligible
 operation has one stable ID, Zod input/output contracts, one REST binding, one
 MCP tool, coarse capability metadata, and accurate read-only, destructive, and
-idempotent annotations. REST and MCP preserve the same structured success
+idempotent annotations. Every advertised tool also declares its OAuth identity
+scopes through `securitySchemes`. REST and MCP preserve the same structured success
 envelope, side effects, authorization decisions, and sanitized expected errors.
 
 Eligible operations are public discovery and signed-in structured JSON work in
