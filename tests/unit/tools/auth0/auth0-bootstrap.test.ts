@@ -7,6 +7,7 @@ import {
   buildMcpDefaultClientGrant,
   buildMcpResourceServerPayload,
   buildMcpTenantSettings,
+  buildMcpTenantSettingsUpdate,
   buildRequiredClientUrls,
   buildClearedSignupPartials,
   buildExpectedLoginCustomText,
@@ -95,6 +96,13 @@ describe('auth0 bootstrap config', () => {
       dynamic_client_registration_security_mode: 'strict',
       flags: { enable_dynamic_client_registration: true }
     })
+    expect(buildMcpTenantSettingsUpdate({
+      flags: {
+        enable_dynamic_client_registration: false,
+        disable_impersonation: true,
+        allow_changing_enable_sso: false
+      }
+    })).toEqual(buildMcpTenantSettings())
   })
 
   test('defaults the Auth0 custom domain from the app base url host', () => {

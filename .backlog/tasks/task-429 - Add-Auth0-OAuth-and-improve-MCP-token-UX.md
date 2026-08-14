@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-08-14 16:11'
-updated_date: '2026-08-14 16:40'
+updated_date: '2026-08-14 18:08'
 labels:
   - mcp
   - auth0
@@ -76,4 +76,6 @@ Architecture scope is L2. The user explicitly selected dual authentication: OAut
 Implementation checkpoint: canonical docs now define OAuth-first dual authentication. Runtime accepts existing ce_mcp manual tokens or Auth0 JWTs through one actor/operation pipeline; protected-resource metadata and WWW-Authenticate discovery are implemented. OAuth verifies issuer, signature, expiry, audience, scope, subject, and client identity with jose; rate limiting and mutation audits use safe method-specific identifiers. Account settings has an OAuth-first connection section and focused manual-token create/copy/Done state. Auth0 bootstrap/runtime/deploy configuration work is in progress.
 
 Local implementation validation is green: OAuth discovery and JWT verification unit coverage; dual-auth MCP protocol integration 10/10; Auth0/deployment configuration unit matrix 35/35; full lint and typecheck; full unit 122 files/829 tests; full integration 28 files/382 tests; full browser suite 58 regular/authenticated plus 2 destructive scenarios, including OAuth-first settings and create/copy/Done/revoke; Cloudflare build; MCP generator freshness; and git diff checks. The built Worker contains the protected-resource discovery route. Remote Auth0 apply/check and real Codex OAuth smoke remain gated on the test-only deployment.
+
+Test deployment run 31820537533 initially stopped before migrations/deploy because the existing Auth0 automation client lacked the newly required Management API scopes. The test tenant grant was updated with exactly those eight scopes. The rerun then exposed Auth0 tenant-settings PATCH rejecting read-only flags echoed from the GET response; the update payload now contains only the supported MCP settings, with a regression test using the reported disable_impersonation and allow_changing_enable_sso flags. Lint, typecheck, the 22-test Auth0 bootstrap unit file, and diff check pass for the fix.
 <!-- SECTION:NOTES:END -->

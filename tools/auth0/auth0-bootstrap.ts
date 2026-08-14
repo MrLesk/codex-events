@@ -59,7 +59,7 @@ interface Auth0TenantSettings {
   authorization_response_iss_parameter_supported?: boolean
   client_id_metadata_document_supported?: boolean
   dynamic_client_registration_security_mode?: string
-  flags?: {
+  flags?: Record<string, boolean | undefined> & {
     enable_dynamic_client_registration?: boolean
   }
 }
@@ -905,6 +905,10 @@ export function buildMcpTenantSettings() {
   }
 }
 
+export function buildMcpTenantSettingsUpdate(_current: Auth0TenantSettings) {
+  return buildMcpTenantSettings()
+}
+
 function buildExpectedConsentText() {
   return ''
 }
@@ -1215,12 +1219,10 @@ async function ensureMcpTenantSettings(config: TenantConfig, token: string, mode
     && settings.flags?.enable_dynamic_client_registration === true
 
   if (mode === 'apply' && !hasExpectedSettings) {
+    const update = buildMcpTenantSettingsUpdate(settings)
     await auth0ManagementRequest(config, token, '/api/v2/tenants/settings', {
       method: 'PATCH',
-      body: JSON.stringify({
-        ...expected,
-        flags: { ...(settings.flags ?? {}), ...expected.flags }
-      })
+      body: JSON.stringify(update)
     })
     console.log('Applied: enabled strict third-party OAuth discovery and registration settings for MCP.')
   }
