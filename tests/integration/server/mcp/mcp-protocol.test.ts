@@ -31,7 +31,12 @@ describe('stateless MCP protocol', () => {
       cloudflareEnv: { [mcpRateLimitBindingName]: rateLimiter },
       runtimeConfig: {
         auth0: { domain: 'https://auth.example.test' },
-        mcp: { resourceUrl: 'http://localhost:3000/mcp', oauthScope: 'mcp:access' }
+        mcp: {
+          resourceUrl: 'http://localhost:3000/mcp',
+          oauthScope: 'mcp:access',
+          allowedHostnames: 'localhost,test.example',
+          allowedOriginHostnames: 'localhost,test.example'
+        }
       }
     })
     harnesses.push(harness)
@@ -319,6 +324,20 @@ describe('stateless MCP protocol', () => {
   test('enforces host, origin, and rate limit checks', async () => {
     const { harness, credential, rateLimiter } = await setup()
     const body = { jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }
+    const allowedBrowserOrigin = await harness.request('/mcp', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${credential}`,
+        host: 'test.example',
+        origin: 'https://test.example',
+        accept: 'application/json, text/event-stream'
+      },
+      body: JSON.stringify(body)
+    })
+    expect(allowedBrowserOrigin.status).toBe(200)
+    rateLimiter.limit.mockClear()
+    await harness.database.update(mcpAccessTokens).set({ lastUsedAt: null })
+
     const forbiddenHost = await harness.request('/mcp', {
       method: 'POST', headers: { authorization: `Bearer ${credential}`, host: 'evil.example' }, body: JSON.stringify(body)
     })

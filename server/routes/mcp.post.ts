@@ -167,6 +167,8 @@ export default defineEventHandler(async (event) => {
   }
 
   const handler = createMcpHandler(() => server, {
+    allowedHostnames,
+    allowedOriginHostnames,
     legacy: 'stateless',
     responseMode: 'json'
   })

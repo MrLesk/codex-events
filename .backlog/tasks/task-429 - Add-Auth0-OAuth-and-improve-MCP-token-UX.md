@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-08-14 16:11'
-updated_date: '2026-08-14 18:54'
+updated_date: '2026-08-14 19:23'
 labels:
   - mcp
   - auth0
@@ -82,4 +82,6 @@ Test deployment run 31820537533 initially stopped before migrations/deploy becau
 The next test apply created the MCP resource server and default grant, enabled DCR/CIMD/resource settings, and made the database connection domain-wide. Auth0 then omitted dynamic_client_registration_security_mode from GET despite accepting the PATCH. A temporary test-only DCR probe produced a tpc_ client with third_party_security_mode=strict, authorization_code+refresh_token, PKCE/public token endpoint; that exact temporary client was deleted immediately. Bootstrap now creates the default third-party grant before tenant DCR settings and accepts Auth0's documented strict-default omission while still rejecting explicit permissive mode. Lint, typecheck, the 22-test Auth0 bootstrap unit file, and diff check pass.
 
 Live Codex OAuth exposed that the Auth0 consent grant had an empty scope: the MCP resource server enabled Auth0 RBAC even though platform authorization is owned by D1, so Auth0 stripped mcp:access from an otherwise successful user-delegated token. Canonical and operator docs now make the boundary explicit; the resource server uses RFC 9068 without Auth0 RBAC while the strict third-party default grant continues to authorize only mcp:access. Focused Auth0 bootstrap tests 22/22, lint, typecheck, and diff check pass.
+
+Chrome manual-token smoke created TASK-429 smoke test, then an authenticated browser-origin request reached the Agents handler but was rejected there because the configured host/origin allowlists were only applied by the outer route. The temporary credential showed a coalesced last-used timestamp and was revoked immediately. The handler now receives the same allowedHostnames and allowedOriginHostnames, with an integration regression proving an allowed custom browser origin succeeds while malformed/disallowed targets still fail before rate limiting. Focused MCP protocol integration 10/10, lint, typecheck, unit 122 files/829 tests, and diff check pass.
 <!-- SECTION:NOTES:END -->
