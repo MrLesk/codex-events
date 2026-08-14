@@ -1,11 +1,11 @@
 ---
 id: TASK-430
 title: Add Google sign-in through Auth0
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-08-14 21:16'
-updated_date: '2026-08-14 21:49'
+updated_date: '2026-08-14 21:59'
 labels: []
 dependencies: []
 modified_files:
@@ -30,25 +30,25 @@ Add Google as a supported Auth0 Universal Login option for Codex Events and bear
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Auth0 Universal Login offers Google alongside email/password for the Codex Events web application in test.
-- [ ] #2 Strict third-party MCP OAuth clients can use the same Google connection because it is configured as a domain-level connection.
-- [ ] #3 The existing Auth0 Google connection retains its provider credentials inside Auth0; deployment automation neither reads, replaces, commits, nor logs them.
-- [ ] #4 The test custom-domain Google callback URI and required Google Cloud setup are documented for operators.
-- [ ] #5 Existing email/password login, account linking, and platform authorization continue to work.
-- [ ] #6 Checked-in Auth0 reconciliation is idempotent and covers configured connection lookup, domain-level promotion, absence, and drift checks.
-- [ ] #7 The test deployment succeeds and a live Google login smoke reaches the expected account consent/login path; production is not deployed.
+- [x] #1 Auth0 Universal Login offers Google alongside email/password for the Codex Events web application in test.
+- [x] #2 Strict third-party MCP OAuth clients can use the same Google connection because it is configured as a domain-level connection.
+- [x] #3 The existing Auth0 Google connection retains its provider credentials inside Auth0; deployment automation neither reads, replaces, commits, nor logs them.
+- [x] #4 The test custom-domain Google callback URI and required Google Cloud setup are documented for operators.
+- [x] #5 Existing email/password login, account linking, and platform authorization continue to work.
+- [x] #6 Checked-in Auth0 reconciliation is idempotent and covers configured connection lookup, domain-level promotion, absence, and drift checks.
+- [x] #7 The test deployment succeeds and a live Google login smoke reaches the expected account consent/login path; production is not deployed.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Canonical docs were updated or confirmed unchanged
-- [ ] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
-- [ ] #4 Tests were added or updated when behavior changed
-- [ ] #5 Test gaps are documented when automation is not practical
-- [ ] #6 Config and developer workflow docs were updated when setup changed
-- [ ] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #1 Canonical docs were updated or confirmed unchanged
+- [x] #2 Code behavior matches canonical docs
+- [x] #3 Relevant validation commands pass
+- [x] #4 Tests were added or updated when behavior changed
+- [x] #5 Test gaps are documented when automation is not practical
+- [x] #6 Config and developer workflow docs were updated when setup changed
+- [x] #7 Auth and permissions changes follow the documented platform model
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -73,4 +73,12 @@ User approved Playwright for the remainder of this session. Full BDD passed: 58 
 Implementation commit a5ea23e4418b8e28974326fcf9b2611d5f4455a9 pushed to main. Test-only workflow 31842568981 succeeded: backend-checks 4m55s and deploy-test 2m53s; no production workflow ran. Deploy log records Auth0 Google connection promotion and bootstrap success. A post-deploy metadata query confirms both google-oauth2 and Username-Password-Authentication are domain-level. Live user-Chrome checks show Continue with Google on both the first-party Codex Events login and strict third-party MCP Inspector tpc client login. Final provider round-trip awaits action-time browser confirmation because selecting Google may transmit the user's Google identity to the test Auth0 tenant.
 
 Live provider roundtrip completed in the user Chrome on 2026-08-14: logged out of the test application, entered through the real /auth/login route, selected Continue with Google, and returned authenticated to /account. The observed 500 came from a synthetic /auth/callback URL with an invented state and no PKCE transaction cookie; the supported application flow is healthy.
+
+Final live evidence on 2026-08-14: the real first-party /auth/login flow exposed Continue with Google and completed the Google provider roundtrip back to authenticated /account. The reported 500 was reproduced only with a synthetic callback lacking Auth0 state/PKCE cookies and is not a supported login flow. Test deploy run 31844085392 subsequently completed Auth0 reconciliation and Worker deployment; MCP Inspector connected and executed an authenticated tool with the strict third-party domain-level connection configuration. Production remained untouched.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Enabled the existing Auth0 Google connection for first-party and strict third-party clients without reading or changing provider credentials. Verified the real application login roundtrip through Continue with Google to /account, domain-level test configuration, successful test-only deployment run 31844085392, and authenticated MCP Inspector use; production was untouched.
+<!-- SECTION:FINAL_SUMMARY:END -->
