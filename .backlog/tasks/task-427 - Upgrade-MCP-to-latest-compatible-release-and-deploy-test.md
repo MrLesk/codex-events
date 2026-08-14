@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@codex-mcp'
 created_date: '2026-08-14 06:13'
-updated_date: '2026-08-14 06:36'
+updated_date: '2026-08-14 06:47'
 labels:
   - mcp
   - cloudflare
@@ -84,10 +84,14 @@ Implementation progress: canonical/operator/developer docs now describe agents@0
 Pre-release validation evidence: lint passed after correcting three quote-style findings in the new test helper; typecheck passed; unit passed 121 files/824 tests; integration passed 28 files/379 tests with required escalation for loopback/Wrangler access; BDD passed 58 standard/authenticated plus 2 destructive scenarios; build:cloudflare completed; git diff --check passed. Build emitted only existing sourcemap/pure-comment/chunk-size warnings. No production command, workflow, resource, release, or tag has been invoked.
 
 Deployment evidence: implementation commit 5b769568558249770f380ddd68508a95c5bb6673 was pushed to origin/main. GitHub deploy-test run 31776321893 completed successfully (backend-checks 5m1s; deploy-test 2m33s). The run verified the talk-proposal decision queue already exists, ran the remote D1 migration command before Worker deployment with no pending migrations, deployed the talk queue producer and MCP_RATE_LIMITER at 120 requests/60s, then reconciled all 4 queue consumers. The immediately preceding test rollout log explicitly marks both 0071_mcp_access_tokens.sql and 0072_talk_proposals.sql applied, and this run's no-pending result confirms the test D1 remains current. The SHA has the expected deploy-test run plus GitHub's automatic dynamic CodeQL analysis; no deploy-production workflow, production resource, release, or tag was invoked. Credential-free remote smoke at https://test.codex-events.com/mcp returned sanitized 401 invalid_mcp_credential for initialize and sanitized 403 mcp_request_target_forbidden for malformed Origin, proving the live route and pre-auth boundary. Test-environment secret names contain no MCP user credential, so authenticated remote initialize/list/call was not possible without creating or exposing a user token; those paths passed the full local integration suite.
+
+Reopened after finalization commit a6ec0749e0ab4a036e65da49faadf01e990a0e1c was pushed. That commit records deployment evidence in the Backlog task, so it became the delivered main tip and triggered deploy-test run 31776946568. The earlier successful run 31776321893 validates implementation commit 5b769568, but it is superseded for final-tip delivery evidence. AC #7 remains unchecked until run 31776946568 completes Worker deployment and queue-consumer reconciliation and the newly deployed endpoint is smoke-tested.
+
+Final-tip delivery evidence: deploy-test run 31776946568 for a6ec0749e0ab4a036e65da49faadf01e990a0e1c completed successfully (backend-checks 5m15s; deploy-test 3m7s). The test talk-proposal decision-email queue existed; the ordered remote D1 step reported no pending migrations after prior explicit application of 0071/0072; Worker version f02166e7-0b53-4da8-9779-bf59ab48b731 deployed with TALK_PROPOSAL_DECISION_EMAIL_QUEUE and MCP_RATE_LIMITER at 120 requests/60s; reconciliation completed for 4 queue consumers. Post-deploy credential-free smoke returned sanitized 401 invalid_mcp_credential, and malformed-Origin smoke returned sanitized 403 mcp_request_target_forbidden. Authenticated remote protocol smoke remains unavailable because no test MCP user credential is configured; local MCP integration covers initialize/discover/list/call. The only workflows for the final SHA were successful deploy-test and automatic CodeQL; deploy-production was not invoked.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Upgraded the stateless MCP runtime to agents@0.20.1 with the official agents/mcp/server handler and stable server 2.0.0, documented the MCP 2026-07-28 negotiation model, and preserved the existing security and shared-operation pipeline. Full local validation passed (824 unit, 379 integration, 60 BDD scenarios, lint, typecheck, Cloudflare build, and diff check). Commit 5b769568 deployed successfully through test workflow 31776321893 with current migrations, talk queue producer/consumers, and MCP rate limiting; live unauthenticated and malformed-Origin smoke checks passed. Authenticated remote smoke remains unavailable because the test environment intentionally has no MCP user credential.
+Upgraded to agents@0.20.1 and the official stateless agents/mcp/server handler while preserving the MCP security and shared-operation pipeline. Full local validation passed (824 unit, 379 integration, 60 BDD, lint, typecheck, Cloudflare build, and diff check). Final-tip deploy-test run 31776946568 succeeded with current D1 migrations, the talk queue, MCP rate limiting, Worker deployment, and four reconciled consumers; live 401/403 boundary smoke passed and no production workflow ran.
 <!-- SECTION:FINAL_SUMMARY:END -->
