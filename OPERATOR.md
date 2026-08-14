@@ -178,6 +178,8 @@ before the Worker serving `/mcp` is deployed; the checked-in workflow already
 preserves that ordering. The generated Wrangler configuration also installs
 the `MCP_RATE_LIMITER` binding at 120 requests per token per 60 seconds. Do not
 enable or route `/mcp` to a Worker version that lacks either resource.
+The Worker uses the stateless `agents@0.20.1` handler with
+`@modelcontextprotocol/server@2.0.0` and MCP 2026-07-28.
 
 The Meetup Call for talks rollout is additive. Migration
 `0072_talk_proposals.sql` and the Talk proposal decision-email Queue must exist

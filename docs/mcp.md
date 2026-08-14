@@ -96,10 +96,9 @@ internal error.
 - Observability may record HTTP status, sanitized error code, operation ID,
   latency, and rate-limit outcomes only.
 
-The supported server stack pins `agents@0.20.0` and
-`@modelcontextprotocol/server@2.0.0`. The `/mcp` endpoint uses the stable
-`createMcpHandler` exported by `@modelcontextprotocol/server`; the handler is
-stateless and does not create protocol sessions. The published Agents wrapper
-is not used because that pinned release peers against a prerelease MCP server
-protocol. OAuth, scopes, permanent credentials, ChatGPT web-plugin submission,
-legacy SSE, and protocol-session storage are not part of the platform.
+The supported server stack pins `agents@0.20.1` and
+`@modelcontextprotocol/server@2.0.0`. The `/mcp` endpoint uses
+`createMcpHandler` from `agents/mcp/server`, negotiates MCP 2026-07-28, and
+creates a fresh stateless server for every request. OAuth, scopes, permanent
+credentials, ChatGPT web-plugin submission, legacy SSE, and protocol-session
+storage are not part of the platform.

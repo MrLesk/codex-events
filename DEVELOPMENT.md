@@ -215,6 +215,9 @@ at-least-once crash-recovery boundary.
 
 ### Local MCP client testing
 
+The local endpoint uses the stateless `agents@0.20.1` handler with
+`@modelcontextprotocol/server@2.0.0` and MCP 2026-07-28.
+
 Sign in and create an MCP token from **Account settings → MCP access**. Copy
 the full credential when it is shown; only a safe prefix remains visible
 afterward. Use `http://localhost:3000/mcp` as the Streamable HTTP endpoint and

@@ -72,6 +72,38 @@ describe('stateless MCP protocol', () => {
     })
   }
 
+  async function modernRpc(
+    harness: ReturnType<typeof createApiRouteTestHarness>,
+    credential: string,
+    id: number,
+    method: string,
+    params: Record<string, unknown> = {}
+  ) {
+    return await harness.request('/mcp', {
+      method: 'POST',
+      headers: {
+        'authorization': `Bearer ${credential}`,
+        'host': 'localhost',
+        'accept': 'application/json, text/event-stream',
+        'mcp-protocol-version': '2026-07-28',
+        'mcp-method': method
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id,
+        method,
+        params: {
+          ...params,
+          _meta: {
+            'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+            'io.modelcontextprotocol/clientInfo': { name: 'vitest', version: '1' },
+            'io.modelcontextprotocol/clientCapabilities': {}
+          }
+        }
+      })
+    })
+  }
+
   async function rpcPayload(response: Response) {
     const text = await response.text()
     if (response.headers.get('content-type')?.includes('text/event-stream')) {
@@ -81,17 +113,32 @@ describe('stateless MCP protocol', () => {
     return JSON.parse(text) as Record<string, unknown>
   }
 
-  test('initializes, lists tools, and calls a public discovery operation', async () => {
+  test('negotiates 2026-07-28, initializes legacy clients, lists tools, and calls a public discovery operation', async () => {
     const { harness, credential, rateLimiter } = await setup()
+
+    const discovered = await modernRpc(harness, credential, 1, 'server/discover')
+    const discoveredPayload = await rpcPayload(discovered)
+    expect(discovered.status, JSON.stringify(discoveredPayload)).toBe(200)
+    expect(discoveredPayload).toMatchObject({
+      result: { supportedVersions: expect.arrayContaining(['2026-07-28']) }
+    })
+
+    const modernList = await modernRpc(harness, credential, 2, 'tools/list')
+    const modernListPayload = await rpcPayload(modernList) as { result: { tools: Array<{ name: string }> } }
+    expect(modernList.status, JSON.stringify(modernListPayload)).toBe(200)
+    expect(modernListPayload.result.tools.some(tool => tool.name === 'get_events')).toBe(true)
+
     const initialized = await rpc(harness, credential, {
-      jsonrpc: '2.0', id: 1, method: 'initialize',
-      params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'vitest', version: '1' } }
+      jsonrpc: '2.0', id: 3, method: 'initialize',
+      params: { protocolVersion: '2026-07-28', capabilities: {}, clientInfo: { name: 'vitest', version: '1' } }
     })
     const initializedPayload = await rpcPayload(initialized)
     expect(initialized.status, JSON.stringify(initializedPayload)).toBe(200)
-    expect(initializedPayload).toMatchObject({ result: { serverInfo: { name: 'codex-events' } } })
+    expect(initializedPayload).toMatchObject({
+      result: { protocolVersion: '2025-11-25', serverInfo: { name: 'codex-events' } }
+    })
 
-    const listed = await rpc(harness, credential, { jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} })
+    const listed = await rpc(harness, credential, { jsonrpc: '2.0', id: 4, method: 'tools/list', params: {} })
     const listPayload = await rpcPayload(listed) as { result: { tools: Array<{ name: string, inputSchema: Record<string, unknown>, outputSchema: Record<string, unknown>, annotations: Record<string, unknown> }> } }
     expect(listPayload.result.tools.some(tool => tool.name === 'get_events')).toBe(true)
     const eventsTool = listPayload.result.tools.find(tool => tool.name === 'get_events')!
@@ -109,7 +156,7 @@ describe('stateless MCP protocol', () => {
     expect(eventsTool.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false, idempotentHint: true })
 
     const called = await rpc(harness, credential, {
-      jsonrpc: '2.0', id: 3, method: 'tools/call',
+      jsonrpc: '2.0', id: 5, method: 'tools/call',
       params: { name: 'get_events', arguments: { query: {} } }
     })
     expect(called.status).toBe(200)

@@ -1,4 +1,5 @@
-import { createMcpHandler, McpServer, validateHostHeader } from '@modelcontextprotocol/server'
+import { McpServer, validateHostHeader } from '@modelcontextprotocol/server'
+import { createMcpHandler } from 'agents/mcp/server'
 import { eq } from 'drizzle-orm'
 import { defineEventHandler, getRequestHeader, setResponseStatus, toWebRequest } from 'h3'
 
