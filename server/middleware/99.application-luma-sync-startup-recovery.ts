@@ -7,9 +7,19 @@ type CloudflareContextWithWaitUntil = {
 }
 
 export default defineEventHandler((event) => {
+  const runtimeConfig = useRuntimeConfig(event)
+  const cloudflareEnv = event.context.cloudflare?.env as Record<string, unknown> | undefined
+  const bindingName = (runtimeConfig as { database?: { binding?: string } }).database?.binding ?? 'DB'
+
+  // Local-dev asset and tooling requests carry no D1 binding; skip and let the
+  // first request that has one run the recovery instead of logging an error.
+  if (!event.context.d1Database && !cloudflareEnv?.[bindingName]) {
+    return
+  }
+
   const recoveryPromise = scheduleApplicationLumaSyncStartupRecovery({
-    runtimeConfig: useRuntimeConfig(event),
-    cloudflareEnv: event.context.cloudflare?.env as Record<string, unknown> | undefined,
+    runtimeConfig,
+    cloudflareEnv,
     d1Database: event.context.d1Database
   }).catch((error) => {
     console.error('Application Luma sync startup recovery failed.', {
