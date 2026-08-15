@@ -409,8 +409,9 @@ describe('auth0 bootstrap config', () => {
 
     expect(template).toContain(':where(body._widget-auto-layout a) { color: #030213; }')
     expect(template).not.toContain('body._widget-auto-layout a { color: #030213 !important; }')
-    expect(template).toContain('body._widget-auto-layout a[role="button"],')
-    expect(template).toContain('color: #ffffff !important; -webkit-text-fill-color: #ffffff !important;')
+    expect(template).toContain('body._widget-auto-layout a[role="button"] { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; }')
+    expect(template).toContain('body._widget-auto-layout button[data-action-button-secondary="true"] { color: #030213 !important; -webkit-text-fill-color: #030213 !important; }')
+    expect(template).not.toContain('body._widget-auto-layout [role="button"] { color: #ffffff !important;')
     expect(template).toContain('body._widget-auto-layout #prompt-logo-center {')
     expect(template).toContain('{%- auth0:widget -%}')
   })
@@ -443,6 +444,8 @@ describe('auth0 bootstrap config', () => {
       colors: {
         primary_button: '#030213',
         primary_button_label: '#ffffff',
+        secondary_button_border: '#030213',
+        secondary_button_label: '#030213',
         links_focused_components: '#030213',
         base_focus_color: '#030213',
         base_hover_color: '#030213',

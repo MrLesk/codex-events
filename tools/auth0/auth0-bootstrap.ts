@@ -123,6 +123,8 @@ interface Auth0BrandingTheme {
   colors?: {
     primary_button?: string
     primary_button_label?: string
+    secondary_button_border?: string
+    secondary_button_label?: string
   }
 }
 
@@ -239,10 +241,13 @@ export function buildUniversalLoginPageTemplate(config: TenantConfig) {
     `      :where(body._widget-auto-layout a) { color: ${linkColor}; }`,
     `      :where(body._widget-auto-layout a:hover) { color: ${linkColor}; opacity: 0.88; }`,
     `      :where(body._widget-auto-layout a:focus-visible) { outline: 2px solid ${linkColor}; outline-offset: 2px; }`,
-    `      body._widget-auto-layout button[type="submit"],`,
+    `      body._widget-auto-layout button[type="submit"]:not([value="deny"]):not([data-action="deny"]),`,
     `      body._widget-auto-layout input[type="submit"],`,
-    `      body._widget-auto-layout a[role="button"],`,
-    `      body._widget-auto-layout [role="button"] { color: ${primaryButtonLabelColor} !important; -webkit-text-fill-color: ${primaryButtonLabelColor} !important; }`,
+    `      body._widget-auto-layout a[role="button"] { color: ${primaryButtonLabelColor} !important; -webkit-text-fill-color: ${primaryButtonLabelColor} !important; }`,
+    `      body._widget-auto-layout button[type="button"],`,
+    `      body._widget-auto-layout button[value="deny"],`,
+    `      body._widget-auto-layout button[data-action="deny"],`,
+    `      body._widget-auto-layout button[data-action-button-secondary="true"] { color: ${darkButtonLabelColor} !important; -webkit-text-fill-color: ${darkButtonLabelColor} !important; }`,
     '      body._widget-auto-layout #prompt-logo-center {',
     '        display: block;',
     '        width: min(320px, 100%);',
@@ -738,8 +743,8 @@ export function buildDefaultBrandingTheme(config: TenantConfig) {
       links_focused_components: primaryColor,
       primary_button: primaryColor,
       primary_button_label: primaryButtonLabelColor,
-      secondary_button_border: '#c9cace',
-      secondary_button_label: '#030213',
+      secondary_button_border: darkButtonLabelColor,
+      secondary_button_label: darkButtonLabelColor,
       success: '#13a688',
       widget_background: '#ffffff',
       widget_border: '#c9cace',
@@ -1788,20 +1793,21 @@ async function ensureDefaultBrandingTheme(config: TenantConfig, token: string, m
     }
   }
 
+  const expectedSecondaryButtonBorder = normalizeColorForComparison(darkButtonLabelColor)
+  const expectedSecondaryButtonLabel = normalizeColorForComparison(darkButtonLabelColor)
   const primaryButtonNeedsPatch = normalizeColorForComparison(theme.colors?.primary_button) !== expectedPrimaryButton
   const primaryButtonLabelNeedsPatch = normalizeColorForComparison(theme.colors?.primary_button_label) !== expectedPrimaryButtonLabel
-  const needsPatch = primaryButtonNeedsPatch || primaryButtonLabelNeedsPatch
+  const secondaryButtonBorderNeedsPatch = normalizeColorForComparison(theme.colors?.secondary_button_border) !== expectedSecondaryButtonBorder
+  const secondaryButtonLabelNeedsPatch = normalizeColorForComparison(theme.colors?.secondary_button_label) !== expectedSecondaryButtonLabel
+  const needsPatch = primaryButtonNeedsPatch
+    || primaryButtonLabelNeedsPatch
+    || secondaryButtonBorderNeedsPatch
+    || secondaryButtonLabelNeedsPatch
 
   if (mode === 'apply' && needsPatch) {
     await auth0ManagementRequest(config, token, `/api/v2/branding/themes/${encodeURIComponent(theme.themeId)}`, {
       method: 'PATCH',
-      body: JSON.stringify({
-        colors: {
-          ...(theme.colors ?? {}),
-          primary_button: config.brandingPrimaryColor,
-          primary_button_label: config.brandingPrimaryButtonLabelColor
-        }
-      })
+      body: JSON.stringify(buildDefaultBrandingTheme(config))
     })
     console.log('Applied: ensured Auth0 default branding theme button colors.')
     theme = await getDefaultBrandingTheme(config, token)
@@ -1813,6 +1819,14 @@ async function ensureDefaultBrandingTheme(config: TenantConfig, token: string, m
 
   if (normalizeColorForComparison(theme.colors?.primary_button_label) !== expectedPrimaryButtonLabel) {
     failures.push(`Auth0 default branding theme primary_button_label is ${theme.colors?.primary_button_label ?? 'unset'}, expected ${config.brandingPrimaryButtonLabelColor}.`)
+  }
+
+  if (normalizeColorForComparison(theme.colors?.secondary_button_border) !== expectedSecondaryButtonBorder) {
+    failures.push(`Auth0 default branding theme secondary_button_border is ${theme.colors?.secondary_button_border ?? 'unset'}, expected ${darkButtonLabelColor}.`)
+  }
+
+  if (normalizeColorForComparison(theme.colors?.secondary_button_label) !== expectedSecondaryButtonLabel) {
+    failures.push(`Auth0 default branding theme secondary_button_label is ${theme.colors?.secondary_button_label ?? 'unset'}, expected ${darkButtonLabelColor}.`)
   }
 }
 
