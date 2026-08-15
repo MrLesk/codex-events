@@ -31,6 +31,8 @@ import {
 } from '~/domains/events/access'
 import { getCriteriaConfigurationValidationIssues } from '~/domains/judging/criteria-config'
 import { getEventProgramSettingsCopy } from '~/domains/events/program-settings'
+import { computeEventBalance } from '#shared/domains/events/builder-scoring'
+import { createBuilderStateFromEvent, toEventBalanceInputFromState } from '~/domains/events/builder'
 
 const props = withDefaults(defineProps<{
   eventId: string
@@ -125,6 +127,17 @@ let prizeSortable: SortableInstance | null = null
 let sortableConstructor: SortableConstructor | null = null
 
 const currentEvent = computed(() => workspace.currentEvent.value)
+
+// Builder-created events surface a live balance score and their native editor.
+const builderBalance = computed(() => {
+  const event = currentEvent.value
+
+  if (!event || event.creationFlow !== 'builder') {
+    return null
+  }
+
+  return computeEventBalance(toEventBalanceInputFromState(createBuilderStateFromEvent(event)))
+})
 const showEmergencyVisibilitySettings = computed(() => props.showProgramSettings && props.programSettingsMode === 'settings')
 const isEventHidden = computed(() => Boolean(currentEvent.value?.hiddenAt))
 const trimmedHideEventReason = computed(() => hideEventReason.value.trim())
@@ -1252,6 +1265,53 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
         v-if="props.showProgramSettings"
         class="space-y-6"
       >
+        <div
+          v-if="builderBalance && currentEvent"
+          data-testid="event-builder-settings-banner"
+          class="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-black/8 bg-white/78 p-4 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] dark:border-white/[0.08] dark:bg-[#151515]/64"
+        >
+          <div class="flex min-w-0 items-center gap-3">
+            <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-black/5 text-toned dark:bg-white/[0.06]">
+              <AppIcon
+                name="i-lucide-blocks"
+                class="size-4.5"
+              />
+            </span>
+            <div class="min-w-0">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                Event Builder
+              </p>
+              <p class="truncate text-sm text-toned">
+                This event was assembled with the builder — the classic form below stays available for granular settings.
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <AppBadge
+              :color="builderBalance.score >= 80 ? 'success' : builderBalance.score >= 60 ? 'info' : 'warning'"
+              variant="soft"
+              class="tabular-nums"
+            >
+              Balance {{ builderBalance.score }} · {{ builderBalance.band.label }}
+            </AppBadge>
+            <AppButton
+              color="neutral"
+              variant="solid"
+              size="sm"
+              :to="`/admin/events/builder/${currentEvent.id}`"
+              data-testid="event-builder-open-in-builder"
+            >
+              Open in builder
+              <template #trailing>
+                <AppIcon
+                  name="i-lucide-arrow-right"
+                  class="size-3.5"
+                />
+              </template>
+            </AppButton>
+          </div>
+        </div>
+
         <LazyAdminEventCreateEditForm
           :initial-event="currentEvent"
           :image-version="currentEvent.updatedAt"

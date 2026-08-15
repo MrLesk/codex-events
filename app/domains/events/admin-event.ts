@@ -71,6 +71,11 @@ export interface EventFormAgendaItem {
   title: string
   details: string
   displayOrder: number
+  /** Builder block annotation — carried through classic edits so builder events keep their typed blocks. */
+  builderBlockType?: string
+  /** Organizer-declared scoring dials for custom builder blocks. */
+  builderFocusCost?: number
+  builderEnergyDelta?: number
 }
 
 export interface EventFormTrack {
@@ -184,7 +189,7 @@ function createOptionalLumaEventApiIdSchema(message: string) {
 }
 
 const requiredTextSchema = z.string().trim().min(1)
-const slugSchema = z
+export const slugSchema = z
   .string()
   .trim()
   .min(1)
@@ -736,7 +741,10 @@ export function createEventFormState(event: EventRecord): EventFormState {
         endsAt: toDateTimeLocalValue(item.endsAt),
         title: item.title,
         details: item.details ?? '',
-        displayOrder: item.displayOrder
+        displayOrder: item.displayOrder,
+        ...(item.builderBlockType ? { builderBlockType: item.builderBlockType } : {}),
+        ...(item.builderFocusCost !== undefined ? { builderFocusCost: item.builderFocusCost } : {}),
+        ...(item.builderEnergyDelta !== undefined ? { builderEnergyDelta: item.builderEnergyDelta } : {})
       })),
     tracks: [...(event.tracks ?? [])]
       .sort((left, right) => left.displayOrder - right.displayOrder || left.createdAt.localeCompare(right.createdAt))
@@ -878,6 +886,67 @@ export function buildEventConfigurationPatch(configForm: EventFormState, eventTy
   }
 }
 
+export function buildEventCreateBody(form: EventFormState) {
+  const isHackathon = form.eventType === 'hackathon'
+  const supportsTracks = isHackathon || form.eventType === 'build'
+
+  return {
+    eventType: form.eventType,
+    name: form.name,
+    slug: form.slug,
+    discordServerUrl: form.discordServerUrl.trim() || null,
+    lumaEventUrl: form.lumaEventUrl.trim() || null,
+    slidesUrl: form.slidesUrl.trim() || null,
+    lumaEventApiId: form.lumaEventApiId.trim() || null,
+    lumaApiKey: form.lumaApiKey.trim() || null,
+    description: form.description,
+    agendaItems: toEventAgendaPayload(form.agendaItems),
+    tracks: supportsTracks ? toEventTracksPayload(form.tracks) : [],
+    city: form.city,
+    country: form.country,
+    address: form.address,
+    registrationOpensAt: fromDateTimeLocalValue(form.registrationOpensAt),
+    registrationClosesAt: fromDateTimeLocalValue(form.registrationClosesAt),
+    submissionOpensAt: isHackathon ? fromDateTimeLocalValue(form.submissionOpensAt) : undefined,
+    submissionClosesAt: isHackathon ? fromDateTimeLocalValue(form.submissionClosesAt) : undefined,
+    maxTeamMembers: isHackathon ? form.maxTeamMembers : 1,
+    participantsLimit: form.participantsLimit,
+    autoApproveApplications: form.autoApproveApplications,
+    simplifiedClaimingEnabled: form.eventType === 'meetup' && form.simplifiedClaimingEnabled,
+    talkProposalsEnabled: form.eventType === 'meetup' && form.talkProposalsEnabled,
+    talkProposalOpensAt: form.eventType === 'meetup' && form.talkProposalsEnabled
+      ? fromDateTimeLocalValue(form.talkProposalOpensAt)
+      : null,
+    talkProposalClosesAt: form.eventType === 'meetup' && form.talkProposalsEnabled
+      ? fromDateTimeLocalValue(form.talkProposalClosesAt)
+      : null,
+    inPersonEvent: form.inPersonEvent,
+    applicationXProfileVisible: form.applicationXProfileVisible,
+    applicationLinkedinProfileVisible: form.applicationLinkedinProfileVisible,
+    applicationGithubProfileVisible: form.applicationGithubProfileVisible,
+    applicationChatgptEmailVisible: form.applicationChatgptEmailVisible,
+    applicationOpenaiOrgIdVisible: form.applicationOpenaiOrgIdVisible,
+    applicationLumaEmailVisible: form.applicationLumaEmailVisible,
+    applicationWhyThisEventVisible: form.applicationWhyThisEventVisible,
+    applicationProofOfExecutionVisible: form.applicationProofOfExecutionVisible,
+    applicationTeamIntentVisible: form.applicationTeamIntentVisible,
+    applicationAiKnowledgeVisible: form.applicationAiKnowledgeVisible,
+    requireXProfile: form.requireXProfile,
+    requireLinkedinProfile: form.requireLinkedinProfile,
+    requireGithubProfile: form.requireGithubProfile,
+    requireChatgptEmail: form.requireChatgptEmail,
+    requireOpenaiOrgId: form.requireOpenaiOrgId,
+    requireLumaEmail: form.requireLumaEmail,
+    requireWhyThisEvent: form.requireWhyThisEvent,
+    requireProofOfExecution: form.requireProofOfExecution,
+    requireTeamIntent: form.requireTeamIntent,
+    requireAiKnowledge: form.requireAiKnowledge,
+    requireSubmissionSummary: isHackathon ? form.requireSubmissionSummary : false,
+    requireSubmissionRepositoryUrl: isHackathon ? form.requireSubmissionRepositoryUrl : false,
+    requireSubmissionDemoUrl: isHackathon ? form.requireSubmissionDemoUrl : false
+  }
+}
+
 export function toEventAgendaPayload(items: EventFormAgendaItem[]): EventAgendaItem[] {
   return items
     .map(item => ({
@@ -886,7 +955,10 @@ export function toEventAgendaPayload(items: EventFormAgendaItem[]): EventAgendaI
       endsAt: fromDateTimeLocalValue(item.endsAt) || null,
       title: item.title.trim(),
       details: item.details.trim() || null,
-      displayOrder: item.displayOrder
+      displayOrder: item.displayOrder,
+      ...(item.builderBlockType ? { builderBlockType: item.builderBlockType } : {}),
+      ...(item.builderFocusCost !== undefined ? { builderFocusCost: item.builderFocusCost } : {}),
+      ...(item.builderEnergyDelta !== undefined ? { builderEnergyDelta: item.builderEnergyDelta } : {})
     }))
     .sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
 }

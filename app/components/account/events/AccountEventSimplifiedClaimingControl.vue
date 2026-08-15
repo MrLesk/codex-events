@@ -5,29 +5,46 @@ const enabled = defineModel<boolean>({
   required: true
 })
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   eventId?: string | null
   persistedEnabled?: boolean
-}>()
+  /** 'card' renders the standalone framed control; 'plain' drops the frame for hosts that provide their own card. */
+  variant?: 'card' | 'plain'
+}>(), {
+  eventId: null,
+  persistedEnabled: false,
+  variant: 'card'
+})
 
 const persistedEventId = computed(() => props.eventId?.trim() ?? '')
 const claimingLocked = shallowRef(false)
+const framed = computed(() => props.variant === 'card')
 </script>
 
 <template>
   <div
     data-testid="simplified-claiming-control"
-    class="grid min-w-0 overflow-hidden rounded-xl border transition-colors"
-    :class="enabled
-      ? 'border-primary/25 bg-primary/[0.035] dark:border-primary/30 dark:bg-primary/[0.055]'
-      : 'border-black/8 dark:border-white/[0.08]'"
+    class="grid min-w-0"
+    :class="framed
+      ? [
+        'overflow-hidden rounded-xl border transition-colors',
+        enabled
+          ? 'border-primary/25 bg-primary/[0.035] dark:border-primary/30 dark:bg-primary/[0.055]'
+          : 'border-black/8 dark:border-white/[0.08]'
+      ]
+      : []"
   >
     <label
       data-testid="simplified-claiming-toggle"
-      class="flex min-w-0 items-start gap-3 px-4 py-3 text-sm text-toned transition-colors"
-      :class="enabled
-        ? 'border-b border-primary/15 bg-primary/[0.045] pb-4 dark:border-primary/20 dark:bg-primary/[0.065]'
-        : 'bg-transparent'"
+      class="flex min-w-0 items-start gap-3 text-sm text-toned transition-colors"
+      :class="framed
+        ? [
+          'px-4 py-3',
+          enabled
+            ? 'border-b border-primary/15 bg-primary/[0.045] pb-4 dark:border-primary/20 dark:bg-primary/[0.065]'
+            : 'bg-transparent'
+        ]
+        : []"
     >
       <input
         v-model="enabled"
@@ -49,7 +66,8 @@ const claimingLocked = shallowRef(false)
       />
       <section
         v-else
-        class="min-w-0 px-4 py-5 sm:px-5"
+        class="min-w-0"
+        :class="framed ? 'px-4 py-5 sm:px-5' : 'pt-4'"
       >
         <div class="mb-4 space-y-1">
           <h3 class="text-lg font-semibold text-highlighted">

@@ -1,4 +1,5 @@
 import type { EventState } from '~/domains/events/states'
+import type { EventBalanceBreakdown } from '#shared/domains/events/builder-scoring'
 
 export interface TermsReference {
   id: string
@@ -21,6 +22,9 @@ export interface EventAgendaItem {
   title: string
   details: string | null
   displayOrder: number
+  builderBlockType?: string
+  builderFocusCost?: number
+  builderEnergyDelta?: number
 }
 
 export interface EventTrackResource {
@@ -48,6 +52,9 @@ export type EventType = 'hackathon' | 'meetup' | 'build'
 export interface EventRecord {
   id: string
   eventType: EventType
+  creationFlow?: 'classic' | 'builder'
+  balanceScore?: number | null
+  balanceBreakdown?: EventBalanceBreakdown | null
   name: string
   slug: string
   description: string

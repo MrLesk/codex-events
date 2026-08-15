@@ -2,7 +2,7 @@
 defineProps<{
   eyebrow?: string
   title: string
-  description: string
+  description?: string
   backTo?: string
   backLabel?: string
   stateLabel?: string
@@ -45,7 +45,10 @@ defineProps<{
       </span>
     </div>
 
-    <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
+    <p
+      v-if="description"
+      class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]"
+    >
       {{ description }}
     </p>
 

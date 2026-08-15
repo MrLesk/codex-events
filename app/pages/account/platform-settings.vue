@@ -90,7 +90,7 @@ useSeoMeta({
 <template>
   <div class="pb-14">
     <section class="border-b border-black/8 dark:border-white/[0.08]">
-      <AppContainer class="max-w-[68rem] pb-0 pt-2 sm:pt-3">
+      <AppContainer class="max-w-none pb-0 pt-2 sm:pt-3">
         <div class="space-y-2 pb-4">
           <div class="space-y-2">
             <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
@@ -125,7 +125,7 @@ useSeoMeta({
       </AppContainer>
     </section>
 
-    <AppContainer class="relative z-10 max-w-[68rem] pt-6">
+    <AppContainer class="relative z-10 max-w-none pt-6">
       <section
         v-if="activeTab === 'legal'"
         id="platform-settings-tab-panel-legal"

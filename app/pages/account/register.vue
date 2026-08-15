@@ -289,7 +289,7 @@ useSeoMeta({
 <template>
   <div class="pb-14">
     <section class="border-b border-black/8 dark:border-white/[0.08]">
-      <AppContainer class="max-w-[68rem] pb-0 pt-2 sm:pt-3">
+      <AppContainer class="max-w-none pb-0 pt-2 sm:pt-3">
         <div class="pb-4">
           <div class="space-y-2">
             <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
@@ -303,7 +303,7 @@ useSeoMeta({
       </AppContainer>
     </section>
 
-    <AppContainer class="max-w-[68rem] space-y-6 pt-6">
+    <AppContainer class="max-w-none space-y-6 pt-6">
       <article
         v-if="registrationCompletedTransition"
         aria-live="polite"

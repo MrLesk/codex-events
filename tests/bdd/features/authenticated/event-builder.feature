@@ -1,0 +1,20 @@
+Feature: Gamified event builder creation flow
+  Event organizers can assemble an event from typed session blocks in the builder,
+  watch the balance score respond, and create a real draft event. Builder-created
+  events open the builder as their editor while the classic form stays available.
+
+  Scenario: Platform admin builds a meetup through the event builder
+    Given the saved "platform_admin" local session state exists
+    When I open the event builder with the saved "platform_admin" session
+    And I name the event "BDD Builder Meetup"
+    And I choose the "meetup" event type in the builder
+    And I apply the "meetup-community-evening" builder template
+    And I add a "networking" block from the builder palette
+    And I move the last builder block up
+    Then the builder balance score should be visible
+    When I fill the builder basics for "BDD Builder Meetup"
+    And I submit the event builder
+    Then I should land on the workspace settings tab for "bdd-builder-meetup"
+    And the workspace settings should show the builder banner
+    When I open the event in the builder from the workspace banner
+    Then the builder should hydrate 7 agenda blocks

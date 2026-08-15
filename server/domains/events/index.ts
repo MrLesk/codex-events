@@ -18,6 +18,7 @@ import {
   eventStates,
   eventTermsDocumentTypes,
   eventTermsDocuments,
+  eventCreationFlows,
   eventTypes,
   events,
   platformDocumentTypes,
@@ -39,6 +40,8 @@ import {
   type EventDisplayImageOptions
 } from '#server/domains/platform/settings'
 import { buildEventLumaWebhookUrl } from '#shared/domains/luma/webhook-url'
+import type { EventBalanceBreakdown, EventBalanceScoringInput } from '#shared/domains/events/builder-scoring'
+import { computeEventBalance } from '#shared/domains/events/builder-scoring'
 
 const isoTimestampSchema = z.string().refine(
   value => !Number.isNaN(Date.parse(value)),
@@ -115,7 +118,14 @@ const agendaItemSchema = z.object({
   endsAt: isoTimestampSchema.nullable().optional().default(null),
   title: z.string().trim().min(1),
   details: nullableTrimmedStringSchema.default(null),
-  displayOrder: z.coerce.number().int().min(0)
+  displayOrder: z.coerce.number().int().min(0),
+  // Lenient by contract: a malformed annotation drops itself, never the agenda
+  // (parseEventAgendaItems returns [] on schema failure).
+  builderBlockType: z.string().trim().min(1).max(40).optional().catch(undefined),
+  // Organizer-declared scoring dials for custom builder blocks. Lenient like
+  // the type annotation: a malformed value drops itself, never the agenda.
+  builderFocusCost: z.coerce.number().int().min(0).max(99).optional().catch(undefined),
+  builderEnergyDelta: z.coerce.number().int().min(-99).max(99).optional().catch(undefined)
 }).superRefine((item, ctx) => {
   if (!item.endsAt) {
     return
@@ -411,6 +421,7 @@ function addTalkProposalConfigurationIssues(
 
 const eventConfigShape = {
   eventType: eventTypeEnumSchema,
+  creationFlow: z.enum(eventCreationFlows).default('classic'),
   name: z.string().trim().min(1),
   slug: slugSchema,
   description: z.string().trim().min(1),
@@ -423,9 +434,10 @@ const eventConfigShape = {
   slidesUrl: nullableHttpUrlSchema,
   lumaEventApiId: nullableLumaEventApiIdSchema,
   lumaApiKey: nullableLumaApiKeySchema,
-  city: z.string().trim().min(1),
-  country: z.string().trim().min(1),
-  address: z.string().trim().min(1),
+  // Location may be blank for online events; venue events are gated client-side.
+  city: z.string().trim(),
+  country: z.string().trim(),
+  address: z.string().trim(),
   registrationOpensAt: isoTimestampSchema,
   registrationClosesAt: isoTimestampSchema,
   submissionOpensAt: isoTimestampSchema.optional(),
@@ -778,6 +790,110 @@ export function parseEventAgendaItems(value: string | null | undefined) {
       .sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
   } catch {
     return []
+  }
+}
+
+const eventBalanceBreakdownSchema = z.object({
+  engineVersion: z.number().int().min(1),
+  lowConfidence: z.boolean(),
+  focusBudget: z.number().int().min(0).max(100),
+  energyCurve: z.number().int().min(0).max(100),
+  boredomRisk: z.number().int().min(0).max(100),
+  returnIntent: z.number().int().min(0).max(100)
+})
+
+export function parseEventBalanceBreakdown(value: string | null | undefined): EventBalanceBreakdown | null {
+  if (!value) {
+    return null
+  }
+
+  try {
+    return eventBalanceBreakdownSchema.parse(JSON.parse(value))
+  } catch {
+    return null
+  }
+}
+
+export function serializeEventBalanceBreakdown(breakdown: EventBalanceBreakdown) {
+  return JSON.stringify(breakdown)
+}
+
+type EventBalanceSourceRecord = Pick<
+  EventRecord,
+  | 'eventType'
+  | 'agendaItemsJson'
+  | 'registrationOpensAt'
+  | 'registrationClosesAt'
+  | 'applicationXProfileVisible'
+  | 'applicationLinkedinProfileVisible'
+  | 'applicationGithubProfileVisible'
+  | 'applicationChatgptEmailVisible'
+  | 'applicationOpenaiOrgIdVisible'
+  | 'applicationLumaEmailVisible'
+  | 'applicationWhyThisEventVisible'
+  | 'applicationProofOfExecutionVisible'
+  | 'applicationTeamIntentVisible'
+  | 'applicationAiKnowledgeVisible'
+  | 'requireXProfile'
+  | 'requireLinkedinProfile'
+  | 'requireGithubProfile'
+  | 'requireChatgptEmail'
+  | 'requireOpenaiOrgId'
+  | 'requireLumaEmail'
+  | 'requireWhyThisEvent'
+  | 'requireProofOfExecution'
+  | 'requireTeamIntent'
+  | 'requireAiKnowledge'
+>
+
+export function buildEventBalanceInput(record: EventBalanceSourceRecord): EventBalanceScoringInput {
+  const visibilityFlags = [
+    record.applicationXProfileVisible,
+    record.applicationLinkedinProfileVisible,
+    record.applicationGithubProfileVisible,
+    record.applicationChatgptEmailVisible,
+    record.applicationOpenaiOrgIdVisible,
+    record.applicationLumaEmailVisible,
+    record.applicationWhyThisEventVisible,
+    record.applicationProofOfExecutionVisible,
+    record.applicationTeamIntentVisible,
+    record.applicationAiKnowledgeVisible
+  ]
+  const requirementFlags = [
+    record.requireXProfile,
+    record.requireLinkedinProfile,
+    record.requireGithubProfile,
+    record.requireChatgptEmail,
+    record.requireOpenaiOrgId,
+    record.requireLumaEmail,
+    record.requireWhyThisEvent,
+    record.requireProofOfExecution,
+    record.requireTeamIntent,
+    record.requireAiKnowledge
+  ]
+
+  return {
+    eventType: record.eventType,
+    agendaItems: parseEventAgendaItems(record.agendaItemsJson).map(item => ({
+      startsAt: item.startsAt,
+      endsAt: item.endsAt,
+      builderBlockType: item.builderBlockType ?? null,
+      focusCost: item.builderFocusCost ?? null,
+      energyDelta: item.builderEnergyDelta ?? null
+    })),
+    registrationOpensAt: record.registrationOpensAt,
+    registrationClosesAt: record.registrationClosesAt,
+    visibleApplicationFieldCount: visibilityFlags.filter(Boolean).length,
+    requiredApplicationFieldCount: requirementFlags.filter(Boolean).length
+  }
+}
+
+export function computeEventBalanceColumns(record: EventBalanceSourceRecord) {
+  const result = computeEventBalance(buildEventBalanceInput(record))
+
+  return {
+    balanceScore: result.score,
+    balanceBreakdownJson: serializeEventBalanceBreakdown(result.breakdown)
   }
 }
 
@@ -1984,6 +2100,7 @@ export function serializeEvent(
   return {
     id: event.id,
     eventType: event.eventType,
+    creationFlow: event.creationFlow,
     name: event.name,
     slug: event.slug,
     description: event.description,
@@ -2095,7 +2212,9 @@ export function serializeAdminEvent(
     lumaWebhookStatus: event.lumaWebhookStatus,
     lumaWebhookError: event.lumaWebhookError,
     lumaWebhookRegisteredAt: event.lumaWebhookRegisteredAt,
-    lumaWebhookUrl: appBaseUrl ? buildEventLumaWebhookUrl(appBaseUrl, event.id) : null
+    lumaWebhookUrl: appBaseUrl ? buildEventLumaWebhookUrl(appBaseUrl, event.id) : null,
+    balanceScore: event.balanceScore,
+    balanceBreakdown: parseEventBalanceBreakdown(event.balanceBreakdownJson)
   }
 }
 
@@ -2122,7 +2241,14 @@ export function serializePublicEvent(
     name: event.name,
     slug: event.slug,
     description: event.description,
-    agendaItems: parseEventAgendaItems(event.agendaItemsJson),
+    // Builder annotations are organizer-facing mechanics; public payloads stay clean.
+    agendaItems: parseEventAgendaItems(event.agendaItemsJson)
+      .map(({
+        builderBlockType: _builderBlockType,
+        builderFocusCost: _builderFocusCost,
+        builderEnergyDelta: _builderEnergyDelta,
+        ...item
+      }) => item),
     backgroundImageUrl: event.backgroundImageUrl,
     displayBackgroundImageUrl: resolveEventDisplayBackgroundImageUrl(event, options),
     bannerImageUrl: event.bannerImageUrl,

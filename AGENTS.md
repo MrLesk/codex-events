@@ -204,6 +204,17 @@ creating new Vue components.
   the current behavior through props, slots, composition, or a focused
   extension. Document the closest existing analog and why extension is not
   enough in the Backlog task or implementation notes.
+- All new interface work follows atomic design mapped onto the tiers above:
+  atoms are the `ui/` primitives plus their `App*` wrappers, molecules and
+  organisms are domain components (feature areas may use explicit `molecules/`
+  and `organisms/` subdirectories, as `app/components/admin/builder/` does),
+  templates compose organisms and own no business logic, and pages wire state
+  and data fetching. Composition flows strictly downward with props down and
+  events up; no cross-organism reach-ins.
+- When a task would refactor existing components that predate this rule, ask
+  Alex first whether to migrate them to the atomic structure as part of that
+  change. The goal state is an entirely atomic component tree, reached
+  incrementally with explicit approval per refactor.
 
 ## Working Style
 

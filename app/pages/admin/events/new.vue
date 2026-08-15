@@ -8,11 +8,7 @@ import type {
 } from '~/domains/events/records'
 
 import { normalizeApiError } from '~/lib/api'
-import {
-  fromDateTimeLocalValue,
-  toEventAgendaPayload,
-  toEventTracksPayload
-} from '~/domains/events/admin-event'
+import { buildEventCreateBody } from '~/domains/events/admin-event'
 
 definePageMeta({
   middleware: ['require-event-creator']
@@ -27,67 +23,11 @@ const submitError = ref('')
 async function createEvent(form: EventFormState) {
   submitError.value = ''
   isSubmitting.value = true
-  const isHackathon = form.eventType === 'hackathon'
-  const supportsTracks = isHackathon || form.eventType === 'build'
 
   try {
     const response = await $fetch<ApiDataResponse<EventRecord>>('/api/events', {
       method: 'POST',
-      body: {
-        eventType: form.eventType,
-        name: form.name,
-        slug: form.slug,
-        discordServerUrl: form.discordServerUrl.trim() || null,
-        lumaEventUrl: form.lumaEventUrl.trim() || null,
-        slidesUrl: form.slidesUrl.trim() || null,
-        lumaEventApiId: form.lumaEventApiId.trim() || null,
-        lumaApiKey: form.lumaApiKey.trim() || null,
-        description: form.description,
-        agendaItems: toEventAgendaPayload(form.agendaItems),
-        tracks: supportsTracks ? toEventTracksPayload(form.tracks) : [],
-        city: form.city,
-        country: form.country,
-        address: form.address,
-        registrationOpensAt: fromDateTimeLocalValue(form.registrationOpensAt),
-        registrationClosesAt: fromDateTimeLocalValue(form.registrationClosesAt),
-        submissionOpensAt: isHackathon ? fromDateTimeLocalValue(form.submissionOpensAt) : undefined,
-        submissionClosesAt: isHackathon ? fromDateTimeLocalValue(form.submissionClosesAt) : undefined,
-        maxTeamMembers: isHackathon ? form.maxTeamMembers : 1,
-        participantsLimit: form.participantsLimit,
-        autoApproveApplications: form.autoApproveApplications,
-        simplifiedClaimingEnabled: form.eventType === 'meetup' && form.simplifiedClaimingEnabled,
-        talkProposalsEnabled: form.eventType === 'meetup' && form.talkProposalsEnabled,
-        talkProposalOpensAt: form.eventType === 'meetup' && form.talkProposalsEnabled
-          ? fromDateTimeLocalValue(form.talkProposalOpensAt)
-          : null,
-        talkProposalClosesAt: form.eventType === 'meetup' && form.talkProposalsEnabled
-          ? fromDateTimeLocalValue(form.talkProposalClosesAt)
-          : null,
-        inPersonEvent: form.inPersonEvent,
-        applicationXProfileVisible: form.applicationXProfileVisible,
-        applicationLinkedinProfileVisible: form.applicationLinkedinProfileVisible,
-        applicationGithubProfileVisible: form.applicationGithubProfileVisible,
-        applicationChatgptEmailVisible: form.applicationChatgptEmailVisible,
-        applicationOpenaiOrgIdVisible: form.applicationOpenaiOrgIdVisible,
-        applicationLumaEmailVisible: form.applicationLumaEmailVisible,
-        applicationWhyThisEventVisible: form.applicationWhyThisEventVisible,
-        applicationProofOfExecutionVisible: form.applicationProofOfExecutionVisible,
-        applicationTeamIntentVisible: form.applicationTeamIntentVisible,
-        applicationAiKnowledgeVisible: form.applicationAiKnowledgeVisible,
-        requireXProfile: form.requireXProfile,
-        requireLinkedinProfile: form.requireLinkedinProfile,
-        requireGithubProfile: form.requireGithubProfile,
-        requireChatgptEmail: form.requireChatgptEmail,
-        requireOpenaiOrgId: form.requireOpenaiOrgId,
-        requireLumaEmail: form.requireLumaEmail,
-        requireWhyThisEvent: form.requireWhyThisEvent,
-        requireProofOfExecution: form.requireProofOfExecution,
-        requireTeamIntent: form.requireTeamIntent,
-        requireAiKnowledge: form.requireAiKnowledge,
-        requireSubmissionSummary: isHackathon ? form.requireSubmissionSummary : false,
-        requireSubmissionRepositoryUrl: isHackathon ? form.requireSubmissionRepositoryUrl : false,
-        requireSubmissionDemoUrl: isHackathon ? form.requireSubmissionDemoUrl : false
-      }
+      body: buildEventCreateBody(form)
     })
 
     toast.add({

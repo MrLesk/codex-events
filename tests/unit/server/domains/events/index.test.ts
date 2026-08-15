@@ -7,10 +7,15 @@ import {
   assertOpenRegistrationAllowed,
   assertOpenSubmissionAllowed,
   assertRoleCapabilityInvariant,
+  computeEventBalanceColumns,
   createEventBodySchema,
   getPublicEventBySlugOrThrow,
   isEventRolePublishedInRoster,
+  parseEventAgendaItems,
+  parseEventBalanceBreakdown,
+  serializeAdminEvent,
   serializeEvent,
+  serializeEventAgendaItems,
   serializePublicEvent,
   serializePublishedEventRosterMember,
   updateEventBodySchema
@@ -78,12 +83,36 @@ function buildEventRecord(
     requireSubmissionDemoUrl: false,
     currentApplicationTermsDocumentId: null,
     currentWinnerTermsDocumentId: null,
+    creationFlow: 'classic',
+    balanceScore: null,
+    balanceBreakdownJson: null,
     createdByUserId: 'creator_1',
     createdAt: '2026-03-20T10:00:00.000Z',
     updatedAt: '2026-03-20T10:00:00.000Z',
     ...overrides
   }
 }
+
+const builderAgendaItemsJson = JSON.stringify([
+  {
+    id: 'agenda_1',
+    startsAt: '2026-03-24T09:00:00.000Z',
+    endsAt: '2026-03-24T09:30:00.000Z',
+    title: 'Opening Talk',
+    details: null,
+    displayOrder: 0,
+    builderBlockType: 'talk'
+  },
+  {
+    id: 'agenda_2',
+    startsAt: '2026-03-24T09:30:00.000Z',
+    endsAt: '2026-03-24T10:15:00.000Z',
+    title: 'Networking',
+    details: null,
+    displayOrder: 1,
+    builderBlockType: 'networking'
+  }
+])
 
 function collectDrizzleParamValues(node: unknown, values: string[] = []) {
   if (!node || typeof node !== 'object') {
@@ -988,5 +1017,173 @@ describe('event management utilities', () => {
       updatedAt: '2026-03-02T00:00:00.000Z',
       deletedAt: null
     }).fullName).toBe('Fallback Display')
+  })
+})
+
+describe('event builder metadata', () => {
+  test('agenda items round-trip builderBlockType and stay key-free when absent', () => {
+    const parsed = parseEventAgendaItems(builderAgendaItemsJson)
+
+    expect(parsed[0]?.builderBlockType).toBe('talk')
+
+    const reserialized = parseEventAgendaItems(serializeEventAgendaItems(parsed))
+
+    expect(reserialized[1]?.builderBlockType).toBe('networking')
+
+    const plainItem = JSON.stringify([{
+      id: 'agenda_plain',
+      startsAt: '2026-03-24T09:00:00.000Z',
+      endsAt: null,
+      title: 'Classic Item',
+      details: null,
+      displayOrder: 0
+    }])
+    const parsedPlain = parseEventAgendaItems(plainItem)
+
+    expect(parsedPlain[0]).toBeDefined()
+    expect('builderBlockType' in parsedPlain[0]!).toBe(false)
+    expect(serializeEventAgendaItems(parsedPlain)).not.toContain('builderBlockType')
+  })
+
+  test('a malformed builderBlockType drops the annotation, never the agenda', () => {
+    const malformed = JSON.stringify([{
+      id: 'agenda_1',
+      startsAt: '2026-03-24T09:00:00.000Z',
+      endsAt: null,
+      title: 'Session',
+      details: null,
+      displayOrder: 0,
+      builderBlockType: 'x'.repeat(60)
+    }])
+    const parsed = parseEventAgendaItems(malformed)
+
+    expect(parsed).toHaveLength(1)
+    expect(parsed[0]?.builderBlockType).toBeUndefined()
+  })
+
+  test('custom-block scoring dials round-trip and malformed dials drop themselves', () => {
+    const withDials = JSON.stringify([{
+      id: 'agenda_custom',
+      startsAt: '2026-03-24T09:00:00.000Z',
+      endsAt: '2026-03-24T10:00:00.000Z',
+      title: 'Rooftop Mixing',
+      details: null,
+      displayOrder: 0,
+      builderFocusCost: 14,
+      builderEnergyDelta: -6
+    }])
+    const parsed = parseEventAgendaItems(withDials)
+
+    expect(parsed[0]?.builderFocusCost).toBe(14)
+    expect(parsed[0]?.builderEnergyDelta).toBe(-6)
+
+    const reserialized = parseEventAgendaItems(serializeEventAgendaItems(parsed))
+
+    expect(reserialized[0]?.builderFocusCost).toBe(14)
+    expect(reserialized[0]?.builderEnergyDelta).toBe(-6)
+
+    const malformed = JSON.stringify([{
+      id: 'agenda_custom',
+      startsAt: '2026-03-24T09:00:00.000Z',
+      endsAt: null,
+      title: 'Rooftop Mixing',
+      details: null,
+      displayOrder: 0,
+      builderFocusCost: 'a lot',
+      builderEnergyDelta: 250
+    }])
+    const parsedMalformed = parseEventAgendaItems(malformed)
+
+    expect(parsedMalformed).toHaveLength(1)
+    expect(parsedMalformed[0]?.builderFocusCost).toBeUndefined()
+    expect(parsedMalformed[0]?.builderEnergyDelta).toBeUndefined()
+  })
+
+  test('createEventBodySchema defaults creationFlow to classic and accepts builder', () => {
+    const baseBody = {
+      eventType: 'meetup',
+      name: 'Flow Event',
+      slug: 'flow-event',
+      description: 'Testing flows',
+      agendaItems: [],
+      tracks: [],
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Somewhere 1',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z'
+    }
+
+    expect(createEventBodySchema.parse(baseBody)).toMatchObject({ creationFlow: 'classic' })
+    expect(createEventBodySchema.parse({ ...baseBody, creationFlow: 'builder' }))
+      .toMatchObject({ creationFlow: 'builder' })
+    expect(() => createEventBodySchema.parse({ ...baseBody, creationFlow: 'wizard' })).toThrow()
+  })
+
+  test('updateEventBodySchema strips creationFlow so the flow is immutable', () => {
+    const parsed = updateEventBodySchema.parse({
+      name: 'Renamed',
+      creationFlow: 'classic'
+    })
+
+    expect(parsed).toMatchObject({ name: 'Renamed' })
+    expect('creationFlow' in parsed).toBe(false)
+  })
+
+  test('serializeEvent exposes creationFlow and admin payloads carry balance data', () => {
+    const record = buildEventRecord({
+      creationFlow: 'builder',
+      agendaItemsJson: builderAgendaItemsJson,
+      ...computeEventBalanceColumns(buildEventRecord({ agendaItemsJson: builderAgendaItemsJson }))
+    })
+
+    expect(serializeEvent(record).creationFlow).toBe('builder')
+
+    const admin = serializeAdminEvent(record)
+
+    expect(admin.balanceScore).toBe(record.balanceScore)
+    expect(admin.balanceBreakdown).toEqual(parseEventBalanceBreakdown(record.balanceBreakdownJson))
+    expect(admin.balanceBreakdown?.engineVersion).toBeGreaterThanOrEqual(1)
+    expect(admin.agendaItems[0]?.builderBlockType).toBe('talk')
+  })
+
+  test('serializeAdminEvent tolerates legacy rows and corrupt breakdown JSON', () => {
+    expect(serializeAdminEvent(buildEventRecord()).balanceScore).toBeNull()
+    expect(serializeAdminEvent(buildEventRecord()).balanceBreakdown).toBeNull()
+    expect(serializeAdminEvent(buildEventRecord({ balanceBreakdownJson: '{not json' })).balanceBreakdown).toBeNull()
+  })
+
+  test('public payloads never expose builder metadata', () => {
+    const record = buildEventRecord({
+      creationFlow: 'builder',
+      agendaItemsJson: builderAgendaItemsJson,
+      balanceScore: 80,
+      balanceBreakdownJson: '{}'
+    })
+    const publicEvent = serializePublicEvent(record) as Record<string, unknown>
+
+    expect('creationFlow' in publicEvent).toBe(false)
+    expect('balanceScore' in publicEvent).toBe(false)
+    expect('balanceBreakdown' in publicEvent).toBe(false)
+
+    const agendaItems = publicEvent.agendaItems as Array<Record<string, unknown>>
+
+    expect(agendaItems).toHaveLength(2)
+
+    for (const item of agendaItems) {
+      expect('builderBlockType' in item).toBe(false)
+    }
+  })
+
+  test('computeEventBalanceColumns matches the shared engine and stays deterministic', () => {
+    const record = buildEventRecord({ agendaItemsJson: builderAgendaItemsJson })
+    const first = computeEventBalanceColumns(record)
+    const second = computeEventBalanceColumns(record)
+
+    expect(first).toEqual(second)
+    expect(Number.isInteger(first.balanceScore)).toBe(true)
+    expect(first.balanceScore).toBeGreaterThanOrEqual(0)
+    expect(first.balanceScore).toBeLessThanOrEqual(100)
+    expect(parseEventBalanceBreakdown(first.balanceBreakdownJson)).not.toBeNull()
   })
 })

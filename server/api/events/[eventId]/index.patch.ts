@@ -10,6 +10,7 @@ import {
   assertTalkProposalConfigurationChangeAllowed,
   assertEventSlugAvailable,
   buildEventUpdatePayload,
+  computeEventBalanceColumns,
   listEventTracks,
   replaceEventTracks,
   requireEventAdmin,
@@ -87,6 +88,10 @@ export const applicationOperation = defineStructuredRouteOperation({
   }
 
   const patch = buildEventUpdatePayload(event, body)
+
+  // Recompute the persisted balance score from the exact merged column set being
+  // written, so classic edits of builder events keep the stored score honest.
+  Object.assign(patch, computeEventBalanceColumns({ ...event, ...patch }))
 
   const eventWriteWhere = body.talkProposalsEnabled === false && event.talkProposalsEnabled
     ? and(

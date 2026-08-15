@@ -214,7 +214,7 @@ useSeoMeta({
 <template>
   <div class="pb-14">
     <section class="border-b border-black/8 dark:border-white/[0.08]">
-      <AppContainer class="max-w-[68rem] pb-0 pt-2 sm:pt-3">
+      <AppContainer class="max-w-none pb-0 pt-2 sm:pt-3">
         <div class="space-y-2 pb-4">
           <div class="flex flex-wrap items-end justify-between gap-4">
             <div class="space-y-2">
@@ -239,7 +239,7 @@ useSeoMeta({
       </AppContainer>
     </section>
 
-    <AppContainer class="max-w-[68rem] space-y-8 pt-6">
+    <AppContainer class="max-w-none space-y-8 pt-6">
       <div
         v-if="status === 'pending'"
         class="space-y-6"

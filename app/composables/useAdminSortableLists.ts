@@ -3,6 +3,7 @@ import type { MaybeRefOrGetter, WatchSource } from 'vue'
 import {
   nextTick,
   onBeforeUnmount,
+  onMounted,
   toValue,
   watch
 } from 'vue'
@@ -63,6 +64,14 @@ export function useAdminSortableLists(options: UseAdminSortableListsOptions) {
   }, {
     immediate: true,
     flush: 'post'
+  })
+
+  // The immediate watch run can fire before template refs are bound (SSR
+  // hydration); re-initializing after mount covers lists whose sources never
+  // change again. Initialization is idempotent, so a double run is harmless.
+  onMounted(async () => {
+    await nextTick()
+    await initializeSortables()
   })
 
   onBeforeUnmount(() => {

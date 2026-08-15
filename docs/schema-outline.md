@@ -152,6 +152,9 @@ It describes the intended persistent model at the level of entities, key fields,
 - `require_submission_demo_url`
 - `current_application_terms_document_id`
 - `current_winner_terms_document_id`
+- `creation_flow`
+- `balance_score`
+- `balance_breakdown_json`
 - `created_by_user_id`
 - `created_at`
 - `updated_at`
@@ -162,6 +165,9 @@ It describes the intended persistent model at the level of entities, key fields,
   - `hackathon`
   - `meetup`
   - `build`
+- `creation_flow`
+  - `classic`
+  - `builder`
 - `state`
   - `draft`
   - `registration_open`
@@ -234,7 +240,9 @@ It describes the intended persistent model at the level of entities, key fields,
 - `luma_event_api_id` and `luma_api_key` are optional because not every event has Luma configured for approval, rejection, and attendance sync.
 - Luma email visibility and requirement are enabled together when an event uses Luma Sync because guest sync matches Codex participants to Luma guests by that email.
 - `luma_webhook_id`, `luma_webhook_secret`, `luma_webhook_status`, `luma_webhook_error`, and `luma_webhook_registered_at` store the event's webhook registration state. Webhook status is `not_configured` until the event has enough Luma configuration for registration, `configured` after Luma returns a webhook ID and signing secret, and `failed` when registration cannot be completed with the stored event API ID and key.
-- `agenda_items_json` stores a validated ordered JSON array of agenda items (`id`, `startsAt`, optional `endsAt`, `title`, optional `details`, `displayOrder`).
+- `agenda_items_json` stores a validated ordered JSON array of agenda items (`id`, `startsAt`, optional `endsAt`, `title`, optional `details`, `displayOrder`, optional `builderBlockType`, optional `builderFocusCost`, optional `builderEnergyDelta`). `builderBlockType` is a bounded string annotation written by the event builder; `builderFocusCost` (0..99) and `builderEnergyDelta` (-99..99) are organizer-declared scoring dials for custom builder blocks. A malformed annotation or dial is dropped during parsing without affecting the agenda, unknown block types resolve to a custom block in the builder, and all three annotations are suppressed from public event payloads.
+- `creation_flow` records which flow created the event (`classic` or `builder`). It is set at creation, immutable through updates, and used only to route builder-created events to the builder editor — it never changes how event data is interpreted. Builder events remain fully editable in the classic form.
+- `balance_score` (0–100) and `balance_breakdown_json` persist the Event Balance Score computed by the shared builder scoring engine from the event's own fields. They are recomputed server-side on every create and update for all events regardless of flow, are never accepted from clients, embed an `engineVersion` for staleness detection, and are exposed only in admin event payloads. `NULL` means the row has not been written since the feature shipped.
 
 ## EventTrack
 

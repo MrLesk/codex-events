@@ -12,6 +12,7 @@ import {
   assertEventSchedule,
   assertTalkProposalConfiguration,
   assertEventSlugAvailable,
+  computeEventBalanceColumns,
   createEventAdminAssignmentsForNewEvent,
   createEventTracks,
   createEventBodySchema,
@@ -49,9 +50,10 @@ export const applicationOperation = defineStructuredRouteOperation({
   const isHackathon = body.eventType === 'hackathon'
   const supportsTracks = isHackathon || body.eventType === 'build'
 
-  await database.insert(events).values({
+  const eventValues = {
     id: eventId,
     eventType: body.eventType,
+    creationFlow: body.creationFlow,
     name: body.name,
     slug: body.slug,
     description: body.description,
@@ -106,10 +108,15 @@ export const applicationOperation = defineStructuredRouteOperation({
     requireSubmissionSummary: isHackathon ? body.requireSubmissionSummary : false,
     requireSubmissionRepositoryUrl: isHackathon ? body.requireSubmissionRepositoryUrl : false,
     requireSubmissionDemoUrl: isHackathon ? body.requireSubmissionDemoUrl : false,
-    state: 'draft',
+    state: 'draft' as const,
     createdByUserId: actor.platformUser.id,
     createdAt,
     updatedAt: createdAt
+  }
+
+  await database.insert(events).values({
+    ...eventValues,
+    ...computeEventBalanceColumns(eventValues)
   })
 
   await createEventAdminAssignmentsForNewEvent(database, {

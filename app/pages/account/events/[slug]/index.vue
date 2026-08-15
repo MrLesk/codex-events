@@ -1047,7 +1047,7 @@ useSeoMeta({
     </div>
 
     <section class="relative z-10 border-b border-black/8 bg-white/42 backdrop-blur-lg dark:border-white/[0.08] dark:bg-black/48">
-      <AppContainer class="max-w-[68rem] pb-0 pt-2 sm:pt-3">
+      <AppContainer class="max-w-none pb-0 pt-2 sm:pt-3">
         <NuxtLink
           :to="workspaceBackLink.to"
           class="inline-flex items-center gap-2 text-[13px] font-medium text-neutral-600 transition-colors hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white"
@@ -1121,7 +1121,7 @@ useSeoMeta({
       </AppContainer>
     </section>
 
-    <AppContainer class="relative z-10 max-w-[68rem] space-y-7 pt-6">
+    <AppContainer class="relative z-10 max-w-none space-y-7 pt-6">
       <section
         v-if="activeSection === 'overview'"
         id="account-tab-panel-overview"

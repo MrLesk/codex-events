@@ -140,7 +140,7 @@ useSeoMeta({
 <template>
   <div class="pb-14">
     <section class="border-b border-black/8 dark:border-white/[0.08]">
-      <AppContainer class="max-w-[68rem] pb-0 pt-2 sm:pt-3">
+      <AppContainer class="max-w-none pb-0 pt-2 sm:pt-3">
         <div class="space-y-2 pb-4">
           <div class="flex flex-wrap items-start justify-between gap-4">
             <div class="space-y-2">
@@ -159,28 +159,35 @@ useSeoMeta({
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
-              <AppButton
+              <AppDropdownMenu
                 v-if="canCreate"
-                to="/admin/events/new"
-                color="neutral"
-                variant="solid"
-                class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+                :items="[
+                  { label: 'Create event (builder)', to: '/admin/events/builder/new' },
+                  { label: 'Create event (classic)', to: '/admin/events/new' }
+                ]"
               >
-                Create event
-                <template #trailing>
-                  <AppIcon
-                    name="i-lucide-plus"
-                    class="size-3.5"
-                  />
-                </template>
-              </AppButton>
+                <AppButton
+                  color="neutral"
+                  variant="solid"
+                  data-testid="admin-create-event-menu"
+                  class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+                >
+                  Create event
+                  <template #trailing>
+                    <AppIcon
+                      name="i-lucide-chevron-down"
+                      class="size-3.5"
+                    />
+                  </template>
+                </AppButton>
+              </AppDropdownMenu>
             </div>
           </div>
         </div>
       </AppContainer>
     </section>
 
-    <AppContainer class="max-w-[68rem] space-y-6 pt-6">
+    <AppContainer class="max-w-none space-y-6 pt-6">
       <AppAlert
         v-if="workspace.session.error.value"
         color="error"
