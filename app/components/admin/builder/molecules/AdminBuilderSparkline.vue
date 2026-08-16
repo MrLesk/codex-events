@@ -54,8 +54,30 @@ const thresholdY = computed(() => props.threshold === null
   ? null
   : chartHeight - (Math.max(0, Math.min(100, props.threshold)) / 100) * chartHeight)
 
-const lineClass = computed(() => props.tone === 'focus' ? 'stroke-sky-500/80' : 'stroke-emerald-500/80')
-const areaClass = computed(() => props.tone === 'focus' ? 'fill-sky-500/12' : 'fill-emerald-500/12')
+// The stroke is a gradient with one stop per point, so the line itself shifts
+// through the same severity colors as the dots instead of staying one tone.
+const gradientId = useId()
+
+function pointHex(value: number) {
+  if (props.tone === 'focus') {
+    if (value <= 0) {
+      return '#f43f5e'
+    }
+
+    return value <= 15 ? '#f59e0b' : '#0ea5e9'
+  }
+
+  if (value >= 60) {
+    return '#10b981'
+  }
+
+  return value >= 35 ? '#f59e0b' : '#f43f5e'
+}
+
+const gradientStops = computed(() => points.value.map(point => ({
+  offset: point.x / chartWidth,
+  color: pointHex(point.value)
+})))
 
 function dotColor(value: number) {
   // Focus plots the remaining budget, so low is the danger zone.
@@ -162,9 +184,27 @@ function hoverPositionClass(x: number) {
       preserveAspectRatio="none"
       aria-hidden="true"
     >
+      <defs>
+        <linearGradient
+          :id="gradientId"
+          gradientUnits="userSpaceOnUse"
+          x1="0"
+          y1="0"
+          :x2="chartWidth"
+          y2="0"
+        >
+          <stop
+            v-for="(stop, index) in gradientStops"
+            :key="index"
+            :offset="stop.offset"
+            :stop-color="stop.color"
+          />
+        </linearGradient>
+      </defs>
       <path
         :d="areaPath"
-        :class="areaClass"
+        :fill="`url(#${gradientId})`"
+        fill-opacity="0.12"
       />
       <line
         v-if="thresholdY !== null"
@@ -180,7 +220,8 @@ function hoverPositionClass(x: number) {
       <path
         :d="linePath"
         fill="none"
-        :class="lineClass"
+        :stroke="`url(#${gradientId})`"
+        stroke-opacity="0.85"
         stroke-width="1.5"
         stroke-linejoin="round"
         stroke-linecap="round"

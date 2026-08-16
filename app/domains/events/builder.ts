@@ -121,7 +121,7 @@ export function createBlockInstance(type: EventBuilderBlockType): EventBuilderBl
   }
 }
 
-function addMinutesToLocalValue(localValue: string, minutes: number) {
+export function addMinutesToLocalValue(localValue: string, minutes: number) {
   const parsed = new Date(localValue)
 
   if (Number.isNaN(parsed.getTime())) {

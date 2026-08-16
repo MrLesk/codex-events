@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { EventBalanceResult } from '#shared/domains/events/builder-scoring'
 import type { EventBuilderBlockInstance, EventBuilderChecklistItem } from '~/domains/events/builder'
+import { addMinutesToLocalValue, getTotalAgendaDurationMinutes } from '~/domains/events/builder'
 import AdminBuilderChecklistRow from '~/components/admin/builder/molecules/AdminBuilderChecklistRow.vue'
 import AdminBuilderMeterRow from '~/components/admin/builder/molecules/AdminBuilderMeterRow.vue'
 import AdminBuilderScoreRing from '~/components/admin/builder/molecules/AdminBuilderScoreRing.vue'
@@ -11,6 +12,7 @@ const props = defineProps<{
   checklist: EventBuilderChecklistItem[]
   report: EventBalanceResult
   blocks: EventBuilderBlockInstance[]
+  eventStartsAt: string
   canSubmit: boolean
   isSubmitting: boolean
   submitError: string
@@ -24,6 +26,33 @@ const emit = defineEmits<{
 
 const remaining = computed(() => props.checklist.filter(item => !item.complete).length)
 const hasScoredAgenda = computed(() => props.blocks.length > 0)
+
+const totalDurationLabel = computed(() => {
+  const total = getTotalAgendaDurationMinutes(props.blocks)
+  const hours = Math.floor(total / 60)
+  const minutes = total % 60
+
+  if (hours === 0) {
+    return `${minutes}m`
+  }
+
+  return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`
+})
+
+// "From 18:00 to 21:00", shown once the event start pins the agenda to a clock.
+const timeRangeLabel = computed(() => {
+  if (!props.eventStartsAt.trim() || props.blocks.length === 0) {
+    return ''
+  }
+
+  const end = addMinutesToLocalValue(props.eventStartsAt, getTotalAgendaDurationMinutes(props.blocks))
+
+  if (!end) {
+    return ''
+  }
+
+  return `From ${props.eventStartsAt.slice(11, 16)} to ${end.slice(11, 16)}`
+})
 
 const bandColor = computed(() => {
   switch (props.report.band.id) {
@@ -232,6 +261,21 @@ onBeforeUnmount(() => {
             >
               {{ hasScoredAgenda ? report.band.label : 'No agenda yet' }}
             </AppBadge>
+            <div
+              v-if="hasScoredAgenda"
+              class="space-y-0.5 text-xs text-muted"
+            >
+              <p data-testid="event-builder-total-duration">
+                Total duration {{ totalDurationLabel }}
+              </p>
+              <p
+                v-if="timeRangeLabel"
+                data-testid="event-builder-time-range"
+                class="tabular-nums"
+              >
+                {{ timeRangeLabel }}
+              </p>
+            </div>
           </div>
         </div>
         <p

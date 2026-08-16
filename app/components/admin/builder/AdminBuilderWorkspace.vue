@@ -219,6 +219,7 @@ function onSubmit() {
         :checklist="builder.checklist.value"
         :report="builder.report.value"
         :blocks="builder.state.blocks"
+        :event-starts-at="builder.state.eventStartsAt"
         :can-submit="builder.canSubmit.value"
         :is-submitting="isSubmitting"
         :submit-error="submitError"
