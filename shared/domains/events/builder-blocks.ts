@@ -82,9 +82,11 @@ export const eventBuilderBlockDefinitions: Record<EventBuilderBlockType, EventBu
     tagline: 'Quick ideas. Big impact.',
     kind: 'session',
     interactive: false,
-    defaultDurationMinutes: 15,
-    focusCost: 6,
-    energyDelta: -4,
+    // Field data: short-format slots run 5-10 minutes (community demos,
+    // lightning rounds); costs are rebased to the 10-minute reference.
+    defaultDurationMinutes: 10,
+    focusCost: 4,
+    energyDelta: -3,
     appliesTo: allEventTypes,
     stretchExempt: false
   },
@@ -202,9 +204,11 @@ export const eventBuilderBlockDefinitions: Record<EventBuilderBlockType, EventBu
     tagline: 'Meals keep momentum.',
     kind: 'recovery',
     interactive: false,
-    defaultDurationMinutes: 45,
+    // 30-minute reference; a 45-minute lunch still lands near the old +22
+    // through the saturating curve.
+    defaultDurationMinutes: 30,
     focusCost: 0,
-    energyDelta: 22,
+    energyDelta: 18,
     appliesTo: allEventTypes,
     stretchExempt: false
   },

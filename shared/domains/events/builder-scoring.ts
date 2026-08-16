@@ -5,7 +5,7 @@ import {
   resolveEventBuilderBlockType
 } from './builder-blocks'
 
-export const eventBalanceEngineVersion = 5
+export const eventBalanceEngineVersion = 6
 
 export const eventBalanceBandIds = ['needs_work', 'fair', 'good', 'excellent'] as const
 
@@ -474,7 +474,11 @@ function computeBoredomMeter(
       repeatedPairPenalties += 1
     }
 
-    passiveStretchMinutes += block.durationMinutes
+    // Speaker turnover keeps lightning rounds fresh (Vienna ran a keynote
+    // plus six of them), so their minutes press on the stretch at half weight.
+    passiveStretchMinutes += block.definition.type === 'lightning_talk'
+      ? block.durationMinutes / 2
+      : block.durationMinutes
 
     if (block.durationMinutes > Math.max(block.definition.defaultDurationMinutes, 40)) {
       overlongPenalties += 1
