@@ -23,7 +23,8 @@ describe('MCP OAuth', () => {
     expect(buildMcpProtectedResourceMetadata(configuration)).toEqual({
       resource: 'https://events.example.test/mcp',
       authorization_servers: ['https://auth.example.test/'],
-      bearer_methods_supported: ['header']
+      bearer_methods_supported: ['header'],
+      scopes_supported: ['mcp']
     })
     expect(mcpProtectedResourceMetadataUrl(configuration))
       .toBe('https://events.example.test/.well-known/oauth-protected-resource')

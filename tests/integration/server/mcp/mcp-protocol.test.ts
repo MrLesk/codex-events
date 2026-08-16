@@ -222,13 +222,14 @@ describe('stateless MCP protocol', () => {
     expect(await metadata.json()).toEqual({
       resource: 'http://localhost:3000/mcp',
       authorization_servers: ['https://auth.example.test/'],
-      bearer_methods_supported: ['header']
+      bearer_methods_supported: ['header'],
+      scopes_supported: ['mcp']
     })
 
     const response = await rpc(harness, 'invalid', { jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} })
     expect(response.status).toBe(401)
     expect(response.headers.get('www-authenticate')).toBe(
-      'Bearer resource_metadata="http://localhost:3000/.well-known/oauth-protected-resource"'
+      'Bearer resource_metadata="http://localhost:3000/.well-known/oauth-protected-resource", scope="mcp"'
     )
   })
 

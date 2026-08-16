@@ -12,6 +12,7 @@ import { getDatabase } from '#server/database/client'
 import { eventRoleAssignments } from '#server/database/schema'
 import { authenticateMcpRequest } from '#server/domains/mcp/authentication'
 import {
+  mcpOAuthScope,
   mcpProtectedResourceMetadataUrl,
   resolveMcpOAuthConfiguration
 } from '#server/domains/mcp/oauth'
@@ -162,7 +163,7 @@ export default defineEventHandler(async (event) => {
       setResponseHeader(
         event,
         'www-authenticate',
-        `Bearer resource_metadata="${mcpProtectedResourceMetadataUrl(oauthConfiguration)}"`
+        `Bearer resource_metadata="${mcpProtectedResourceMetadataUrl(oauthConfiguration)}", scope="${mcpOAuthScope}"`
       )
     }
     setResponseStatus(event, 401)

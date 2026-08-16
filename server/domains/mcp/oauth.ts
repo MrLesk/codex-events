@@ -56,11 +56,17 @@ export function resolveMcpOAuthConfiguration(input: {
     : null
 }
 
+/** Mirrors the deploy-time AUTH0_MCP_SCOPE default; the whole platform grants exactly this scope. */
+export const mcpOAuthScope = 'mcp'
+
 export function buildMcpProtectedResourceMetadata(configuration: McpOAuthConfiguration) {
   return {
     resource: configuration.resourceUrl,
     authorization_servers: [configuration.issuer],
-    bearer_methods_supported: ['header']
+    bearer_methods_supported: ['header'],
+    // Advertised so clients request exactly what the tenant grants; without
+    // this, clients guess scopes and then warn that not all were granted.
+    scopes_supported: [mcpOAuthScope]
   }
 }
 
