@@ -1,0 +1,106 @@
+<script setup lang="ts">
+import {
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogOverlay,
+  DialogPortal,
+  DialogRoot,
+  DialogTitle,
+  DialogTrigger
+} from 'reka-ui'
+
+const sections = [
+  {
+    icon: 'i-lucide-zap',
+    title: 'Audience energy',
+    body: 'The room\'s battery across the clock. Sessions drain it, and long passive stretches drain more per minute the longer they run. Real breaks and food recharge it. Attention research shows pauses under about 5 minutes are transitions, not recovery: restore peaks around 20 to 25 minutes and fades once a gap stretches into a hole in the schedule.'
+  },
+  {
+    icon: 'i-lucide-crosshair',
+    title: 'Participants focus',
+    body: 'The day\'s attention bill. Every session asks for concentration, and one day can only carry so much of it. The bill is one way: coffee does not refund the morning keynote, which is why breaks lift energy but never focus. Psychologists call the leftover thinking from the last task attention residue, and a short pause does not clear it.'
+  },
+  {
+    icon: 'i-lucide-shuffle',
+    title: 'Activity variety',
+    body: 'Monotony, inverted. Attention habituates to sameness, so several same-type passive sessions in a row get monotonous even when each one is good. Format changes, hands-on time, and social blocks reset the room.'
+  },
+  {
+    icon: 'i-lucide-heart',
+    title: 'Return intent',
+    body: 'Whether people leave planning to come back. People judge an experience by its peak and its ending (the peak-end rule), so a social or demo close counts most, followed by food, social time spread through the day, and a registration window that leaves room to plan.'
+  },
+  {
+    icon: 'i-lucide-gauge',
+    title: 'Event balance',
+    body: 'A weighted blend of the four meters, tuned per event type: a meetup is judged as an evening, a hackathon as a full day, so their focus and energy budgets differ. The score never blocks creating the event. It mirrors what the anonymous post-event feedback measures, just before the event instead of after it.'
+  }
+]
+</script>
+
+<template>
+  <DialogRoot>
+    <DialogTrigger
+      aria-label="Why these numbers"
+      title="Why these numbers"
+      data-testid="event-builder-science-trigger"
+      class="inline-flex size-6 items-center justify-center rounded-md text-muted transition hover:bg-black/5 hover:text-highlighted dark:hover:bg-white/[0.06]"
+    >
+      <AppIcon
+        name="i-lucide-info"
+        class="size-3.5"
+      />
+    </DialogTrigger>
+    <DialogPortal>
+      <DialogOverlay class="data-[state=open]:animate-in data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/45 backdrop-blur-[2px]" />
+      <DialogContent
+        data-testid="event-builder-science-dialog"
+        class="data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 fixed left-1/2 top-1/2 z-50 max-h-[85vh] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-black/10 bg-white p-6 shadow-[0_24px_80px_-32px_rgba(15,23,42,0.5)] outline-none dark:border-white/[0.12] dark:bg-[#161616]"
+      >
+        <div class="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <DialogTitle class="text-base font-semibold text-highlighted">
+              Why these numbers
+            </DialogTitle>
+            <DialogDescription class="mt-1 text-xs text-muted">
+              What the meters measure and the research behind them.
+            </DialogDescription>
+          </div>
+          <DialogClose
+            aria-label="Close"
+            class="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-black/5 hover:text-highlighted dark:hover:bg-white/[0.06]"
+          >
+            <AppIcon
+              name="i-lucide-x"
+              class="size-4"
+            />
+          </DialogClose>
+        </div>
+
+        <div class="space-y-4">
+          <section
+            v-for="section in sections"
+            :key="section.title"
+            class="flex gap-3"
+          >
+            <span class="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-black/5 text-toned dark:bg-white/[0.06]">
+              <AppIcon
+                :name="section.icon"
+                class="size-4"
+              />
+            </span>
+            <div class="min-w-0">
+              <h3 class="text-sm font-semibold text-highlighted">
+                {{ section.title }}
+              </h3>
+              <p class="mt-0.5 text-sm leading-relaxed text-muted">
+                {{ section.body }}
+              </p>
+            </div>
+          </section>
+        </div>
+      </DialogContent>
+    </DialogPortal>
+  </DialogRoot>
+</template>

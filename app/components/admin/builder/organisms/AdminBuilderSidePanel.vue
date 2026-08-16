@@ -4,6 +4,7 @@ import type { EventBuilderBlockInstance, EventBuilderChecklistItem } from '~/dom
 import { addMinutesToLocalValue, getTotalAgendaDurationMinutes } from '~/domains/events/builder'
 import AdminBuilderChecklistRow from '~/components/admin/builder/molecules/AdminBuilderChecklistRow.vue'
 import AdminBuilderMeterRow from '~/components/admin/builder/molecules/AdminBuilderMeterRow.vue'
+import AdminBuilderScienceDialog from '~/components/admin/builder/molecules/AdminBuilderScienceDialog.vue'
 import AdminBuilderScoreRing from '~/components/admin/builder/molecules/AdminBuilderScoreRing.vue'
 import AdminBuilderSparkline from '~/components/admin/builder/molecules/AdminBuilderSparkline.vue'
 import AdminBuilderTipRow from '~/components/admin/builder/molecules/AdminBuilderTipRow.vue'
@@ -152,9 +153,12 @@ onBeforeUnmount(() => {
         :ui="{ body: 'p-4' }"
       >
         <div class="space-y-3">
-          <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-            Event health
-          </p>
+          <div class="flex items-center justify-between gap-2">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+              Event health
+            </p>
+            <AdminBuilderScienceDialog />
+          </div>
 
           <div
             v-if="!hasScoredAgenda"
