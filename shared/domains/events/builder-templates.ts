@@ -53,16 +53,19 @@ export const eventBuilderTemplates: readonly EventBuilderTemplate[] = [
     applicationFields: { visible: ['xProfile'], required: [] }
   },
   {
-    id: 'meetup-talks-night',
+    id: 'meetup-lightning-talks-night',
     eventType: 'meetup',
-    name: 'Talks Night',
-    description: 'Two full talks and a lightning round, closed out with networking.',
+    name: 'Lightning Talks Night',
+    description: 'Six five-minute lightning talks in quick succession, then room to connect.',
     blocks: [
       { builderBlockType: 'welcome', title: 'Doors Open', durationMinutes: 15 },
-      { builderBlockType: 'talk', title: 'Opening Talk', durationMinutes: 30 },
-      { builderBlockType: 'lightning_talk', title: 'Lightning Round', durationMinutes: 15 },
+      { builderBlockType: 'lightning_talk', title: 'Lightning Talk I', durationMinutes: 5 },
+      { builderBlockType: 'lightning_talk', title: 'Lightning Talk II', durationMinutes: 5 },
+      { builderBlockType: 'lightning_talk', title: 'Lightning Talk III', durationMinutes: 5 },
+      { builderBlockType: 'lightning_talk', title: 'Lightning Talk IV', durationMinutes: 5 },
+      { builderBlockType: 'lightning_talk', title: 'Lightning Talk V', durationMinutes: 5 },
+      { builderBlockType: 'lightning_talk', title: 'Lightning Talk VI', durationMinutes: 5 },
       { builderBlockType: 'break', title: 'Break', durationMinutes: 15 },
-      { builderBlockType: 'talk', title: 'Closing Talk', durationMinutes: 30 },
       { builderBlockType: 'networking', title: 'Networking', durationMinutes: 45 }
     ],
     applicationFields: { visible: ['xProfile'], required: [] }

@@ -17,9 +17,9 @@ import {
 import { getScaledBlockEnergyDelta, getScaledBlockFocusCost } from '#shared/domains/events/builder-scoring'
 import { eventBuilderBlockIcons } from '~/domains/events/builder'
 
-// The paytable: every block at its default length, same numbers the palette
+// Every block at its default length, same numbers the palette
 // and agenda rows show.
-const paytable = eventBuilderBlockTypes
+const blockValues = eventBuilderBlockTypes
   .filter(type => type !== 'custom')
   .map((type) => {
     const definition = eventBuilderBlockDefinitions[type]
@@ -88,7 +88,7 @@ const sections = [
       <DialogOverlay class="data-[state=open]:animate-in data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/45 backdrop-blur-[2px]" />
       <DialogContent
         data-testid="event-builder-science-dialog"
-        class="data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 fixed left-1/2 top-1/2 z-50 max-h-[85vh] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-black/10 bg-white p-6 shadow-[0_24px_80px_-32px_rgba(15,23,42,0.5)] outline-none dark:border-white/[0.12] dark:bg-[#161616]"
+        class="data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 fixed left-1/2 top-1/2 z-50 max-h-[88vh] w-[calc(100vw-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-black/10 bg-white p-7 shadow-[0_24px_80px_-32px_rgba(15,23,42,0.5)] outline-none dark:border-white/[0.12] dark:bg-[#161616]"
       >
         <div class="mb-4 flex items-start justify-between gap-4">
           <div>
@@ -135,7 +135,7 @@ const sections = [
 
         <div class="mt-5 border-t border-black/5 pt-4 dark:border-white/[0.06]">
           <h3 class="text-sm font-semibold text-highlighted">
-            The paytable
+            Block values
           </h3>
           <p class="mt-0.5 text-xs text-muted">
             Every block at its default length. Longer passive sessions cost more per minute; recovery saturates instead of stacking.
@@ -143,7 +143,7 @@ const sections = [
 
           <div
             class="mt-3 grid grid-cols-[minmax(0,1fr)_3rem_3rem_3rem] gap-x-2 gap-y-1.5 text-xs"
-            data-testid="event-builder-science-paytable"
+            data-testid="event-builder-science-block-values"
           >
             <span class="text-[10px] font-semibold uppercase tracking-[0.14em] text-dimmed">Block</span>
             <span class="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-dimmed">Length</span>
@@ -151,7 +151,7 @@ const sections = [
             <span class="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-dimmed">Energy</span>
 
             <template
-              v-for="row in paytable"
+              v-for="row in blockValues"
               :key="row.type"
             >
               <span class="inline-flex min-w-0 items-center gap-1.5 text-toned">
