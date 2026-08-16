@@ -9,6 +9,38 @@ import {
   DialogTitle,
   DialogTrigger
 } from 'reka-ui'
+import {
+  eventBuilderBlockDefinitions,
+  eventBuilderBlockTypes,
+  eventBuilderTypeProfiles
+} from '#shared/domains/events/builder-blocks'
+import { getScaledBlockEnergyDelta, getScaledBlockFocusCost } from '#shared/domains/events/builder-scoring'
+import { eventBuilderBlockIcons } from '~/domains/events/builder'
+
+// The paytable: every block at its default length, same numbers the palette
+// and agenda rows show.
+const paytable = eventBuilderBlockTypes
+  .filter(type => type !== 'custom')
+  .map((type) => {
+    const definition = eventBuilderBlockDefinitions[type]
+    const focus = Math.round(getScaledBlockFocusCost(definition, definition.defaultDurationMinutes))
+    const energy = Math.round(getScaledBlockEnergyDelta(definition, definition.defaultDurationMinutes))
+
+    return {
+      type,
+      label: definition.label,
+      minutes: definition.defaultDurationMinutes,
+      focusLabel: focus === 0 ? '±0' : `−${focus}`,
+      energy,
+      energyLabel: energy === 0 ? '±0' : energy > 0 ? `+${energy}` : `−${Math.abs(energy)}`
+    }
+  })
+
+const budgets = (Object.keys(eventBuilderTypeProfiles) as Array<keyof typeof eventBuilderTypeProfiles>)
+  .map(eventType => ({
+    eventType,
+    focusBudget: eventBuilderTypeProfiles[eventType].focusBudget
+  }))
 
 const sections = [
   {
@@ -99,6 +131,73 @@ const sections = [
               </p>
             </div>
           </section>
+        </div>
+
+        <div class="mt-5 border-t border-black/5 pt-4 dark:border-white/[0.06]">
+          <h3 class="text-sm font-semibold text-highlighted">
+            The paytable
+          </h3>
+          <p class="mt-0.5 text-xs text-muted">
+            Every block at its default length. Longer passive sessions cost more per minute; recovery saturates instead of stacking.
+          </p>
+
+          <div
+            class="mt-3 grid grid-cols-[minmax(0,1fr)_3rem_3rem_3rem] gap-x-2 gap-y-1.5 text-xs"
+            data-testid="event-builder-science-paytable"
+          >
+            <span class="text-[10px] font-semibold uppercase tracking-[0.14em] text-dimmed">Block</span>
+            <span class="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-dimmed">Length</span>
+            <span class="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-dimmed">Focus</span>
+            <span class="text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-dimmed">Energy</span>
+
+            <template
+              v-for="row in paytable"
+              :key="row.type"
+            >
+              <span class="inline-flex min-w-0 items-center gap-1.5 text-toned">
+                <AppIcon
+                  :name="eventBuilderBlockIcons[row.type]"
+                  class="size-3.5 shrink-0 text-muted"
+                />
+                <span class="truncate">{{ row.label }}</span>
+              </span>
+              <span class="text-right tabular-nums text-muted">{{ row.minutes }}m</span>
+              <span class="text-right tabular-nums text-sky-500">{{ row.focusLabel }}</span>
+              <span
+                class="text-right tabular-nums"
+                :class="row.energy >= 0 ? 'text-emerald-500' : 'text-amber-500'"
+              >{{ row.energyLabel }}</span>
+            </template>
+
+            <span class="inline-flex min-w-0 items-center gap-1.5 text-toned">
+              <AppIcon
+                :name="eventBuilderBlockIcons.custom"
+                class="size-3.5 shrink-0 text-muted"
+              />
+              <span class="truncate">Custom Session</span>
+            </span>
+            <span class="col-span-3 self-center text-right text-[11px] text-dimmed">you set the dials</span>
+          </div>
+
+          <div class="mt-4 flex flex-wrap items-center gap-2">
+            <span class="text-[10px] font-semibold uppercase tracking-[0.14em] text-dimmed">Focus budget</span>
+            <span
+              v-for="budget in budgets"
+              :key="budget.eventType"
+              class="inline-flex items-center gap-1 rounded-md border border-black/8 px-2 py-0.5 text-xs text-toned dark:border-white/[0.08]"
+            >
+              <span class="capitalize">{{ budget.eventType }}</span>
+              <span class="tabular-nums text-sky-500">{{ budget.focusBudget }}</span>
+            </span>
+          </div>
+
+          <div class="mt-2 flex flex-wrap items-center gap-2">
+            <span class="text-[10px] font-semibold uppercase tracking-[0.14em] text-dimmed">Score bands</span>
+            <span class="inline-flex items-center rounded-md border border-black/8 px-2 py-0.5 text-xs text-emerald-500 dark:border-white/[0.08]">80+ Excellent</span>
+            <span class="inline-flex items-center rounded-md border border-black/8 px-2 py-0.5 text-xs text-sky-500 dark:border-white/[0.08]">60+ Good</span>
+            <span class="inline-flex items-center rounded-md border border-black/8 px-2 py-0.5 text-xs text-amber-500 dark:border-white/[0.08]">40+ Fair</span>
+            <span class="inline-flex items-center rounded-md border border-black/8 px-2 py-0.5 text-xs text-rose-500 dark:border-white/[0.08]">Below 40 Needs work</span>
+          </div>
         </div>
       </DialogContent>
     </DialogPortal>
