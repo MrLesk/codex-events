@@ -17,6 +17,7 @@ interface TenantConfig {
   mcpClientMetadataUrls: string[]
   databaseConnectionName: string
   googleConnectionName: string
+  githubConnectionName: string
   accountLinkChallengeSecret: string
   loginUri: string
   customDomain: string
@@ -185,6 +186,7 @@ const defaultActionRuntime = 'node22'
 const defaultAuth0AppDisplayName = 'Codex Events'
 const defaultAuth0DatabaseConnectionName = 'Username-Password-Authentication'
 const defaultAuth0GoogleConnectionName = 'google-oauth2'
+const defaultAuth0GithubConnectionName = 'github'
 const defaultMcpScope = 'mcp'
 const defaultBrandingPrimaryColor = '#030213'
 const lightButtonLabelColor = '#ffffff'
@@ -538,6 +540,7 @@ Environment variables:
 - AUTH0_CUSTOM_DOMAIN (default: auth.<AUTH0_APP_BASE_URL host> when AUTH0_APP_BASE_URL is https)
 - AUTH0_DATABASE_CONNECTION_NAME (default: ${defaultAuth0DatabaseConnectionName})
 - AUTH0_GOOGLE_CONNECTION_NAME (optional; expected Auth0 Google connection name, usually ${defaultAuth0GoogleConnectionName})
+- AUTH0_GITHUB_CONNECTION_NAME (optional; expected Auth0 GitHub connection name, usually ${defaultAuth0GithubConnectionName})
 - AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET (optional; defaults from NUXT_AUTH0_CLIENT_SECRET)
 - AUTH0_TERMS_URL (default: <AUTH0_APP_BASE_URL>/terms-and-conditions)
 - AUTH0_PRIVACY_URL (default: <AUTH0_APP_BASE_URL>/privacy-policy)
@@ -904,6 +907,7 @@ export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
     mcpClientMetadataUrls: parseMcpClientMetadataUrls(environment.AUTH0_MCP_CLIENT_METADATA_URLS),
     databaseConnectionName: firstDefinedValue(environment.AUTH0_DATABASE_CONNECTION_NAME, defaultAuth0DatabaseConnectionName),
     googleConnectionName: firstDefinedValue(environment.AUTH0_GOOGLE_CONNECTION_NAME),
+    githubConnectionName: firstDefinedValue(environment.AUTH0_GITHUB_CONNECTION_NAME),
     accountLinkChallengeSecret: resolveAuth0AccountLinkChallengeSecret(environment),
     loginUri: normalizeHttpsUrlString(
       requireConfigField(
@@ -1512,6 +1516,18 @@ export async function ensureMcpDomainConnections(config: TenantConfig, token: st
       connectionName: config.googleConnectionName,
       label: 'Google',
       expectedStrategy: 'google-oauth2'
+    })
+  }
+
+  if (config.githubConnectionName) {
+    await ensureDomainConnection({
+      config,
+      token,
+      mode,
+      failures,
+      connectionName: config.githubConnectionName,
+      label: 'GitHub',
+      expectedStrategy: 'github'
     })
   }
 }

@@ -74,7 +74,7 @@ To offer Google sign-in, create a Google OAuth 2.0 Web application in Google Clo
 https://auth.<BASE_DOMAIN>/login/callback
 ```
 
-Use the explicit `AUTH0_CUSTOM_DOMAIN` instead of `auth.<BASE_DOMAIN>` when configured. Create the Google social connection in Auth0, store the Google client ID and secret there, and set `AUTH0_GOOGLE_CONNECTION_NAME` to its Auth0 connection name (normally `google-oauth2`). The deploy workflow verifies the connection strategy and makes that existing connection domain-level, so it is available to the Codex Events application and strict third-party MCP OAuth clients. The automation never reads or replaces the Google provider credentials.
+Use the explicit `AUTH0_CUSTOM_DOMAIN` instead of `auth.<BASE_DOMAIN>` when configured. Create the Google social connection in Auth0, store the Google client ID and secret there, and set `AUTH0_GOOGLE_CONNECTION_NAME` to its Auth0 connection name (normally `google-oauth2`). Do the same for an optional GitHub social connection with `AUTH0_GITHUB_CONNECTION_NAME` (normally `github`). The deploy workflow verifies each connection strategy and makes the existing connection domain-level, so it is available to the Codex Events application and strict third-party MCP OAuth clients. The automation never reads or replaces the social provider credentials.
 
 The deploy workflow configures the application's callback URLs, logout URLs, web origins, login URI, Universal Login branding, signup prompt behavior, and post-login Action — you do not set these by hand.
 
@@ -139,6 +139,7 @@ Add these only when they apply:
 |---------------------------------------|----------|----------------------------------------------------------------------------------------|
 | `AUTH0_CUSTOM_DOMAIN`                 | Auth0    | Only if your login hostname is not `auth.<BASE_DOMAIN>`, e.g. `auth.example.com`       |
 | `AUTH0_GOOGLE_CONNECTION_NAME`        | Auth0    | Existing Google social connection name, normally `google-oauth2`, when Google sign-in is enabled |
+| `AUTH0_GITHUB_CONNECTION_NAME`        | Auth0    | Existing GitHub social connection name, normally `github`, when GitHub sign-in is enabled |
 | `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0    | Only if your database connection is not named `Username-Password-Authentication`       |
 | `NUXT_OUTBOUND_EMAIL_REPLY_TO`        | -        | Only if replies should go to a different address than `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` |
 

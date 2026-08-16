@@ -71,6 +71,7 @@ describe('auth0 bootstrap config', () => {
     expect(config.appDisplayName).toBe('Codex Events')
     expect(config.databaseConnectionName).toBe('Username-Password-Authentication')
     expect(config.googleConnectionName).toBe('')
+    expect(config.githubConnectionName).toBe('')
     expect(config.loginUri).toBe('https://test.codex-events.com/auth/login')
     expect(config.brandingPrimaryColor).toBe('#030213')
     expect(config.brandingPrimaryButtonLabelColor).toBe('#ffffff')
@@ -214,6 +215,14 @@ describe('auth0 bootstrap config', () => {
     expect(config.googleConnectionName).toBe('google-oauth2')
   })
 
+  test('preserves an explicitly configured GitHub connection name', () => {
+    const config = resolveConfig(createAuth0BootstrapEnvironment({
+      AUTH0_GITHUB_CONNECTION_NAME: 'github'
+    }))
+
+    expect(config.githubConnectionName).toBe('github')
+  })
+
   test('promotes configured identity connections without reading or updating provider options', async () => {
     let googleIsDomainConnection = false
     const fetchMock = vi.fn().mockImplementation(async (input: string | URL | Request, init?: RequestInit) => {
@@ -313,6 +322,28 @@ describe('auth0 bootstrap config', () => {
     expect(strategyFailures).toEqual([
       'Auth0 Google connection not-google uses strategy github, expected google-oauth2.'
     ])
+
+    // The same fixture is a valid GitHub connection by strategy, but check
+    // mode still reports that it is not yet domain-level.
+    const githubFailures: string[] = []
+    await ensureMcpDomainConnections(
+      resolveConfig(createAuth0BootstrapEnvironment({ AUTH0_GITHUB_CONNECTION_NAME: 'not-google' })),
+      'management-token',
+      'check',
+      githubFailures
+    )
+    expect(githubFailures).toEqual([
+      'Auth0 GitHub connection not-google is not a domain-level connection for third-party MCP clients.'
+    ])
+
+    const githubMissingFailures: string[] = []
+    await ensureMcpDomainConnections(
+      resolveConfig(createAuth0BootstrapEnvironment({ AUTH0_GITHUB_CONNECTION_NAME: 'missing-google' })),
+      'management-token',
+      'check',
+      githubMissingFailures
+    )
+    expect(githubMissingFailures).toEqual(['Auth0 GitHub connection missing-google was not found.'])
   })
 
   test('preserves explicit branding overrides', () => {
