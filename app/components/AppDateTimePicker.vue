@@ -74,33 +74,64 @@ const dateModel = computed<DateValue | undefined>({
 
 const hasDate = computed(() => dateModel.value !== undefined)
 
-function timePart(part: 'hour' | 'minute') {
+// The popover edits the clock in 12h form (hour + minute + AM/PM) while the
+// field segments stay 24h; both write the same underlying value.
+const hour24 = computed(() => {
   const value = dateModel.value
 
-  if (!value || !('hour' in value)) {
+  return value && 'hour' in value ? value.hour : null
+})
+
+const hour12Label = computed(() => {
+  if (hour24.value === null) {
     return ''
   }
 
-  return String(part === 'hour' ? value.hour : value.minute).padStart(2, '0')
-}
+  const hour = hour24.value % 12
 
-function setTimePart(part: 'hour' | 'minute', raw: string) {
+  return String(hour === 0 ? 12 : hour).padStart(2, '0')
+})
+
+const minuteLabel = computed(() => {
   const value = dateModel.value
 
-  if (!value || !('hour' in value)) {
-    return
-  }
+  return value && 'hour' in value ? String(value.minute).padStart(2, '0') : ''
+})
 
+const isPm = computed(() => hour24.value !== null && hour24.value >= 12)
+
+function setHour12(raw: string) {
+  const value = dateModel.value
   const parsed = Number(raw)
 
-  if (!Number.isFinite(parsed)) {
+  if (!value || !('hour' in value) || !Number.isFinite(parsed)) {
     return
   }
 
-  const max = part === 'hour' ? 23 : 59
-  const clamped = Math.min(max, Math.max(0, Math.round(parsed)))
+  const clamped = Math.min(12, Math.max(1, Math.round(parsed)))
 
-  dateModel.value = value.set({ [part]: clamped })
+  dateModel.value = value.set({ hour: (clamped % 12) + (isPm.value ? 12 : 0) })
+}
+
+function setMinute(raw: string) {
+  const value = dateModel.value
+  const parsed = Number(raw)
+
+  if (!value || !('hour' in value) || !Number.isFinite(parsed)) {
+    return
+  }
+
+  dateModel.value = value.set({ minute: Math.min(59, Math.max(0, Math.round(parsed))) })
+}
+
+function setMeridiem(pm: boolean) {
+  const value = dateModel.value
+
+  if (!value || !('hour' in value) || pm === isPm.value) {
+    return
+  }
+
+  dateModel.value = value.set({ hour: (value.hour + 12) % 24 })
 }
 </script>
 
@@ -220,15 +251,15 @@ function setTimePart(part: 'hour' | 'minute', raw: string) {
         />
         <input
           type="number"
-          min="0"
-          max="23"
-          :value="timePart('hour')"
+          min="1"
+          max="12"
+          :value="hour12Label"
           :disabled="!hasDate"
-          placeholder="18"
+          placeholder="06"
           aria-label="Hour"
           :title="hasDate ? 'Hour' : 'Pick a date first'"
           class="h-8 w-12 rounded-lg border border-black/8 bg-white text-center text-sm tabular-nums text-highlighted outline-none transition focus:border-black/25 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-          @change="event => setTimePart('hour', (event.target as HTMLInputElement).value)"
+          @change="event => setHour12((event.target as HTMLInputElement).value)"
         >
         <span class="text-sm text-dimmed">:</span>
         <input
@@ -236,14 +267,44 @@ function setTimePart(part: 'hour' | 'minute', raw: string) {
           min="0"
           max="59"
           step="5"
-          :value="timePart('minute')"
+          :value="minuteLabel"
           :disabled="!hasDate"
           placeholder="30"
           aria-label="Minute"
           :title="hasDate ? 'Minute' : 'Pick a date first'"
           class="h-8 w-12 rounded-lg border border-black/8 bg-white text-center text-sm tabular-nums text-highlighted outline-none transition focus:border-black/25 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-          @change="event => setTimePart('minute', (event.target as HTMLInputElement).value)"
+          @change="event => setMinute((event.target as HTMLInputElement).value)"
         >
+        <div
+          class="ml-1 inline-flex overflow-hidden rounded-lg border border-black/8 dark:border-white/[0.08]"
+          role="group"
+          aria-label="AM or PM"
+        >
+          <button
+            type="button"
+            :disabled="!hasDate"
+            :aria-pressed="hasDate && !isPm"
+            class="h-8 px-2 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40"
+            :class="hasDate && !isPm
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted hover:bg-black/5 hover:text-highlighted dark:hover:bg-white/[0.06]'"
+            @click="setMeridiem(false)"
+          >
+            AM
+          </button>
+          <button
+            type="button"
+            :disabled="!hasDate"
+            :aria-pressed="isPm"
+            class="h-8 px-2 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40"
+            :class="isPm
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted hover:bg-black/5 hover:text-highlighted dark:hover:bg-white/[0.06]'"
+            @click="setMeridiem(true)"
+          >
+            PM
+          </button>
+        </div>
         <span
           v-if="!hasDate"
           class="text-xs text-dimmed"

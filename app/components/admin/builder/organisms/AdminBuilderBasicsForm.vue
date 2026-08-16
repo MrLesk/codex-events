@@ -37,7 +37,7 @@ const onlineActive = computed(() => props.locationChosen && !form.value.inPerson
     </div>
 
     <div class="grid gap-4 sm:grid-cols-2">
-      <AppFormField label="Event starts at">
+      <AppFormField label="Event starts at (local time)">
         <AppDateTimePicker
           id="event-builder-event-starts-at"
           v-model="eventStartsAtModel"
