@@ -46,4 +46,13 @@ describe('event builder templates', () => {
       expect(result.score, `template ${template.id} scored ${result.score}`).toBeGreaterThanOrEqual(70)
     }
   })
+
+  test('no template triggers coach warnings; a warned template is a curation bug', () => {
+    for (const template of eventBuilderTemplates) {
+      const result = computeEventBalance(buildTemplateScoringInput(template.eventType, template.blocks))
+      const warnings = result.tips.filter(tip => tip.tone === 'warning').map(tip => tip.id)
+
+      expect(warnings, `template ${template.id} warns: ${warnings.join(', ')}`).toEqual([])
+    }
+  })
 })

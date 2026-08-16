@@ -56,7 +56,7 @@ export const eventBuilderTemplates: readonly EventBuilderTemplate[] = [
     id: 'meetup-lightning-talks-night',
     eventType: 'meetup',
     name: 'Lightning Talks Night',
-    description: 'Six five-minute lightning talks in quick succession, then room to connect.',
+    description: 'Six five-minute lightning talks, community demos, then room to connect.',
     blocks: [
       { builderBlockType: 'welcome', title: 'Doors Open', durationMinutes: 15 },
       { builderBlockType: 'lightning_talk', title: 'Lightning Talk I', durationMinutes: 5 },
@@ -66,6 +66,7 @@ export const eventBuilderTemplates: readonly EventBuilderTemplate[] = [
       { builderBlockType: 'lightning_talk', title: 'Lightning Talk V', durationMinutes: 5 },
       { builderBlockType: 'lightning_talk', title: 'Lightning Talk VI', durationMinutes: 5 },
       { builderBlockType: 'break', title: 'Break', durationMinutes: 15 },
+      { builderBlockType: 'demos', title: 'Community Demos', durationMinutes: 30 },
       { builderBlockType: 'networking', title: 'Networking', durationMinutes: 45 }
     ],
     applicationFields: { visible: ['xProfile'], required: [] }
@@ -108,7 +109,7 @@ export const eventBuilderTemplates: readonly EventBuilderTemplate[] = [
     blocks: [
       { builderBlockType: 'welcome', title: 'Welcome & Setup', durationMinutes: 15 },
       { builderBlockType: 'workshop', title: 'Deep-dive Workshop', durationMinutes: 90 },
-      { builderBlockType: 'break', title: 'Break', durationMinutes: 15 },
+      { builderBlockType: 'food', title: 'Food & Drinks', durationMinutes: 30 },
       { builderBlockType: 'build', title: 'Build Block', durationMinutes: 150 },
       { builderBlockType: 'networking', title: 'Wrap-up & Networking', durationMinutes: 30 }
     ],
