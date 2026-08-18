@@ -134,8 +134,9 @@ Remote test and production deployments are generated from environment-specific d
 Compatible MCP clients connect to the deployment's `/mcp` endpoint. Auth0
 OAuth is the recommended connection method; named 30-day bearer tokens remain
 available for clients that require a manual credential. OAuth clients use
-standard Dynamic Client Registration or administrator-approved HTTPS Client ID
-Metadata Documents. Tool discovery
+administrator-approved HTTPS Client ID Metadata Documents (CIMD), with the
+metadata URL as the client identifier. Dynamic Client Registration is disabled
+for this MCP resource. Tool discovery
 follows the user's current role, and every call rechecks the same authorization
 and lifecycle rules as the web app. See the [MCP API and security model](docs/mcp.md)
 for the authentication, operation, and audit contract.

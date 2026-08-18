@@ -965,7 +965,7 @@ export function buildMcpTenantSettings() {
     resource_parameter_profile: 'compatibility',
     authorization_response_iss_parameter_supported: true,
     client_id_metadata_document_supported: true,
-    flags: { enable_dynamic_client_registration: true }
+    flags: { enable_dynamic_client_registration: false }
   }
 }
 
@@ -1279,7 +1279,7 @@ async function ensureMcpTenantSettings(config: TenantConfig, token: string, mode
   const hasExpectedSettings = settings.resource_parameter_profile === expected.resource_parameter_profile
     && settings.authorization_response_iss_parameter_supported === expected.authorization_response_iss_parameter_supported
     && settings.client_id_metadata_document_supported === expected.client_id_metadata_document_supported
-    && settings.flags?.enable_dynamic_client_registration === true
+    && settings.flags?.enable_dynamic_client_registration === false
 
   if (mode === 'apply' && !hasExpectedSettings) {
     const update = buildMcpTenantSettingsUpdate(settings)
@@ -1287,7 +1287,7 @@ async function ensureMcpTenantSettings(config: TenantConfig, token: string, mode
       method: 'PATCH',
       body: JSON.stringify(update)
     })
-    console.log('Applied: enabled MCP resource discovery, CIMD, and dynamic client registration.')
+    console.log('Applied: enabled MCP resource discovery and CIMD; disabled dynamic client registration.')
   }
 
   const verified = mode === 'apply' && !hasExpectedSettings
@@ -1302,8 +1302,8 @@ async function ensureMcpTenantSettings(config: TenantConfig, token: string, mode
   if (verified.client_id_metadata_document_supported !== true) {
     failures.push('Auth0 client ID metadata documents are not enabled.')
   }
-  if (verified.flags?.enable_dynamic_client_registration !== true) {
-    failures.push('Auth0 dynamic client registration is not enabled.')
+  if (verified.flags?.enable_dynamic_client_registration !== false) {
+    failures.push('Auth0 dynamic client registration is enabled; CIMD-only MCP registration requires it to be disabled.')
   }
 }
 

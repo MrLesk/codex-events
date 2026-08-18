@@ -789,9 +789,11 @@ OAuth credentials do not contain platform roles or cached consent, and the
 platform does not persist OAuth access tokens, refresh tokens, or authorization
 codes. The resource validates the signed token's exact audience and Auth0
 subject; platform permissions come from the live user record rather than OAuth
-scope claims. Auth0 supports Dynamic Client Registration for standards clients and
-administrator-approved HTTPS Client ID Metadata Documents for clients that use
-CIMD. Both paths target the same canonical MCP resource and platform actor.
+scope claims. Auth0 uses administrator-approved HTTPS Client ID Metadata
+Documents for MCP clients. The CIMD URL is the OAuth `client_id`; deployment
+imports trusted URLs idempotently, and Dynamic Client Registration is disabled.
+All registered clients target the same canonical MCP resource and platform
+actor.
 
 Named MCP access tokens remain available as a secondary connection method for
 clients that require a manually supplied bearer credential.

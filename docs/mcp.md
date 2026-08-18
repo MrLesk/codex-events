@@ -14,13 +14,11 @@ unauthenticated requests with a link to that metadata. Compatible clients use
 Authorization Code with PKCE against the configured Auth0 authorization server
 for the canonical MCP resource.
 
-The authorization server supports both standard client-registration paths.
-Clients such as MCP Inspector can register an instance through Dynamic Client
-Registration (DCR). Clients that publish an HTTPS Client ID Metadata Document
-(CIMD), including ChatGPT, can use that document URL as `client_id` after a
-tenant administrator imports it through Auth0. Deployment configuration lists
-the trusted metadata URLs and reconciles them idempotently; Auth0 does not
-approve an unknown metadata URL merely because it advertises CIMD support.
+The authorization server uses administrator-approved HTTPS Client ID Metadata
+Documents (CIMD) as the MCP client-registration path. A client uses its
+metadata document URL as `client_id`; deployment imports trusted metadata URLs
+and reconciles them idempotently. Dynamic Client Registration is disabled, so
+unknown clients cannot create tenant applications or consume client slots.
 
 Redirect URIs belong to the registering client. MCP Inspector uses its own
 loopback callback, Codex local clients derive a local callback for the server,

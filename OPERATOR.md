@@ -196,9 +196,9 @@ The MCP rollout is additive. Migration `0071_mcp_access_tokens.sql` must finish
 before the Worker serving `/mcp` is deployed; the checked-in workflow already
 preserves that ordering. The Auth0 bootstrap creates the MCP resource server,
 `mcp` permission, strict third-party user grant, OAuth discovery settings,
-and domain-level login connection. It enables Dynamic Client Registration for
-standards clients and imports every configured trusted HTTPS Client ID Metadata
-Document URL through Auth0's idempotent CIMD registration endpoint. `/mcp`
+and domain-level login connection. It disables Dynamic Client Registration and
+imports every configured trusted HTTPS Client ID Metadata Document URL through
+Auth0's idempotent CIMD registration endpoint. `/mcp`
 requires a signed Auth0 token for the exact resource audience with a subject and
 client identity. It does not require OIDC or custom API scopes in the token
 scope claim because strict third-party clients may omit them; D1 remains
@@ -274,8 +274,8 @@ As the first platform admin, use the platform admin workspace to:
 - `/auth/login` opens Auth0 on `https://auth.<BASE_DOMAIN>` (or your `AUTH0_CUSTOM_DOMAIN`).
 - The first platform admin can open `/account/platform-settings?tab=platform-admins`.
 - The first platform admin can create an event.
-- MCP Inspector discovers OAuth from `https://<BASE_DOMAIN>/mcp`, registers
-  through DCR, completes browser sign-in through Auth0 with PKCE, and can list
+- MCP Inspector discovers OAuth from `https://<BASE_DOMAIN>/mcp`, uses its
+  administrator-registered CIMD client, completes browser sign-in through Auth0 with PKCE, and can list
   and call role-appropriate tools.
 - ChatGPT hosted connectors and Codex local clients each complete the same
   OAuth resource flow using their own documented client identity and redirect
@@ -422,7 +422,7 @@ bun run deploy:production
 ```
 
 Run the migration command before the deploy command. After deployment, use MCP
-Inspector to verify protected-resource discovery, DCR, Authorization Code with
+Inspector to verify protected-resource discovery, CIMD, Authorization Code with
 PKCE, the exact MCP audience, signed subject and client identity, `tools/list`,
 and one representative call. Test configured CIMD clients
 separately with their own metadata URL and declared redirect URI. ChatGPT hosted

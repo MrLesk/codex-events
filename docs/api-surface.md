@@ -716,10 +716,11 @@ allowlists.
 `GET /.well-known/oauth-protected-resource` publishes the canonical MCP
 resource, Auth0 authorization server, and supported bearer method. An unauthenticated `/mcp` response links to that metadata through
 `WWW-Authenticate`. Auth0 publishes its own authorization-server discovery and
-owns Authorization Code with PKCE, refresh, and revocation. Auth0 enables
-Dynamic Client Registration for standards clients and deployment automation
+owns Authorization Code with PKCE, refresh, and revocation. Auth0 uses
+administrator-approved CIMD for standards clients and deployment automation
 idempotently imports configured trusted HTTPS Client ID Metadata Document URLs.
-Unknown metadata URLs are rejected. Each registered client supplies its own
+Dynamic Client Registration is disabled, so unknown metadata URLs are rejected
+without creating tenant applications. Each registered client supplies its own
 redirect contract: Inspector and Codex use their documented loopback callbacks,
 while ChatGPT hosted connectors use their MCP-specific HTTPS callback. A default third-party user grant
 allows the `mcp` API permission for that resource, while `/mcp` validates the

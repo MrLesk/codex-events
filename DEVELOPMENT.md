@@ -108,7 +108,7 @@ These commands enforce required Auth0 tenant configuration:
 - signup prompt consent text/partials cleared so platform consent stays app-owned at `/account/register`
 - post-login Action deployment and trigger binding for consent claims and Auth0 account linking
 - a default third-party user grant for the MCP API permission without post-login scope mutation
-- Dynamic Client Registration for standards-compliant MCP clients
+- administrator-approved CIMD-only registration for standards-compliant MCP clients
 - administrator-managed import of configured trusted HTTPS Client ID Metadata Document URLs
 - optional promotion of the configured Google social connection to a domain-level connection for the web application and strict third-party MCP OAuth clients
 - required callback/logout/origin URL inclusion on the Auth0 application
@@ -239,7 +239,7 @@ source file, shell history, screenshot, or test fixture.
 
 Use MCP Inspector against the deployed test endpoint for the protocol and OAuth
 baseline. Configure `https://test.codex-events.com/mcp` as Streamable HTTP and
-complete its OAuth flow. Inspector registers its client through DCR and uses
+complete its OAuth flow with its administrator-registered CIMD client and use
 Authorization Code with PKCE. Verify discovery, token issuance for the exact
 resource, the role-filtered tool list, and one read-only call. Open the web UI
 with the same hostname used by its registered callback: `http://localhost:6274`
@@ -258,8 +258,8 @@ confirm the next request is rejected.
 For Codex against the test deployment, add the Streamable HTTP MCP URL without
 a manual bearer token. Codex opens Authorization Code with PKCE and returns to
 the server-specific local callback it derives from its configured callback
-base. Register that exact derived redirect when using a predefined or CIMD
-client; otherwise let Codex use DCR. Verify the exact MCP audience, the
+base. Register that exact derived redirect in the client's CIMD document and
+have the document URL administrator-registered in Auth0. Verify the exact MCP audience, the
 signed subject and client identity, `tools/list`, and one read-only call. Do not
 expect strict third-party Auth0 access tokens to contain OIDC scopes or support
 `/userinfo`.
