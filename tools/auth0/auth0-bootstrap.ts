@@ -52,6 +52,8 @@ interface Auth0Client {
   external_metadata_type?: string
   external_metadata_created_by?: string
   name?: string
+  app_type?: string
+  is_first_party?: boolean
   callbacks?: string[]
   allowed_logout_urls?: string[]
   web_origins?: string[]
@@ -1324,6 +1326,19 @@ async function getMcpCimdClient(config: TenantConfig, token: string, externalCli
   return clients.find(client => client.external_client_id === externalClientId) ?? null
 }
 
+async function getAuth0ClientInventory(config: TenantConfig, token: string) {
+  const response = await auth0ManagementRequest(
+    config,
+    token,
+    '/api/v2/clients?per_page=100&include_totals=true&fields=client_id,name,app_type,is_first_party,external_client_id,external_metadata_type,external_metadata_created_by&include_fields=true',
+    { method: 'GET' }
+  )
+  const payload = await response.json() as { clients?: Auth0Client[], total?: number } | Auth0Client[]
+  return Array.isArray(payload)
+    ? { total: payload.length, clients: payload }
+    : { total: payload.total ?? payload.clients?.length ?? 0, clients: payload.clients ?? [] }
+}
+
 export async function ensureTrustedMcpCimdClients(
   config: TenantConfig,
   token: string,
@@ -1332,10 +1347,28 @@ export async function ensureTrustedMcpCimdClients(
 ) {
   for (const externalClientId of config.mcpClientMetadataUrls) {
     if (mode === 'apply') {
-      const response = await auth0ManagementRequest(config, token, '/api/v2/clients/cimd/register', {
-        method: 'POST',
-        body: JSON.stringify({ external_client_id: externalClientId })
-      })
+      let response: Response
+      try {
+        response = await auth0ManagementRequest(config, token, '/api/v2/clients/cimd/register', {
+          method: 'POST',
+          body: JSON.stringify({ external_client_id: externalClientId })
+        })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        if (message.includes('too_many_entities')) {
+          const inventory = await getAuth0ClientInventory(config, token)
+          console.log(`Auth0 client inventory at CIMD capacity (${inventory.total} clients): ${JSON.stringify(inventory.clients.map(client => ({
+            client_id: client.client_id,
+            name: client.name,
+            app_type: client.app_type,
+            is_first_party: client.is_first_party,
+            external_client_id: client.external_client_id,
+            external_metadata_type: client.external_metadata_type,
+            external_metadata_created_by: client.external_metadata_created_by
+          })))}`)
+        }
+        throw error
+      }
       const registration = await response.json() as Auth0CimdRegistrationResponse
 
       if (!registration.client_id
