@@ -4,7 +4,7 @@ title: Switch MCP OAuth registration from DCR to CIMD
 status: In Progress
 assignee: []
 created_date: '2026-08-18 21:19'
-updated_date: '2026-08-18 21:19'
+updated_date: '2026-08-18 21:31'
 labels:
   - mcp
   - auth0
@@ -52,3 +52,18 @@ Ensure Codex MCP clients use the MCP-standard Client ID Metadata Document path i
 <!-- SECTION:PLAN:BEGIN -->
 1. Change Auth0 tenant bootstrap to enable CIMD and explicitly disable Dynamic Client Registration so authorization-server metadata has no registration_endpoint. 2. Preserve trusted administrator-managed CIMD imports and add tests for the disabled-DCR contract. 3. Replace DCR instructions in canonical/operator/developer/testing docs with CIMD-only guidance and correct issuer/resource discovery wording. 4. Run auth0 bootstrap/config tests and full validation, push main, deploy test only, and verify live authorization-server metadata.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Test deployment 32187353885 succeeded after commit 468b0cdf. Live test Auth0 metadata advertises client_id_metadata_document_supported=true; Auth0 still exposes the legacy registration_endpoint in discovery, but POST /oidc/register returns 400 dynamic client registration is disabled. This is Auth0 discovery behavior; no client can be created. CIMD-only docs follow-up committed as f3831313. Production was not deployed.
+<!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-08-18 21:31
+---
+Test-only deployment verified. The user-facing contract now describes administrator-approved CIMD as the only supported registration path.
+---
+<!-- COMMENTS:END -->
