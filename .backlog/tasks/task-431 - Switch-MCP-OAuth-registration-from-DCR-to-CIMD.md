@@ -1,7 +1,7 @@
 ---
 id: TASK-431
 title: Switch MCP OAuth registration from DCR to CIMD
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-18 21:19'
 updated_date: '2026-08-18 21:52'
@@ -73,3 +73,9 @@ created: 2026-08-18 21:31
 Test-only deployment verified. The user-facing contract now describes administrator-approved CIMD as the only supported registration path.
 ---
 <!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Switched production MCP OAuth registration to Auth0 CIMD-only behavior. Auth0 now advertises CIMD, rejects dynamic registration requests, and accepts the configured Codex metadata URL with its loopback callback. Reclaimed three stale client-created Codex DCR applications (including grants) only when the tenant limit blocked CIMD registration. Production v1.20.5 deployment run 32189622341 succeeded. Verified production issuer/resource metadata, disabled registration response, and a Codex CIMD authorization request reaching Auth0 login. Full token issuance remains an interactive user-login smoke test.
+<!-- SECTION:FINAL_SUMMARY:END -->
