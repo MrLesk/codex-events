@@ -168,6 +168,52 @@ describe('auth0 bootstrap config', () => {
     }
   })
 
+  test('removes stale Codex DCR clients and retries CIMD registration at capacity', async () => {
+    const externalClientId = 'https://chatgpt.com/oauth/codex/test/client.json'
+    const calls: Array<{ url: string, method: string }> = []
+    const fetchMock = vi.fn().mockImplementation(async (input: string | URL, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+      calls.push({ url, method })
+      if (url.endsWith('/api/v2/clients/cimd/register') && calls.filter(call => call.url.endsWith('/api/v2/clients/cimd/register')).length === 1) {
+        return new Response(JSON.stringify({ statusCode: 403, error: 'Forbidden', message: 'You reached the limit of entities of this type for this tenant.', errorCode: 'too_many_entities' }), {
+          status: 403,
+          headers: { 'content-type': 'application/json' }
+        })
+      }
+      if (url.includes('/api/v2/clients?per_page=100')) {
+        return new Response(JSON.stringify({ total: 1, clients: [{
+          client_id: 'tpc_stale_codex',
+          name: 'Codex',
+          external_metadata_type: 'dcr',
+          external_metadata_created_by: 'client'
+        }] }), { status: 200, headers: { 'content-type': 'application/json' } })
+      }
+      if (url.includes('/api/v2/client-grants?client_id=tpc_stale_codex')) {
+        return new Response(JSON.stringify([{ id: 'grant-stale', audience: 'https://example.test' }]), { status: 200, headers: { 'content-type': 'application/json' } })
+      }
+      if (method === 'DELETE') {
+        return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } })
+      }
+      return new Response(JSON.stringify({
+        client_id: 'tpc_test',
+        mapped_fields: { external_client_id: externalClientId },
+        validation: { valid: true, violations: [] }
+      }), { status: 200, headers: { 'content-type': 'application/json' } })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const failures: string[] = []
+    await ensureTrustedMcpCimdClients(resolveConfig(createAuth0BootstrapEnvironment()), 'management-token', 'apply', failures)
+
+    expect(failures).toEqual([])
+    expect(calls.filter(call => call.method === 'DELETE').map(call => call.url)).toEqual([
+      'https://codex-events-test.eu.auth0.com/api/v2/client-grants/grant-stale',
+      'https://codex-events-test.eu.auth0.com/api/v2/clients/tpc_stale_codex'
+    ])
+    expect(calls.filter(call => call.url.endsWith('/api/v2/clients/cimd/register'))).toHaveLength(2)
+  })
+
   test('checks that trusted metadata is an administrator-managed CIMD client', async () => {
     const externalClientId = 'https://chatgpt.com/oauth/codex/test/client.json'
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify([{

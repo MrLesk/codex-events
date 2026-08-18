@@ -88,6 +88,7 @@ interface Auth0ResourceServer {
 
 interface Auth0ClientGrant {
   id: string
+  client_id?: string
   audience: string
   scope?: string[]
   subject_type?: string
@@ -1339,6 +1340,31 @@ async function getAuth0ClientInventory(config: TenantConfig, token: string) {
     : { total: payload.total ?? payload.clients?.length ?? 0, clients: payload.clients ?? [] }
 }
 
+function isStaleCodexDcrClient(client: Auth0Client) {
+  return client.name === 'Codex'
+    && client.external_metadata_type === 'dcr'
+    && client.external_metadata_created_by === 'client'
+}
+
+async function removeStaleCodexDcrClient(config: TenantConfig, token: string, client: Auth0Client) {
+  const grantsResponse = await auth0ManagementRequest(
+    config,
+    token,
+    `/api/v2/client-grants?client_id=${encodeURIComponent(client.client_id)}&per_page=100`,
+    { method: 'GET' }
+  )
+  const grants = await grantsResponse.json() as Auth0ClientGrant[]
+  for (const grant of grants) {
+    await auth0ManagementRequest(config, token, `/api/v2/client-grants/${encodeURIComponent(grant.id)}`, {
+      method: 'DELETE'
+    })
+  }
+  await auth0ManagementRequest(config, token, `/api/v2/clients/${encodeURIComponent(client.client_id)}`, {
+    method: 'DELETE'
+  })
+  console.log(`Removed stale Codex dynamic-registration client ${client.client_id}.`)
+}
+
 export async function ensureTrustedMcpCimdClients(
   config: TenantConfig,
   token: string,
@@ -1366,8 +1392,21 @@ export async function ensureTrustedMcpCimdClients(
             external_metadata_type: client.external_metadata_type,
             external_metadata_created_by: client.external_metadata_created_by
           })))}`)
+          const staleClients = inventory.clients.filter(isStaleCodexDcrClient)
+          for (const staleClient of staleClients) {
+            await removeStaleCodexDcrClient(config, token, staleClient)
+          }
+          if (staleClients.length > 0) {
+            response = await auth0ManagementRequest(config, token, '/api/v2/clients/cimd/register', {
+              method: 'POST',
+              body: JSON.stringify({ external_client_id: externalClientId })
+            })
+          } else {
+            throw error
+          }
+        } else {
+          throw error
         }
-        throw error
       }
       const registration = await response.json() as Auth0CimdRegistrationResponse
 
