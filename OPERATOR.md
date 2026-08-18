@@ -196,8 +196,8 @@ The MCP rollout is additive. Migration `0071_mcp_access_tokens.sql` must finish
 before the Worker serving `/mcp` is deployed; the checked-in workflow already
 preserves that ordering. The Auth0 bootstrap creates the MCP resource server,
 `mcp` permission, strict third-party user grant, OAuth discovery settings,
-and domain-level login connection. It disables Dynamic Client Registration and
-imports every configured trusted HTTPS Client ID Metadata Document URL through
+and domain-level login connection. It imports every configured trusted HTTPS
+Client ID Metadata Document URL through
 Auth0's idempotent CIMD registration endpoint. `/mcp`
 requires a signed Auth0 token for the exact resource audience with a subject and
 client identity. It does not require OIDC or custom API scopes in the token

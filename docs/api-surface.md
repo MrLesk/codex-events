@@ -719,8 +719,8 @@ resource, Auth0 authorization server, and supported bearer method. An unauthenti
 owns Authorization Code with PKCE, refresh, and revocation. Auth0 uses
 administrator-approved CIMD for standards clients and deployment automation
 idempotently imports configured trusted HTTPS Client ID Metadata Document URLs.
-Dynamic Client Registration is disabled, so unknown metadata URLs are rejected
-without creating tenant applications. Each registered client supplies its own
+Unknown metadata URLs are rejected without creating tenant applications. Each
+registered client supplies its own
 redirect contract: Inspector and Codex use their documented loopback callbacks,
 while ChatGPT hosted connectors use their MCP-specific HTTPS callback. A default third-party user grant
 allows the `mcp` API permission for that resource, while `/mcp` validates the

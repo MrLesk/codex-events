@@ -791,7 +791,8 @@ codes. The resource validates the signed token's exact audience and Auth0
 subject; platform permissions come from the live user record rather than OAuth
 scope claims. Auth0 uses administrator-approved HTTPS Client ID Metadata
 Documents for MCP clients. The CIMD URL is the OAuth `client_id`; deployment
-imports trusted URLs idempotently, and Dynamic Client Registration is disabled.
+imports trusted URLs idempotently, and only administrator-approved metadata
+documents may create MCP client registrations.
 All registered clients target the same canonical MCP resource and platform
 actor.
 

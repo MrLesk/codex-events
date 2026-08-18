@@ -17,8 +17,8 @@ for the canonical MCP resource.
 The authorization server uses administrator-approved HTTPS Client ID Metadata
 Documents (CIMD) as the MCP client-registration path. A client uses its
 metadata document URL as `client_id`; deployment imports trusted metadata URLs
-and reconciles them idempotently. Dynamic Client Registration is disabled, so
-unknown clients cannot create tenant applications or consume client slots.
+and reconciles them idempotently. Only administrator-approved metadata
+documents may create MCP client registrations.
 
 Redirect URIs belong to the registering client. MCP Inspector uses its own
 loopback callback, Codex local clients derive a local callback for the server,
