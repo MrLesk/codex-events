@@ -2,7 +2,7 @@ import { desc, eq } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
-import { getD1Binding, getDatabase } from '#server/database/client'
+import { getDatabase, getDatabaseSession } from '#server/database/client'
 import { eventCreditOffers } from '#server/database/schema'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
@@ -47,7 +47,7 @@ export const applicationOperation = defineStructuredRouteOperation({
   })
   const displayOrder = body.displayOrder ?? ((latestOffer?.displayOrder ?? 0) + 1)
 
-  await getD1Binding(h3Event).prepare(`
+  await getDatabaseSession(h3Event).prepare(`
     insert into event_credit_offers (
       id, event_id, name, description, display_order, created_at, updated_at
     )

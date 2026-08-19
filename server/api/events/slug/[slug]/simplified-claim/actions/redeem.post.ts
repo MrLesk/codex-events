@@ -3,7 +3,7 @@ import { z } from 'zod'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
-import { getD1Binding, getDatabase } from '#server/database/client'
+import { getDatabase, getDatabaseSession } from '#server/database/client'
 import {
   eventAttendeeEligibilities,
   eventCreditCodes,
@@ -140,14 +140,14 @@ export const applicationOperation = defineStructuredRouteOperation({
   const claimTimestamp = createUniqueClaimTimestamp()
   const applicationId = existingApplication?.id ?? crypto.randomUUID()
   const shouldRecordApproval = !existingApplication || existingApplication.status === 'submitted'
-  const binding = getD1Binding(h3Event)
+  const session = getDatabaseSession(h3Event)
   const codeAuditId = crypto.randomUUID()
   const checkInAuditId = crypto.randomUUID()
   const approvalAuditId = crypto.randomUUID()
   const auditMetadata = (value: Record<string, unknown>) => JSON.stringify(value)
 
-  await binding.batch([
-    binding.prepare(`
+  await session.batch([
+    session.prepare(`
       update event_credit_codes
       set claimed_by_user_id = ?, claimed_attendee_eligibility_id = ?, claimed_at = ?
       where id = (
@@ -189,7 +189,7 @@ export const applicationOperation = defineStructuredRouteOperation({
       event.id,
       actor.platformUser.id
     ),
-    binding.prepare(`
+    session.prepare(`
       insert into user_applications (
         id, event_id, user_id, status, pre_approval_status, luma_sync_status,
         submitted_at, checked_in_at, check_in_source, reviewed_at,
@@ -234,7 +234,7 @@ export const applicationOperation = defineStructuredRouteOperation({
       eligibility!.id,
       claimTimestamp
     ),
-    binding.prepare(`
+    session.prepare(`
       update users
       set luma_email = ?,
           first_name = case when trim(first_name) = '' then coalesce(?, first_name) else first_name end,
@@ -257,7 +257,7 @@ export const applicationOperation = defineStructuredRouteOperation({
       eligibility!.id,
       claimTimestamp
     ),
-    binding.prepare(`
+    session.prepare(`
       insert into audit_logs (id, actor_user_id, entity_type, entity_id, action, metadata, created_at)
       select ?, ?, 'event_credit_code', id, 'event_credit_code.claimed', ?, ?
       from event_credit_codes
@@ -273,7 +273,7 @@ export const applicationOperation = defineStructuredRouteOperation({
       eligibility!.id,
       claimTimestamp
     ),
-    binding.prepare(`
+    session.prepare(`
       insert into audit_logs (id, actor_user_id, entity_type, entity_id, action, metadata, created_at)
       select ?, ?, 'user_application', id, 'user_application.simplified_claim_check_in_recorded', ?, ?
       from user_applications
@@ -288,7 +288,7 @@ export const applicationOperation = defineStructuredRouteOperation({
       applicationId,
       claimTimestamp
     ),
-    binding.prepare(`
+    session.prepare(`
       insert into audit_logs (id, actor_user_id, entity_type, entity_id, action, metadata, created_at)
       select ?, ?, 'user_application', id, 'user_application.approved', ?, ?
       from user_applications

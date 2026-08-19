@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3'
-import { getRequestHeader } from 'h3'
+import { getRequestHeader, setResponseHeader } from 'h3'
 
 import { drizzle } from 'drizzle-orm/d1'
 
@@ -74,10 +74,8 @@ function resolveIncomingBookmark(event: H3Event) {
   return bookmark || undefined
 }
 
-function resolveDefaultConsistency(event: H3Event): DatabaseConsistency {
-  return event.method === 'GET' || event.method === 'HEAD' || event.method === 'OPTIONS'
-    ? 'replica'
-    : 'strong'
+function resolveDefaultConsistency(): DatabaseConsistency {
+  return 'strong'
 }
 
 function resolveSessionStart(consistency: DatabaseConsistency, incomingBookmark?: string) {
@@ -162,7 +160,7 @@ export function getDatabaseAccess(event: H3Event, options?: DatabaseAccessOption
   }
 
   const access = createDatabaseAccess(getD1Binding(event), {
-    consistency: options?.consistency ?? resolveDefaultConsistency(event),
+    consistency: options?.consistency ?? resolveDefaultConsistency(),
     incomingBookmark: resolveIncomingBookmark(event)
   })
   event.context.appDbAccess = access
@@ -170,8 +168,12 @@ export function getDatabaseAccess(event: H3Event, options?: DatabaseAccessOption
   return access
 }
 
+export function getDatabaseSession(event: H3Event, options?: DatabaseAccessOptions) {
+  return getDatabaseAccess(event, options).session
+}
+
 export function getDatabase(event: H3Event, options?: DatabaseAccessOptions) {
-  if (event.context.appDb && !event.context.appDbAccess) {
+  if (!event.node?.req && !event.node?.res && event.context.appDb && !event.context.appDbAccess) {
     return event.context.appDb
   }
 
@@ -182,7 +184,23 @@ export function getDatabaseBookmark(event: H3Event) {
   return event.context.appDbAccess?.session.getBookmark() ?? null
 }
 
+export function emitD1Bookmark(event: H3Event) {
+  const bookmark = getDatabaseBookmark(event)
+
+  if (bookmark) {
+    setResponseHeader(event, d1BookmarkHeader, bookmark)
+  }
+}
+
 export function setDatabase(event: H3Event, database: AppDatabase) {
+  if (event.node?.req || event.node?.res) {
+    throw new ApiError({
+      statusCode: 500,
+      code: 'database_injection_forbidden',
+      message: 'Direct database injection is only available to non-HTTP test or infrastructure events.'
+    })
+  }
+
   event.context.appDbAccess = undefined
   event.context.appDb = database
 }

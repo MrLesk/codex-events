@@ -16,7 +16,7 @@ export default defineApiHandler(async (h3Event) => {
   setHeader(h3Event, 'cache-control', privateEventImageCacheControl)
 
   const query = parseValidatedQuery(h3Event, publicEventImageQuerySchema)
-  const settings = await getPlatformSettings(getDatabase(h3Event))
+  const settings = await getPlatformSettings(getDatabase(h3Event, { consistency: 'replica' }))
 
   if (!settings?.defaultEventBackgroundImageUrl) {
     throw new ApiError({

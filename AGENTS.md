@@ -170,7 +170,10 @@ current source of truth and flag the mismatch.
 - Use the shared typed account bootstrap for actor, session, and capability data. Route guards and feature components consume it. Do not add feature-local `/api/session` calls or refresh actor data for query-only tab changes.
 - Resolve the request actor once per API request. Identity reconciliation belongs to login and account-link flows, not ordinary reads. Mutations enforce canonical authorization and current consent.
 - Data-heavy event tabs use page-shaped contracts with one critical read after bootstrap, one authorization resolution, and one request-scoped D1 client/session. Do not add a generic graph API; see `docs/api-surface.md` for the contract boundary.
-- Use replica-eligible reads, consistency bookmarks, and read-after-write behavior defined in `docs/tech-stack.md`; preserve equivalent behavior in the local fake-D1 adapter.
+- Strong consistency is the default for every HTTP database request. A vetted public read may explicitly opt into replica consistency through the shared database access API; actor, consent, permission, lifecycle, mutation, and read-after-write paths must remain strong.
+- Use consistency bookmarks and read-after-write behavior defined in `docs/tech-stack.md`; preserve equivalent behavior in the local fake-D1 adapter.
+- HTTP handlers under `server/api/` and `server/routes/` must use the request-scoped database or session accessors. They must not import or call raw D1 binding resolution, create a standalone Drizzle client, or use `context.appDb`/`setDatabase`; direct database injection is limited to explicit non-HTTP test or infrastructure events.
+- The single Nitro `beforeResponse` hook in `server/plugins/database-bookmark.ts` owns `X-D1-Bookmark` response emission for API and raw routes, including successful and error responses.
 - Cancel abandoned tab requests, lazy-load locally bundled heavy code, and do not load runtime editor dependencies from `unpkg`.
 - Public/versioned media uses streamed, cacheable Cloudflare Images variants. Keep private or mutable originals isolated, and do not use public `no-store` originals as page backgrounds.
 - Maintain real-browser request-topology, cancellation, media-payload, timing-phase, and wall-clock budget checks described in `docs/testing-strategy.md`.

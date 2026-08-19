@@ -3,7 +3,7 @@ import { readRawBody } from 'h3'
 import { z } from 'zod'
 
 import { writeAuditLog } from '#server/database/audit-log'
-import { getD1Binding, getDatabase, type AppDatabase } from '#server/database/client'
+import { getDatabase, getDatabaseSession, type AppDatabase } from '#server/database/client'
 import {
   userApplications,
   users
@@ -127,7 +127,7 @@ export default defineApiHandler(async (h3Event) => {
   }
 
   const updatedAt = new Date().toISOString()
-  const updateResult = await getD1Binding(h3Event).prepare(`
+  const updateResult = await getDatabaseSession(h3Event).prepare(`
     update user_applications
     set checked_in_at = ?, check_in_source = 'luma', updated_at = ?
     where id = ?

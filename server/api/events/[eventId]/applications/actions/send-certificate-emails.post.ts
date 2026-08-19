@@ -6,7 +6,7 @@ import { z } from 'zod'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
-import { getD1Binding, type AppDatabase } from '#server/database/client'
+import { getDatabaseSession, type AppDatabase } from '#server/database/client'
 import {
   eventRoleAssignments,
   userApplications,
@@ -123,7 +123,7 @@ export default defineApiHandler(async (h3Event) => {
     }
 
     const queuedAt = new Date().toISOString()
-    const reserveResult = await getD1Binding(h3Event).prepare(`
+    const reserveResult = await getDatabaseSession(h3Event).prepare(`
       update user_applications
       set certificate_email_queued_at = ?,
           certificate_email_queued_by_user_id = ?,

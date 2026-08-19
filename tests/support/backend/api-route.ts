@@ -4,7 +4,7 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { createApp, createRouter, eventHandler, toWebHandler } from 'h3'
 import { vi } from 'vitest'
 
-import { createDatabase } from '../../../server/database/client'
+import { createDatabase, emitD1Bookmark } from '../../../server/database/client'
 import { platformDocuments, userAuthIdentities, userPlatformDocumentAcceptances } from '../../../server/database/schema'
 import { getCurrentPlatformDocuments } from '../../../server/domains/platform/documents'
 import { createTestD1Database } from './fake-d1'
@@ -258,8 +258,18 @@ export function createApiRouteTestHarness(options: {
     event.context.d1Database = d1Database as never
   }))
 
+  function withDatabaseBookmarkHook(handler: EventHandler) {
+    return eventHandler(async (event) => {
+      try {
+        return await handler(event)
+      } finally {
+        emitD1Bookmark(event)
+      }
+    })
+  }
+
   for (const route of options.routes) {
-    router[route.method](route.path, route.handler)
+    router[route.method](route.path, withDatabaseBookmarkHook(route.handler))
   }
 
   app.use(router)

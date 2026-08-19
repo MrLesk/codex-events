@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm'
 
 import { writeAuditLog } from '#server/database/audit-log'
-import { getD1Binding } from '#server/database/client'
+import { getDatabaseSession } from '#server/database/client'
 import { eventCreditCodes } from '#server/database/schema'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { ApiError } from '#server/http/api-error'
@@ -63,7 +63,7 @@ export const applicationOperation = defineStructuredRouteOperation({
   const claimedAt = new Date().toISOString()
 
   try {
-    const updateResult = await getD1Binding(h3Event).prepare(`
+    const updateResult = await getDatabaseSession(h3Event).prepare(`
       update event_credit_codes
       set claimed_by_user_id = ?, claimed_at = ?
       where id = (

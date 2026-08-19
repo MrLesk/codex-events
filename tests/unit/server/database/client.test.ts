@@ -3,7 +3,7 @@ import type { H3Event } from 'h3'
 import { describe, expect, test, vi } from 'vitest'
 
 import { ApiError } from '../../../../server/http/api-error'
-import { getDatabase, resolveD1Binding, withDatabaseBatch } from '../../../../server/database/client'
+import { getDatabase, resolveD1Binding, setDatabase, withDatabaseBatch } from '../../../../server/database/client'
 
 function createEvent(binding?: unknown): H3Event {
   return {
@@ -47,6 +47,52 @@ describe('resolveD1Binding', () => {
     const second = getDatabase(event)
 
     expect(first).toBe(second)
+  })
+
+  test('uses strong consistency by default for HTTP requests', () => {
+    const withSession = vi.fn(() => ({
+      prepare: vi.fn(),
+      batch: vi.fn(),
+      getBookmark: () => null
+    }))
+    const event = createEvent({
+      prepare: vi.fn(),
+      batch: vi.fn(),
+      withSession
+    })
+
+    getDatabase(event)
+
+    expect(withSession).toHaveBeenCalledWith('first-primary')
+  })
+
+  test('allows direct database injection only on non-HTTP events', () => {
+    const event = createEvent()
+    const injectedDatabase = { query: {} } as never
+
+    setDatabase(event, injectedDatabase)
+
+    expect(getDatabase(event)).toBe(injectedDatabase)
+  })
+
+  test('does not allow HTTP requests to use an injected database', () => {
+    const binding = {
+      prepare: vi.fn(),
+      batch: vi.fn(),
+      withSession: vi.fn(() => ({
+        prepare: vi.fn(),
+        batch: vi.fn(),
+        getBookmark: () => null
+      }))
+    }
+    const event = createEvent(binding)
+    event.node = { req: {} as never, res: {} as never } as never
+    const injectedDatabase = { query: {} } as never
+    event.context.appDb = injectedDatabase
+
+    expect(() => setDatabase(event, injectedDatabase)).toThrow(ApiError)
+    expect(getDatabase(event)).not.toBe(injectedDatabase)
+    expect(binding.withSession).toHaveBeenCalledWith('first-primary')
   })
 
   test('delegates batches through the shared database instance', async () => {

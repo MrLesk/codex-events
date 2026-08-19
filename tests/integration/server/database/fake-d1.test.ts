@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { eq } from 'drizzle-orm'
 
-import { createDatabase } from '../../../../server/database/client'
+import { createDatabase, createDatabaseAccess } from '../../../../server/database/client'
 import { users } from '../../../../server/database/schema'
 import { createTestD1Database } from '../../../support/backend/fake-d1'
 
@@ -83,5 +83,42 @@ describe('TestD1Database', () => {
 
       await d1Database.close()
     }
+  })
+
+  test('models a stale replica and lets a bookmark anchor a later read to the write', async () => {
+    const d1Database = createTestD1Database({ replicaStale: true })
+    databases.push(d1Database)
+
+    const writer = createDatabaseAccess(d1Database as never, {
+      consistency: 'strong'
+    })
+    await writer.database.insert(users).values({
+      id: 'bookmark_user',
+      auth0Subject: 'auth0|bookmark_user',
+      email: 'bookmark@example.com',
+      displayName: 'Bookmark User'
+    })
+
+    const writeBookmark = writer.session.getBookmark()
+    expect(writeBookmark).toBe('test-bookmark-1')
+
+    const unbookmarkedRead = createDatabaseAccess(d1Database as never, {
+      consistency: 'replica'
+    })
+    await expect(unbookmarkedRead.database.query.users.findFirst({
+      where: eq(users.id, 'bookmark_user')
+    })).resolves.toBeUndefined()
+    expect(unbookmarkedRead.session.getBookmark()).toBe('test-bookmark-0')
+
+    const bookmarkedRead = createDatabaseAccess(d1Database as never, {
+      consistency: 'replica',
+      incomingBookmark: writeBookmark ?? undefined
+    })
+    await expect(bookmarkedRead.database.query.users.findFirst({
+      where: eq(users.id, 'bookmark_user')
+    })).resolves.toMatchObject({
+      id: 'bookmark_user'
+    })
+    expect(bookmarkedRead.session.getBookmark()).toBe(writeBookmark)
   })
 })

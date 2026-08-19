@@ -2,7 +2,7 @@ import { readMultipartFormData } from 'h3'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
-import { getD1Binding, getDatabase } from '#server/database/client'
+import { getDatabase, getDatabaseSession } from '#server/database/client'
 import { parseSingleColumnCreditCsv } from '#server/domains/credits'
 import {
   getSimplifiedClaimingSummary,
@@ -67,10 +67,10 @@ export default defineApiHandler(async (h3Event) => {
   })
   const values = [...new Set(parsedValues)]
 
-  const binding = getD1Binding(h3Event)
+  const session = getDatabaseSession(h3Event)
   const offerId = crypto.randomUUID()
   const importedAtBase = Date.now()
-  const statements = [binding.prepare(`
+  const statements = [session.prepare(`
     insert or ignore into event_credit_offers (
       id, event_id, name, description, simplified_claiming_only,
       display_order, created_at, updated_at
@@ -85,7 +85,7 @@ export default defineApiHandler(async (h3Event) => {
       return `(?, ?, ${index + chunkIndex + 1})`
     })
 
-    statements.push(binding.prepare(`
+    statements.push(session.prepare(`
       insert into event_credit_codes (id, credit_offer_id, value, created_at)
       with input(id, value, offset_ms) as (
         values ${valueRows.join(', ')}
@@ -107,7 +107,7 @@ export default defineApiHandler(async (h3Event) => {
     `).bind(...bindings, importedAtBase, eventId))
   }
 
-  const results = await binding.batch<Record<string, never>>(statements)
+  const results = await session.batch(statements)
   let importedCount = 0
   for (let index = 1; index < results.length; index += 1) {
     const result: { meta: { changes?: number } } = results[index]

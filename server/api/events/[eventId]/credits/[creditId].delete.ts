@@ -1,6 +1,6 @@
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
-import { getD1Binding, getDatabase } from '#server/database/client'
+import { getDatabase, getDatabaseSession } from '#server/database/client'
 import { creditParamsSchema, getEventCreditOfferOrThrow } from '#server/domains/credits'
 import { requireEventAdmin } from '#server/domains/events'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
@@ -25,7 +25,7 @@ export const applicationOperation = defineStructuredRouteOperation({
   await requireEventAdmin(h3Event, eventId)
   await getEventCreditOfferOrThrow(database, eventId, creditId)
 
-  const result = await getD1Binding(h3Event).prepare(`
+  const result = await getDatabaseSession(h3Event).prepare(`
     delete from event_credit_offers
     where id = ?
       and event_id = ?
