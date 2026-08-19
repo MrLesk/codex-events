@@ -36,13 +36,18 @@ export async function findPlatformUserByAuth0Subject(
   database: AppDatabase,
   auth0Subject: string
 ): Promise<PlatformUserRecord | null> {
-  const identity = await findPlatformUserAuthIdentity(database, auth0Subject)
+  const result = await database
+    .select({ user: users })
+    .from(userAuthIdentities)
+    .innerJoin(users, eq(userAuthIdentities.userId, users.id))
+    .where(and(
+      eq(userAuthIdentities.auth0Subject, normalizeAuth0Subject(auth0Subject)),
+      isNull(users.deletedAt)
+    ))
+    .limit(1)
+    .get()
 
-  if (!identity) {
-    return null
-  }
-
-  return await findActivePlatformUserById(database, identity.userId)
+  return result?.user ?? null
 }
 
 export async function ensurePlatformUserAuthIdentity(

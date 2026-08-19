@@ -8,10 +8,9 @@ import {
 } from '../../../../../server/domains/platform/documents'
 
 describe('platform document utilities', () => {
-  test('loads current platform documents with a single query', async () => {
+  test('loads current platform documents with one bounded query per fixed document type', async () => {
     const findFirst = vi.fn()
-    const findMany = vi.fn(async () => [
-      {
+      .mockResolvedValueOnce({
         id: 'privacy_v2',
         documentType: 'privacy_policy',
         version: 2,
@@ -19,8 +18,8 @@ describe('platform document utilities', () => {
         content: 'Current privacy',
         publishedAt: '2026-03-02T00:00:00.000Z',
         createdAt: '2026-03-02T00:00:00.000Z'
-      },
-      {
+      })
+      .mockResolvedValueOnce({
         id: 'terms_v1',
         documentType: 'platform_terms',
         version: 1,
@@ -28,22 +27,12 @@ describe('platform document utilities', () => {
         content: 'Terms',
         publishedAt: '2026-03-02T00:00:00.000Z',
         createdAt: '2026-03-02T00:00:00.000Z'
-      },
-      {
-        id: 'privacy_v1',
-        documentType: 'privacy_policy',
-        version: 1,
-        title: 'Privacy Policy v1',
-        content: 'Old privacy',
-        publishedAt: '2026-03-01T00:00:00.000Z',
-        createdAt: '2026-03-01T00:00:00.000Z'
-      }
-    ])
+      })
     const database = {
       query: {
         platformDocuments: {
           findFirst,
-          findMany
+          findMany: vi.fn()
         }
       }
     } as never
@@ -58,8 +47,7 @@ describe('platform document utilities', () => {
         version: 1
       }
     })
-    expect(findMany).toHaveBeenCalledTimes(1)
-    expect(findFirst).not.toHaveBeenCalled()
+    expect(findFirst).toHaveBeenCalledTimes(2)
   })
 
   test('rejects outdated platform-document acceptance references', () => {
@@ -89,8 +77,8 @@ describe('platform document utilities', () => {
     const database = {
       query: {
         platformDocuments: {
-          findMany: vi.fn(async () => [
-            {
+          findFirst: vi.fn()
+            .mockResolvedValueOnce({
               id: 'privacy_v1',
               documentType: 'privacy_policy',
               version: 1,
@@ -98,8 +86,9 @@ describe('platform document utilities', () => {
               content: 'Privacy',
               publishedAt: '2026-03-01T00:00:00.000Z',
               createdAt: '2026-03-01T00:00:00.000Z'
-            }
-          ])
+            })
+            .mockResolvedValueOnce(undefined),
+          findMany: vi.fn()
         },
         userPlatformDocumentAcceptances: {
           findMany: vi.fn()

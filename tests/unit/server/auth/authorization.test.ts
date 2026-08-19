@@ -58,8 +58,20 @@ function createDatabaseMock(options?: {
   const auth0Subject = typeof options?.user?.auth0Subject === 'string'
     ? options.user.auth0Subject
     : null
+  const select = vi.fn(() => ({
+    from: vi.fn(() => ({
+      innerJoin: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn(() => ({
+            get: vi.fn(async () => auth0Subject && options?.user ? { user: options.user } : undefined)
+          }))
+        }))
+      }))
+    }))
+  }))
 
   return {
+    select,
     query: {
       userAuthIdentities: {
         findFirst: vi.fn(async () => auth0Subject && options?.user

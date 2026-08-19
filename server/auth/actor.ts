@@ -4,17 +4,11 @@ import { and, eq, isNull } from 'drizzle-orm'
 
 import { getDatabase } from '#server/database/client'
 import { ApiError } from '#server/http/api-error'
-import {
-  ensurePlatformUserAuthIdentities,
-  findPlatformUserByAuth0Subject
-} from '#server/domains/accounts/auth-identities'
+import { findPlatformUserByAuth0Subject } from '#server/domains/accounts/auth-identities'
 import {
   canCreateFirstPlatformAdminSetupAccount,
   grantConfiguredFirstPlatformAdminAccess
 } from '#server/domains/platform/admins'
-import {
-  linkedAuth0SubjectsClaim
-} from '#server/domains/accounts/linking'
 import { hasAcceptedCurrentPlatformDocuments } from '#server/domains/platform/documents'
 
 interface SessionUserProfile {
@@ -25,7 +19,6 @@ interface SessionUserProfile {
   nickname?: string | null
   picture?: string | null
   githubProfileUrl?: string | null
-  linkedAuth0Subjects?: string[]
   [key: string]: unknown
 }
 
@@ -110,12 +103,6 @@ function readSessionUser(session: SessionLike | null | undefined): SessionUserPr
     return null
   }
 
-  const linkedAuth0Subjects = Array.isArray(session.user[linkedAuth0SubjectsClaim])
-    ? session.user[linkedAuth0SubjectsClaim]
-        .filter((subject): subject is string => typeof subject === 'string')
-        .map(subject => subject.trim())
-        .filter(Boolean)
-    : []
   const githubProfileUrl = session.user.sub.startsWith('github|')
     ? buildGitHubProfileUrl(session.user.nickname ?? null)
     : null
@@ -127,8 +114,7 @@ function readSessionUser(session: SessionLike | null | undefined): SessionUserPr
     name: session.user.name ?? null,
     nickname: session.user.nickname ?? null,
     picture: session.user.picture ?? null,
-    githubProfileUrl,
-    linkedAuth0Subjects
+    githubProfileUrl
   }
 }
 
@@ -264,27 +250,6 @@ export function setRequestActor(event: H3Event, actor: RequestActor | Promise<Re
   event.context.requestActor = actor
 }
 
-async function recordSessionLinkedPlatformAccountIdentities(
-  database: ReturnType<typeof getDatabase>,
-  sessionUser: SessionUserProfile,
-  platformUser: PlatformUserRecord
-) {
-  const auth0Subjects = Array.from(new Set([
-    platformUser.auth0Subject,
-    sessionUser.sub,
-    ...(sessionUser.linkedAuth0Subjects ?? [])
-  ].map(subject => subject.trim()).filter(Boolean)))
-
-  if (auth0Subjects.length <= 1) {
-    return
-  }
-
-  await ensurePlatformUserAuthIdentities(database, {
-    userId: platformUser.id,
-    auth0Subjects
-  })
-}
-
 export async function resolveRequestActor(event: H3Event): Promise<RequestActor> {
   const sessionUser = readSessionUser(await getAuth0Session(event))
   const database = getDatabase(event)
@@ -303,7 +268,6 @@ export async function resolveRequestActor(event: H3Event): Promise<RequestActor>
   const platformUser = await findPlatformUserBySubject(event, sessionUser.sub)
 
   if (platformUser) {
-    await recordSessionLinkedPlatformAccountIdentities(database, sessionUser, platformUser)
     const effectivePlatformUser = await grantConfiguredFirstPlatformAdminAccess(database, {
       user: platformUser,
       configuredEmail: useRuntimeConfig(event).firstPlatformAdminEmail
@@ -345,8 +309,7 @@ export async function resolveMcpPlatformActor(event: H3Event, userId: string): P
     email: platformUser.email,
     email_verified: true,
     name: platformUser.displayName,
-    githubProfileUrl: platformUser.githubProfileUrl,
-    linkedAuth0Subjects: []
+    githubProfileUrl: platformUser.githubProfileUrl
   }, platformUser)
 }
 

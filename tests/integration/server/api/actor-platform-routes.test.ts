@@ -907,7 +907,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
   })
 
-  test('GET /api/session records linked social identities from the Auth0 Action claim', async () => {
+  test('GET /api/session resolves the primary account without reconciling Auth0 Action claims', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/session', handler: sessionHandler }
@@ -936,6 +936,53 @@ describe('TASK-3.5 actor-facing API routes', () => {
     const storedGoogleIdentity = await harness.database.query.userAuthIdentities.findFirst({
       where: eq(userAuthIdentities.auth0Subject, 'google-oauth2|existing-google-user')
     })
+    const responseBody = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(responseBody).toMatchObject({
+      data: {
+        actor: {
+          kind: 'platform_user',
+          hasPlatformAccount: true,
+          platformUser: {
+            id: 'existing_platform_user',
+            email: 'existing-user@example.com'
+          }
+        }
+      }
+    })
+    expect(responseBody.data.actor.sessionUser).not.toHaveProperty('linkedAuth0Subjects')
+    expect(storedGoogleIdentity).toBeUndefined()
+  })
+
+  test('GET /api/session resolves an existing linked Auth0 identity', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/session', handler: sessionHandler }
+      ],
+      sessionUser: {
+        sub: 'google-oauth2|existing-google-user',
+        email: 'existing-user@example.com',
+        email_verified: true,
+        name: 'Existing User'
+      }
+    })
+    databases.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'existing_platform_user',
+      auth0Subject: 'auth0|existing-password-user',
+      email: 'existing-user@example.com',
+      displayName: 'Existing User'
+    })
+    await harness.database.insert(userAuthIdentities).values({
+      id: 'existing_google_identity',
+      userId: 'existing_platform_user',
+      auth0Subject: 'google-oauth2|existing-google-user',
+      createdAt: '2026-03-02T00:00:00.000Z'
+    })
+
+    const response = await harness.request('/api/session')
 
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
@@ -949,10 +996,6 @@ describe('TASK-3.5 actor-facing API routes', () => {
           }
         }
       }
-    })
-    expect(storedGoogleIdentity).toMatchObject({
-      userId: 'existing_platform_user',
-      auth0Subject: 'google-oauth2|existing-google-user'
     })
   })
 

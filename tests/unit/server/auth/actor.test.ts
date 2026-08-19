@@ -9,7 +9,6 @@ import {
   requirePlatformActor
 } from '../../../../server/auth/actor'
 import { setDatabase } from '../../../../server/database/client'
-import { linkedAuth0SubjectsClaim } from '../../../../server/domains/accounts/linking'
 
 type SessionUser = {
   sub: string
@@ -57,8 +56,20 @@ function createDatabaseMock(
     ?? (typeof user?.auth0Subject === 'string' ? user.auth0Subject : null)
   const hasAcceptedCurrentPlatformDocuments = options?.hasAcceptedCurrentPlatformDocuments ?? true
   const currentDocumentsAvailable = options?.currentDocumentsAvailable ?? true
+  const select = vi.fn(() => ({
+    from: vi.fn(() => ({
+      innerJoin: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn(() => ({
+            get: vi.fn(async () => auth0Subject && user ? { user } : undefined)
+          }))
+        }))
+      }))
+    }))
+  }))
 
   return {
+    select,
     query: {
       userAuthIdentities: {
         findFirst: vi.fn(async () => auth0Subject && user
@@ -105,7 +116,8 @@ function createDatabaseMock(
           : []
         )
       }
-    }
+    },
+    insert: vi.fn()
   } as never
 }
 
@@ -195,80 +207,36 @@ describe('request actor resolution', () => {
     const second = await getRequestActor(event)
 
     expect(first).toBe(second)
-    expect(database.query.users.findFirst).toHaveBeenCalledTimes(1)
+    expect(database.select).toHaveBeenCalledTimes(1)
   })
 
-  test('records linked Auth0 subjects from the post-login Action claim for a platform actor', async () => {
-    const insertedIdentities: Array<Record<string, unknown>> = []
-    let identityLookupCount = 0
+  test('resolves an existing linked Auth0 identity without reconciling it on an ordinary request', async () => {
     const event = createEvent({
-      sub: 'auth0|existing-password-user',
+      sub: 'google-oauth2|existing-google-user',
       email: 'user@example.com',
-      [linkedAuth0SubjectsClaim]: [
-        'auth0|existing-password-user',
-        'google-oauth2|existing-google-user'
-      ]
-    } as SessionUser)
-    const user = {
+      email_verified: true
+    })
+    const database = createDatabaseMock({
       id: 'user_existing',
       auth0Subject: 'auth0|existing-password-user',
       email: 'user@example.com',
       displayName: 'Existing User',
       isPlatformAdmin: false
-    }
-    const database = {
-      query: {
-        userAuthIdentities: {
-          findFirst: vi.fn(async () => {
-            identityLookupCount += 1
-
-            return identityLookupCount <= 2
-              ? {
-                  id: 'identity_primary',
-                  userId: user.id,
-                  auth0Subject: 'auth0|existing-password-user',
-                  createdAt: '2026-03-22T12:00:00.000Z'
-                }
-              : undefined
-          })
-        },
-        users: {
-          findFirst: vi.fn(async () => user)
-        },
-        platformDocuments: {
-          findFirst: vi.fn(async () => ({ id: 'privacy_v1', documentType: 'privacy_policy' })),
-          findMany: vi.fn(async () => [
-            { id: 'privacy_v1', documentType: 'privacy_policy', version: 1 },
-            { id: 'terms_v1', documentType: 'platform_terms', version: 1 }
-          ])
-        },
-        userPlatformDocumentAcceptances: {
-          findMany: vi.fn(async () => [
-            { platformDocumentId: 'privacy_v1' },
-            { platformDocumentId: 'terms_v1' }
-          ])
-        }
-      },
-      insert: vi.fn(() => ({
-        values: vi.fn(async (record: Record<string, unknown>) => {
-          insertedIdentities.push(record)
-        })
-      }))
-    } as never
+    }, {
+      auth0Subject: 'google-oauth2|existing-google-user'
+    })
     setDatabase(event, database)
 
     await expect(getRequestActor(event)).resolves.toMatchObject({
       kind: 'platform_user',
       platformUser: {
         id: 'user_existing'
+      },
+      sessionUser: {
+        sub: 'google-oauth2|existing-google-user'
       }
     })
-    expect(insertedIdentities).toEqual([
-      expect.objectContaining({
-        userId: 'user_existing',
-        auth0Subject: 'google-oauth2|existing-google-user'
-      })
-    ])
+    expect(database.insert).not.toHaveBeenCalled()
   })
 
   test('keeps a platform account actor consent-blocked when current platform documents are not accepted', async () => {
