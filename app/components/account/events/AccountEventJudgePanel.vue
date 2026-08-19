@@ -1,72 +1,80 @@
 <script setup lang="ts">
 import type { EventRecord } from '~/domains/events/records'
-import type { JudgeInboxGroup } from '~/domains/judging/workspace'
+import type {
+  AccountEventJudgingPage,
+  AccountJudgeAssignmentWorkspacePage
+} from '#shared/domains/events/account-event-judging-page'
 
 import {
   LazyJudgingJudgeAssignmentInboxCard as LazyJudgeAssignmentInboxCard,
   LazyJudgingJudgeAssignmentWorkspacePanel as LazyJudgeAssignmentWorkspacePanel
 } from '#components'
 import { buildAccountEventJudgingTabHref } from '~/domains/judging/query'
-import { filterExplicitJudgeEvents } from '~/domains/judging/workspace'
+import { normalizeJudgeAssignmentDetail } from '~/domains/judging/workspace'
+import type { JudgeAssignmentApiDetail } from '~/domains/judging/workspace'
 
 const props = withDefaults(defineProps<{
   eventId: string
   slug: string
   selectedAssignmentId?: string | null
+  page: AccountEventJudgingPage | null
+  isLoading?: boolean
+  loadErrorMessage?: string
+  refreshPage?: () => Promise<unknown> | unknown
+  assignmentPage: AccountJudgeAssignmentWorkspacePage | null
+  assignmentPageIsLoading?: boolean
+  assignmentPageErrorMessage?: string
+  refreshAssignmentPage?: () => Promise<unknown> | unknown
 }>(), {
-  selectedAssignmentId: null
+  selectedAssignmentId: null,
+  isLoading: false,
+  loadErrorMessage: '',
+  refreshPage: undefined,
+  assignmentPageIsLoading: false,
+  assignmentPageErrorMessage: '',
+  refreshAssignmentPage: undefined
 })
 
-const workspace = useJudgeWorkspace()
+const emit = defineEmits<{
+  updated: []
+}>()
 
-const resolvedCurrentEvent = computed(() =>
-  filterExplicitJudgeEvents(workspace.events.data.value ?? [], workspace.actor.value)
-    .find(event => event.id === props.eventId || event.slug === props.slug)
-    ?? null
-)
-const resolvedCurrentInboxGroup = computed(() =>
-  workspace.inboxGroups.value.find(group => group.event.slug === props.slug) ?? null
-)
-const currentEventCache = shallowRef<EventRecord | null>(null)
-const currentInboxGroupCache = shallowRef<JudgeInboxGroup | null>(null)
-
-watch(resolvedCurrentEvent, (nextEvent) => {
-  if (nextEvent) {
-    currentEventCache.value = nextEvent
-  }
-}, {
-  immediate: true
-})
-
-watch(resolvedCurrentInboxGroup, (nextInboxGroup) => {
-  if (nextInboxGroup) {
-    currentInboxGroupCache.value = nextInboxGroup
-  }
-}, {
-  immediate: true
-})
-
-const currentEvent = computed(() =>
-  resolvedCurrentEvent.value
-  ?? (
-    workspace.status.value === 'pending'
-    && currentEventCache.value
-    && (currentEventCache.value.id === props.eventId || currentEventCache.value.slug === props.slug)
-      ? currentEventCache.value
-      : null
-  )
-)
-const currentInboxGroup = computed(() =>
-  resolvedCurrentInboxGroup.value
-  ?? (
-    workspace.status.value === 'pending'
-    && currentInboxGroupCache.value?.event.slug === props.slug
-      ? currentInboxGroupCache.value
-      : null
-  )
-)
-const assignments = computed(() => currentInboxGroup.value?.assignments ?? [])
 const selectedAssignmentId = computed(() => props.selectedAssignmentId?.trim() ?? '')
+const pageStatus = computed(() => {
+  if (props.isLoading) {
+    return 'pending'
+  }
+
+  if (props.loadErrorMessage) {
+    return 'error'
+  }
+
+  return props.page ? 'success' : 'idle'
+})
+const pageError = computed(() => props.loadErrorMessage
+  ? new Error(props.loadErrorMessage)
+  : null)
+const workspace = {
+  status: pageStatus,
+  error: pageError,
+  refreshWorkspace: () => props.refreshPage?.()
+}
+const currentEvent = computed(() =>
+  props.page?.event as unknown as EventRecord | null
+)
+const assignmentEvent = computed(() =>
+  props.assignmentPage?.event as unknown as EventRecord | null
+)
+const selectedEvent = computed(() =>
+  assignmentEvent.value
+  ?? currentEvent.value
+  ?? ({ id: props.eventId, slug: props.slug } as unknown as EventRecord)
+)
+const assignments = computed(() =>
+  (props.page?.assignments ?? []).map(assignment =>
+    normalizeJudgeAssignmentDetail(assignment as unknown as JudgeAssignmentApiDetail)
+  )
+)
 const inReviewCount = computed(() =>
   assignments.value.filter(assignment => assignment.status === 'judge_started').length
 )
@@ -108,14 +116,20 @@ const nextAction = computed(() => {
 })
 
 async function refreshWorkspace() {
-  await workspace.refreshWorkspace()
+  if (selectedAssignmentId.value) {
+    await props.refreshAssignmentPage?.()
+  } else {
+    await workspace.refreshWorkspace()
+  }
+
+  emit('updated')
 }
 </script>
 
 <template>
   <div class="space-y-6">
     <AppAlert
-      v-if="workspace.error.value"
+      v-if="workspace.error.value && !selectedAssignmentId"
       color="error"
       variant="soft"
       title="Judging workspace unavailable"
@@ -123,7 +137,7 @@ async function refreshWorkspace() {
     />
 
     <AppAlert
-      v-else-if="workspace.status.value === 'pending' && !currentEvent"
+      v-else-if="!selectedAssignmentId && workspace.status.value === 'pending' && !currentEvent"
       color="neutral"
       variant="soft"
       title="Loading judging workspace"
@@ -131,102 +145,105 @@ async function refreshWorkspace() {
     />
 
     <AppAlert
-      v-else-if="!currentEvent"
+      v-else-if="!selectedAssignmentId && !currentEvent"
       color="warning"
       variant="soft"
       title="Judge access required"
       description="This event is not currently assigned to you as a judge."
     />
 
-    <template v-else>
+    <template v-else-if="selectedAssignmentId">
       <LazyJudgeAssignmentWorkspacePanel
-        v-if="selectedAssignmentId && currentEvent"
-        :event-id="currentEvent.id"
-        :event-slug="currentEvent.slug"
+        :event-id="selectedEvent.id"
+        :event-slug="selectedEvent.slug"
         :assignment-id="selectedAssignmentId"
         :next-review-href="nextQueuedReviewHref"
+        :page="props.assignmentPage"
+        :is-loading="props.assignmentPageIsLoading"
+        :load-error-message="props.assignmentPageErrorMessage"
+        :refresh-page="props.refreshAssignmentPage"
         @updated="refreshWorkspace"
       />
+    </template>
 
-      <template v-else>
-        <section class="grid gap-4 sm:grid-cols-3">
-          <div class="rounded-xl !border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 p-4">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-              Active assignments
-            </p>
-            <p class="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em] text-highlighted dark:text-white">
-              {{ assignments.length }}
-            </p>
-          </div>
-
-          <div class="rounded-xl !border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 p-4">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-              In review
-            </p>
-            <p class="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em] text-highlighted dark:text-white">
-              {{ inReviewCount }}
-            </p>
-          </div>
-
-          <div class="rounded-xl !border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 p-4">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-              Ready to start
-            </p>
-            <p class="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em] text-highlighted dark:text-white">
-              {{ readyCount }}
-            </p>
-          </div>
-        </section>
-
-        <section
-          v-if="nextAction"
-          class="rounded-xl !border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 p-4"
-        >
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="space-y-1">
-              <p class="text-[15px] font-semibold text-highlighted dark:text-white">
-                Continue in blind review
-              </p>
-              <p class="text-[13px] text-muted">
-                Pick up your next assignment directly from this event workspace.
-              </p>
-            </div>
-
-            <AppButton
-              :to="nextAction.to"
-              color="neutral"
-              variant="soft"
-              class="rounded-lg px-3 py-1.5 text-[13px] font-medium"
-            >
-              {{ nextAction.label }}
-            </AppButton>
-          </div>
-        </section>
-
-        <section
-          v-if="assignments.length === 0"
-          class="rounded-xl !border !border-dashed !border-black/10 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 p-8 text-center"
-        >
-          <p class="text-[15px] font-medium text-highlighted dark:text-white">
-            No active blind reviews for this event
+    <template v-else-if="currentEvent">
+      <section class="grid gap-4 sm:grid-cols-3">
+        <div class="rounded-xl !border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 p-4">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+            Active assignments
           </p>
-          <p class="mt-2 text-[14px] text-neutral-500 dark:text-[#A3A3A3]">
-            New assignments will appear here after judging starts.
+          <p class="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em] text-highlighted dark:text-white">
+            {{ assignments.length }}
           </p>
-        </section>
+        </div>
 
-        <section
-          v-else
-          class="grid gap-4"
-        >
-          <LazyJudgeAssignmentInboxCard
-            v-for="assignment in assignments"
-            :key="assignment.id"
-            :assignment="assignment"
-            :event-slug="currentEvent.slug"
-          />
-        </section>
-      </template>
+        <div class="rounded-xl !border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 p-4">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+            In review
+          </p>
+          <p class="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em] text-highlighted dark:text-white">
+            {{ inReviewCount }}
+          </p>
+        </div>
+
+        <div class="rounded-xl !border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 p-4">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+            Ready to start
+          </p>
+          <p class="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em] text-highlighted dark:text-white">
+            {{ readyCount }}
+          </p>
+        </div>
+      </section>
+
+      <section
+        v-if="nextAction"
+        class="rounded-xl !border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 p-4"
+      >
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="space-y-1">
+            <p class="text-[15px] font-semibold text-highlighted dark:text-white">
+              Continue in blind review
+            </p>
+            <p class="text-[13px] text-muted">
+              Pick up your next assignment directly from this event workspace.
+            </p>
+          </div>
+
+          <AppButton
+            :to="nextAction.to"
+            color="neutral"
+            variant="soft"
+            class="rounded-lg px-3 py-1.5 text-[13px] font-medium"
+          >
+            {{ nextAction.label }}
+          </AppButton>
+        </div>
+      </section>
+
+      <section
+        v-if="assignments.length === 0"
+        class="rounded-xl !border !border-dashed !border-black/10 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 p-8 text-center"
+      >
+        <p class="text-[15px] font-medium text-highlighted dark:text-white">
+          No active blind reviews for this event
+        </p>
+        <p class="mt-2 text-[14px] text-neutral-500 dark:text-[#A3A3A3]">
+          New assignments will appear here after judging starts.
+        </p>
+      </section>
+
+      <section
+        v-else
+        class="grid gap-4"
+      >
+        <LazyJudgeAssignmentInboxCard
+          v-for="assignment in assignments"
+          :key="assignment.id"
+          :assignment="assignment"
+          :event-slug="currentEvent.slug"
+        />
+      </section>
     </template>
   </div>
 </template>

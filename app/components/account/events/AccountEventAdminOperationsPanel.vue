@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import type { ApiDataResponse, ApiListResponse } from '~/lib/api'
+import type { ApiDataResponse } from '~/lib/api'
+import type { AccountEventOperationsPage } from '#shared/domains/events/account-event-operations-page'
+import type { AccountEventSubmissionsPage } from '#shared/domains/events/account-event-submissions-page'
 import type { AdminApplicationRecord } from '~/domains/applications/admin-application-record'
-import type { EventRoleAssignment } from '~/domains/events/access'
+import type { EventRecord } from '~/domains/events/records'
 import type {
   FinalDeliberationView,
   ShortlistEntry
@@ -14,13 +16,12 @@ import type {
 import type { SubmissionRecord } from '~/domains/submissions/admin-submission-record'
 import type { AdminTeamDetailRecord } from '~/domains/teams/admin-team-record'
 import type {
-  PrizeRedemptionAdminView,
   PrizeRedemptionBlindRankingEntry,
   PrizeRedemptionFinalRankingEntry,
   PrizeRedemptionRecord
 } from '~/domains/prize-redemptions'
 
-import { listAllPaginatedItems, normalizeApiError } from '~/lib/api'
+import { normalizeApiError } from '~/lib/api'
 import {
   LazyAccountEventsAccountEventParticipantsPanel as LazyAccountEventParticipantsPanel
 } from '#components'
@@ -40,10 +41,7 @@ import { getCurrentLifecycleControl } from '~/domains/events/lifecycle-controls'
 import { shouldShowApprovedParticipantAttendanceSummary } from '~/domains/applications/admin-application-record'
 import { buildPitchReviewCoverageEntries } from '~/domains/judging/admin-oversight'
 import { formatTimestamp } from '~/lib/date-formatting'
-import { isAbortError, throwIfAborted } from '~/lib/request-cancellation'
-import { useAbortableRequest } from '~/composables/useAbortableRequest'
-import { useApiClient, useApiFetch } from '~/composables/useApiClient'
-import { useApiData } from '~/composables/useApiData'
+import { useApiClient } from '~/composables/useApiClient'
 
 type AccountEventAdminOperationsSection = 'participants' | 'submissions' | 'operations'
 type LifecycleMetricCard = {
@@ -63,10 +61,19 @@ type LifecycleSummaryItem = {
   description: string
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   eventId: string
   section: AccountEventAdminOperationsSection
-}>()
+  page: AccountEventOperationsPage | AccountEventSubmissionsPage | null
+  canManage: boolean
+  isLoading?: boolean
+  loadErrorMessage?: string
+  refreshPage?: () => Promise<unknown> | unknown
+}>(), {
+  isLoading: false,
+  loadErrorMessage: '',
+  refreshPage: undefined
+})
 
 const toast = useToast()
 const eventId = computed(() => props.eventId.trim())
@@ -81,11 +88,7 @@ if (!eventId.value) {
 
 const showParticipantsSection = computed(() => section.value === 'participants')
 const showLifecycleSection = computed(() => section.value === 'operations')
-const workspace = useAdminEventOperationsWorkspace(eventId, {
-  loadLifecycleData: showLifecycleSection
-})
 const apiFetch = useApiClient()
-const requests = useAbortableRequest()
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 type ApplyStagedApplicationDecisionsResponse = ApiDataResponse<{
   appliedCount: number
@@ -96,24 +99,6 @@ type StageApplicationResponse = ApiDataResponse<AdminApplicationRecord>
 type SubmissionMonitorData = {
   teamDetails: AdminTeamDetailRecord[]
   teamSubmissions: Array<SubmissionRecord | null>
-}
-type SubmissionSummary = {
-  totalTeams: number
-  noSubmissionTeamCount: number
-  submittedOrLaterTeamCount: number
-  statusCounts: {
-    none: number
-    draft: number
-    submitted: number
-    locked: number
-    withdrawn: number
-    disqualified: number
-  }
-}
-type JudgingSummary = {
-  totalAssignmentCount: number
-  activeAssignmentCount: number
-  completedPitchAssignmentCount: number
 }
 type JudgeChoice = {
   value: string
@@ -131,26 +116,35 @@ type PitchLineupEntry = {
 const mutationError = ref('')
 const pendingActionKey = ref<string | null>(null)
 
-const currentEvent = computed(() => workspace.currentEvent.value)
+const pageData = computed(() =>
+  props.page as unknown as Partial<AccountEventOperationsPage> | null
+)
+const pageStatus = computed<LoadStatus>(() => {
+  if (props.isLoading) {
+    return 'pending'
+  }
+
+  if (props.loadErrorMessage) {
+    return 'error'
+  }
+
+  return props.page ? 'success' : 'idle'
+})
+const pageLoadError = computed(() => props.loadErrorMessage
+  ? new Error(props.loadErrorMessage)
+  : null)
+const currentEvent = computed(() => pageData.value?.event as unknown as EventRecord | null)
 const isCompetitionEvent = computed(() => currentEvent.value?.eventType === 'hackathon')
 const loadCompetitionLifecycleData = computed(() => showLifecycleSection.value && isCompetitionEvent.value)
 const showSubmissionsSection = computed(() => section.value === 'submissions' && isCompetitionEvent.value)
-const canManage = computed(() => workspace.canManageCurrentEvent.value)
-const roleAssignments = computed(() => workspace.roleAssignments.data.value?.data ?? [])
-const assignments = computed(() => workspace.assignments.data.value?.data ?? [])
-const assignmentsTotal = computed(() => workspace.assignments.data.value?.meta?.total ?? assignments.value.length)
-const judgingSummary = useApiFetch<ApiDataResponse<JudgingSummary>>(
-  () => `/api/events/${eventId.value}/judging/summary`,
-  {
-    key: () => `admin-event-judging-summary:${eventId.value}`,
-    watch: [eventId, loadCompetitionLifecycleData],
-    immediate: loadCompetitionLifecycleData.value
-  }
-)
-const judgingSummaryData = computed(() => judgingSummary.data.value?.data ?? null)
-const leaderboard = computed(() => workspace.leaderboard.data.value?.data ?? [])
-const allTeams = computed(() => workspace.teams.data.value ?? [])
-const prizes = computed(() => workspace.prizes.data.value?.data ?? [])
+const canManage = computed(() => props.canManage)
+const roleAssignments = computed(() => pageData.value?.roles?.assignments ?? [])
+const assignments = computed(() => pageData.value?.assignments?.data ?? [])
+const assignmentsTotal = computed(() => pageData.value?.assignments?.total ?? assignments.value.length)
+const judgingSummaryData = computed(() => pageData.value?.judgingSummary ?? null)
+const leaderboard = computed(() => pageData.value?.leaderboard ?? [])
+const allTeams = computed(() => pageData.value?.teams?.data ?? [])
+const prizes = computed(() => pageData.value?.prizes ?? [])
 const applications = ref<AdminApplicationRecord[]>([])
 const applicationsStatus = ref<LoadStatus>('idle')
 const applicationsErrorMessage = ref('')
@@ -173,117 +167,67 @@ const redemptionsStatus = ref<LoadStatus>('idle')
 const redemptionsErrorMessage = ref('')
 const submissionSearchInput = ref('')
 const submissionStatusFilter = ref<AdminSubmissionDashboardFilter>('all')
-const submissionSummary = useApiFetch<ApiDataResponse<SubmissionSummary>>(
-  () => `/api/events/${eventId.value}/submissions/summary`,
-  {
-    key: () => `admin-event-submission-summary:${eventId.value}`,
-    watch: [eventId, loadCompetitionLifecycleData],
-    immediate: loadCompetitionLifecycleData.value
-  }
+const submissionSummaryData = computed(() => pageData.value?.submissionSummary ?? null)
+const submissionSummaryStatus = computed<LoadStatus>(() => pageStatus.value)
+const teamDataStatus = computed(() => pageStatus.value)
+const submissionMonitorData = computed<SubmissionMonitorData>(() =>
+  (pageData.value?.submissionMonitor ?? {
+    teamDetails: [],
+    teamSubmissions: []
+  }) as unknown as SubmissionMonitorData
 )
-const submissionSummaryData = computed(() => submissionSummary.data.value?.data ?? null)
-const submissionSummaryStatus = computed<LoadStatus>(() => normalizeAsyncStatus(submissionSummary.status.value))
-const teamDataStatus = computed(() => normalizeAsyncStatus(workspace.teams.status.value))
-const submissionMonitorReady = computed(() => showSubmissionsSection.value && canManage.value)
-const submissionMonitorCacheState = computed(() =>
-  submissionMonitorReady.value ? 'ready' : 'blocked'
-)
-const {
-  data: submissionMonitorData,
-  status: submissionMonitorStatus,
-  error: submissionMonitorError,
-  refresh: refreshSubmissionMonitor
-} = useApiData<SubmissionMonitorData>(
-  () => [
-    'admin-event-submission-monitor',
-    eventId.value,
-    submissionMonitorCacheState.value
-  ].join(':'),
-  async ({ apiFetch, signal }) => {
-    if (!submissionMonitorReady.value) {
-      return {
-        teamDetails: [],
-        teamSubmissions: []
-      }
-    }
-
-    const response = await apiFetch<ApiDataResponse<SubmissionMonitorData>>(
-      `/api/events/${eventId.value}/teams/submission-monitor`,
-      { signal }
-    )
-
-    return response.data
-  },
-  {
-    watch: [eventId, submissionMonitorCacheState],
-    default: () => ({
-      teamDetails: [],
-      teamSubmissions: []
-    }),
-    immediate: submissionMonitorReady.value
-  }
-)
+const submissionMonitorStatus = computed(() => pageStatus.value)
+const submissionMonitorError = computed(() => pageLoadError.value)
 
 function toSectionErrorMessage(error: unknown, fallback: string) {
   const message = normalizeApiError(error).message
   return message && message.length > 0 ? message : fallback
 }
 
-async function loadApplications() {
-  if (!canLoadApplications.value) {
-    applications.value = []
-    applicationsStatus.value = 'idle'
-    applicationsErrorMessage.value = ''
+watch([pageData, pageStatus, () => props.loadErrorMessage], ([page, status, errorMessage]) => {
+  const nextStatus = normalizeAsyncStatus(status)
+  applicationsStatus.value = nextStatus
+  shortlistStatus.value = nextStatus
+  finalDeliberationStatus.value = nextStatus
+  winnersStatus.value = nextStatus
+  redemptionsStatus.value = nextStatus
+
+  if (errorMessage) {
+    const message = toSectionErrorMessage(errorMessage, 'The event workspace could not be loaded right now.')
+    applicationsErrorMessage.value = message
+    shortlistErrorMessage.value = message
+    finalDeliberationErrorMessage.value = message
+    winnersErrorMessage.value = message
+    redemptionsErrorMessage.value = message
     return
   }
 
-  applicationsStatus.value = 'pending'
-  applicationsErrorMessage.value = ''
-  const signal = requests.createSignal('applications')
-
-  try {
-    applications.value = await listAllPaginatedItems(
-      async (page, pageSize, requestSignal) => await apiFetch<ApiListResponse<AdminApplicationRecord>>(
-        `/api/events/${eventId.value}/applications`,
-        {
-          query: {
-            page,
-            page_size: pageSize
-          },
-          signal: requestSignal
-        }
-      ),
-      100,
-      signal
-    )
-    applicationsStatus.value = 'success'
-  } catch (error) {
-    if (isAbortError(error, signal)) {
-      return
-    }
-
-    applications.value = []
-    applicationsStatus.value = 'error'
-    applicationsErrorMessage.value = toSectionErrorMessage(
-      error,
-      'Application records could not be loaded right now.'
-    )
+  if (!page) {
+    return
   }
-}
+
+  applications.value = (page.applications ?? []) as unknown as AdminApplicationRecord[]
+  shortlistEntries.value = (page.shortlist?.entries ?? []) as unknown as ShortlistEntry[]
+  shortlistHasSavedSelection.value = page.shortlist?.hasSavedShortlistSelection ?? false
+  finalDeliberation.value = page.finalDeliberation
+    ? page.finalDeliberation as unknown as FinalDeliberationView
+    : null
+  winners.value = (page.winners ?? []) as unknown as WinnerEntry[]
+  redemptions.value = (page.prizeRedemptions?.redemptions ?? []) as unknown as PrizeRedemptionRecord[]
+  prizeRedemptionBlindRankingEntries.value = (page.prizeRedemptions?.blindRankingEntries ?? []) as unknown as PrizeRedemptionBlindRankingEntry[]
+  prizeRedemptionFinalRankingEntries.value = (page.prizeRedemptions?.finalRankingEntries ?? []) as unknown as PrizeRedemptionFinalRankingEntry[]
+  applicationsErrorMessage.value = ''
+  shortlistErrorMessage.value = ''
+  finalDeliberationErrorMessage.value = ''
+  winnersErrorMessage.value = ''
+  redemptionsErrorMessage.value = ''
+}, {
+  immediate: true
+})
+
 const showCheckedInParticipantSummary = computed(() =>
   shouldShowApprovedParticipantAttendanceSummary(currentEvent.value)
 )
-
-watch(loadCompetitionLifecycleData, async (isEnabled) => {
-  if (!isEnabled) {
-    return
-  }
-
-  await Promise.all([
-    judgingSummary.status.value === 'idle' ? judgingSummary.refresh() : Promise.resolve(),
-    submissionSummary.status.value === 'idle' ? submissionSummary.refresh() : Promise.resolve()
-  ])
-})
 
 const lifecycleMetrics = computed(() => {
   const lockedEntries = leaderboard.value.filter(entry => entry.submissionStatus === 'locked')
@@ -349,46 +293,8 @@ function formatLifecycleTimeframe(start: string, end: string) {
 }
 
 const submissionMonitorLoadStatus = computed<LoadStatus>(() => normalizeAsyncStatus(submissionMonitorStatus.value))
-const leaderboardDataStatus = computed(() => normalizeAsyncStatus(workspace.leaderboard.status.value))
-const roleAssignmentsDataStatus = computed(() => normalizeAsyncStatus(workspace.roleAssignments.status.value))
-
-watch(
-  [
-    submissionMonitorReady,
-    submissionMonitorLoadStatus
-  ],
-  async ([ready, status]) => {
-    if (import.meta.server) {
-      return
-    }
-
-    if (!ready || status !== 'idle') {
-      return
-    }
-
-    await refreshSubmissionMonitor()
-  },
-  {
-    immediate: true
-  }
-)
-
-watch(
-  loadCompetitionLifecycleData,
-  async (isVisible) => {
-    if (import.meta.server || !isVisible) {
-      return
-    }
-
-    await Promise.all([
-      submissionSummary.status.value === 'idle' ? submissionSummary.refresh() : Promise.resolve(),
-      judgingSummary.status.value === 'idle' ? judgingSummary.refresh() : Promise.resolve()
-    ])
-  },
-  {
-    immediate: true
-  }
-)
+const leaderboardDataStatus = computed(() => pageStatus.value)
+const roleAssignmentsDataStatus = computed(() => pageStatus.value)
 
 const submissionOperationalTeams = computed<AdminOperationalTeam[]>(() =>
   buildAdminOperationalTeams(submissionMonitorData.value?.teamDetails ?? [], {
@@ -430,46 +336,22 @@ const submissionPanelErrorMessage = computed(() =>
 const operationsPhase = computed(() =>
   currentEvent.value ? getEventOperationsPhase(currentEvent.value.state) : null
 )
-const assignmentsDataStatus = computed(() => normalizeAsyncStatus(workspace.assignments.status.value))
+const assignmentsDataStatus = computed(() => pageStatus.value)
 const assignmentsErrorMessage = computed(() => {
-  if (!workspace.assignments.error.value) {
+  if (!pageLoadError.value) {
     return ''
   }
 
   return toSectionErrorMessage(
-    workspace.assignments.error.value,
+    pageLoadError.value,
     'Assignment oversight data could not be loaded right now.'
   )
 })
-const canLoadApplications = computed(() =>
-  Boolean(canManage.value && (showParticipantsSection.value || showLifecycleSection.value))
-)
 const canLoadShortlist = computed(() =>
   Boolean(
     loadCompetitionLifecycleData.value
     && currentEvent.value
     && currentEvent.value.state === 'shortlist'
-  )
-)
-const canLoadFinalDeliberation = computed(() =>
-  Boolean(
-    loadCompetitionLifecycleData.value
-    && currentEvent.value
-    && currentEvent.value.state === 'final_deliberation'
-  )
-)
-const canLoadWinners = computed(() =>
-  Boolean(
-    loadCompetitionLifecycleData.value
-    && currentEvent.value
-    && currentEvent.value.state === 'completed'
-  )
-)
-const canLoadPrizeRedemptions = computed(() =>
-  Boolean(
-    loadCompetitionLifecycleData.value
-    && currentEvent.value
-    && ['winners_announced', 'completed'].includes(currentEvent.value.state)
   )
 )
 const showAssignmentsPanel = computed(() =>
@@ -515,13 +397,14 @@ const showPrizeRedemptionsPanel = computed(() =>
 )
 const judgeChoices = computed<JudgeChoice[]>(() =>
   roleAssignments.value
-    .filter((assignment): assignment is EventRoleAssignment & { user: NonNullable<EventRoleAssignment['user']> } =>
-      assignment.isInJudgePool && Boolean(assignment.user)
-    )
-    .map(assignment => ({
-      value: assignment.userId,
-      label: `${assignment.user.displayName} (${assignment.user.email})`
-    }))
+    .filter(assignment => assignment.isInJudgePool && Boolean(assignment.user))
+    .map((assignment) => {
+      const user = assignment.user!
+      return {
+        value: assignment.userId,
+        label: `${user.displayName} (${user.email})`
+      }
+    })
 )
 
 const PITCH_REVIEW_AUTO_REFRESH_MS = 5000
@@ -536,12 +419,7 @@ async function refreshLivePitchReviewData() {
     return
   }
 
-  await Promise.all([
-    workspace.event.refresh(),
-    workspace.roleAssignments.refresh(),
-    workspace.assignments.refresh(),
-    workspace.leaderboard.refresh()
-  ])
+  await props.refreshPage?.()
 }
 
 function stopPitchReviewAutoRefresh() {
@@ -550,30 +428,6 @@ function stopPitchReviewAutoRefresh() {
     pitchReviewAutoRefreshTimer = null
   }
 }
-
-watch([
-  () => currentEvent.value?.id,
-  canManage,
-  canLoadApplications,
-  canLoadShortlist,
-  canLoadFinalDeliberation,
-  canLoadWinners,
-  canLoadPrizeRedemptions
-], async ([id, allowed]) => {
-  if (!id || !allowed) {
-    return
-  }
-
-  await Promise.all([
-    canLoadApplications.value && applicationsStatus.value === 'idle' ? loadApplications() : Promise.resolve(),
-    canLoadShortlist.value && shortlistStatus.value === 'idle' ? loadShortlist() : Promise.resolve(),
-    canLoadFinalDeliberation.value && finalDeliberationStatus.value === 'idle' ? loadFinalDeliberation() : Promise.resolve(),
-    canLoadWinners.value && winnersStatus.value === 'idle' ? loadWinners() : Promise.resolve(),
-    canLoadPrizeRedemptions.value && redemptionsStatus.value === 'idle' ? loadPrizeRedemptions() : Promise.resolve()
-  ])
-}, {
-  immediate: true
-})
 
 watch([showPitchReviewPanel, canManage, pendingActionKey], async ([visible, allowed, pendingAction]) => {
   if (import.meta.server) {
@@ -1402,21 +1256,7 @@ const lifecycleMetricCards = computed<LifecycleMetricCard[]>(() => {
 })
 
 async function refreshOperations() {
-  await workspace.refreshWorkspace()
-  const competitionRefreshes = isCompetitionEvent.value
-    ? [
-        refreshSubmissionMonitor(),
-        loadShortlist(),
-        loadFinalDeliberation(),
-        loadWinners(),
-        loadPrizeRedemptions()
-      ]
-    : []
-
-  await Promise.all([
-    loadApplications(),
-    ...competitionRefreshes
-  ])
+  await props.refreshPage?.()
 }
 
 function replaceApplicationsLocally(updatedApplications: AdminApplicationRecord[]) {
@@ -1498,43 +1338,6 @@ async function runMutation<Result>(
   }
 }
 
-async function loadShortlist() {
-  if (!canLoadShortlist.value) {
-    shortlistEntries.value = []
-    shortlistHasSavedSelection.value = false
-    shortlistStatus.value = 'idle'
-    shortlistErrorMessage.value = ''
-    return
-  }
-
-  shortlistStatus.value = 'pending'
-  shortlistErrorMessage.value = ''
-  const signal = requests.createSignal('shortlist')
-
-  try {
-    const response = await apiFetch<ApiListResponse<ShortlistEntry>>(
-      `/api/events/${eventId.value}/shortlist`,
-      { signal }
-    )
-    throwIfAborted(signal)
-    shortlistEntries.value = response.data
-    shortlistHasSavedSelection.value = response.meta?.hasSavedShortlistSelection === true
-    shortlistStatus.value = 'success'
-  } catch (error) {
-    if (isAbortError(error, signal)) {
-      return
-    }
-
-    shortlistEntries.value = []
-    shortlistHasSavedSelection.value = false
-    shortlistStatus.value = 'error'
-    shortlistErrorMessage.value = toSectionErrorMessage(
-      error,
-      'Shortlist ranking data could not be loaded right now.'
-    )
-  }
-}
-
 type ShortlistSelectionPayload = {
   orderedSubmissionIds: string[]
   finalistSubmissionIds: string[]
@@ -1606,125 +1409,12 @@ function shortlistEntriesChanged(payload: ShortlistSelectionPayload) {
   )
 }
 
-async function loadFinalDeliberation() {
-  if (!canLoadFinalDeliberation.value) {
-    finalDeliberation.value = null
-    finalDeliberationStatus.value = 'idle'
-    finalDeliberationErrorMessage.value = ''
-    finalDeliberationDraftOrderedSubmissionIds.value = []
-    finalDeliberationHasDraftChanges.value = false
-    return
-  }
-
-  finalDeliberationStatus.value = 'pending'
-  finalDeliberationErrorMessage.value = ''
-  finalDeliberationDraftOrderedSubmissionIds.value = []
-  finalDeliberationHasDraftChanges.value = false
-  const signal = requests.createSignal('final-deliberation')
-
-  try {
-    const response = await apiFetch<ApiDataResponse<FinalDeliberationView>>(
-      `/api/events/${eventId.value}/final-deliberation`,
-      { signal }
-    )
-    throwIfAborted(signal)
-    finalDeliberation.value = response.data
-    finalDeliberationStatus.value = 'success'
-  } catch (error) {
-    if (isAbortError(error, signal)) {
-      return
-    }
-
-    finalDeliberation.value = null
-    finalDeliberationStatus.value = 'error'
-    finalDeliberationErrorMessage.value = toSectionErrorMessage(
-      error,
-      'Final deliberation data could not be loaded right now.'
-    )
-  }
-}
-
 function syncFinalDeliberationDraft(payload: {
   orderedSubmissionIds: string[]
   hasDraftChanges: boolean
 }) {
   finalDeliberationDraftOrderedSubmissionIds.value = payload.orderedSubmissionIds
   finalDeliberationHasDraftChanges.value = payload.hasDraftChanges
-}
-
-async function loadWinners() {
-  if (!canLoadWinners.value) {
-    winners.value = []
-    winnersStatus.value = 'idle'
-    winnersErrorMessage.value = ''
-    return
-  }
-
-  winnersStatus.value = 'pending'
-  winnersErrorMessage.value = ''
-  const signal = requests.createSignal('winners')
-
-  try {
-    const response = await apiFetch<ApiListResponse<WinnerEntry>>(
-      `/api/events/${eventId.value}/winners`,
-      { signal }
-    )
-    throwIfAborted(signal)
-    winners.value = response.data
-    winnersStatus.value = 'success'
-  } catch (error) {
-    if (isAbortError(error, signal)) {
-      return
-    }
-
-    winners.value = []
-    winnersStatus.value = 'error'
-    winnersErrorMessage.value = toSectionErrorMessage(
-      error,
-      'Winner records could not be loaded right now.'
-    )
-  }
-}
-
-async function loadPrizeRedemptions() {
-  if (!canLoadPrizeRedemptions.value) {
-    redemptions.value = []
-    prizeRedemptionBlindRankingEntries.value = []
-    prizeRedemptionFinalRankingEntries.value = []
-    redemptionsStatus.value = 'idle'
-    redemptionsErrorMessage.value = ''
-    return
-  }
-
-  redemptionsStatus.value = 'pending'
-  redemptionsErrorMessage.value = ''
-  const signal = requests.createSignal('prize-redemptions')
-
-  try {
-    const response = await apiFetch<ApiDataResponse<PrizeRedemptionAdminView>>(
-      `/api/events/${eventId.value}/prize-redemptions`,
-      { signal }
-    )
-    throwIfAborted(signal)
-    winners.value = response.data.winners
-    redemptions.value = response.data.redemptions
-    prizeRedemptionBlindRankingEntries.value = response.data.blindRankingEntries
-    prizeRedemptionFinalRankingEntries.value = response.data.finalRankingEntries
-    redemptionsStatus.value = 'success'
-  } catch (error) {
-    if (isAbortError(error, signal)) {
-      return
-    }
-
-    redemptions.value = []
-    prizeRedemptionBlindRankingEntries.value = []
-    prizeRedemptionFinalRankingEntries.value = []
-    redemptionsStatus.value = 'error'
-    redemptionsErrorMessage.value = toSectionErrorMessage(
-      error,
-      'Prize redemption records could not be loaded right now.'
-    )
-  }
 }
 
 async function reassignAssignment(payload: { assignmentId: string, judgeUserId?: string, reason?: string }) {
@@ -1852,7 +1542,7 @@ async function reorderFinalDeliberation(orderedSubmissionIds: string[]) {
 
 async function announceWinners() {
   if (!finalDeliberation.value) {
-    await loadFinalDeliberation()
+    await refreshOperations()
   }
 
   if (!finalDeliberation.value) {
@@ -2128,11 +1818,11 @@ async function runLifecycleAction() {
     />
 
     <AppAlert
-      v-if="workspace.event.error.value"
+      v-if="pageLoadError"
       color="error"
       variant="soft"
       title="Unable to load event"
-      :description="workspace.event.error.value.message"
+      :description="pageLoadError.message"
     />
 
     <AppAlert

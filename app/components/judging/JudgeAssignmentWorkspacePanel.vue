@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import type { ApiDataResponse } from '~/lib/api'
+import type { EventRecord } from '~/domains/events/records'
+import type { EvaluationCriterion } from '~/domains/judging/criteria-config'
 import type {
   CriterionScoreDraft,
+  JudgeAssignmentApiDetail,
   JudgeAssignmentDetail
 } from '~/domains/judging/workspace'
+import type { AccountJudgeAssignmentWorkspacePage } from '#shared/domains/events/account-event-judging-page'
 
 import BlindSubmissionPanel from '~/components/judging/BlindSubmissionPanel.vue'
 import JudgeReviewActionFooter from '~/components/judging/JudgeReviewActionFooter.vue'
@@ -29,15 +33,25 @@ import {
   hasIncompleteCriterionScores,
   hasIncompletePitchScore,
   isBlindJudgeAssignment,
-  isPitchJudgeAssignment
+  isPitchJudgeAssignment,
+  normalizeJudgeAssignmentDetail
 } from '~/domains/judging/workspace'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   eventId: string
   eventSlug: string
   assignmentId: string
   nextReviewHref?: string | null
-}>()
+  page: AccountJudgeAssignmentWorkspacePage | null
+  isLoading?: boolean
+  loadErrorMessage?: string
+  refreshPage?: () => Promise<unknown> | unknown
+}>(), {
+  nextReviewHref: null,
+  isLoading: false,
+  loadErrorMessage: '',
+  refreshPage: undefined
+})
 
 const emit = defineEmits<{
   updated: []
@@ -51,8 +65,31 @@ const judgingWorkspaceHref = computed(() =>
   buildAccountEventJudgingTabHref(props.eventSlug)
 )
 
-const workspace = useJudgeAssignmentWorkspace(normalizedEventId, normalizedAssignmentId)
 const apiFetch = useApiClient()
+const workspace = {
+  event: computed(() => props.page?.event as unknown as EventRecord | null),
+  criteria: computed(() =>
+    (props.page?.criteria as unknown as EvaluationCriterion[] | undefined) ?? []
+  ),
+  assignment: computed(() => props.page?.assignment
+    ? normalizeJudgeAssignmentDetail(props.page.assignment as unknown as JudgeAssignmentApiDetail)
+    : null),
+  status: computed(() => {
+    if (props.isLoading) {
+      return 'pending'
+    }
+
+    if (props.loadErrorMessage) {
+      return 'error'
+    }
+
+    return props.page ? 'success' : 'idle'
+  }),
+  error: computed(() => props.loadErrorMessage
+    ? new Error(props.loadErrorMessage)
+    : null),
+  refreshAssignmentWorkspace: () => props.refreshPage?.()
+}
 
 const event = computed(() => workspace.event.value)
 const criteria = computed(() => workspace.criteria.value)

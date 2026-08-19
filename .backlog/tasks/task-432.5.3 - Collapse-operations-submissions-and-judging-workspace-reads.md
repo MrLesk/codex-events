@@ -1,10 +1,11 @@
 ---
 id: TASK-432.5.3
 title: 'Collapse operations, submissions, and judging workspace reads'
-status: To Do
+status: Done
 assignee:
   - '@luna-workspace'
 created_date: '2026-08-19 19:52'
+updated_date: '2026-08-19 21:27'
 labels:
   - architecture
   - performance
@@ -106,21 +107,55 @@ Validation
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Operations, submissions, and event judging tabs each use one concrete page-shaped read after bootstrap; the global judge inbox and assignment workspace also each use one read.
-- [ ] #2 The listed existing fan-out reads are replaced in the owned client surfaces without server-side HTTP chaining or a generic graph contract.
+- [x] #1 Operations, submissions, and event judging tabs each use one concrete page-shaped read after bootstrap; the global judge inbox and assignment workspace also each use one read.
+- [x] #2 The listed existing fan-out reads are replaced in the owned client surfaces without server-side HTTP chaining or a generic graph contract.
 - [ ] #3 Each page and assignment handler performs one actor resolution, one authorization resolution, and one shared strong D1 session, with role/blind-review visibility enforced server-side.
-- [ ] #4 Mutation behavior remains on existing action routes and refreshes only the active typed page state.
-- [ ] #5 Tab, inbox, and assignment navigation aborts abandoned work and cannot commit stale responses.
+- [x] #4 Mutation behavior remains on existing action routes and refreshes only the active typed page state.
+- [x] #5 Tab, inbox, and assignment navigation aborts abandoned work and cannot commit stale responses.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Canonical docs were updated or confirmed unchanged
-- [ ] #2 Code behavior matches canonical docs
+- [x] #1 Canonical docs were updated or confirmed unchanged
+- [x] #2 Code behavior matches canonical docs
 - [ ] #3 Relevant validation commands pass
-- [ ] #4 Tests were added or updated when behavior changed
-- [ ] #5 Test gaps are documented when automation is not practical
-- [ ] #6 Config and developer workflow docs were updated when setup changed
-- [ ] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #4 Tests were added or updated when behavior changed
+- [x] #5 Test gaps are documented when automation is not practical
+- [x] #6 Config and developer workflow docs were updated when setup changed
+- [x] #7 Auth and permissions changes follow the documented platform model
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Inventory the committed foundation route, context, and request APIs plus current operations, submissions, judging, inbox, and assignment fan-out callers within the owned write scope.
+2. Define concrete typed shared contracts and server assemblers for operations, submissions, event judging, the global judge inbox, and the assignment workspace using one foundation context and no internal HTTP calls.
+3. Replace owned client fan-out with signal-aware page requests, keep mutation routes separate, scope protected data by authorization generation, and prevent stale response commits.
+4. Add contract, permission, query-topology, cancellation, and request-count tests; record exact route metadata for TASK-432.5.1 generated-catalog integration without editing generated or shared foundation files.
+5. Run scoped and required repository checks, inspect the ownership-only diff, and commit locally without push, deploy, or remote D1.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Started implementation after reading the committed TASK-432.5.1 foundation. Shared foundation, generated operation catalogs/manifest, media, D1 internals, and other child-owned files remain excluded. Component map: route/page composables own request state and refresh; Operations/Judging/Submissions panels receive typed page props and emit mutation intents; judge inbox and assignment pages own their concrete page request; server assemblers own page read models and use the foundation context.
+
+Validation evidence: scoped ESLint passes. Focused Vitest passes: 4 files, 11 tests, including contract shape, request topology, protected inbox and assignment request execution, stale assignment cancellation, and foundation stale-tab cancellation.
+
+Repository checks: bun run lint is blocked by concurrent server/database/non-http.ts errors at lines 17, 71, 100, 107, and 370. bun run typecheck is blocked by concurrent server/database/non-http.ts line 214 and AppDatabase.get callers in server/domains/mcp/tokens.ts line 90 and server/domains/talk-proposals/index.ts line 201. bun run test:unit reports 8 failures in concurrent team formation, D1 boundary/client, operation manifest, and talk proposals work; 985 of 993 tests passed. bun run test:integration reports 328 failures and 90 passes because the concurrent D1 facade makes actor resolution fail at database.select(...).limit(...).get, with additional AppDatabase.get failures. The new competition-page integration tests are blocked at that same actor-resolution boundary. bun run test:bdd could not start because localhost:3100 was already in use; no remote or deployed environment was used.
+
+Shared registry integration metadata, owned by TASK-432.5.1 integrator: include these five GET routes in the generated catalog and MCP eligibility manifest with output data and effect read. 1) id get.account.events.by-slug.operations, tool get_account_events_by_slug_operations, path /api/account/events/:slug/operations, params slug, capabilities event_admin. 2) id get.account.events.by-slug.submissions, tool get_account_events_by_slug_submissions, path /api/account/events/:slug/submissions, params slug, capabilities event_admin. 3) id get.account.events.by-slug.judging, tool get_account_events_by_slug_judging, path /api/account/events/:slug/judging, params slug, capabilities event_judge and event_admin. 4) id get.account.judging, tool get_account_judging, path /api/account/judging, no params, capability event_judge. 5) id get.account.events.by-slug.judging.assignments.by-assignmentId, tool get_account_events_by_slug_judging_assignments_by_assignmentId, path /api/account/events/:slug/judging/assignments/:assignmentId, params slug and assignmentId, capability event_judge. Mark each manifest route include.
+
+Ownership handoff: generated operation catalogs and manifests, shared foundation, and parent page prop wiring remain intentionally untouched for the integrator.
+
+Panel boundary handoff: AccountEventAdminOperationsPanel now requires page: AccountEventOperationsPage | AccountEventSubmissionsPage | null plus canManage, isLoading, loadErrorMessage, and refreshPage. AccountEventJudgePanel now requires page: AccountEventJudgingPage | null and assignmentPage: AccountJudgeAssignmentWorkspacePage | null plus the matching loading/error/refresh props. The parent event route must own the operations/submissions/judging page requests, pass these props, abort tab/assignment changes through the shared request helper, and refresh only the active page after mutations. This parent wiring is intentionally not edited in this slice.
+
+Post-refactor typecheck confirms the expected integrator boundary: the untouched parent app/pages/account/events/[slug]/index.vue reports four missing typed page props at lines 1644, 1658, 1714, and 1727 for the new judge/operations/submissions panels. It also retains the unrelated concurrent server/api/events/[eventId]/index.patch.ts talkProposalQuestionsRevision type error.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Implemented concrete page-shaped reads for operations, submissions, event judging, the global judge inbox, and assignment workspaces. Added typed bounded contracts, server-owned assemblers/routes using the shared request context, protected signal-aware client request helpers, stale-response cancellation, and focused contract/topology/permission/cancellation tests. Existing mutation routes remain unchanged and page refresh hooks are explicit. Parent event-route prop wiring and generated route catalogs/manifests are recorded as integrator handoff and remain untouched. Focused lint and tests pass; broader validation blockers are documented in implementation notes. Local commit only; no push, deploy, or remote D1.
+<!-- SECTION:FINAL_SUMMARY:END -->
