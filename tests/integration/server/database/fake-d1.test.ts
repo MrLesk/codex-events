@@ -224,6 +224,59 @@ describe('TestD1Database', () => {
     expect(d1Database.getLatestBookmark()).toBe(beforeFailure.bookmark)
   })
 
+  test('rejects statements from another database instance before any batch state advances', async () => {
+    const firstDatabase = createTestD1Database()
+    const secondDatabase = createTestD1Database()
+    databases.push(firstDatabase, secondDatabase)
+    const firstSession = firstDatabase.withSession('first-primary')
+    const secondSession = secondDatabase.withSession('first-primary')
+    const firstBeforeFailure = {
+      queries: firstDatabase.queries,
+      infrastructureQueries: firstDatabase.infrastructureQueries,
+      sessions: firstDatabase.sessions,
+      sessionStarts: firstDatabase.sessionStarts,
+      bookmark: firstDatabase.getLatestBookmark()
+    }
+    const secondBeforeFailure = {
+      queries: secondDatabase.queries,
+      infrastructureQueries: secondDatabase.infrastructureQueries,
+      sessions: secondDatabase.sessions,
+      sessionStarts: secondDatabase.sessionStarts,
+      bookmark: secondDatabase.getLatestBookmark()
+    }
+    const foreignStatements = [
+      secondDatabase.prepare('select 1'),
+      secondDatabase.prepare('select ?').bind(1),
+      secondSession.prepare('select 1'),
+      secondSession.prepare('select ?').bind(1)
+    ]
+
+    for (const statement of foreignStatements) {
+      await expect(firstDatabase.batch([
+        firstDatabase.prepare('select 1'),
+        statement
+      ])).rejects.toThrow(/another database instance/u)
+      await expect(firstSession.batch([
+        firstSession.prepare('select 1'),
+        statement
+      ])).rejects.toThrow(/another database instance/u)
+    }
+
+    expect(firstDatabase.queries).toEqual(firstBeforeFailure.queries)
+    expect(firstDatabase.infrastructureQueries).toEqual(firstBeforeFailure.infrastructureQueries)
+    expect(firstDatabase.sessions).toEqual(firstBeforeFailure.sessions)
+    expect(firstDatabase.sessionStarts).toEqual(firstBeforeFailure.sessionStarts)
+    expect(firstDatabase.getLatestBookmark()).toBe(firstBeforeFailure.bookmark)
+    expect(secondDatabase.queries).toEqual(secondBeforeFailure.queries)
+    expect(secondDatabase.infrastructureQueries).toEqual(secondBeforeFailure.infrastructureQueries)
+    expect(secondDatabase.sessions).toEqual(secondBeforeFailure.sessions)
+    expect(secondDatabase.sessionStarts).toEqual(secondBeforeFailure.sessionStarts)
+    expect(secondDatabase.getLatestBookmark()).toBe(secondBeforeFailure.bookmark)
+
+    expect((await firstDatabase.getDatabase()).exec('select count(*) as count from users')[0]?.values).toEqual([[0]])
+    expect((await secondDatabase.getDatabase()).exec('select count(*) as count from users')[0]?.values).toEqual([[0]])
+  })
+
   test('rolls back a failed session batch, including its bookmark and query accounting', async () => {
     const d1Database = createTestD1Database()
     databases.push(d1Database)
@@ -487,5 +540,61 @@ describe('TestD1Database', () => {
     await expect(verification.query.users.findFirst({
       where: eq(users.id, 'overlap_failure_user')
     })).resolves.toBeUndefined()
+  })
+
+  test('serializes a failing atomic batch before a concurrent standalone session write', async () => {
+    const d1Database = createTestD1Database()
+    databases.push(d1Database)
+    const standaloneSession = d1Database.withSession('first-primary')
+    let resolveBatchEntered: () => void = () => {}
+    const batchEntered = new Promise<void>((resolve) => {
+      resolveBatchEntered = resolve
+    })
+    let releaseBatch: () => void = () => {}
+    const batchRelease = new Promise<void>((resolve) => {
+      releaseBatch = resolve
+    })
+
+    const failingBatch = d1Database.runAtomicBatch(async () => {
+      await d1Database.prepare(`
+        insert into users (id, auth0_subject, email, display_name)
+        values ('rolled_back_concurrent_user', 'auth0|rolled_back_concurrent_user', 'rolled-back-concurrent@example.com', 'Rolled Back Concurrent User')
+      `).run()
+      resolveBatchEntered()
+      await batchRelease
+      throw new Error('concurrent batch failure')
+    })
+
+    await batchEntered
+
+    let standaloneFinished = false
+    const standaloneWrite = standaloneSession.prepare(`
+      insert into users (id, auth0_subject, email, display_name)
+      values ('successful_concurrent_user', 'auth0|successful_concurrent_user', 'successful-concurrent@example.com', 'Successful Concurrent User')
+    `).run().then((result) => {
+      standaloneFinished = true
+      return result
+    })
+
+    await Promise.resolve()
+    expect(standaloneFinished).toBe(false)
+    releaseBatch()
+    await expect(failingBatch).rejects.toThrow(/concurrent batch failure/u)
+    await standaloneWrite
+
+    expect(standaloneSession.getBookmark()).toBe('test-bookmark-1')
+    expect(d1Database.getLatestBookmark()).toBe('test-bookmark-1')
+    expect(d1Database.infrastructureQueries).toEqual([])
+    expect(d1Database.queries).toEqual([
+      expect.objectContaining({
+        sessionId: d1Database.sessions[0]?.id,
+        isWrite: true,
+        sql: expect.stringContaining('successful_concurrent_user')
+      })
+    ])
+
+    expect((await d1Database.getDatabase()).exec('select id from users order by id')[0]?.values).toEqual([
+      ['successful_concurrent_user']
+    ])
   })
 })

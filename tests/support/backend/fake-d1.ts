@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { createRequire } from 'node:module'
 
 import initSqlJs from 'sql.js'
@@ -43,6 +44,9 @@ export interface TestD1SessionRecord {
   start: string | undefined
   minimumVersion: number
 }
+
+type TestD1DatabaseIdentity = symbol
+type TestD1Mutation = <T>(execute: () => Promise<T>) => Promise<T>
 
 const require = createRequire(import.meta.url)
 const sqlJsReady = initSqlJs({
@@ -271,123 +275,141 @@ interface TestD1DatabaseSnapshot {
 class TestD1PreparedStatement {
   constructor(
     private readonly getTarget: (isRead: boolean) => Promise<TestD1QueryTarget>,
+    private readonly runMutation: TestD1Mutation,
     private readonly sql: string,
     private readonly parameters: unknown[] = [],
     private readonly onQuery?: (query: Omit<TestD1QueryRecord, 'sessionId'>, servedVersion: number) => void,
+    private readonly databaseIdentity: TestD1DatabaseIdentity,
     private readonly ownerId = infrastructureOwnerId
   ) {}
 
   bind(...parameters: unknown[]) {
-    return new TestD1PreparedStatement(this.getTarget, this.sql, parameters, this.onQuery, this.ownerId)
+    return new TestD1PreparedStatement(
+      this.getTarget,
+      this.runMutation,
+      this.sql,
+      parameters,
+      this.onQuery,
+      this.databaseIdentity,
+      this.ownerId
+    )
   }
 
-  isOwnedBy(ownerId: number) {
-    return this.ownerId === ownerId
+  isOwnedBy(databaseIdentity: TestD1DatabaseIdentity, ownerId: number) {
+    return this.databaseIdentity === databaseIdentity && this.ownerId === ownerId
   }
 
   async run(...parameters: unknown[]) {
-    const isWrite = !isReadQuery(this.sql)
-    const target = await this.getTarget(!isWrite)
-    const database = target.database
-    const statement = database.prepare(this.sql)
+    return await this.executeStandalone(async () => {
+      const isWrite = !isReadQuery(this.sql)
+      const target = await this.getTarget(!isWrite)
+      const database = target.database
+      const statement = database.prepare(this.sql)
 
-    try {
-      const resolvedParameters = this.resolveParameters(parameters)
-      bindStatement(statement, resolvedParameters)
-      statement.step()
+      try {
+        const resolvedParameters = this.resolveParameters(parameters)
+        bindStatement(statement, resolvedParameters)
+        statement.step()
 
-      const isInsert = getSqlStatementKeyword(this.sql) === 'insert'
-      const result = {
-        success: true,
-        meta: createResultMeta({
-          changes: database.getRowsModified(),
-          lastRowId: isInsert ? readLastInsertRowId(database) : 0
-        })
-      } satisfies D1RunResult
+        const isInsert = getSqlStatementKeyword(this.sql) === 'insert'
+        const result = {
+          success: true,
+          meta: createResultMeta({
+            changes: database.getRowsModified(),
+            lastRowId: isInsert ? readLastInsertRowId(database) : 0
+          })
+        } satisfies D1RunResult
 
-      this.onQuery?.({
-        sql: this.sql,
-        parameters: resolvedParameters,
-        isWrite
-      }, target.version)
-      return result
-    } finally {
-      statement.free()
-    }
+        this.onQuery?.({
+          sql: this.sql,
+          parameters: resolvedParameters,
+          isWrite
+        }, target.version)
+        return result
+      } finally {
+        statement.free()
+      }
+    })
   }
 
   async all<TResult = Record<string, unknown>>(...parameters: unknown[]) {
-    const isWrite = !isReadQuery(this.sql)
-    const target = await this.getTarget(!isWrite)
-    const database = target.database
-    const statement = database.prepare(this.sql)
+    return await this.executeStandalone(async () => {
+      const isWrite = !isReadQuery(this.sql)
+      const target = await this.getTarget(!isWrite)
+      const database = target.database
+      const statement = database.prepare(this.sql)
 
-    try {
-      const resolvedParameters = this.resolveParameters(parameters)
-      bindStatement(statement, resolvedParameters)
+      try {
+        const resolvedParameters = this.resolveParameters(parameters)
+        bindStatement(statement, resolvedParameters)
 
-      const results: TResult[] = []
+        const results: TResult[] = []
 
-      while (statement.step()) {
-        results.push(statement.getAsObject() as TResult)
+        while (statement.step()) {
+          results.push(statement.getAsObject() as TResult)
+        }
+
+        this.onQuery?.({
+          sql: this.sql,
+          parameters: resolvedParameters,
+          isWrite
+        }, target.version)
+
+        return {
+          success: true,
+          meta: createResultMeta({ rowsRead: results.length }),
+          results
+        } satisfies D1QueryResult<TResult>
+      } finally {
+        statement.free()
       }
-
-      this.onQuery?.({
-        sql: this.sql,
-        parameters: resolvedParameters,
-        isWrite
-      }, target.version)
-
-      return {
-        success: true,
-        meta: createResultMeta({ rowsRead: results.length }),
-        results
-      } satisfies D1QueryResult<TResult>
-    } finally {
-      statement.free()
-    }
+    })
   }
 
   async raw(...parameters: unknown[]) {
-    const isWrite = !isReadQuery(this.sql)
-    const target = await this.getTarget(!isWrite)
-    const database = target.database
-    const statement = database.prepare(this.sql)
+    return await this.executeStandalone(async () => {
+      const isWrite = !isReadQuery(this.sql)
+      const target = await this.getTarget(!isWrite)
+      const database = target.database
+      const statement = database.prepare(this.sql)
 
-    try {
-      const resolvedParameters = this.resolveParameters(parameters)
-      bindStatement(statement, resolvedParameters)
+      try {
+        const resolvedParameters = this.resolveParameters(parameters)
+        bindStatement(statement, resolvedParameters)
 
-      const results: unknown[][] = []
+        const results: unknown[][] = []
 
-      while (statement.step()) {
-        results.push(statement.get())
+        while (statement.step()) {
+          results.push(statement.get())
+        }
+
+        this.onQuery?.({
+          sql: this.sql,
+          parameters: resolvedParameters,
+          isWrite
+        }, target.version)
+
+        return results
+      } finally {
+        statement.free()
       }
-
-      this.onQuery?.({
-        sql: this.sql,
-        parameters: resolvedParameters,
-        isWrite
-      }, target.version)
-
-      return results
-    } finally {
-      statement.free()
-    }
+    })
   }
 
   async first<TResult = unknown>(columnNameOrParameter?: string | unknown, ...parameters: unknown[]) {
-    const row = await this.readFirstRow(
-      columnNameOrParameter === undefined || typeof columnNameOrParameter === 'string'
-        ? parameters
-        : [columnNameOrParameter, ...parameters]
-    )
+    return await this.executeStandalone(async () => {
+      const row = await this.readFirstRow(
+        columnNameOrParameter === undefined || typeof columnNameOrParameter === 'string'
+          ? parameters
+          : [columnNameOrParameter, ...parameters]
+      )
 
-    if (typeof columnNameOrParameter === 'string' && parameters.length === 0) {
-      return row?.[columnNameOrParameter] as TResult
-    }
+      if (typeof columnNameOrParameter === 'string' && parameters.length === 0) {
+        return row?.[columnNameOrParameter] as TResult
+      }
 
-    return row as TResult
+      return row as TResult
+    })
   }
 
   async toPreparedStatement() {
@@ -400,6 +422,14 @@ class TestD1PreparedStatement {
     }
 
     return await this.run()
+  }
+
+  private async executeStandalone<TResult>(execute: () => Promise<TResult>) {
+    if (isReadQuery(this.sql)) {
+      return await execute()
+    }
+
+    return await this.runMutation(execute)
   }
 
   private async readFirstRow(parameters: unknown[]) {
@@ -447,7 +477,9 @@ class TestD1DatabaseSession {
     private readonly database: TestD1Database,
     private readonly sessionId: number,
     private minimumVersion: number,
-    private readonly useReplica: boolean
+    private readonly useReplica: boolean,
+    private readonly databaseIdentity: TestD1DatabaseIdentity,
+    private readonly runMutation: TestD1Mutation
   ) {}
 
   prepare(sql: string) {
@@ -456,6 +488,7 @@ class TestD1DatabaseSession {
         this.minimumVersion,
         isRead && this.useReplica && !this.hasWritten
       ),
+      this.runMutation,
       sql,
       [],
       (query, servedVersion) => {
@@ -471,13 +504,14 @@ class TestD1DatabaseSession {
           this.hasWritten = true
         }
       },
+      this.databaseIdentity,
       this.sessionId
     )
   }
 
   async batch(statements: TestD1PreparedStatement[]) {
-    if (statements.some(statement => !statement.isOwnedBy(this.sessionId))) {
-      throw new Error('TestD1DatabaseSession.batch cannot execute statements owned by another database session')
+    if (statements.some(statement => !statement.isOwnedBy(this.databaseIdentity, this.sessionId))) {
+      throw new Error('TestD1DatabaseSession.batch cannot execute statements owned by another database session or another database instance')
     }
 
     const previousState = {
@@ -536,7 +570,11 @@ export class TestD1Database {
 
   private latestBookmark: string | null = null
 
-  private atomicBatchTail = Promise.resolve()
+  private readonly databaseIdentity: TestD1DatabaseIdentity = Symbol('TestD1Database')
+
+  private readonly mutationContext = new AsyncLocalStorage<object>()
+
+  private mutationTail = Promise.resolve()
 
   private closed = false
 
@@ -560,17 +598,19 @@ export class TestD1Database {
         database: await this.getDatabase(),
         version: this.databaseVersion
       }),
+      execute => this.runMutation(execute),
       sql,
       [],
       (query, servedVersion) => {
         this.recordInfrastructureQuery(query, servedVersion)
-      }
+      },
+      this.databaseIdentity
     )
   }
 
   async batch(statements: TestD1PreparedStatement[]) {
-    if (statements.some(statement => !statement.isOwnedBy(infrastructureOwnerId))) {
-      throw new Error('TestD1Database.batch cannot execute session-owned statements from a database session')
+    if (statements.some(statement => !statement.isOwnedBy(this.databaseIdentity, infrastructureOwnerId))) {
+      throw new Error('TestD1Database.batch cannot execute session-owned statements from a database session or statements from another database instance')
     }
 
     return await this.runAtomicBatch(async () => {
@@ -598,7 +638,9 @@ export class TestD1Database {
       this,
       sessionId,
       minimumVersion,
-      constraintOrBookmark !== 'first-primary'
+      constraintOrBookmark !== 'first-primary',
+      this.databaseIdentity,
+      execute => this.runMutation(execute)
     )
   }
 
@@ -629,13 +671,22 @@ export class TestD1Database {
   }
 
   async exec(sql: string) {
-    const database = await this.getDatabase()
-    database.run(sql)
-    this.recordInfrastructureQuery({
-      sql,
-      parameters: [],
-      isWrite: !isReadQuery(sql)
-    }, this.databaseVersion)
+    const execute = async () => {
+      const database = await this.getDatabase()
+      database.run(sql)
+      this.recordInfrastructureQuery({
+        sql,
+        parameters: [],
+        isWrite: !isReadQuery(sql)
+      }, this.databaseVersion)
+    }
+
+    if (isReadQuery(sql)) {
+      await execute()
+      return
+    }
+
+    await this.runMutation(execute)
   }
 
   async close() {
@@ -664,24 +715,34 @@ export class TestD1Database {
     // D1 batch() executes statements sequentially but commits them as one
     // transaction. The fake must restore both SQLite replicas and all
     // bookmark/query accounting when a later statement fails.
-    const previousBatch = this.atomicBatchTail
-    let releaseBatch!: () => void
-    this.atomicBatchTail = new Promise<void>((resolve) => {
-      releaseBatch = resolve
-    })
-    await previousBatch
-
-    try {
+    return await this.runMutation(async () => {
       const snapshot = await this.snapshotState()
 
       try {
-        return await execute()
+        return await this.mutationContext.run({}, execute)
       } catch (error) {
         await this.restoreState(snapshot)
         throw error
       }
+    })
+  }
+
+  private async runMutation<T>(execute: () => Promise<T>) {
+    if (this.mutationContext.getStore()) {
+      return await execute()
+    }
+
+    const previousMutation = this.mutationTail
+    let releaseMutation!: () => void
+    this.mutationTail = new Promise<void>((resolve) => {
+      releaseMutation = resolve
+    })
+    await previousMutation
+
+    try {
+      return await execute()
     } finally {
-      releaseBatch()
+      releaseMutation()
     }
   }
 
