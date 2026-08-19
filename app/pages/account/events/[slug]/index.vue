@@ -1,36 +1,39 @@
 <script setup lang="ts">
 import type {
-  PublicApiDataResponse,
-  PublicApiListResponse,
-  PublicEvent,
-  PublicPrize
-} from '~/domains/events/presentation'
+  AccountEventEntryAccess,
+  AccountEventEntryEvent,
+  AccountEventEntryPage,
+  AccountEventEntryParticipantCreditOffer,
+  AccountEventEntryParticipation,
+  AccountEventEntryRankSummary,
+  AccountEventEntryTalkProposal,
+  AccountEventEntryTalkProposalReview
+} from '#shared/domains/events/account-event-entry-page'
+import type {
+  AccountEventPrizesPage,
+  AccountEventPrize,
+  AccountEventPublishedProject,
+  AccountEventWinner
+} from '#shared/domains/events/account-event-prizes-page'
+import type { AccountEventCertificatesPage } from '#shared/domains/events/account-event-certificates-page'
+import type { AccountEventFeedbackPage } from '#shared/domains/events/account-event-feedback-page'
+import type { AccountEventGalleryPage } from '#shared/domains/events/account-event-gallery-page'
+import type { AccountEventParticipantsPage } from '#shared/domains/events/account-event-participants-page'
+import type { AccountEventTeamsPage } from '#shared/domains/events/account-event-teams-page'
+import type { AccountEventWorkspacePage } from '#shared/domains/events/account-event-workspace-page'
+import type { AccountEventRostersPage } from '#shared/domains/events/account-event-rosters-page'
 import {
   buildVersionedEventImageUrl,
   formatAccountEventHeaderSummary,
   resolveEventDetailBackgroundImageUrl
 } from '~/domains/events/presentation'
-import type {
-  EventParticipationApiDataResponse,
-  EventParticipationRankSummary,
-  EventParticipationPayload,
-  EventParticipationRecord
-} from '~/domains/events/participation'
+import type { EventParticipationRankSummary } from '~/domains/events/participation'
 import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
 import { buildEventCertificatePath } from '#shared/domains/events/certificates'
-import type {
-  EventCreditApiListResponse,
-  ParticipantEventCreditOffer
-} from '~/domains/credits'
 import type {
   ParticipantApiDataResponse,
   ParticipantApplicationRecord
 } from '~/domains/applications/participant-application'
-import type {
-  PublishedProjectEntry,
-  WinnerEntry
-} from '~/domains/outcomes/published-outcomes'
-import type { Ref } from 'vue'
 
 import { Switch as UiSwitch } from '~/components/ui/switch'
 import {
@@ -66,18 +69,11 @@ import {
 import {
   canAccessAccountEventWorkspace,
   getAccountEventWorkspaceBackLink,
-  getAccountEventTabAccess,
   getAccountEventTabLabel,
   resolveAccountEventScopedId,
   type AccountEventWorkspaceTab
 } from '~/domains/events/account-workspace-tabs'
 import { getAccountEventSeoContent } from '~/domains/events/account-workspace-seo'
-import {
-  createEmptyPublishedEventRosterLoadState,
-  loadPublishedEventRoster,
-  type PublishedEventRosterLoadState,
-  type PublishedEventRosterMember
-} from '~/domains/events/published-roster'
 import {
   getEventParticipationOutcomeNotice,
   getSelectedBuildTrackOverviewTrack
@@ -95,57 +91,15 @@ import {
 import {
   hasEventEnteredSubmissionPhase
 } from '~/domains/submissions/team-submission'
-import type { TalkProposalRecord } from '~/domains/talk-proposals'
 import { normalizeJudgeAssignmentIdQueryValue } from '~/domains/judging/query'
 import { buildAccountEventTeamsTabHref, normalizeTeamSlugQueryValue } from '~/domains/teams/query'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
-import { useApiClient, useApiFetch } from '~/composables/useApiClient'
-import { useAbortableRequest } from '~/composables/useAbortableRequest'
+import { useApiClient } from '~/composables/useApiClient'
+import { useAccountEventPageRequest } from '~/composables/useAccountEventPageRequest'
 
 definePageMeta({
   middleware: ['require-platform-account']
 })
-
-interface AccountEventAccessRecord {
-  id: string
-  eventType: PublicEvent['eventType']
-  slug: string
-  name: string
-  description: string
-  state: PublicEvent['state']
-  mediaRevision: number
-  city: string
-  country: string
-  address: string
-  bannerImageUrl: string | null
-  backgroundImageUrl: string | null
-  displayBackgroundImageUrl: string | null
-  registrationOpensAt: string
-  registrationClosesAt: string
-  submissionOpensAt: string | null
-  submissionClosesAt: string | null
-  applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null
-  team: {
-    id: string
-    name: string
-    slug: string
-    role: 'member' | 'admin'
-  } | null
-  submissionStatus: 'draft' | 'submitted' | 'withdrawn' | 'locked' | 'disqualified' | null
-  roles: Array<'event_admin' | 'judge' | 'staff'>
-}
-
-interface AccountEventsResponse {
-  data: {
-    current: AccountEventAccessRecord[]
-    past: AccountEventAccessRecord[]
-  }
-}
-
-interface RefreshableAsyncRequest {
-  status: Ref<string>
-  refresh: () => Promise<unknown>
-}
 
 interface VerifyLumaEmailResponse {
   application: ParticipantApplicationRecord
@@ -153,44 +107,8 @@ interface VerifyLumaEmailResponse {
   verificationStatus: 'synced' | 'not_found' | 'not_synced'
 }
 
-type AccountWorkspaceEvent = Omit<PublicEvent, 'tracks'> & {
-  id: string
-  mediaRevision: number
-  updatedAt: string
-  simplifiedClaimingEnabled?: boolean
-  hasGallery?: boolean
-  discordServerUrl?: string | null
-  slidesUrl?: string | null
-  tracks?: Array<{
-    id: string
-    name: string
-    shortDescription: string
-    fullDescription: string
-    staffInstructions?: string
-    resources: Array<{
-      id?: string
-      title: string
-      url: string
-      description: string | null
-      displayOrder: number
-    }>
-    displayOrder: number
-  }>
-}
-
-type AccountPrizeSummary = PublicPrize & {
-  id: string
-}
-
-function refreshWhenEnabled(request: RefreshableAsyncRequest, enabled: Ref<boolean>) {
-  watch(enabled, async (isEnabled) => {
-    if (!isEnabled || request.status.value !== 'idle') {
-      return
-    }
-
-    await request.refresh()
-  })
-}
+type AccountWorkspaceEvent = AccountEventEntryEvent
+type AccountEventAccessRecord = AccountEventEntryAccess
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
@@ -203,152 +121,103 @@ if (!slug.value) {
   })
 }
 
-const {
-  data: eventResponse,
-  error: eventError,
-  refresh: refreshEvent
-} = await useApiFetch<PublicApiDataResponse<AccountWorkspaceEvent>>(() => `/api/events/slug/${slug.value}`, {
-  key: () => `account-event-detail:${slug.value}`
-})
-
-if (eventError.value) {
-  throw createError({
-    statusCode: eventError.value.statusCode ?? eventError.value.status ?? 500,
-    statusMessage: eventError.value.statusMessage ?? 'Unable to load the requested event.'
-  })
-}
-
-if (!eventResponse.value?.data) {
-  throw createError({
-    statusCode: 404,
-    statusMessage: 'Event not found.'
-  })
-}
-
 const apiFetch = useApiClient()
-const accountEventRequests = useAbortableRequest()
-const accountEventBootstrapSignal = accountEventRequests.createSignal('account-event-bootstrap')
-const initialEvent = eventResponse.value.data
-const [
-  prizesResponse,
-  accountEventsResponse,
-  participationResponse,
-  ownTalkProposalResponse
-] = await Promise.all([
-  initialEvent.eventType === 'hackathon'
-    ? apiFetch<PublicApiListResponse<AccountPrizeSummary>>(`/api/events/${initialEvent.id}/prizes`, {
-        signal: accountEventBootstrapSignal
-      })
-    : Promise.resolve({ data: [] }),
-  apiFetch<AccountEventsResponse>('/api/account/events', {
-    signal: accountEventBootstrapSignal
-  }),
-  apiFetch<EventParticipationApiDataResponse<EventParticipationPayload>>('/api/events/participation', {
-    signal: accountEventBootstrapSignal
-  }),
-  initialEvent.eventType === 'meetup' && initialEvent.talkProposalsEnabled
-    ? apiFetch<PublicApiDataResponse<TalkProposalRecord | null>>(`/api/events/${initialEvent.id}/talk-proposals/me`, {
-        signal: accountEventBootstrapSignal
-      })
-    : Promise.resolve({ data: null })
-])
-const initialAccessRecord = [
-  ...accountEventsResponse.data.current,
-  ...accountEventsResponse.data.past
-].find(record => record.slug === slug.value) ?? null
-const initialParticipationRecord = [
-  ...participationResponse.data.current,
-  ...participationResponse.data.past
-].find(record => record.event.slug === slug.value) ?? null
-const initialApplicationStatus = initialParticipationRecord?.application?.status
-  ?? initialAccessRecord?.applicationStatus
-  ?? null
-const initialHasStaffCreditAccess = actor.value.kind === 'platform_user'
-  && actor.value.eventRoles.some(role => role.eventId === initialEvent.id && role.isStaff)
-const initialCanClaimCredits = initialApplicationStatus === 'approved' || initialHasStaffCreditAccess
-const initialParticipantCreditsResponse = initialCanClaimCredits
-  ? await apiFetch<EventCreditApiListResponse<ParticipantEventCreditOffer>>(`/api/events/${initialEvent.id}/credits`, {
-      signal: accountEventBootstrapSignal
-    })
-  : { data: [] }
 const toast = useToast()
-const accountEventsData = ref(accountEventsResponse.data)
-const participationData = ref(participationResponse.data)
-const participantCreditOffers = ref(initialParticipantCreditsResponse.data)
-const hasRetainedTalkProposal = ref(Boolean(ownTalkProposalResponse.data))
+const entryPageRequest = useAccountEventPageRequest<AccountEventEntryPage>(slug, 'entry')
+const prizesPageRequest = useAccountEventPageRequest<AccountEventPrizesPage>(slug, 'prizes', {
+  immediate: false
+})
+const entryPage = computed(() => entryPageRequest.data.value?.page ?? null)
+const prizesPage = computed(() => prizesPageRequest.data.value?.page ?? null)
+const event = computed<AccountWorkspaceEvent | null>(() => entryPage.value?.event ?? null)
+const accessRecord = shallowRef<AccountEventAccessRecord | null>(null)
+const participationRecord = shallowRef<AccountEventEntryParticipation | null>(null)
+const participantCreditOffers = shallowRef<AccountEventEntryParticipantCreditOffer[]>([])
+const adminCreditOffers = computed(() => entryPage.value?.adminCredits ?? [])
+const hasRetainedTalkProposal = ref(false)
+const talkProposal = shallowRef<AccountEventEntryTalkProposal | null>(null)
+const talkProposalReviews = shallowRef<AccountEventEntryTalkProposalReview[]>([])
+const participantRank = shallowRef<AccountEventEntryRankSummary | null>(null)
+const isEntryPending = computed(() => entryPageRequest.pending.value)
+const entryError = computed(() => entryPageRequest.error.value)
+watch(entryPage, (page) => {
+  if (!page) {
+    return
+  }
+
+  accessRecord.value = page.access
+  participationRecord.value = page.participation
+  participantCreditOffers.value = page.participantCredits
+  hasRetainedTalkProposal.value = Boolean(page.talkProposal)
+  talkProposal.value = page.talkProposal
+  talkProposalReviews.value = page.talkProposalReviews
+  participantRank.value = page.participantRank
+}, { immediate: true })
 const isWithdrawApplicationPending = ref(false)
 const withdrawApplicationErrorMessage = ref('')
 const lumaEmailForm = ref('')
 const lumaEmailVerificationErrorMessage = ref('')
 const isLumaEmailVerificationPending = ref(false)
-const accessRecord = computed(() => [
-  ...accountEventsData.value.current,
-  ...accountEventsData.value.past
-].find(record => record.slug === slug.value) ?? null)
-
-const participationRecord = computed<EventParticipationRecord | null>(() => {
-  const records = [
-    ...participationData.value.current,
-    ...participationData.value.past
-  ]
-
-  return records.find(record => record.event.slug === slug.value) ?? null
-})
-
-const event = computed(() => eventResponse.value!.data)
-async function refreshAccountEvent() {
-  await refreshEvent()
-}
-const isCompetitionEvent = computed(() => event.value.eventType === 'hackathon')
+const isCompetitionEvent = computed(() => event.value?.eventType === 'hackathon')
 const workspaceEventId = computed(() => resolveAccountEventScopedId({
   accessRecordId: accessRecord.value?.id,
-  eventId: event.value.id
+  eventId: event.value?.id ?? ''
 }))
-const prizes = computed(() => prizesResponse.data)
-const hasPublishedPrizes = computed(() => prizes.value.length > 0)
-const canJudge = computed(() =>
-  actor.value.kind === 'platform_user'
-    ? hasEventJudgingAccess(actor.value, event.value.id)
+const prizes = computed<AccountEventPrize[]>(() => prizesPage.value?.prizes ?? [])
+const canJudge = computed(() => {
+  const currentEvent = event.value
+
+  return currentEvent && actor.value.kind === 'platform_user'
+    ? hasEventJudgingAccess(actor.value, currentEvent.id)
     : false
-)
+})
 const canAdmin = computed(() => {
-  if (actor.value.kind !== 'platform_user') {
-    return false
+  const currentEvent = event.value
+
+  return entryPageRequest.data.value?.visibility.canManage
+    ?? (currentEvent && actor.value.kind === 'platform_user'
+      ? hasEventAdminAccess(actor.value, currentEvent.id)
+      : false)
+})
+const canViewParticipantsAndTeams = computed(() => {
+  const currentEvent = event.value
+
+  return currentEvent && actor.value.kind === 'platform_user'
+    ? hasEventParticipantVisibilityAccess(actor.value, currentEvent.id)
+    : false
+})
+watch([entryPage, canAdmin, canJudge, canViewParticipantsAndTeams], ([page, canManage, canReview, canView]) => {
+  if (!page || !event.value) {
+    return
   }
 
-  return hasEventAdminAccess(actor.value, event.value.id)
-})
-const canViewParticipantsAndTeams = computed(() =>
-  actor.value.kind === 'platform_user'
-    ? hasEventParticipantVisibilityAccess(actor.value, event.value.id)
-    : false
-)
-
-if (!canAccessAccountEventWorkspace({
-  hasAccessRecord: Boolean(accessRecord.value),
-  canJudge: canJudge.value,
-  canManage: canAdmin.value,
-  canViewParticipantsAndTeams: canViewParticipantsAndTeams.value
-})) {
-  await navigateTo(`/events/${slug.value}`, {
-    redirectCode: 302,
-    replace: true
-  })
-}
+  if (!canAccessAccountEventWorkspace({
+    hasAccessRecord: Boolean(page.access),
+    canJudge: canReview,
+    canManage,
+    canViewParticipantsAndTeams: canView
+  })) {
+    void navigateTo(`/events/${slug.value}`, {
+      redirectCode: 302,
+      replace: true
+    })
+    return
+  }
+}, { immediate: true })
 
 const workspaceBackLink = computed(() => getAccountEventWorkspaceBackLink({
   canManage: canAdmin.value,
   canViewParticipantsAndTeams: canViewParticipantsAndTeams.value
 }))
 const applicationStatus = computed(() =>
-  participationRecord.value?.application?.status ?? accessRecord.value?.applicationStatus ?? null
+  entryPage.value?.applicationStatus ?? participationRecord.value?.application?.status ?? accessRecord.value?.applicationStatus ?? null
 )
 const currentEventRole = computed(() => {
-  if (actor.value.kind !== 'platform_user') {
+  if (actor.value.kind !== 'platform_user' || !event.value) {
     return null
   }
 
-  return actor.value.eventRoles.find(role => role.eventId === event.value.id) ?? null
+  return actor.value.eventRoles.find(role => role.eventId === event.value?.id) ?? null
 })
 const currentStaffTrackId = computed(() =>
   currentEventRole.value?.isStaff ? currentEventRole.value.staffTrackId : null
@@ -381,14 +250,14 @@ const canManageParticipantCertificateGeneration = computed(() => {
   const application = participationRecord.value?.application
 
   return actor.value.kind === 'platform_user'
-    && event.value.state === 'completed'
+    && event.value?.state === 'completed'
     && application?.status === 'approved'
     && application.isCheckedIn
     && !application.certificateRevokedAt
 })
 const isCertificateGenerationDisabled = computed(() => Boolean(participationRecord.value?.application?.certificateHiddenAt))
 const selectedTrackId = computed(() => participationRecord.value?.application?.selectedTrackId ?? null)
-const accountEventTracks = computed(() => event.value.tracks ?? [])
+const accountEventTracks = computed(() => event.value?.tracks ?? [])
 const selectedParticipantTrack = computed(() => {
   const normalizedSelectedTrackId = selectedTrackId.value?.trim() ?? ''
 
@@ -401,21 +270,25 @@ const selectedParticipantTrack = computed(() => {
 const canSelectParticipantTrack = computed(() =>
   accountTrackViewerMode.value === 'participant'
   && (applicationStatus.value === 'submitted' || applicationStatus.value === 'approved')
-  && event.value.state !== 'completed'
+  && event.value?.state !== 'completed'
   && accountEventTracks.value.length > 0
 )
 const showTrackSelectionOverviewPrompt = computed(() =>
   canSelectParticipantTrack.value && !selectedParticipantTrack.value
 )
-const selectedBuildTrackOverviewTrack = computed(() =>
-  getSelectedBuildTrackOverviewTrack({
-    eventType: event.value.eventType,
-    applicationStatus: applicationStatus.value,
-    canSelectTrack: canSelectParticipantTrack.value,
-    selectedTrackId: selectedTrackId.value,
-    tracks: accountEventTracks.value
-  })
-)
+const selectedBuildTrackOverviewTrack = computed(() => {
+  const currentEvent = event.value
+
+  return currentEvent
+    ? getSelectedBuildTrackOverviewTrack({
+        eventType: currentEvent.eventType,
+        applicationStatus: applicationStatus.value,
+        canSelectTrack: canSelectParticipantTrack.value,
+        selectedTrackId: selectedTrackId.value,
+        tracks: accountEventTracks.value
+      })
+    : null
+})
 const showSelectedBuildTrackOverviewNotice = computed(() =>
   Boolean(selectedBuildTrackOverviewTrack.value)
 )
@@ -452,6 +325,7 @@ async function setCertificateGenerationDisabled(disabled: boolean) {
     )
 
     updateParticipationRecordApplication(response.data)
+    await refreshAccountEvent()
     toast.add({
       title: response.data.certificateHiddenAt
         ? 'Certificate generation disabled'
@@ -469,55 +343,17 @@ async function setCertificateGenerationDisabled(disabled: boolean) {
   }
 }
 const canClaimCredits = computed(() => applicationStatus.value === 'approved' || hasStaffCreditAccess.value)
-const hasCreditInventory = computed(() =>
-  !event.value.simplifiedClaimingEnabled
-  && participantCreditOffers.value.some(offer => offer.totalCount > 0)
-)
-const shouldLoadPublishedStaffRoster = computed(() => actor.value.kind === 'platform_user')
-const publishedStaffRosterRequest = await useApiData<PublishedEventRosterLoadState>(
-  () => `account-event-staff:${workspaceEventId.value}`,
-  async ({ apiFetch, signal }) => {
-    if (!shouldLoadPublishedStaffRoster.value) {
-      return createEmptyPublishedEventRosterLoadState()
-    }
-
-    return await loadPublishedEventRoster(
-      (path, requestSignal) => apiFetch<PublicApiListResponse<PublishedEventRosterMember>>(path, { signal: requestSignal }),
-      {
-        eventId: workspaceEventId.value,
-        role: 'staff'
-      },
-      signal
-    )
-  },
-  {
-    default: createEmptyPublishedEventRosterLoadState,
-    immediate: shouldLoadPublishedStaffRoster.value
-  }
-)
-const publishedStaffRoster = computed(() =>
-  publishedStaffRosterRequest.data.value ?? createEmptyPublishedEventRosterLoadState()
-)
-
-const tabAccess = computed(() =>
-  getAccountEventTabAccess({
-    hasApprovedParticipantAccess: applicationStatus.value === 'approved',
-    hasEligibleTalkProposalApplicant: applicationStatus.value === 'submitted' || applicationStatus.value === 'approved',
-    hasRetainedTalkProposal: hasRetainedTalkProposal.value,
-    hasCreditInventory: hasCreditInventory.value,
-    hasGallery: Boolean(event.value.hasGallery),
-    hasPublishedPrizes: hasPublishedPrizes.value,
-    hasPublishedStaff: publishedStaffRoster.value.members.length > 0,
-    eventType: event.value.eventType,
-    eventState: event.value.state,
-    talkProposalsEnabled: event.value.talkProposalsEnabled,
-    canJudge: canJudge.value,
-    canManage: canAdmin.value,
-    showCredits: !event.value.simplifiedClaimingEnabled,
-    canViewParticipantsAndTeams: canViewParticipantsAndTeams.value
-  })
-)
-const availableTabs = computed(() => tabAccess.value.availableTabs)
+const tabAccess = computed(() => entryPage.value?.tabVisibility ?? {
+  availableTabs: ['overview'] as AccountEventWorkspaceTab[],
+  showPrizeConfiguration: false,
+  showAgendaConfigurationInDetails: false,
+  hasPublishedPrizes: false,
+  hasPublishedStaff: false,
+  hasCreditInventory: false,
+  hasEligibleTalkProposalApplicant: false,
+  hasGallery: false
+})
+const availableTabs = computed<AccountEventWorkspaceTab[]>(() => tabAccess.value.availableTabs)
 function buildWorkspaceSectionLocation(nextSection: AccountEventWorkspaceTab) {
   const nextQuery = {
     ...route.query
@@ -548,7 +384,7 @@ const visibleTabs = computed(() =>
   availableTabs.value.map(tab => ({
     id: tab,
     label: getAccountEventTabLabel(tab, {
-      eventState: event.value.state
+      eventState: event.value?.state
     }),
     to: buildWorkspaceSectionLocation(tab)
   }))
@@ -556,118 +392,121 @@ const visibleTabs = computed(() =>
 const activeSection = computed<AccountEventWorkspaceTab>(() =>
   resolveTabQueryValue(route.query.tab, availableTabs.value, 'overview')
 )
-const shouldLoadPublishedJudgesRoster = computed(() =>
-  actor.value.kind === 'platform_user' && activeSection.value === 'judges'
-)
-const shouldLoadCompletedPrizesData = computed(() =>
-  isCompetitionEvent.value && event.value.state === 'completed' && activeSection.value === 'prizes'
-)
-const shouldLoadParticipationRank = computed(() =>
-  actor.value.kind === 'platform_user'
-  && isCompetitionEvent.value
-  && event.value.state === 'completed'
-  && (activeSection.value === 'overview' || activeSection.value === 'workspace')
-)
-const [
-  publishedJudgesRosterRequest,
-  winnersRequest,
-  publishedProjectsRequest,
-  participationRankRequest
-] = await Promise.all([
-  useApiData<PublishedEventRosterLoadState>(
-    () => `account-event-judges:${workspaceEventId.value}`,
-    async ({ apiFetch, signal }) => {
-      if (!shouldLoadPublishedJudgesRoster.value) {
-        return createEmptyPublishedEventRosterLoadState()
-      }
+const workspacePageRequest = useAccountEventPageRequest<AccountEventWorkspacePage>(slug, 'workspace', {
+  immediate: false
+})
+const galleryPageRequest = useAccountEventPageRequest<AccountEventGalleryPage>(slug, 'gallery', {
+  immediate: false
+})
+const feedbackPageRequest = useAccountEventPageRequest<AccountEventFeedbackPage>(slug, 'feedback', {
+  immediate: false
+})
+const participantsPageRequest = useAccountEventPageRequest<AccountEventParticipantsPage>(slug, 'participants', {
+  immediate: false
+})
+const certificatesPageRequest = useAccountEventPageRequest<AccountEventCertificatesPage>(slug, 'certificates', {
+  immediate: false
+})
+const teamsPageRequest = useAccountEventPageRequest<AccountEventTeamsPage>(slug, 'teams', {
+  immediate: false
+})
+const workspacePage = computed(() => workspacePageRequest.data.value?.page ?? null)
+const galleryPage = computed(() => galleryPageRequest.data.value?.page ?? null)
+const feedbackPage = computed(() => feedbackPageRequest.data.value?.page ?? null)
+const participantsPage = computed(() => participantsPageRequest.data.value?.page ?? null)
+const certificatesPage = computed(() => certificatesPageRequest.data.value?.page ?? null)
+const teamsPage = computed(() => teamsPageRequest.data.value?.page ?? null)
+const workspacePageIsLoading = computed(() => workspacePageRequest.pending.value)
+const galleryPageIsLoading = computed(() => galleryPageRequest.pending.value)
+const feedbackPageIsLoading = computed(() => feedbackPageRequest.pending.value)
+const participantsPageIsLoading = computed(() => participantsPageRequest.pending.value)
+const certificatesPageIsLoading = computed(() => certificatesPageRequest.pending.value)
+const teamsPageIsLoading = computed(() => teamsPageRequest.pending.value)
+const workspacePageErrorMessage = computed(() => workspacePageRequest.error.value
+  ? normalizeParticipantApiError(workspacePageRequest.error.value).message
+  : '')
+const galleryPageErrorMessage = computed(() => galleryPageRequest.error.value
+  ? normalizeParticipantApiError(galleryPageRequest.error.value).message
+  : '')
+const feedbackPageErrorMessage = computed(() => feedbackPageRequest.error.value
+  ? normalizeParticipantApiError(feedbackPageRequest.error.value).message
+  : '')
+const participantsPageErrorMessage = computed(() => participantsPageRequest.error.value
+  ? normalizeParticipantApiError(participantsPageRequest.error.value).message
+  : '')
+const certificatesPageErrorMessage = computed(() => certificatesPageRequest.error.value
+  ? normalizeParticipantApiError(certificatesPageRequest.error.value).message
+  : '')
+const teamsPageErrorMessage = computed(() => teamsPageRequest.error.value
+  ? normalizeParticipantApiError(teamsPageRequest.error.value).message
+  : '')
 
-      return await loadPublishedEventRoster(
-        (path, requestSignal) => apiFetch<PublicApiListResponse<PublishedEventRosterMember>>(path, { signal: requestSignal }),
-        {
-          eventId: workspaceEventId.value,
-          role: 'judge'
-        },
-        signal
-      )
-    },
-    {
-      default: createEmptyPublishedEventRosterLoadState,
-      immediate: shouldLoadPublishedJudgesRoster.value
+function watchActivePageRequest<T>(
+  tab: AccountEventWorkspaceTab,
+  request: ReturnType<typeof useAccountEventPageRequest<T>>
+) {
+  watch(activeSection, (section, previousSection) => {
+    if (previousSection === tab && section !== tab) {
+      request.abort()
     }
-  ),
-  useApiData<WinnerEntry[]>(
-    () => `account-event-winners:${workspaceEventId.value}`,
-    async ({ apiFetch, signal }) => {
-      if (!shouldLoadCompletedPrizesData.value) {
-        return []
-      }
 
-      const response = await apiFetch<PublicApiListResponse<WinnerEntry>>(
-        `/api/events/${workspaceEventId.value}/winners`,
-        { signal }
-      )
-
-      return response.data
-    },
-    {
-      default: () => [],
-      immediate: shouldLoadCompletedPrizesData.value
+    if (section === tab && request.status.value === 'idle') {
+      void request.refresh()
     }
-  ),
-  useApiData<PublishedProjectEntry[]>(
-    () => `account-event-published-projects:${workspaceEventId.value}`,
-    async ({ apiFetch, signal }) => {
-      if (!shouldLoadCompletedPrizesData.value) {
-        return []
-      }
+  }, { immediate: true })
+}
 
-      const response = await apiFetch<PublicApiListResponse<PublishedProjectEntry>>(
-        `/api/events/${workspaceEventId.value}/published-projects`,
-        { signal }
-      )
-
-      return response.data
-    },
-    {
-      default: () => [],
-      immediate: shouldLoadCompletedPrizesData.value
-    }
-  ),
-  useApiData<EventParticipationRankSummary | null>(
-    () => `account-event-participation-rank:${workspaceEventId.value}`,
-    async ({ apiFetch, signal }) => {
-      if (!shouldLoadParticipationRank.value) {
-        return null
-      }
-
-      const response = await apiFetch<EventParticipationApiDataResponse<EventParticipationRankSummary | null>>(
-        `/api/events/${workspaceEventId.value}/rank/me`,
-        { signal }
-      )
-
-      return response.data
-    },
-    {
-      default: () => null,
-      immediate: shouldLoadParticipationRank.value
-    }
-  )
-])
-refreshWhenEnabled(publishedJudgesRosterRequest, shouldLoadPublishedJudgesRoster)
-refreshWhenEnabled(publishedStaffRosterRequest, shouldLoadPublishedStaffRoster)
-refreshWhenEnabled(winnersRequest, shouldLoadCompletedPrizesData)
-refreshWhenEnabled(publishedProjectsRequest, shouldLoadCompletedPrizesData)
-refreshWhenEnabled(participationRankRequest, shouldLoadParticipationRank)
-const publishedJudgesRoster = computed(() =>
-  publishedJudgesRosterRequest.data.value ?? createEmptyPublishedEventRosterLoadState()
+watchActivePageRequest('workspace', workspacePageRequest)
+watchActivePageRequest('gallery', galleryPageRequest)
+watchActivePageRequest('feedback', feedbackPageRequest)
+watchActivePageRequest('participants', participantsPageRequest)
+watchActivePageRequest('certificates', certificatesPageRequest)
+watchActivePageRequest('teams', teamsPageRequest)
+const rostersPageRequest = useAccountEventPageRequest<AccountEventRostersPage>(slug, 'rosters', {
+  immediate: false
+})
+const rostersPage = computed(() => rostersPageRequest.data.value?.page ?? null)
+const rostersPageIsLoading = computed(() => rostersPageRequest.pending.value)
+const rostersPageErrorMessage = computed(() => rostersPageRequest.error.value
+  ? normalizeParticipantApiError(rostersPageRequest.error.value).message
+  : '')
+const shouldLoadRostersPage = computed(() =>
+  activeSection.value === 'judges' || activeSection.value === 'staff'
 )
-const winners = computed(() => winnersRequest.data.value ?? [])
-const publishedProjects = computed(() => publishedProjectsRequest.data.value ?? [])
-const participationRank = computed(() => participationRankRequest.data.value ?? null)
+watch(shouldLoadRostersPage, (isEnabled, wasEnabled) => {
+  if (wasEnabled && !isEnabled) {
+    rostersPageRequest.abort()
+  }
+
+  if (isEnabled && rostersPageRequest.status.value === 'idle') {
+    void rostersPageRequest.refresh()
+  }
+}, { immediate: true })
+const winners = computed<AccountEventWinner[]>(() => prizesPage.value?.winners ?? [])
+const publishedProjects = computed<AccountEventPublishedProject[]>(() => prizesPage.value?.publishedProjects ?? [])
+const participationRank = computed<EventParticipationRankSummary | null>(() => participantRank.value)
+watch(activeSection, (section, previousSection) => {
+  if (previousSection === 'prizes' && section !== 'prizes') {
+    prizesPageRequest.abort()
+  }
+
+  if (section === 'prizes' && prizesPageRequest.status.value === 'idle') {
+    void prizesPageRequest.refresh()
+  }
+}, { immediate: true })
+
+async function refreshAccountEvent() {
+  if (activeSection.value === 'prizes') {
+    await prizesPageRequest.refresh()
+    return
+  }
+
+  await entryPageRequest.refresh()
+}
 const accountTabListRef = ref<HTMLElement | null>(null)
 const selectedTeamSlug = computed(() => normalizeTeamSlugQueryValue(route.query.team))
 const selectedJudgeAssignmentId = computed(() => normalizeJudgeAssignmentIdQueryValue(route.query.assignment))
-const activeSectionSeo = computed(() => getAccountEventSeoContent(activeSection.value, event.value.name))
+const activeSectionSeo = computed(() => getAccountEventSeoContent(activeSection.value, event.value?.name ?? ''))
 
 function scrollActiveTabIntoView() {
   if (!import.meta.client) {
@@ -748,14 +587,14 @@ const applicationStatusColor = computed(() => {
 })
 const applicationStatusSummary = computed(() =>
   applicationStatus.value
-    ? summarizeParticipantApplicationStatus(applicationStatus.value, event.value.state, event.value.eventType)
+    ? summarizeParticipantApplicationStatus(applicationStatus.value, event.value?.state ?? 'draft', event.value?.eventType ?? 'meetup')
     : ''
 )
 const applicationSubmittedNoticeContent = computed(() =>
   getParticipantApplicationSubmittedNoticeContent({
     applicationStatus: applicationStatus.value,
-    eventType: event.value.eventType,
-    autoApproveApplications: event.value.autoApproveApplications
+    eventType: event.value?.eventType ?? 'meetup',
+    autoApproveApplications: event.value?.autoApproveApplications ?? false
   })
 )
 const participantOutcomeNotice = computed(() =>
@@ -800,7 +639,7 @@ const showOverviewStatusNotices = computed(() =>
   || showLumaSyncNotice.value
 )
 const showApprovedOverviewActions = computed(() =>
-  applicationStatus.value === 'approved' && isCompetitionEvent.value && !hasEventEnteredSubmissionPhase(event.value)
+  applicationStatus.value === 'approved' && isCompetitionEvent.value && event.value !== null && !hasEventEnteredSubmissionPhase(event.value)
 )
 const applicationStatusNoticeTitle = computed(() => {
   switch (applicationStatus.value) {
@@ -852,61 +691,59 @@ const approvedOverviewTeamActionDescription = computed(() => {
   return 'Everyone participates through a team. Workspace is where you confirm solo participation or create a team, while Teams is where you browse the wider directory.'
 })
 const approvedOverviewDetailsActionDescription = 'Check the schedule, location, and full address before the event starts.'
-const showTeamAndSubmissionCards = computed(() => isCompetitionEvent.value && hasEventEnteredSubmissionPhase(event.value))
+const showTeamAndSubmissionCards = computed(() =>
+  isCompetitionEvent.value && event.value !== null && hasEventEnteredSubmissionPhase(event.value)
+)
 const canViewRestrictedEventDetails = computed(() =>
   applicationStatus.value === 'approved'
   || canJudge.value
   || canViewParticipantsAndTeams.value
 )
 
-const detailBackgroundImageUrl = computed(() =>
-  buildVersionedEventImageUrl(resolveEventDetailBackgroundImageUrl(event.value), event.value.mediaRevision)
-)
+const detailBackgroundImageUrl = computed(() => {
+  const currentEvent = event.value
+
+  return currentEvent
+    ? buildVersionedEventImageUrl(
+        resolveEventDetailBackgroundImageUrl(currentEvent),
+        currentEvent.displayBackgroundImageRevision,
+        'background'
+      )
+    : undefined
+})
 const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
   : undefined)
-const detailSummary = computed(() => formatAccountEventHeaderSummary(event.value))
+const detailSummary = computed(() => event.value ? formatAccountEventHeaderSummary(event.value) : '')
 function updateAccessRecordApplicationStatus(nextStatus: ParticipantApplicationRecord['status']) {
-  const patchRecords = (records: AccountEventAccessRecord[]) =>
-    records.map(record => record.slug === slug.value
-      ? {
-          ...record,
-          applicationStatus: nextStatus
-        }
-      : record)
-
-  accountEventsData.value = {
-    current: patchRecords(accountEventsData.value.current),
-    past: patchRecords(accountEventsData.value.past)
+  if (accessRecord.value) {
+    accessRecord.value = {
+      ...accessRecord.value,
+      applicationStatus: nextStatus
+    }
   }
 }
 
 function updateParticipationRecordApplication(nextApplication: ParticipantApplicationRecord) {
-  const patchRecords = (records: EventParticipationRecord[]) =>
-    records.map(record => record.event.slug === slug.value
-      ? {
-          ...record,
-          application: {
-            id: nextApplication.id,
-            userId: nextApplication.userId,
-            status: nextApplication.status,
-            lumaSyncStatus: nextApplication.lumaSyncStatus,
-            submittedAt: nextApplication.submittedAt,
-            withdrawnAt: nextApplication.withdrawnAt,
-            reviewedAt: nextApplication.reviewedAt,
-            checkedInAt: nextApplication.checkedInAt,
-            isCheckedIn: isApplicationEffectivelyCheckedIn(nextApplication),
-            certificateHiddenAt: nextApplication.certificateHiddenAt,
-            certificateRevokedAt: nextApplication.certificateRevokedAt,
-            selectedTrackId: nextApplication.selectedTrackId,
-            updatedAt: nextApplication.updatedAt
-          }
-        }
-      : record)
-
-  participationData.value = {
-    current: patchRecords(participationData.value.current),
-    past: patchRecords(participationData.value.past)
+  if (participationRecord.value) {
+    participationRecord.value = {
+      ...participationRecord.value,
+      application: {
+        id: nextApplication.id,
+        userId: nextApplication.userId,
+        status: nextApplication.status,
+        lumaSyncStatus: nextApplication.lumaSyncStatus,
+        submittedAt: nextApplication.submittedAt,
+        withdrawnAt: nextApplication.withdrawnAt,
+        reviewedAt: nextApplication.reviewedAt,
+        checkedInAt: nextApplication.checkedInAt,
+        isCheckedIn: isApplicationEffectivelyCheckedIn(nextApplication),
+        certificateHiddenAt: nextApplication.certificateHiddenAt,
+        certificateRevokedAt: nextApplication.certificateRevokedAt,
+        selectedTrackId: nextApplication.selectedTrackId,
+        updatedAt: nextApplication.updatedAt
+      }
+    }
   }
 }
 
@@ -926,8 +763,11 @@ async function verifyLumaEmail() {
   lumaEmailVerificationErrorMessage.value = ''
 
   try {
+    const currentEvent = event.value
+    if (!currentEvent) return
+
     const response = await apiFetch<ParticipantApiDataResponse<VerifyLumaEmailResponse>>(
-      `/api/events/${event.value.id}/applications/me/actions/verify-luma-email`,
+      `/api/events/${currentEvent.id}/applications/me/actions/verify-luma-email`,
       {
         method: 'POST',
         body: {
@@ -942,6 +782,7 @@ async function verifyLumaEmail() {
       lumaEmailForm.value = response.data.lumaEmail
       await refreshActor()
     }
+    await refreshAccountEvent()
 
     if (response.data.verificationStatus === 'synced') {
       toast.add({
@@ -984,6 +825,7 @@ async function selectParticipantTrack(trackId: string) {
     )
 
     updateParticipationRecordApplication(response.data)
+    await refreshAccountEvent()
     toast.add({
       title: 'Track selected',
       description: 'Your event track was updated.',
@@ -1021,8 +863,11 @@ async function withdrawOwnApplication() {
   withdrawApplicationErrorMessage.value = ''
 
   try {
+    const currentEvent = event.value
+    if (!currentEvent) return
+
     const response = await apiFetch<ParticipantApiDataResponse<ParticipantApplicationRecord>>(
-      `/api/events/${event.value.id}/applications/me/actions/withdraw`,
+      `/api/events/${currentEvent.id}/applications/me/actions/withdraw`,
       {
         method: 'POST'
       }
@@ -1030,6 +875,7 @@ async function withdrawOwnApplication() {
 
     updateAccessRecordApplicationStatus(response.data.status)
     updateParticipationRecordApplication(response.data)
+    await refreshAccountEvent()
     applicationSubmittedNoticeVisible.value = false
     toast.add({
       title: 'Participation withdrawn',
@@ -1050,7 +896,10 @@ useSeoMeta({
 </script>
 
 <template>
-  <div class="relative isolate pb-16">
+  <div
+    v-if="event"
+    class="relative isolate pb-16"
+  >
     <div
       v-if="detailBackgroundImageUrl"
       class="pointer-events-none fixed inset-0 z-0 overflow-hidden"
@@ -1579,6 +1428,9 @@ useSeoMeta({
           :event-id="event.id"
           :can-manage="canAdmin"
           :can-claim="canClaimCredits"
+          :participant-credits="participantCreditOffers"
+          :admin-credits="adminCreditOffers"
+          @updated="refreshAccountEvent"
         />
       </section>
 
@@ -1595,7 +1447,9 @@ useSeoMeta({
           :application-status="applicationStatus"
           :opens-at="event.talkProposalOpensAt"
           :closes-at="event.talkProposalClosesAt"
+          :proposal="talkProposal"
           @has-proposal-change="hasRetainedTalkProposal = $event"
+          @updated="refreshAccountEvent"
         />
 
         <LazyAccountEventTalkProposalReviewPanel
@@ -1603,6 +1457,8 @@ useSeoMeta({
           :event-id="event.id"
           :event-state="event.state"
           :can-decide="canAdmin"
+          :entries="talkProposalReviews"
+          @updated="refreshAccountEvent"
         />
       </section>
 
@@ -1615,11 +1471,10 @@ useSeoMeta({
       >
         <LazyAccountEventParticipantWorkspacePanel
           :event="event"
-          :application-status="applicationStatus"
+          :page="workspacePage"
+          :is-loading="workspacePageIsLoading"
+          :load-error-message="workspacePageErrorMessage"
           :selected-track-id="selectedTrackId"
-          :initial-submission="participationRecord?.latestSubmission ?? null"
-          :participation-outcome="participationRecord?.outcome ?? null"
-          :participation-rank="participationRank"
         />
       </section>
 
@@ -1703,6 +1558,9 @@ useSeoMeta({
         <LazyAccountEventGalleryPanel
           :event-id="workspaceEventId"
           :can-manage="canAdmin || canJudge || canViewParticipantsAndTeams"
+          :page="galleryPage"
+          :is-loading="galleryPageIsLoading"
+          :load-error-message="galleryPageErrorMessage"
         />
       </section>
 
@@ -1715,10 +1573,13 @@ useSeoMeta({
       >
         <LazyAccountEventPublishedRosterPanel
           :event-id="workspaceEventId"
-          :roster="publishedJudgesRoster"
           role="judge"
           title="Judges"
           description="Meet the people reviewing submissions for this event."
+          :page="rostersPage"
+          :is-loading="rostersPageIsLoading"
+          :load-error-message="rostersPageErrorMessage"
+          :refresh-page="rostersPageRequest.refresh"
           :management-event-id="canAdmin ? workspaceEventId : null"
         />
       </section>
@@ -1732,10 +1593,13 @@ useSeoMeta({
       >
         <LazyAccountEventPublishedRosterPanel
           :event-id="workspaceEventId"
-          :roster="publishedStaffRoster"
           role="staff"
           title="Staff"
           description="Meet the people supporting this event behind the scenes."
+          :page="rostersPage"
+          :is-loading="rostersPageIsLoading"
+          :load-error-message="rostersPageErrorMessage"
+          :refresh-page="rostersPageRequest.refresh"
           :tracks="event.tracks ?? []"
           :selected-track-id="selectedTrackId"
           :management-event-id="canAdmin ? workspaceEventId : null"
@@ -1748,6 +1612,10 @@ useSeoMeta({
           title="Admins"
           description="Admins can manage the internal workspace for this event. Promoting a judge or staff member keeps their current capability on the admin assignment."
           empty-assigned-message="No admins yet. Add an admin here when someone needs full event management access."
+          :page="rostersPage"
+          :is-loading="rostersPageIsLoading"
+          :load-error-message="rostersPageErrorMessage"
+          :refresh-page="rostersPageRequest.refresh"
         />
       </section>
 
@@ -1761,6 +1629,9 @@ useSeoMeta({
         <LazyAccountEventFeedbackPanel
           :event-id="workspaceEventId"
           :event-state="event.state"
+          :page="feedbackPage"
+          :is-loading="feedbackPageIsLoading"
+          :load-error-message="feedbackPageErrorMessage"
         />
       </section>
 
@@ -1793,6 +1664,9 @@ useSeoMeta({
         <LazyAccountEventParticipantVisibilityPanel
           v-else-if="canViewParticipantsAndTeams"
           :event-id="workspaceEventId"
+          :page="participantsPage"
+          :is-loading="participantsPageIsLoading"
+          :error-message="participantsPageErrorMessage"
         />
       </section>
 
@@ -1807,6 +1681,9 @@ useSeoMeta({
           v-if="canAdmin"
           :event-id="workspaceEventId"
           :event-slug="slug"
+          :page="certificatesPage"
+          :is-loading="certificatesPageIsLoading"
+          :load-error-message="certificatesPageErrorMessage"
         />
       </section>
 
@@ -1819,6 +1696,9 @@ useSeoMeta({
       >
         <LazyAccountEventParticipantTeamPanel
           :event="event"
+          :page="teamsPage"
+          :is-loading="teamsPageIsLoading"
+          :load-error-message="teamsPageErrorMessage"
           :selected-team-slug="selectedTeamSlug"
           :show-operational-team-states="canViewParticipantsAndTeams || canAdmin"
         />
@@ -1867,4 +1747,17 @@ useSeoMeta({
       </section>
     </AppContainer>
   </div>
+  <div
+    v-else-if="isEntryPending"
+    class="mx-auto max-w-3xl px-6 py-16 text-center text-sm text-muted"
+  >
+    Loading event workspace…
+  </div>
+  <AppAlert
+    v-else-if="entryError"
+    color="error"
+    variant="soft"
+    title="Event workspace unavailable"
+    :description="normalizeParticipantApiError(entryError).message"
+  />
 </template>

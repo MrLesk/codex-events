@@ -1,70 +1,49 @@
 <script setup lang="ts">
 import { formatEventDate, formatEventTime } from '~/domains/events/presentation'
 import type {
-  AdminEventCreditOffer,
-  EventCreditApiDataResponse,
-  EventCreditApiListResponse,
-  ParticipantEventCreditOffer
+  EventCreditApiDataResponse
 } from '~/domains/credits'
+import type {
+  AccountEventEntryAdminCreditOffer,
+  AccountEventEntryParticipantCreditOffer
+} from '#shared/domains/events/account-event-entry-page'
 import {
   createEventCreditOfferWithInventory,
   isEventCreditLink,
   normalizeEventCreditApiError
 } from '~/domains/credits'
 import { useApiClient } from '~/composables/useApiClient'
-import { useApiData } from '~/composables/useApiData'
 
 const props = defineProps<{
   eventId: string
   canManage: boolean
   canClaim: boolean
+  participantCredits: AccountEventEntryParticipantCreditOffer[]
+  adminCredits: AccountEventEntryAdminCreditOffer[]
 }>()
+const emit = defineEmits<{
+  updated: []
+}>()
+
+type AdminEventCreditOffer = AccountEventEntryAdminCreditOffer
+type ParticipantEventCreditOffer = AccountEventEntryParticipantCreditOffer
 
 const apiFetch = useApiClient()
 const toast = useToast()
+const participantCredits = shallowRef<ParticipantEventCreditOffer[]>(props.participantCredits)
+const adminCredits = shallowRef<AdminEventCreditOffer[]>(props.adminCredits)
+const participantCreditsError = ref<unknown>(null)
+const adminCreditsError = ref<unknown>(null)
+const participantCreditsStatus = ref<'success' | 'pending'>('success')
+const adminCreditsStatus = ref<'success' | 'pending'>('success')
 
-const participantCreditsRequest = useApiData<ParticipantEventCreditOffer[]>(
-  () => `event-credits:participant:${props.eventId}:${props.canClaim}`,
-  async ({ apiFetch, signal }) => {
-    if (!props.canClaim) {
-      return []
-    }
+watch(() => props.participantCredits, (offers) => {
+  participantCredits.value = offers
+}, { immediate: true })
 
-    const response = await apiFetch<EventCreditApiListResponse<ParticipantEventCreditOffer>>(
-      `/api/events/${props.eventId}/credits`,
-      { signal }
-    )
-
-    return response.data
-  },
-  {
-    watch: [computed(() => props.eventId), computed(() => props.canClaim)],
-    default: () => []
-  }
-)
-
-const adminCreditsRequest = useApiData<AdminEventCreditOffer[]>(
-  () => `event-credits:admin:${props.eventId}:${props.canManage}`,
-  async ({ apiFetch, signal }) => {
-    if (!props.canManage) {
-      return []
-    }
-
-    const response = await apiFetch<EventCreditApiListResponse<AdminEventCreditOffer>>(
-      `/api/events/${props.eventId}/admin/credits`,
-      { signal }
-    )
-
-    return response.data
-  },
-  {
-    watch: [computed(() => props.eventId), computed(() => props.canManage)],
-    default: () => []
-  }
-)
-
-const participantCredits = computed(() => participantCreditsRequest.data.value)
-const adminCredits = computed(() => adminCreditsRequest.data.value)
+watch(() => props.adminCredits, (offers) => {
+  adminCredits.value = offers
+}, { immediate: true })
 const createFileInput = ref<HTMLInputElement | null>(null)
 const createInventoryFile = ref<File | null>(null)
 const createForm = reactive({
@@ -275,10 +254,7 @@ function toggleClaimedCodeVisibility(codeId: string) {
 }
 
 async function refreshCredits() {
-  await Promise.all([
-    props.canClaim ? participantCreditsRequest.refresh() : Promise.resolve(),
-    props.canManage ? adminCreditsRequest.refresh() : Promise.resolve()
-  ])
+  emit('updated')
 }
 
 function promptCreateInventoryUpload() {
@@ -469,13 +445,10 @@ async function claimOffer(offerId: string) {
       }
     )
 
-    participantCreditsRequest.data.value = participantCreditsRequest.data.value.map(offer =>
+    participantCredits.value = participantCredits.value.map(offer =>
       offer.id === offerId ? response.data : offer
     )
-
-    if (props.canManage) {
-      await adminCreditsRequest.refresh()
-    }
+    emit('updated')
 
     toast.add({
       title: 'Credit claimed',
@@ -548,15 +521,15 @@ async function copyCreditValue(value: string) {
 
       <div class="space-y-6">
         <AppAlert
-          v-if="adminCreditsRequest.error.value"
+          v-if="adminCreditsError"
           color="error"
           variant="soft"
           title="Credits unavailable"
-          :description="normalizeEventCreditApiError(adminCreditsRequest.error.value).message"
+          :description="normalizeEventCreditApiError(adminCreditsError).message"
         />
 
         <AppAlert
-          v-else-if="adminCreditsRequest.status.value === 'idle' || adminCreditsRequest.status.value === 'pending'"
+          v-else-if="adminCreditsStatus === 'pending'"
           color="neutral"
           variant="soft"
           title="Loading credit inventory"
@@ -1012,15 +985,15 @@ async function copyCreditValue(value: string) {
 
       <div class="space-y-6">
         <AppAlert
-          v-if="participantCreditsRequest.error.value"
+          v-if="participantCreditsError"
           color="error"
           variant="soft"
           title="Credits unavailable"
-          :description="normalizeEventCreditApiError(participantCreditsRequest.error.value).message"
+          :description="normalizeEventCreditApiError(participantCreditsError).message"
         />
 
         <AppAlert
-          v-else-if="participantCreditsRequest.status.value === 'idle' || participantCreditsRequest.status.value === 'pending'"
+          v-else-if="participantCreditsStatus === 'pending'"
           color="neutral"
           variant="soft"
           title="Loading credits"

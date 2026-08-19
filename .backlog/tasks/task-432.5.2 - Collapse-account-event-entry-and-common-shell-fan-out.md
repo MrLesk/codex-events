@@ -1,10 +1,11 @@
 ---
 id: TASK-432.5.2
 title: Collapse account-event entry and common-shell fan-out
-status: To Do
+status: In Progress
 assignee:
   - '@luna-workspace'
 created_date: '2026-08-19 19:52'
+updated_date: '2026-08-19 21:24'
 labels:
   - architecture
   - performance
@@ -105,3 +106,21 @@ Validation
 - [ ] #7 Auth and permissions changes follow the documented platform model
 - [ ] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Trace the committed foundation contracts and current entry/prizes fan-out within the owned route/page/panel scope.
+2. Implement concrete shared entry and prizes contracts plus request-scoped server assemblers using the foundation context, without touching generated registries or other child files.
+3. Convert the account-event page and owned common panels to one entry read and lazy one prizes read with typed props/events, abort propagation, authorization-generation scoping, and no feature-local reads.
+4. Add focused contract, permission/session-topology, request-count, and cancellation tests within the owned scope.
+5. Run scoped and required local validation, inspect only owned changes, record integrator metadata, and commit locally without push or deployment.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Started TASK-432.5.2 in the shared worktree. This task owns only the entry/prizes routes, entry/prizes shared/server contracts, account-event entry page, and listed common panels/tests. Foundation files, generated registries, media/D1 internals, and sibling task files remain excluded. Local-only validation and commit are required; no remote D1, deployment, or push.
+
+Implemented local entry/prizes page contracts and removed the account-event entry/prizes fan-out from the owned page, credits panel, and talk panels. Entry navigation is one shared bootstrap plus GET /api/account/events/:slug/entry; prizes is one lazy GET /api/account/events/:slug/prizes. Integrator metadata for TASK-432.5.1: id=get.account.events.by-slug.entry, toolName=get_account_events_by_slug_entry, description=GET /api/account/events/:slug/entry, rest={method:'GET',path:'/api/account/events/:slug/entry'}, input={params:routeSlugParamsSchema}, output=data, capabilities=[platform_user], effect=read; id=get.account.events.by-slug.prizes, toolName=get_account_events_by_slug_prizes, description=GET /api/account/events/:slug/prizes, rest={method:'GET',path:'/api/account/events/:slug/prizes'}, input={params:routeSlugParamsSchema}, output=data, capabilities=[platform_user], effect=read. Validation: owned eslint passed; git diff --check passed; focused unit contracts passed 2 files/6 tests. Full typecheck is blocked by concurrent server/database/non-http.ts TS7022 and AppDatabase.get errors in server/domains/mcp/tokens.ts and server/domains/talk-proposals/index.ts. Full unit is 985 passed/8 failed; full integration is 90 passed/328 failed; focused integration is 4 failed before route resolution at auth-identities.ts because the concurrent local AppDatabase facade has no terminal .get(). BDD is 7 passed/56 failed, with authenticated session/app initialization blocked by the same local actor/database transition. No remote D1, deploy, or push used.
+<!-- SECTION:NOTES:END -->

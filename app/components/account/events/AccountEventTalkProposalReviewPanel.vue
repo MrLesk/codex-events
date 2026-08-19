@@ -1,86 +1,72 @@
 <script setup lang="ts">
-import type { ApiDataResponse, ApiListResponse } from '~/lib/api'
+import type { ApiDataResponse } from '~/lib/api'
 import type { PublicEventState } from '~/domains/events/presentation'
-import type { TalkProposalReviewEntry, TalkProposalStatus } from '~/domains/talk-proposals'
+import type { TalkProposalStatus } from '~/domains/talk-proposals'
+import type { AccountEventEntryTalkProposalReview } from '#shared/domains/events/account-event-entry-page'
 import { normalizeApiError } from '~/lib/api'
 import { talkProposalStatusLabels } from '~/domains/talk-proposals'
-import { isAbortError, throwIfAborted } from '~/lib/request-cancellation'
-import { useAbortableRequest } from '~/composables/useAbortableRequest'
 import { useApiClient } from '~/composables/useApiClient'
 
 const props = defineProps<{
   eventId: string
   eventState: PublicEventState
   canDecide: boolean
+  entries: AccountEventEntryTalkProposalReview[]
+}>()
+const emit = defineEmits<{
+  updated: []
 }>()
 
-const entries = ref<TalkProposalReviewEntry[]>([])
+const allEntries = shallowRef<AccountEventEntryTalkProposalReview[]>(props.entries)
 const selectedId = ref('')
 const statusFilter = ref<'all' | TalkProposalStatus>('all')
-const page = ref(1)
-const totalPages = ref(1)
 const decisionMessage = ref('')
-const pending = ref(true)
 const actionPending = ref(false)
 const errorMessage = ref('')
 const toast = useToast()
 const apiFetch = useApiClient()
-const requests = useAbortableRequest()
 
-const selectedEntry = computed(() => entries.value.find(entry => entry.proposal.id === selectedId.value) ?? null)
+const visibleEntries = computed(() => statusFilter.value === 'all'
+  ? allEntries.value
+  : allEntries.value.filter(entry => entry.proposal.status === statusFilter.value))
 
-function ownerName(entry: TalkProposalReviewEntry) {
+const selectedEntry = computed(() => visibleEntries.value.find(entry => entry.proposal.id === selectedId.value) ?? null)
+
+function ownerName(entry: AccountEventEntryTalkProposalReview) {
   return entry.owner.displayName.trim()
     || `${entry.owner.firstName} ${entry.owner.familyName}`.trim()
     || entry.owner.email
 }
 
-async function loadProposals() {
-  pending.value = true
-  errorMessage.value = ''
-  const signal = requests.createSignal('talk-proposals')
-
-  try {
-    const response = await apiFetch<ApiListResponse<TalkProposalReviewEntry>>(`/api/events/${props.eventId}/talk-proposals`, {
-      query: {
-        page: page.value,
-        page_size: 20,
-        ...(statusFilter.value === 'all' ? {} : { status: statusFilter.value })
-      },
-      signal
-    })
-    throwIfAborted(signal)
-    entries.value = response.data
-    totalPages.value = Number(response.meta?.totalPages ?? 1)
-    if (!entries.value.some(entry => entry.proposal.id === selectedId.value)) {
-      selectedId.value = entries.value[0]?.proposal.id ?? ''
-    }
-  } catch (error) {
-    if (isAbortError(error, signal)) {
-      return
-    }
-
-    errorMessage.value = normalizeApiError(error).message
-  } finally {
-    if (!signal.aborted) {
-      pending.value = false
-    }
+watch(() => props.entries, (nextEntries) => {
+  allEntries.value = nextEntries
+  if (!nextEntries.some(entry => entry.proposal.id === selectedId.value)) {
+    selectedId.value = nextEntries[0]?.proposal.id ?? ''
   }
-}
+}, { immediate: true })
+
+watch(statusFilter, () => {
+  if (!visibleEntries.value.some(entry => entry.proposal.id === selectedId.value)) {
+    selectedId.value = visibleEntries.value[0]?.proposal.id ?? ''
+  }
+})
 
 async function decide(decision: 'accept' | 'reject') {
   if (!selectedEntry.value) return
   actionPending.value = true
   errorMessage.value = ''
   try {
-    const response = await apiFetch<ApiDataResponse<{ proposal: TalkProposalReviewEntry['proposal'] }>>(
+    const response = await apiFetch<ApiDataResponse<{ proposal: AccountEventEntryTalkProposalReview['proposal'] }>>(
       `/api/events/${props.eventId}/talk-proposals/${selectedEntry.value.proposal.id}/actions/${decision}`,
       {
         method: 'POST',
         body: { message: decisionMessage.value.trim() || null }
       }
     )
-    selectedEntry.value.proposal = response.data.proposal
+    allEntries.value = allEntries.value.map(entry => entry.proposal.id === selectedEntry.value?.proposal.id
+      ? { ...entry, proposal: response.data.proposal }
+      : entry)
+    emit('updated')
     decisionMessage.value = ''
     toast.add({ title: decision === 'accept' ? 'Talk proposal accepted' : 'Talk proposal not accepted', color: 'success' })
   } catch (error) {
@@ -93,13 +79,6 @@ async function decide(decision: 'accept' | 'reject') {
 watch(selectedId, () => {
   decisionMessage.value = selectedEntry.value?.proposal.decisionMessage ?? ''
 })
-
-watch(statusFilter, () => {
-  page.value = 1
-  void loadProposals()
-})
-
-onMounted(loadProposals)
 </script>
 
 <template>
@@ -136,13 +115,7 @@ onMounted(loadProposals)
     />
 
     <div
-      v-if="pending"
-      class="py-6 text-sm text-muted"
-    >
-      Loading Talk proposals…
-    </div>
-    <div
-      v-else-if="entries.length === 0"
+      v-if="visibleEntries.length === 0"
       class="py-6 text-sm text-muted"
     >
       No Talk proposals yet.
@@ -154,7 +127,7 @@ onMounted(loadProposals)
     >
       <div class="divide-y divide-black/8 border-y border-black/8 dark:divide-white/[0.08] dark:border-white/[0.08]">
         <button
-          v-for="entry in entries"
+          v-for="entry in visibleEntries"
           :key="entry.proposal.id"
           type="button"
           class="grid w-full gap-1 px-3 py-3 text-left transition-colors hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
@@ -167,30 +140,6 @@ onMounted(loadProposals)
             <span>{{ talkProposalStatusLabels[entry.proposal.status] }}</span>
           </span>
         </button>
-        <div
-          v-if="totalPages > 1"
-          class="flex items-center justify-between gap-3 px-3 py-3"
-        >
-          <AppButton
-            color="neutral"
-            variant="soft"
-            size="sm"
-            :disabled="page === 1"
-            @click="page -= 1; loadProposals()"
-          >
-            Previous
-          </AppButton>
-          <span class="text-xs text-muted">Page {{ page }} of {{ totalPages }}</span>
-          <AppButton
-            color="neutral"
-            variant="soft"
-            size="sm"
-            :disabled="page === totalPages"
-            @click="page += 1; loadProposals()"
-          >
-            Next
-          </AppButton>
-        </div>
       </div>
 
       <article
