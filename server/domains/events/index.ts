@@ -34,7 +34,10 @@ import {
 import type { eventLumaWebhookStatuses } from '#server/database/schema'
 import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
 import { ApiError } from '#server/http/api-error'
-import { publicEventImagePath } from '#server/domains/events/images'
+import {
+  buildVersionedPublicEventImageUrl,
+  publicEventImagePath
+} from '#server/domains/events/images'
 import {
   resolveEventDisplayBackgroundImageUrl,
   type EventDisplayImageOptions
@@ -725,6 +728,10 @@ const publicEventStates = [
   'winners_announced',
   'completed'
 ] as const
+
+export function isPublicEventVisible(event: Pick<EventRecord, 'state' | 'hiddenAt'>) {
+  return !event.hiddenAt && publicEventStates.some(state => state === event.state)
+}
 
 export const publishedEventRosterRoles = ['judge', 'staff'] as const
 export type PublishedEventRosterRole = (typeof publishedEventRosterRoles)[number]
@@ -2236,6 +2243,24 @@ export function serializePublicEvent(
   tracks?: EventTrackRecord[],
   options: EventDisplayImageOptions & { includeFullTrackDetails?: boolean } = {}
 ) {
+  const backgroundImageUrl = buildVersionedPublicEventImageUrl(
+    event.backgroundImageUrl,
+    event.updatedAt,
+    'background'
+  )
+  const bannerImageUrl = buildVersionedPublicEventImageUrl(
+    event.bannerImageUrl,
+    event.updatedAt,
+    'banner'
+  )
+  const displayBackgroundImageUrl = event.backgroundImageUrl
+    ? backgroundImageUrl
+    : buildVersionedPublicEventImageUrl(
+        options.defaultEventBackgroundImageUrl,
+        options.defaultEventBackgroundImageVersion,
+        'background'
+      )
+
   return {
     eventType: event.eventType,
     name: event.name,
@@ -2249,9 +2274,9 @@ export function serializePublicEvent(
         builderEnergyDelta: _builderEnergyDelta,
         ...item
       }) => item),
-    backgroundImageUrl: event.backgroundImageUrl,
-    displayBackgroundImageUrl: resolveEventDisplayBackgroundImageUrl(event, options),
-    bannerImageUrl: event.bannerImageUrl,
+    backgroundImageUrl,
+    displayBackgroundImageUrl,
+    bannerImageUrl,
     lumaEventUrl: event.lumaEventUrl,
     city: event.city,
     country: event.country,

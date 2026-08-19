@@ -61,6 +61,19 @@ describe('TASK-3.5 actor-facing API routes', () => {
     }
   }
 
+  function createImagesBinding() {
+    return {
+      input: vi.fn(() => ({
+        transform: vi.fn(() => ({
+          output: vi.fn(async () => ({
+            response: () => new Response(new Uint8Array([0x52, 0x49, 0x46, 0x46])),
+            contentType: () => 'image/webp'
+          }))
+        }))
+      }))
+    }
+  }
+
   async function seedCurrentPlatformDocuments(
     harness: ReturnType<typeof createApiRouteTestHarness>
   ) {
@@ -135,6 +148,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       }
 
       return {
+        body: new Response(object.body).body!,
         async arrayBuffer() {
           return object.body.buffer.slice(
             object.body.byteOffset,
@@ -1372,6 +1386,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       },
       cloudflareEnv: {
         [eventImagesBindingName]: eventImagesBucket,
+        IMAGES: createImagesBinding(),
         [authenticatedUploadRateLimitBindingName]: createRateLimiter()
       },
       runtimeConfig: {
@@ -1427,10 +1442,24 @@ describe('TASK-3.5 actor-facing API routes', () => {
     const imageResponse = await adminHarness.request('/api/public/platform/event-default-background-image')
 
     expect(imageResponse.status).toBe(200)
-    expect(imageResponse.headers.get('cache-control')).toBe('public, no-store')
+    expect(imageResponse.headers.get('cache-control')).toBe('private, no-store')
     expect(imageResponse.headers.get('content-type')).toBe('image/png')
     expect(imageResponse.headers.get('x-content-type-options')).toBe('nosniff')
     expect(new Uint8Array(await imageResponse.arrayBuffer())).toEqual(pngSignatureBytes)
+
+    const versionedImageResponse = await adminHarness.request(
+      `/api/public/platform/event-default-background-image?variant=background&v=${encodeURIComponent(storedSettings!.updatedAt)}`,
+      {
+        headers: {
+          accept: 'image/avif,image/webp;q=0.8'
+        }
+      }
+    )
+
+    expect(versionedImageResponse.status).toBe(200)
+    expect(versionedImageResponse.headers.get('cache-control')).toBe('public, max-age=31536000, immutable')
+    expect(versionedImageResponse.headers.get('content-type')).toBe('image/webp')
+    expect(versionedImageResponse.headers.get('vary')).toBe('Accept')
 
     const deleteResponse = await adminHarness.request('/api/platform-settings/event-default-background-image', {
       method: 'DELETE'

@@ -44,8 +44,12 @@ describe('platform settings utilities', () => {
       id: 'default',
       defaultEventBackgroundImageUrl: 'https://example.com/default-background.png'
     })
+    const storedSettings = await database.query.platformSettings.findFirst({
+      where: eq(platformSettings.id, 'default')
+    })
     await expect(getEventDisplayImageOptions(database)).resolves.toEqual({
-      defaultEventBackgroundImageUrl: 'https://example.com/default-background.png'
+      defaultEventBackgroundImageUrl: 'https://example.com/default-background.png',
+      defaultEventBackgroundImageVersion: storedSettings?.updatedAt
     })
 
     const auditRows = await database.select().from(auditLogs)

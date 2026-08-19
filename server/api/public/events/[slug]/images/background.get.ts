@@ -1,16 +1,25 @@
-import { setHeader } from 'h3'
+import { getRequestHeader, setHeader } from 'h3'
 
 import { defineApiHandler } from '#server/http/api-handler'
 import { ApiError } from '#server/http/api-error'
-import { getEventImageObject } from '#server/domains/events/images'
+import {
+  createPublicEventImageResponse,
+  getEventImageObject,
+  privateEventImageCacheControl,
+  publicEventImageQuerySchema
+} from '#server/domains/events/images'
 import {
   getVisibleEventBySlugOrThrow,
+  isPublicEventVisible,
   routeSlugParamsSchema
 } from '#server/domains/events'
-import { parseValidatedParams } from '#server/http/validation'
+import { parseValidatedParams, parseValidatedQuery } from '#server/http/validation'
 
 export default defineApiHandler(async (h3Event) => {
+  setHeader(h3Event, 'cache-control', privateEventImageCacheControl)
+
   const { slug } = parseValidatedParams(h3Event, routeSlugParamsSchema)
+  const query = parseValidatedQuery(h3Event, publicEventImageQuerySchema)
   const event = await getVisibleEventBySlugOrThrow(h3Event, slug)
 
   if (!event.backgroundImageUrl) {
@@ -31,12 +40,8 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  setHeader(h3Event, 'cache-control', 'public, no-store')
-
-  return new Response(await image.arrayBuffer(), {
-    headers: {
-      'content-type': image.httpMetadata?.contentType ?? 'application/octet-stream',
-      'x-content-type-options': 'nosniff'
-    }
+  return await createPublicEventImageResponse(h3Event, image, 'background', {
+    versioned: isPublicEventVisible(event) && query.variant === 'background' && query.v === event.updatedAt,
+    accept: getRequestHeader(h3Event, 'accept')
   })
 })

@@ -1,12 +1,21 @@
-import { setHeader } from 'h3'
+import { getRequestHeader, setHeader } from 'h3'
 
 import { getDatabase } from '#server/database/client'
-import { getPlatformDefaultEventBackgroundImageObject } from '#server/domains/events/images'
+import {
+  createPublicEventImageResponse,
+  getPlatformDefaultEventBackgroundImageObject,
+  privateEventImageCacheControl,
+  publicEventImageQuerySchema
+} from '#server/domains/events/images'
 import { getPlatformSettings } from '#server/domains/platform/settings'
 import { ApiError } from '#server/http/api-error'
 import { defineApiHandler } from '#server/http/api-handler'
+import { parseValidatedQuery } from '#server/http/validation'
 
 export default defineApiHandler(async (h3Event) => {
+  setHeader(h3Event, 'cache-control', privateEventImageCacheControl)
+
+  const query = parseValidatedQuery(h3Event, publicEventImageQuerySchema)
   const settings = await getPlatformSettings(getDatabase(h3Event))
 
   if (!settings?.defaultEventBackgroundImageUrl) {
@@ -27,12 +36,8 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  setHeader(h3Event, 'cache-control', 'public, no-store')
-
-  return new Response(await image.arrayBuffer(), {
-    headers: {
-      'content-type': image.httpMetadata?.contentType ?? 'application/octet-stream',
-      'x-content-type-options': 'nosniff'
-    }
+  return await createPublicEventImageResponse(h3Event, image, 'background', {
+    versioned: query.variant === 'background' && query.v === settings.updatedAt,
+    accept: getRequestHeader(h3Event, 'accept')
   })
 })

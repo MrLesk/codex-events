@@ -10,6 +10,7 @@ type PlatformSettingsRecord = typeof platformSettings.$inferSelect
 
 export interface EventDisplayImageOptions {
   defaultEventBackgroundImageUrl?: string | null
+  defaultEventBackgroundImageVersion?: string | null
 }
 
 export function serializePlatformSettings(settings: PlatformSettingsRecord) {
@@ -45,7 +46,8 @@ export async function getEventDisplayImageOptions(database: AppDatabase): Promis
   const settings = await getPlatformSettings(database)
 
   return {
-    defaultEventBackgroundImageUrl: settings?.defaultEventBackgroundImageUrl ?? null
+    defaultEventBackgroundImageUrl: settings?.defaultEventBackgroundImageUrl ?? null,
+    defaultEventBackgroundImageVersion: settings?.updatedAt ?? null
   }
 }
 

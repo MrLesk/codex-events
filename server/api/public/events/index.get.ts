@@ -2,6 +2,10 @@ import { getDatabase } from '#server/database/client'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiList } from '#server/http/api-response'
 import { eventListQuerySchema, listPublicEvents, serializePublicEvent } from '#server/domains/events'
+import {
+  setPrivatePublicEventCacheHeaders,
+  setPublicEventCacheHeaders
+} from '#server/domains/events/public-cache'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { parseValidatedQuery } from '#server/http/validation'
 
@@ -17,6 +21,8 @@ export const applicationOperation = defineStructuredRouteOperation({
   capabilities: ['public'],
   effect: 'read'
 }, async (h3Event) => {
+  setPrivatePublicEventCacheHeaders(h3Event)
+
   const query = parseValidatedQuery(h3Event, eventListQuerySchema)
   const database = getDatabase(h3Event)
   const [result, imageOptions] = await Promise.all([
@@ -24,7 +30,7 @@ export const applicationOperation = defineStructuredRouteOperation({
     getEventDisplayImageOptions(database)
   ])
 
-  return apiList(
+  const response = apiList(
     result.items.map((event: EventRecord) => serializePublicEvent(event, undefined, undefined, imageOptions)),
     {
       page: result.page,
@@ -32,6 +38,10 @@ export const applicationOperation = defineStructuredRouteOperation({
       total: result.total
     }
   )
+
+  setPublicEventCacheHeaders(h3Event, 'public-event-list', response)
+
+  return response
 })
 
 export default defineStructuredOperationApiHandler(applicationOperation)

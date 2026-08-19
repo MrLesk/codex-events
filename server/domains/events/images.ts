@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 
 import { getRequestURL } from 'h3'
+import { z } from 'zod'
 
 import { ApiError } from '#server/http/api-error'
 import {
@@ -21,12 +22,31 @@ export const eventImageSlots = [
 export type EventImageSlot = typeof eventImageSlots[number]
 type EventImageContentType = SupportedImageContentType
 
+export const publicEventImageCacheControl = 'public, max-age=31536000, immutable'
+export const privateEventImageCacheControl = 'private, no-store'
+
+export const publicEventImageQuerySchema = z
+  .object({
+    variant: z.enum(eventImageSlots).optional(),
+    v: z.string().trim().min(1).optional()
+  })
+  .strict()
+
+export const publicEventImageVariants = {
+  background: { width: 1600, height: 900, fit: 'cover', quality: 82 },
+  banner: { width: 1600, height: 600, fit: 'cover', quality: 82 }
+} as const
+
+export type PublicEventImageVariant = keyof typeof publicEventImageVariants
+export type PublicEventImageOutputFormat = 'image/avif' | 'image/webp' | 'image/jpeg'
+
 interface R2HttpMetadataLike {
   contentType?: string
 }
 
 interface R2ObjectBodyLike {
   arrayBuffer: () => Promise<ArrayBuffer>
+  body: ReadableStream<Uint8Array>
   httpMetadata?: R2HttpMetadataLike | null
 }
 
@@ -38,6 +58,26 @@ interface R2BucketLike {
   get: (key: string) => Promise<R2ObjectBodyLike | null>
   put: (key: string, value: ArrayBuffer | ArrayBufferView, options?: R2PutOptionsLike) => Promise<unknown>
   delete: (key: string) => Promise<void>
+}
+
+interface ImagesTransformationLike {
+  output: (options: {
+    format: PublicEventImageOutputFormat
+    quality: number
+  }) => Promise<{
+    response: () => Response
+    contentType: () => string
+  }>
+}
+
+interface ImagesBindingLike {
+  input: (body: ReadableStream<Uint8Array>) => {
+    transform: (options: {
+      width: number
+      height: number
+      fit: 'cover'
+    }) => ImagesTransformationLike
+  }
 }
 
 type RuntimeConfigShape = {
@@ -95,6 +135,145 @@ export function publicEventImagePath(slug: string, slot: EventImageSlot) {
 
 export function publicPlatformDefaultEventBackgroundImagePath() {
   return '/api/public/platform/event-default-background-image'
+}
+
+function appendPublicImageQuery(
+  imageUrl: string,
+  version: string,
+  variant: PublicEventImageVariant
+) {
+  const hashIndex = imageUrl.indexOf('#')
+  const hash = hashIndex === -1 ? '' : imageUrl.slice(hashIndex)
+  const withoutHash = hashIndex === -1 ? imageUrl : imageUrl.slice(0, hashIndex)
+  const queryIndex = withoutHash.indexOf('?')
+  const base = queryIndex === -1 ? withoutHash : withoutHash.slice(0, queryIndex)
+  const query = queryIndex === -1 ? '' : withoutHash.slice(queryIndex + 1)
+  const params = new URLSearchParams(query)
+
+  params.set('variant', variant)
+  params.set('v', version)
+
+  return `${base}?${params.toString()}${hash}`
+}
+
+export function isManagedPublicEventImageUrl(imageUrl: string) {
+  const pathname = new URL(imageUrl, 'https://codex-events.invalid').pathname
+
+  return (
+    /^\/api\/public\/events\/[^/]+\/images\/(background|banner)$/.test(pathname)
+    || pathname === publicPlatformDefaultEventBackgroundImagePath()
+  )
+}
+
+export function buildVersionedPublicEventImageUrl(
+  imageUrl: string | null | undefined,
+  version: string | null | undefined,
+  variant: PublicEventImageVariant
+) {
+  const normalizedImageUrl = imageUrl?.trim() ?? ''
+  const normalizedVersion = version?.trim() ?? ''
+
+  if (!normalizedImageUrl || !normalizedVersion || !isManagedPublicEventImageUrl(normalizedImageUrl)) {
+    return normalizedImageUrl || null
+  }
+
+  return appendPublicImageQuery(normalizedImageUrl, normalizedVersion, variant)
+}
+
+export function negotiatePublicEventImageFormat(accept: string | null | undefined): PublicEventImageOutputFormat {
+  if (!accept?.trim()) {
+    return 'image/jpeg'
+  }
+
+  const qualityByType = new Map<string, number>()
+
+  for (const item of accept.split(',')) {
+    const [mediaType, ...parameters] = item.trim().toLowerCase().split(';')
+
+    if (!mediaType) {
+      continue
+    }
+
+    const qualityParameter = parameters.find(parameter => parameter.trim().startsWith('q='))
+    const quality = qualityParameter ? Number.parseFloat(qualityParameter.trim().slice(2)) : 1
+
+    qualityByType.set(mediaType, Number.isFinite(quality) ? Math.max(0, Math.min(1, quality)) : 0)
+  }
+
+  const candidates: PublicEventImageOutputFormat[] = ['image/avif', 'image/webp', 'image/jpeg']
+  const selected = candidates
+    .map((format, preference) => ({
+      format,
+      preference,
+      quality: qualityByType.get(format) ?? qualityByType.get('image/*') ?? qualityByType.get('*/*') ?? 0
+    }))
+    .filter(candidate => candidate.quality > 0)
+    .sort((left, right) => right.quality - left.quality || left.preference - right.preference)[0]
+
+  return selected?.format ?? 'image/jpeg'
+}
+
+function getImagesBinding(event: H3Event): ImagesBindingLike {
+  const binding = event.context.cloudflare?.env?.IMAGES
+
+  if (!binding || typeof binding.input !== 'function') {
+    throw new ApiError({
+      statusCode: 503,
+      code: 'images_binding_missing',
+      message: 'The Cloudflare Images binding "IMAGES" is not available on this request.'
+    })
+  }
+
+  return binding as ImagesBindingLike
+}
+
+export async function createPublicEventImageResponse(
+  event: H3Event,
+  image: R2ObjectBodyLike,
+  slot: PublicEventImageVariant,
+  options: {
+    versioned: boolean
+    accept?: string | null
+  }
+) {
+  const sourceContentType = image.httpMetadata?.contentType ?? 'application/octet-stream'
+
+  if (!options.versioned) {
+    return new Response(image.body, {
+      headers: {
+        'cache-control': privateEventImageCacheControl,
+        'content-type': sourceContentType,
+        'x-content-type-options': 'nosniff',
+        'vary': 'Cookie'
+      }
+    })
+  }
+
+  const variant = publicEventImageVariants[slot]
+  const transformed = await getImagesBinding(event)
+    .input(image.body)
+    .transform({
+      width: variant.width,
+      height: variant.height,
+      fit: variant.fit
+    })
+    .output({
+      format: negotiatePublicEventImageFormat(options.accept),
+      quality: variant.quality
+    })
+  const transformedResponse = transformed.response()
+  const headers = new Headers(transformedResponse.headers)
+
+  headers.set('cache-control', publicEventImageCacheControl)
+  headers.set('content-type', transformed.contentType())
+  headers.set('x-content-type-options', 'nosniff')
+  headers.set('vary', 'Accept')
+
+  return new Response(transformedResponse.body, {
+    status: transformedResponse.status,
+    statusText: transformedResponse.statusText,
+    headers
+  })
 }
 
 export function buildPublicEventImageUrl(event: H3Event, slug: string, slot: EventImageSlot) {

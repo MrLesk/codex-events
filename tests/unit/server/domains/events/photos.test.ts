@@ -159,6 +159,7 @@ describe('event photo utilities', () => {
     })
 
     const response = await createEventPhotoPreviewResponse(event, {
+      body: new Response(pngSignatureBytes).body!,
       arrayBuffer: async () => pngSignatureBytes.buffer.slice(
         pngSignatureBytes.byteOffset,
         pngSignatureBytes.byteOffset + pngSignatureBytes.byteLength
@@ -193,6 +194,7 @@ describe('event photo utilities', () => {
     })
 
     const response = await createEventPhotoPreviewResponse(event, {
+      body: new Response(pngSignatureBytes).body!,
       arrayBuffer: async () => pngSignatureBytes.buffer.slice(
         pngSignatureBytes.byteOffset,
         pngSignatureBytes.byteOffset + pngSignatureBytes.byteLength

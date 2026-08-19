@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { defineRouteRules } from '#app/composables/pages'
+
 import type {
   PublicApiListResponse,
   PublicEvent,
@@ -33,6 +35,20 @@ import { normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values
 definePageMeta({
   layout: 'public'
 })
+
+defineRouteRules({
+  cache: {
+    maxAge: 30,
+    staleMaxAge: 60,
+    swr: true,
+    varies: ['cookie']
+  }
+})
+
+if (import.meta.server) {
+  useResponseHeader('cache-control').value = 'private, no-store'
+  useResponseHeader('vary').value = 'Cookie'
+}
 
 interface AccountEventAccessRecord {
   slug: string
@@ -80,6 +96,10 @@ if (!eventData.value) {
     statusCode: 404,
     statusMessage: 'Event not found.'
   })
+}
+
+if (import.meta.server) {
+  useResponseHeader('cache-control').value = 'public, max-age=0, s-maxage=30, stale-while-revalidate=60'
 }
 
 const event = computed(() => eventData.value!)

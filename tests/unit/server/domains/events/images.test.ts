@@ -1,16 +1,20 @@
 import type { H3Event } from 'h3'
 
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 
 import { ApiError } from '../../../../../server/http/api-error'
 import {
   assertValidEventImagePart,
+  buildVersionedPublicEventImageUrl,
+  createPublicEventImageResponse,
   getEventImagesBucket,
   eventImageMaxBytes,
   eventImageObjectKey,
+  negotiatePublicEventImageFormat,
   platformDefaultEventBackgroundImageObjectKey,
   putEventImageObject,
   publicEventImagePath,
+  publicEventImageVariants,
   publicPlatformDefaultEventBackgroundImagePath
 } from '../../../../../server/domains/events/images'
 
@@ -48,6 +52,68 @@ describe('event image utilities', () => {
     expect(publicEventImagePath('codex-spring', 'background')).toBe('/api/public/events/codex-spring/images/background')
     expect(publicEventImagePath('codex-spring', 'banner')).toBe('/api/public/events/codex-spring/images/banner')
     expect(publicPlatformDefaultEventBackgroundImagePath()).toBe('/api/public/platform/event-default-background-image')
+  })
+
+  test('versions managed public image URLs with bounded named variants', () => {
+    expect(buildVersionedPublicEventImageUrl(
+      'https://events.example/api/public/events/codex-spring/images/background',
+      '2026-08-19T12:00:00.000Z',
+      'background'
+    )).toBe(
+      'https://events.example/api/public/events/codex-spring/images/background?variant=background&v=2026-08-19T12%3A00%3A00.000Z'
+    )
+    expect(publicEventImageVariants).toEqual({
+      background: { width: 1600, height: 900, fit: 'cover', quality: 82 },
+      banner: { width: 1600, height: 600, fit: 'cover', quality: 82 }
+    })
+    expect(buildVersionedPublicEventImageUrl(
+      'https://cdn.example/background.png',
+      '2026-08-19T12:00:00.000Z',
+      'background'
+    )).toBe('https://cdn.example/background.png')
+  })
+
+  test('negotiates modern formats and uses deterministic local JPEG fallback', () => {
+    expect(negotiatePublicEventImageFormat('image/avif,image/webp;q=0.8,image/jpeg;q=0.7')).toBe('image/avif')
+    expect(negotiatePublicEventImageFormat('image/avif;q=0,image/webp;q=0.9,image/jpeg;q=0.8')).toBe('image/webp')
+    expect(negotiatePublicEventImageFormat(undefined)).toBe('image/jpeg')
+    expect(negotiatePublicEventImageFormat('image/gif')).toBe('image/jpeg')
+  })
+
+  test('streams the R2 body through the bounded Images variant', async () => {
+    const sourceBody = new Response(new Uint8Array([1, 2, 3])).body!
+    const arrayBuffer = vi.fn(async () => new ArrayBuffer(0))
+    const output = vi.fn(async () => ({
+      response: () => new Response(new Uint8Array([4, 5, 6])),
+      contentType: () => 'image/avif'
+    }))
+    const transform = vi.fn(() => ({ output }))
+    const input = vi.fn(() => ({ transform }))
+    const event = {
+      context: {
+        cloudflare: {
+          env: {
+            IMAGES: { input }
+          }
+        }
+      }
+    } as H3Event
+
+    const response = await createPublicEventImageResponse(event, {
+      body: sourceBody,
+      arrayBuffer,
+      httpMetadata: { contentType: 'image/png' }
+    }, 'background', {
+      versioned: true,
+      accept: 'image/avif,image/webp;q=0.8'
+    })
+
+    expect(arrayBuffer).not.toHaveBeenCalled()
+    expect(transform).toHaveBeenCalledWith({ width: 1600, height: 900, fit: 'cover' })
+    expect(output).toHaveBeenCalledWith({ format: 'image/avif', quality: 82 })
+    expect(response.headers.get('cache-control')).toBe('public, max-age=31536000, immutable')
+    expect(response.headers.get('vary')).toBe('Accept')
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([4, 5, 6]))
   })
 
   test('accepts supported image signatures and derives the content type from bytes', () => {

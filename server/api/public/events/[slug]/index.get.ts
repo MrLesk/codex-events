@@ -10,6 +10,10 @@ import {
   serializePublicEvent
 } from '#server/domains/events'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
+import {
+  setPrivatePublicEventCacheHeaders,
+  setPublicEventCacheHeaders
+} from '#server/domains/events/public-cache'
 import { parseValidatedParams, parseValidatedQuery } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
@@ -22,6 +26,8 @@ export const applicationOperation = defineStructuredRouteOperation({
   capabilities: ['public'],
   effect: 'read'
 }, async (h3Event) => {
+  setPrivatePublicEventCacheHeaders(h3Event)
+
   const { slug } = parseValidatedParams(h3Event, routeSlugParamsSchema)
   const query = parseValidatedQuery(h3Event, publicEventDetailQuerySchema)
   const database = getDatabase(h3Event)
@@ -32,12 +38,16 @@ export const applicationOperation = defineStructuredRouteOperation({
     getEventDisplayImageOptions(database)
   ])
 
-  return apiData({
+  const response = apiData({
     ...serializePublicEvent(event, currentTerms, tracks, {
       ...imageOptions,
       includeFullTrackDetails: query.tracks === 'full'
     })
   })
+
+  setPublicEventCacheHeaders(h3Event, 'public-event-detail', response)
+
+  return response
 })
 
 export default defineStructuredOperationApiHandler(applicationOperation)
