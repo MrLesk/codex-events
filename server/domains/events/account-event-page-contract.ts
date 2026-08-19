@@ -1,36 +1,38 @@
-import type { H3Event } from 'h3'
+import { getQuery, type H3Event } from 'h3'
 import { z } from 'zod'
 
 import { apiData } from '#server/http/api-response'
 import type { EventAuthorization } from '#server/auth/authorization'
 import { routeSlugParamsSchema } from '#server/domains/events'
 import {
+  accountEventPageNames,
+  accountEventPagePaths,
+  accountJudgeAssignmentWorkspaceRoutePath,
+  normalizeAccountEventPageQuery,
+  type AccountEventPageName,
+  type AccountEventPageQuery
+} from '#shared/domains/events/account-event-page-registry'
+import {
   resolveAccountEventPageContext,
   type AccountEventPageContext,
   type AccountEventPageEventRecord
 } from './account-event-page-context'
 
-export const accountEventPageNames = [
-  'entry',
-  'prizes',
-  'operations',
-  'submissions',
-  'judging',
-  'settings',
-  'participants',
-  'workspace',
-  'teams',
-  'rosters',
-  'gallery',
-  'feedback',
-  'certificates'
-] as const
-
-export type AccountEventPageName = (typeof accountEventPageNames)[number]
+export {
+  accountEventPageNames,
+  accountEventPagePaths,
+  accountJudgeAssignmentWorkspaceRoutePath,
+  type AccountEventPageName,
+  type AccountEventPageQuery
+}
 
 export const accountEventPageParamsSchema = routeSlugParamsSchema.extend({
   page: z.enum(accountEventPageNames)
 })
+
+export const accountEventPageQuerySchema = z.object({
+  selectedTeamSlug: z.string().trim().toLowerCase().min(1).max(120).optional()
+}).passthrough()
 
 export type AccountEventPageEvent = Pick<
   AccountEventPageEventRecord,
@@ -64,24 +66,11 @@ export type AccountEventGalleryPage<TPage> = AccountEventPageResponse<TPage>
 export type AccountEventFeedbackPage<TPage> = AccountEventPageResponse<TPage>
 export type AccountEventCertificatesPage<TPage> = AccountEventPageResponse<TPage>
 
-export const accountEventPageRoutePaths = {
-  entry: '/api/account/events/:slug/entry',
-  prizes: '/api/account/events/:slug/prizes',
-  operations: '/api/account/events/:slug/operations',
-  submissions: '/api/account/events/:slug/submissions',
-  judging: '/api/account/events/:slug/judging',
-  settings: '/api/account/events/:slug/settings',
-  participants: '/api/account/events/:slug/participants',
-  workspace: '/api/account/events/:slug/workspace',
-  teams: '/api/account/events/:slug/teams',
-  rosters: '/api/account/events/:slug/rosters',
-  gallery: '/api/account/events/:slug/gallery',
-  feedback: '/api/account/events/:slug/feedback',
-  certificates: '/api/account/events/:slug/certificates'
-} as const satisfies Record<AccountEventPageName, string>
+export const accountEventPageRoutePaths = accountEventPagePaths
 
 export type AccountEventPageLoader<TSchema extends z.ZodTypeAny> = (
-  context: AccountEventPageContext
+  context: AccountEventPageContext,
+  query: AccountEventPageQuery
 ) => z.input<TSchema> | Promise<z.input<TSchema>>
 
 /**
@@ -145,7 +134,10 @@ export async function executeAccountEventPageRoute<
   })
   const context = await resolveAccountEventPageContext(h3Event, params.slug)
   await definition.authorize(context)
-  const page = definition.schema.parse(await definition.load(context))
+  const query = normalizeAccountEventPageQuery(
+    accountEventPageQuerySchema.parse(getQuery(h3Event))
+  )
+  const page = definition.schema.parse(await definition.load(context, query))
 
   return apiData<AccountEventPageResponse<z.output<TSchema>>>({
     event: toPageEvent(context.event),

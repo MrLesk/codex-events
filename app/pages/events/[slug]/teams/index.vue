@@ -20,7 +20,9 @@ if (!slug.value) {
   })
 }
 
-const pageRequest = useAccountEventPageRequest<AccountEventTeamsPage>(slug, 'teams')
+const pageRequest = useAccountEventPageRequest<AccountEventTeamsPage>(slug, 'teams', {
+  query: computed(() => ({ selectedTeamSlug: selectedTeamSlug.value }))
+})
 </script>
 
 <template>

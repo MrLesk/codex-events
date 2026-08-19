@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@luna-workspace'
 created_date: '2026-08-19 19:51'
-updated_date: '2026-08-19 20:45'
+updated_date: '2026-08-19 21:54'
 labels:
   - architecture
   - performance
@@ -99,11 +99,11 @@ Validation
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Trace the existing account-event tab keys, shared authorization-generation and cancellation composables, server authorization/database accessors, and operation catalog conventions.
-2. Define the named account-event page contract registry and server request context without touching child payload implementations or D1/media internals.
-3. Implement the standalone signal-aware account-event page request with generation-scoped keys and stale-response protection; keep useAdminWorkspace only as the distinct root-admin index boundary and remove its event-tab fan-out.
-4. Add source/contract tests for one actor/authorization/database path, no raw binding/session construction, named route/schema registration, cancellation behavior, and the explicit child migration boundary; update the API-surface docs.
-5. Run lint, typecheck, unit, integration, and focused BDD as applicable; inspect the diff and commit only TASK-432.5.1-owned files.
+1. Reconcile one client-safe account-event page registry and use it for client path/cache construction and server route validation without a server-to-client dependency.
+2. Add typed selectedTeamSlug query normalization, encoding, cache-key scoping, server parsing, and same-request teams selection; prove one page read, cancellation, and query-only navigation.
+3. Wire the account-event route composition surface to concrete operations, submissions, judging, assignment, settings, and existing page-shaped panel props while preserving props-down/events-up.
+4. Add exact route/registry parity and actor/authorization/session/query-topology tests; record child operation metadata without editing generated catalogs or media files.
+5. Run scoped lint, focused unit, typecheck, and broader checks as the shared D1/media worktree permits; inspect git diff HEAD and commit only owned integration paths.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -126,6 +126,23 @@ Final validation status: scoped ESLint and all seven foundation test files pass 
 Hardening follow-up: account-event page requests explicitly use server: false; client and server named registries are parity-tested; page context resolves EventAuthorization before its local visibility check and derives role access without a second event-role query; every child route definition must provide authorize(context), which executes once before load and may use only the pre-resolved context.
 
 Hardening validation: focused Vitest 6 files/13 tests passed; scoped ESLint passed; bun run lint passed; bun run test:unit passed with 137 files/972 tests. bun run typecheck remains blocked only by the explicitly deferred AccountEventAdminOperationsPanel.vue:84 and AccountEventAdminSettingsPanel.vue:84 consumers and their cascaded missing-payload types; no foundation-file errors. No integration or BDD run because this follow-up adds no concrete route or browser surface. docs/api-surface.md and all unrelated .4/.6 worktree changes remain unstaged.
+
+Component/data-flow map (integration):
+- Account event route: [slug]/index.vue owns slug/tab/query state, page-request instances, mutation refresh routing, and composition only. entry response feeds event/access/participation/talk/credits derived state; prizes, teams, rosters, gallery, feedback, participants, certificates, operations, submissions, judging, and settings page responses flow as typed props into the active panel. Child panels remain presentational/stateful consumers and emit mutation/update events back to the route.
+- Shared request boundary: useAccountEventPageRequest resolves the page name plus typed query, builds the canonical path/cache key, waits for the existing bootstrap, forwards one AbortSignal, and cancels stale tab/query requests without refreshing bootstrap on query-only navigation.
+- Server boundary: executeAccountEventPageRoute parses the named route/query, resolves actor, authorization, and request-scoped database through account-event-page-context once, invokes the concrete route authorizer once, loads one concrete schema, and returns the typed apiData envelope. Teams receives selectedTeamSlug in the same page load.
+- External team routes: teams/index.vue and teams/[teamId].vue pass the normalized route team slug as selectedTeamSlug to the shared request; AccountEventParticipantTeamPanel consumes page.selectedTeam and does not resolve the slug with a second request.
+- Panel handoffs: operations/submissions receive their page payload and refresh callback; judging receives judging and optional assignment page payloads; settings receives the settings page payload; participant/team/roster/gallery/feedback/certificate panels continue their existing typed page props and mutation events.
+
+Integration risks: keep client/server registry parity without importing server code into the client; do not touch generated operation output schemas or TASK-432.6 media files; preserve active TASK-432.4/TASK-432.6/TASK-433 worktree changes. Child operation metadata remains an unresolved generated-catalog handoff until the catalog is regenerated outside this owned scope.
+
+Unresolved generated application-operation registry handoff (generated files intentionally untouched): add these five child-provided GET operations to the generated operation catalog and MCP eligibility manifest, each with output data and effect read.
+- id get.account.events.by-slug.operations; tool get_account_events_by_slug_operations; path /api/account/events/:slug/operations; params slug; capability event_admin.
+- id get.account.events.by-slug.submissions; tool get_account_events_by_slug_submissions; path /api/account/events/:slug/submissions; params slug; capability event_admin.
+- id get.account.events.by-slug.judging; tool get_account_events_by_slug_judging; path /api/account/events/:slug/judging; params slug; capabilities event_judge and event_admin.
+- id get.account.judging; tool get_account_judging; path /api/account/judging; no params; capability event_judge.
+- id get.account.events.by-slug.judging.assignments.by-assignmentId; tool get_account_events_by_slug_judging_assignments_by_assignmentId; path /api/account/events/:slug/judging/assignments/:assignmentId; params slug and assignmentId; capability event_judge.
+No duplicate compatibility adapters are to be added; reconcile the generated source later.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

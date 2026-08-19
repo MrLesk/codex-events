@@ -22,6 +22,12 @@ import type { AccountEventParticipantsPage } from '#shared/domains/events/accoun
 import type { AccountEventTeamsPage } from '#shared/domains/events/account-event-teams-page'
 import type { AccountEventWorkspacePage } from '#shared/domains/events/account-event-workspace-page'
 import type { AccountEventRostersPage } from '#shared/domains/events/account-event-rosters-page'
+import type { AccountEventOperationsPage } from '#shared/domains/events/account-event-operations-page'
+import type { AccountEventSubmissionsPage } from '#shared/domains/events/account-event-submissions-page'
+import type {
+  AccountEventJudgingPage,
+  AccountJudgeAssignmentWorkspacePage
+} from '#shared/domains/events/account-event-judging-page'
 import {
   buildVersionedEventImageUrl,
   formatAccountEventHeaderSummary,
@@ -95,7 +101,10 @@ import { normalizeJudgeAssignmentIdQueryValue } from '~/domains/judging/query'
 import { buildAccountEventTeamsTabHref, normalizeTeamSlugQueryValue } from '~/domains/teams/query'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
 import { useApiClient } from '~/composables/useApiClient'
-import { useAccountEventPageRequest } from '~/composables/useAccountEventPageRequest'
+import {
+  useAccountEventPageRequest,
+  useAccountJudgeAssignmentPageRequest
+} from '~/composables/useAccountEventPageRequest'
 
 definePageMeta({
   middleware: ['require-platform-account']
@@ -392,6 +401,8 @@ const visibleTabs = computed(() =>
 const activeSection = computed<AccountEventWorkspaceTab>(() =>
   resolveTabQueryValue(route.query.tab, availableTabs.value, 'overview')
 )
+const selectedTeamSlug = computed(() => normalizeTeamSlugQueryValue(route.query.team))
+const selectedJudgeAssignmentId = computed(() => normalizeJudgeAssignmentIdQueryValue(route.query.assignment))
 const workspacePageRequest = useAccountEventPageRequest<AccountEventWorkspacePage>(slug, 'workspace', {
   immediate: false
 })
@@ -408,20 +419,50 @@ const certificatesPageRequest = useAccountEventPageRequest<AccountEventCertifica
   immediate: false
 })
 const teamsPageRequest = useAccountEventPageRequest<AccountEventTeamsPage>(slug, 'teams', {
+  immediate: false,
+  query: computed(() => ({ selectedTeamSlug: selectedTeamSlug.value }))
+})
+const operationsPageRequest = useAccountEventPageRequest<AccountEventOperationsPage>(slug, 'operations', {
   immediate: false
 })
+const submissionsPageRequest = useAccountEventPageRequest<AccountEventSubmissionsPage>(slug, 'submissions', {
+  immediate: false
+})
+const judgingPageRequest = useAccountEventPageRequest<AccountEventJudgingPage>(slug, 'judging', {
+  immediate: false
+})
+const shouldLoadAssignmentPage = computed(() =>
+  activeSection.value === 'judging' && Boolean(selectedJudgeAssignmentId.value)
+)
+const assignmentPageRequest = useAccountJudgeAssignmentPageRequest<AccountJudgeAssignmentWorkspacePage | null>(
+  slug,
+  computed(() => selectedJudgeAssignmentId.value ?? ''),
+  {
+    default: () => null,
+    enabled: shouldLoadAssignmentPage,
+    immediate: false
+  }
+)
 const workspacePage = computed(() => workspacePageRequest.data.value?.page ?? null)
 const galleryPage = computed(() => galleryPageRequest.data.value?.page ?? null)
 const feedbackPage = computed(() => feedbackPageRequest.data.value?.page ?? null)
 const participantsPage = computed(() => participantsPageRequest.data.value?.page ?? null)
 const certificatesPage = computed(() => certificatesPageRequest.data.value?.page ?? null)
 const teamsPage = computed(() => teamsPageRequest.data.value?.page ?? null)
+const operationsPage = computed(() => operationsPageRequest.data.value?.page ?? null)
+const submissionsPage = computed(() => submissionsPageRequest.data.value?.page ?? null)
+const judgingPage = computed(() => judgingPageRequest.data.value?.page ?? null)
+const assignmentPage = computed(() => assignmentPageRequest.data.value ?? null)
 const workspacePageIsLoading = computed(() => workspacePageRequest.pending.value)
 const galleryPageIsLoading = computed(() => galleryPageRequest.pending.value)
 const feedbackPageIsLoading = computed(() => feedbackPageRequest.pending.value)
 const participantsPageIsLoading = computed(() => participantsPageRequest.pending.value)
 const certificatesPageIsLoading = computed(() => certificatesPageRequest.pending.value)
 const teamsPageIsLoading = computed(() => teamsPageRequest.pending.value)
+const operationsPageIsLoading = computed(() => operationsPageRequest.pending.value)
+const submissionsPageIsLoading = computed(() => submissionsPageRequest.pending.value)
+const judgingPageIsLoading = computed(() => judgingPageRequest.pending.value)
+const assignmentPageIsLoading = computed(() => assignmentPageRequest.pending.value)
 const workspacePageErrorMessage = computed(() => workspacePageRequest.error.value
   ? normalizeParticipantApiError(workspacePageRequest.error.value).message
   : '')
@@ -439,6 +480,18 @@ const certificatesPageErrorMessage = computed(() => certificatesPageRequest.erro
   : '')
 const teamsPageErrorMessage = computed(() => teamsPageRequest.error.value
   ? normalizeParticipantApiError(teamsPageRequest.error.value).message
+  : '')
+const operationsPageErrorMessage = computed(() => operationsPageRequest.error.value
+  ? normalizeParticipantApiError(operationsPageRequest.error.value).message
+  : '')
+const submissionsPageErrorMessage = computed(() => submissionsPageRequest.error.value
+  ? normalizeParticipantApiError(submissionsPageRequest.error.value).message
+  : '')
+const judgingPageErrorMessage = computed(() => judgingPageRequest.error.value
+  ? normalizeParticipantApiError(judgingPageRequest.error.value).message
+  : '')
+const assignmentPageErrorMessage = computed(() => assignmentPageRequest.error.value
+  ? normalizeParticipantApiError(assignmentPageRequest.error.value).message
   : '')
 
 function watchActivePageRequest<T>(
@@ -462,6 +515,51 @@ watchActivePageRequest('feedback', feedbackPageRequest)
 watchActivePageRequest('participants', participantsPageRequest)
 watchActivePageRequest('certificates', certificatesPageRequest)
 watchActivePageRequest('teams', teamsPageRequest)
+const shouldLoadOperationsPage = computed(() =>
+  canAdmin.value && ['participants', 'operations'].includes(activeSection.value)
+)
+watch(shouldLoadOperationsPage, (isEnabled, wasEnabled) => {
+  if (wasEnabled && !isEnabled) {
+    operationsPageRequest.abort()
+  }
+
+  if (isEnabled && operationsPageRequest.status.value === 'idle') {
+    void operationsPageRequest.refresh()
+  }
+}, { immediate: true })
+const shouldLoadSubmissionsPage = computed(() =>
+  canAdmin.value && activeSection.value === 'submissions'
+)
+watch(shouldLoadSubmissionsPage, (isEnabled, wasEnabled) => {
+  if (wasEnabled && !isEnabled) {
+    submissionsPageRequest.abort()
+  }
+
+  if (isEnabled && submissionsPageRequest.status.value === 'idle') {
+    void submissionsPageRequest.refresh()
+  }
+}, { immediate: true })
+const shouldLoadJudgingPage = computed(() =>
+  activeSection.value === 'judging' && !selectedJudgeAssignmentId.value
+)
+watch(shouldLoadJudgingPage, (isEnabled, wasEnabled) => {
+  if (wasEnabled && !isEnabled) {
+    judgingPageRequest.abort()
+  }
+
+  if (isEnabled && judgingPageRequest.status.value === 'idle') {
+    void judgingPageRequest.refresh()
+  }
+}, { immediate: true })
+watch(shouldLoadAssignmentPage, (isEnabled, wasEnabled) => {
+  if (wasEnabled && !isEnabled) {
+    assignmentPageRequest.abort()
+  }
+
+  if (isEnabled && assignmentPageRequest.status.value === 'idle') {
+    void assignmentPageRequest.refresh()
+  }
+}, { immediate: true })
 const rostersPageRequest = useAccountEventPageRequest<AccountEventRostersPage>(slug, 'rosters', {
   immediate: false
 })
@@ -504,8 +602,6 @@ async function refreshAccountEvent() {
   await entryPageRequest.refresh()
 }
 const accountTabListRef = ref<HTMLElement | null>(null)
-const selectedTeamSlug = computed(() => normalizeTeamSlugQueryValue(route.query.team))
-const selectedJudgeAssignmentId = computed(() => normalizeJudgeAssignmentIdQueryValue(route.query.assignment))
 const activeSectionSeo = computed(() => getAccountEventSeoContent(activeSection.value, event.value?.name ?? ''))
 
 function scrollActiveTabIntoView() {
@@ -1645,6 +1741,14 @@ useSeoMeta({
           :event-id="workspaceEventId"
           :slug="slug"
           :selected-assignment-id="selectedJudgeAssignmentId"
+          :page="judgingPage"
+          :is-loading="judgingPageIsLoading"
+          :load-error-message="judgingPageErrorMessage"
+          :refresh-page="judgingPageRequest.refresh"
+          :assignment-page="assignmentPage"
+          :assignment-page-is-loading="assignmentPageIsLoading"
+          :assignment-page-error-message="assignmentPageErrorMessage"
+          :refresh-assignment-page="assignmentPageRequest.refresh"
         />
       </section>
 
@@ -1659,6 +1763,11 @@ useSeoMeta({
           v-if="canAdmin"
           :event-id="workspaceEventId"
           section="participants"
+          :page="operationsPage"
+          :can-manage="canAdmin"
+          :is-loading="operationsPageIsLoading"
+          :load-error-message="operationsPageErrorMessage"
+          :refresh-page="operationsPageRequest.refresh"
         />
 
         <LazyAccountEventParticipantVisibilityPanel
@@ -1714,6 +1823,11 @@ useSeoMeta({
         <LazyAccountEventAdminOperationsPanel
           :event-id="workspaceEventId"
           section="submissions"
+          :page="submissionsPage"
+          :can-manage="canAdmin"
+          :is-loading="submissionsPageIsLoading"
+          :load-error-message="submissionsPageErrorMessage"
+          :refresh-page="submissionsPageRequest.refresh"
         />
       </section>
 
@@ -1727,6 +1841,11 @@ useSeoMeta({
         <LazyAccountEventAdminOperationsPanel
           :event-id="workspaceEventId"
           section="operations"
+          :page="operationsPage"
+          :can-manage="canAdmin"
+          :is-loading="operationsPageIsLoading"
+          :load-error-message="operationsPageErrorMessage"
+          :refresh-page="operationsPageRequest.refresh"
         />
       </section>
 

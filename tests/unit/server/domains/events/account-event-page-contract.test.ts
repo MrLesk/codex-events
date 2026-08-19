@@ -7,6 +7,7 @@ const contractSource = readFileSync(
   new URL('../../../../../server/domains/events/account-event-page-contract.ts', import.meta.url),
   'utf8'
 )
+const requestEvent = (path = '/') => ({ path }) as never
 
 vi.mock('../../../../../server/domains/events/account-event-page-context', () => ({
   resolveAccountEventPageContext
@@ -45,6 +46,8 @@ describe('account-event page route contract', () => {
     expect(contractSource).toContain('schema: TSchema')
     expect(contractSource).toContain('authorize: AccountEventPageAuthorizer')
     expect(contractSource).toContain('accountEventPageParamsSchema.parse')
+    expect(contractSource).toContain('accountEventPageQuerySchema.parse')
+    expect(contractSource).toContain('await definition.load(context, query)')
     expect(contractSource).toContain('definition.schema.parse')
     expect(contractSource).toContain('await definition.authorize(context)')
     expect(contractSource).not.toContain('include')
@@ -60,7 +63,9 @@ describe('account-event page route contract', () => {
       phase: z.string()
     })
     const authorize = vi.fn()
-    const load = vi.fn(() => ({ phase: 'submission_open' }))
+    const load = vi.fn((_context, query) => ({
+      phase: query.selectedTeamSlug ?? 'submission_open'
+    }))
     const route = defineAccountEventPageRoute({
       page: 'operations',
       schema,
@@ -71,7 +76,7 @@ describe('account-event page route contract', () => {
     expect(route.page).toBe('operations')
     expect(route.schema).toBe(schema)
 
-    const result = await executeAccountEventPageRoute({} as never, 'fixture-event', route)
+    const result = await executeAccountEventPageRoute(requestEvent('/'), 'fixture-event', route)
 
     expect(result).toEqual({
       data: {
@@ -96,7 +101,34 @@ describe('account-event page route contract', () => {
     expect(resolveAccountEventPageContext).toHaveBeenCalledOnce()
     expect(authorize).toHaveBeenCalledOnce()
     expect(load).toHaveBeenCalledOnce()
+    expect(load).toHaveBeenCalledWith(expect.anything(), {})
     expect(authorize.mock.invocationCallOrder[0]).toBeLessThan(load.mock.invocationCallOrder[0])
+  })
+
+  test('normalizes the selected-team query before the concrete page loader runs', async () => {
+    const {
+      defineAccountEventPageRoute,
+      executeAccountEventPageRoute
+    } = await import('../../../../../server/domains/events/account-event-page-contract')
+    const load = vi.fn((_context, query) => ({
+      selectedTeamSlug: query.selectedTeamSlug
+    }))
+    const route = defineAccountEventPageRoute({
+      page: 'teams',
+      schema: z.object({ selectedTeamSlug: z.string() }),
+      authorize: vi.fn(),
+      load
+    })
+
+    await executeAccountEventPageRoute(
+      requestEvent('/?selectedTeamSlug=%20Team%20Alpha%20'),
+      'fixture-event',
+      route
+    )
+
+    expect(load).toHaveBeenCalledWith(expect.anything(), {
+      selectedTeamSlug: 'team alpha'
+    })
   })
 
   test('rejects invalid named routes and invalid child payloads', async () => {
@@ -121,7 +153,7 @@ describe('account-event page route contract', () => {
       page: 'not-a-page'
     }).success).toBe(false)
     await expect(executeAccountEventPageRoute(
-      {} as never,
+      requestEvent('/'),
       'fixture-event',
       invalidPayloadRoute
     )).rejects.toMatchObject({ name: 'ZodError' })

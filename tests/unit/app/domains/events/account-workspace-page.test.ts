@@ -4,7 +4,8 @@ import {
   accountEventPageNames,
   accountEventPagePaths,
   buildAccountEventPageCacheKey,
-  buildAccountEventPagePath
+  buildAccountEventPagePath,
+  buildAccountJudgeAssignmentWorkspacePath
 } from '../../../../../app/domains/events/account-workspace-page'
 
 describe('account-event page contract boundary', () => {
@@ -37,6 +38,20 @@ describe('account-event page contract boundary', () => {
     )
     expect(buildAccountEventPageCacheKey('fixture-event', 'entry')).not.toBe(
       buildAccountEventPageCacheKey('fixture-event', 'prizes')
+    )
+  })
+
+  test('makes selected-team query state part of the typed teams request', () => {
+    expect(buildAccountEventPagePath('fixture event', 'teams', {
+      selectedTeamSlug: ' Team Alpha '
+    })).toBe('/api/account/events/fixture%20event/teams?selectedTeamSlug=team%20alpha')
+    expect(buildAccountEventPageCacheKey('fixture-event', 'teams', {
+      selectedTeamSlug: 'team-a'
+    })).not.toBe(buildAccountEventPageCacheKey('fixture-event', 'teams', {
+      selectedTeamSlug: 'team-b'
+    }))
+    expect(buildAccountJudgeAssignmentWorkspacePath('fixture event', 'assignment/1')).toBe(
+      '/api/account/events/fixture%20event/judging/assignments/assignment%2F1'
     )
   })
 })

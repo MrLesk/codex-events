@@ -54,7 +54,6 @@ const selectedTeamId = ref<string | null>(null)
 const selectedTeamStatus = ref<'idle' | 'pending' | 'success' | 'error'>('idle')
 const selectedTeamErrorMessage = ref('')
 const directoryFilter = ref<TeamsDirectoryFilter>('all')
-let selectedTeamRequestVersion = 0
 
 const workspace = useTeamFormationWorkspace(
   computed(() => props.event),
@@ -100,15 +99,20 @@ function mapDirectoryFilter(filter: TeamsDirectoryFilter) {
   }
 }
 
-async function syncSelectedTeamId() {
+function syncSelectedTeamId() {
   const requestedTeamSlug = props.selectedTeamSlug?.trim().toLowerCase() ?? ''
-  const requestVersion = ++selectedTeamRequestVersion
 
   selectedTeamErrorMessage.value = ''
 
   if (!requestedTeamSlug) {
     selectedTeamId.value = null
     selectedTeamStatus.value = 'success'
+    return
+  }
+
+  if (!props.page) {
+    selectedTeamId.value = null
+    selectedTeamStatus.value = 'pending'
     return
   }
 
@@ -129,38 +133,16 @@ async function syncSelectedTeamId() {
   }
 
   selectedTeamId.value = null
-  selectedTeamStatus.value = 'pending'
-
-  try {
-    const resolvedTeam = await workspace.findVisibleTeamBySlug(requestedTeamSlug)
-
-    if (requestVersion !== selectedTeamRequestVersion) {
-      return
-    }
-
-    if (resolvedTeam) {
-      selectedTeamId.value = resolvedTeam.id
-      selectedTeamStatus.value = 'success'
-      return
-    }
-
-    selectedTeamStatus.value = 'error'
-    selectedTeamErrorMessage.value = 'The selected team from this link is not available in this event.'
-  } catch {
-    if (requestVersion !== selectedTeamRequestVersion) {
-      return
-    }
-
-    selectedTeamStatus.value = 'error'
-    selectedTeamErrorMessage.value = 'The selected team from this link could not be loaded right now.'
-  }
+  selectedTeamStatus.value = 'error'
+  selectedTeamErrorMessage.value = 'The selected team from this link is not available in this event.'
 }
 
 watch([
   () => props.selectedTeamSlug ?? null,
+  () => props.page?.selectedTeam?.id ?? null,
   visibleTeamSlugs
 ], () => {
-  void syncSelectedTeamId()
+  syncSelectedTeamId()
 }, {
   immediate: true
 })

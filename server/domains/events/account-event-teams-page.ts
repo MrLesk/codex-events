@@ -8,6 +8,7 @@ import {
   serializeTeamMember
 } from '#server/domains/teams'
 import type { AccountEventTeamsPage } from '#shared/domains/events/account-event-teams-page'
+import type { AccountEventPageQuery } from '#shared/domains/events/account-event-page-registry'
 import { accountEventTeamsPageSchema } from '#shared/domains/events/account-event-teams-page'
 import { defineAccountEventPageRoute } from './account-event-page-contract'
 
@@ -26,9 +27,9 @@ export const accountEventTeamsPageRoute = defineAccountEventPageRoute({
   authorize: async (context) => {
     assertCompetitionEvent(context.event)
   },
-  load: async (context): Promise<AccountEventTeamsPage> => {
+  load: async (context, query: AccountEventPageQuery): Promise<AccountEventTeamsPage> => {
     const userId = context.actor.platformUser.id
-    const [application, membership, visibleTeams, tracks] = await Promise.all([
+    const [application, membership, visibleTeams, selectedTeamSummary, tracks] = await Promise.all([
       getOwnUserApplication(context.database, context.event.id, userId),
       getOwnActiveTeamMembershipForEvent(context.database, context.event.id, userId),
       listVisibleTeams(
@@ -38,6 +39,15 @@ export const accountEventTeamsPageRoute = defineAccountEventPageRoute({
         { page: 1, page_size: firstTeamPageSize },
         { includeInactiveTeams: context.authorization.canViewParticipantsAndTeams }
       ),
+      query.selectedTeamSlug
+        ? listVisibleTeams(
+            context.database,
+            context.event,
+            context.event.id,
+            { page: 1, page_size: 1, slug: query.selectedTeamSlug },
+            { includeInactiveTeams: context.authorization.canViewParticipantsAndTeams }
+          )
+        : Promise.resolve(null),
       listEventTracks(context.database, context.event.id)
     ])
     const ownTeam = membership
@@ -47,6 +57,13 @@ export const accountEventTeamsPageRoute = defineAccountEventPageRoute({
         })
       : null
     const ownTeamDetail = ownTeam ? serializeTeamDetail(ownTeam) : null
+    const selectedTeamRecord = selectedTeamSummary?.data[0]
+      ? await getTeamWithMembersOrThrow(context.database, context.event.id, selectedTeamSummary.data[0].id, {
+          includeSensitiveUserFields: false,
+          allowInactiveTeam: context.authorization.canViewParticipantsAndTeams
+        })
+      : null
+    const selectedTeamDetail = selectedTeamRecord ? serializeTeamDetail(selectedTeamRecord) : null
     const joinRequests = membership?.role === 'admin'
       ? await listTeamJoinRequests(context.database, membership.teamId)
       : []
@@ -71,7 +88,7 @@ export const accountEventTeamsPageRoute = defineAccountEventPageRoute({
       application: application ? serializeUserApplication(application) : null,
       ownTeam: ownTeamDetail,
       ownMembership: membership ? serializeTeamMember(membership) : null,
-      selectedTeam: null,
+      selectedTeam: selectedTeamDetail,
       joinRequests,
       visibleTeams: visibleTeams.data,
       visibleTeamsMeta: {

@@ -176,4 +176,72 @@ describe('useAccountEventPageRequest', () => {
     await expect(firstRequest).rejects.toMatchObject({ name: 'AbortError' })
     await expect(secondRequest).resolves.toEqual({ page: { phase: 'new' } })
   })
+
+  test('includes typed selected-team query state in the request path and cache key', async () => {
+    const { useAccountEventPageRequest } = await import('../../../../app/composables/useAccountEventPageRequest')
+    const selectedTeamSlug = ref(' Team Alpha ')
+    const request = useAccountEventPageRequest('fixture-event', 'teams', {
+      query: computed(() => ({ selectedTeamSlug: selectedTeamSlug.value }))
+    })
+
+    expect(toValue(request.path)).toBe(
+      '/api/account/events/fixture-event/teams?selectedTeamSlug=team%20alpha'
+    )
+    expect(toValue(request.requestKey)).toBe(
+      'account-event-page:fixture-event:teams:selectedTeamSlug=team%20alpha'
+    )
+
+    selectedTeamSlug.value = 'team-beta'
+    expect(toValue(request.path)).toBe(
+      '/api/account/events/fixture-event/teams?selectedTeamSlug=team-beta'
+    )
+    expect(toValue(request.requestKey)).toBe(
+      'account-event-page:fixture-event:teams:selectedTeamSlug=team-beta'
+    )
+
+    const apiFetch = vi.fn(async (path: string) => ({ data: { page: { path } } }))
+    await expect(capturedHandler!({
+      apiFetch,
+      signal: new AbortController().signal
+    })).resolves.toEqual({
+      page: { path: '/api/account/events/fixture-event/teams?selectedTeamSlug=team-beta' }
+    })
+    expect(sessionEnsureLoaded).toHaveBeenCalledOnce()
+    expect(apiFetch).toHaveBeenCalledOnce()
+  })
+
+  test('cancels the prior selected-team read when query-only navigation changes the slug', async () => {
+    const { useAccountEventPageRequest } = await import('../../../../app/composables/useAccountEventPageRequest')
+    const selectedTeamSlug = ref('team-alpha')
+    useAccountEventPageRequest('fixture-event', 'teams', {
+      query: computed(() => ({ selectedTeamSlug: selectedTeamSlug.value }))
+    })
+
+    let resolveFirst: ((value: unknown) => void) | undefined
+    let firstFetchSignal: AbortSignal | undefined
+    const firstResponse = new Promise((resolve) => {
+      resolveFirst = resolve
+    })
+    const firstRequest = capturedHandler!({
+      apiFetch: vi.fn(async (_path: string, options: { signal: AbortSignal }) => {
+        firstFetchSignal = options.signal
+        return await firstResponse
+      }),
+      signal: new AbortController().signal
+    })
+
+    await Promise.resolve()
+    selectedTeamSlug.value = 'team-beta'
+    const secondRequest = capturedHandler!({
+      apiFetch: vi.fn(async (path: string) => ({ data: { path } })),
+      signal: new AbortController().signal
+    })
+
+    expect(firstFetchSignal?.aborted).toBe(true)
+    resolveFirst!({ data: { stale: true } })
+    await expect(firstRequest).rejects.toMatchObject({ name: 'AbortError' })
+    await expect(secondRequest).resolves.toEqual({
+      path: '/api/account/events/fixture-event/teams?selectedTeamSlug=team-beta'
+    })
+  })
 })

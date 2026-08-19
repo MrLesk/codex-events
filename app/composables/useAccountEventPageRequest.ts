@@ -5,7 +5,10 @@ import { throwIfAborted } from '~/lib/request-cancellation'
 import {
   buildAccountEventPageCacheKey,
   buildAccountEventPagePath,
+  buildAccountJudgeAssignmentWorkspacePath,
+  normalizeAccountEventPageQuery,
   type AccountEventPageName,
+  type AccountEventPageQuery,
   type AccountEventPageResponse
 } from '~/domains/events/account-workspace-page'
 
@@ -17,6 +20,7 @@ import { useSessionActor } from './useSessionActor'
 export interface UseAccountEventPageRequestOptions<TPage> {
   default?: () => AccountEventPageResponse<TPage>
   immediate?: boolean
+  query?: MaybeRefOrGetter<AccountEventPageQuery | null | undefined>
   watch?: MultiWatchSources
 }
 
@@ -46,41 +50,44 @@ function linkAbortSignals(...signals: AbortSignal[]) {
   }
 }
 
-export function useAccountEventPageRequest<TPage>(
-  slug: MaybeRefOrGetter<string>,
-  page: MaybeRefOrGetter<AccountEventPageName>,
-  options: UseAccountEventPageRequestOptions<TPage> = {}
+interface UseProtectedAccountEventRequestOptions<TData> {
+  channel: string
+  default?: () => TData
+  enabled?: MaybeRefOrGetter<boolean>
+  immediate?: boolean
+  watch?: MultiWatchSources
+}
+
+function useProtectedAccountEventRequest<TData>(
+  requestKey: MaybeRefOrGetter<string>,
+  path: MaybeRefOrGetter<string>,
+  options: UseProtectedAccountEventRequestOptions<TData>
 ) {
   const session = useSessionActor()
-  const authorizationCache = useAuthorizationCache()
   const requests = useAbortableRequest()
-  const resolvedSlug = computed(() => toValue(slug))
-  const resolvedPage = computed(() => toValue(page))
-  const requestKey = computed(() => buildAccountEventPageCacheKey(
-    resolvedSlug.value,
-    resolvedPage.value
-  ))
-  const path = computed(() => buildAccountEventPagePath(
-    resolvedSlug.value,
-    resolvedPage.value
-  ))
-
-  const pageRequest = useApiData<AccountEventPageResponse<TPage>>(
+  const enabled = computed(() => options.enabled === undefined
+    ? true
+    : Boolean(toValue(options.enabled)))
+  const request = useApiData<TData>(
     requestKey,
     async ({ apiFetch, signal }) => {
-      const pageSignal = requests.createSignal('account-event-page')
+      throwIfAborted(signal)
+
+      if (!enabled.value) {
+        return options.default?.() as TData
+      }
+
+      const pageSignal = requests.createSignal(options.channel)
       const linkedSignal = linkAbortSignals(signal, pageSignal)
 
       try {
-        throwIfAborted(signal)
         throwIfAborted(pageSignal)
-
         await session.ensureLoaded()
         throwIfAborted(signal)
         throwIfAborted(pageSignal)
 
-        const response = await apiFetch<ApiDataResponse<AccountEventPageResponse<TPage>>>(
-          path.value,
+        const response = await apiFetch<ApiDataResponse<TData>>(
+          toValue(path),
           { signal: linkedSignal.signal }
         )
 
@@ -97,25 +104,119 @@ export function useAccountEventPageRequest<TPage>(
       dedupe: 'cancel',
       immediate: options.immediate ?? true,
       server: false,
-      watch: [resolvedSlug, resolvedPage, ...(options.watch ?? [])]
+      watch: [enabled, ...(options.watch ?? [])]
     }
   )
 
   return {
-    actor: session.actor,
+    request,
+    session,
+    abort: () => requests.abort(options.channel)
+  }
+}
+
+export function useAccountEventPageRequest<TPage>(
+  slug: MaybeRefOrGetter<string>,
+  page: MaybeRefOrGetter<AccountEventPageName>,
+  options: UseAccountEventPageRequestOptions<TPage> = {}
+) {
+  const authorizationCache = useAuthorizationCache()
+  const resolvedSlug = computed(() => toValue(slug))
+  const resolvedPage = computed(() => toValue(page))
+  const resolvedQuery = computed(() => normalizeAccountEventPageQuery(toValue(options.query)))
+  const requestKey = computed(() => buildAccountEventPageCacheKey(
+    resolvedSlug.value,
+    resolvedPage.value,
+    resolvedQuery.value
+  ))
+  const path = computed(() => buildAccountEventPagePath(
+    resolvedSlug.value,
+    resolvedPage.value,
+    resolvedQuery.value
+  ))
+
+  const protectedRequest = useProtectedAccountEventRequest<AccountEventPageResponse<TPage>>(
+    requestKey,
+    path,
+    {
+      channel: 'account-event-page',
+      default: options.default,
+      immediate: options.immediate,
+      watch: [resolvedSlug, resolvedPage, resolvedQuery, ...(options.watch ?? [])]
+    }
+  )
+  const pageRequest = protectedRequest.request
+
+  return {
+    actor: protectedRequest.session.actor,
     authorizationGeneration: authorizationCache.authorizationGeneration,
-    bootstrap: session.bootstrap,
-    capabilities: session.capabilities,
+    bootstrap: protectedRequest.session.bootstrap,
+    capabilities: protectedRequest.session.capabilities,
     clear: pageRequest.clear,
     data: pageRequest.data,
     error: pageRequest.error,
     page: resolvedPage,
     path,
     pending: pageRequest.pending,
+    query: resolvedQuery,
     refresh: pageRequest.refresh,
     requestKey,
     slug: resolvedSlug,
     status: pageRequest.status,
-    abort: () => requests.abort('account-event-page')
+    abort: protectedRequest.abort
+  }
+}
+
+export interface UseAccountJudgeAssignmentPageRequestOptions<TPage> {
+  default?: () => TPage
+  enabled?: MaybeRefOrGetter<boolean>
+  immediate?: boolean
+  watch?: MultiWatchSources
+}
+
+export function useAccountJudgeAssignmentPageRequest<TPage>(
+  slug: MaybeRefOrGetter<string>,
+  assignmentId: MaybeRefOrGetter<string>,
+  options: UseAccountJudgeAssignmentPageRequestOptions<TPage> = {}
+) {
+  const authorizationCache = useAuthorizationCache()
+  const resolvedSlug = computed(() => toValue(slug))
+  const resolvedAssignmentId = computed(() => toValue(assignmentId))
+  const requestKey = computed(() =>
+    `account-event-judge-assignment:${resolvedSlug.value}:${resolvedAssignmentId.value}`
+  )
+  const path = computed(() => buildAccountJudgeAssignmentWorkspacePath(
+    resolvedSlug.value,
+    resolvedAssignmentId.value
+  ))
+  const protectedRequest = useProtectedAccountEventRequest<TPage>(
+    requestKey,
+    path,
+    {
+      channel: 'account-event-judge-assignment',
+      default: options.default,
+      enabled: options.enabled,
+      immediate: options.immediate,
+      watch: [resolvedSlug, resolvedAssignmentId, ...(options.watch ?? [])]
+    }
+  )
+  const pageRequest = protectedRequest.request
+
+  return {
+    actor: protectedRequest.session.actor,
+    authorizationGeneration: authorizationCache.authorizationGeneration,
+    bootstrap: protectedRequest.session.bootstrap,
+    capabilities: protectedRequest.session.capabilities,
+    clear: pageRequest.clear,
+    data: pageRequest.data,
+    error: pageRequest.error,
+    assignmentId: resolvedAssignmentId,
+    path,
+    pending: pageRequest.pending,
+    refresh: pageRequest.refresh,
+    requestKey,
+    slug: resolvedSlug,
+    status: pageRequest.status,
+    abort: protectedRequest.abort
   }
 }
