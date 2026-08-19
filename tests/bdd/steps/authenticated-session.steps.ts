@@ -19,6 +19,13 @@ type AccountEventBootstrapState = {
 
 const accountEventBootstrapCounts = new WeakMap<Page, AccountEventBootstrapState>()
 
+type AccountOverviewRequestState = {
+  bootstrapCount: number
+  pageReadCount: number
+}
+
+const accountOverviewRequestCounts = new WeakMap<Page, AccountOverviewRequestState>()
+
 function parsePersonaKey(personaKey: string): StablePersonaKey {
   if (stablePersonaKeys.includes(personaKey as StablePersonaKey)) {
     return personaKey as StablePersonaKey
@@ -92,6 +99,24 @@ Given('the saved {string} local session state exists', async ({ page }, personaK
 
 When('I open my events with the saved {string} session', async ({ page }, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+
+  const state = {
+    bootstrapCount: 0,
+    pageReadCount: 0
+  }
+  accountOverviewRequestCounts.set(page, state)
+  page.on('request', (request) => {
+    const pathname = new URL(request.url()).pathname
+
+    if (pathname === '/api/session') {
+      state.bootstrapCount += 1
+    }
+
+    if (pathname === '/api/account/overview') {
+      state.pageReadCount += 1
+    }
+  })
+
   await page.goto('/account')
 })
 
@@ -117,6 +142,17 @@ When('I switch the account event tab to {string}', async ({ page }, tabLabel: st
 
 Then('I should see the my events heading', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'My events' })).toBeVisible()
+})
+
+Then('the account overview should request one bootstrap and one page read', async ({ page }) => {
+  const state = accountOverviewRequestCounts.get(page)
+
+  if (!state) {
+    throw new Error('The account overview request counter was not initialized.')
+  }
+
+  await expect.poll(() => state.bootstrapCount).toBe(1)
+  await expect.poll(() => state.pageReadCount).toBe(1)
 })
 
 Then('the account event bootstrap should be requested once', async ({ page }) => {

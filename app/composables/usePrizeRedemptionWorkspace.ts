@@ -1,80 +1,50 @@
-import type { TermsDocument } from '~/domains/events/records'
 import type {
   PrizeRedemptionApiDataResponse,
-  PrizeRedemptionCurrentTermsResponse,
   PrizeRedemptionRecord,
   PrizeRedemptionTask
 } from '~/domains/prize-redemptions'
+import type { AccountPrizeRedemptionsPage } from '#shared/domains/prize-redemptions/account-prize-redemptions-page'
+import type { ApiDataResponse } from '~/lib/api'
 
 import { normalizePrizeRedemptionApiError } from '~/domains/prize-redemptions'
+import {
+  accountPrizeRedemptionsPagePath,
+  buildAccountPrizeRedemptionsPageCacheKey
+} from '#shared/domains/prize-redemptions/account-prize-redemptions-page'
 import { useApiClient } from '~/composables/useApiClient'
+import { useAuthorizationCache } from '~/composables/useAuthorizationCache'
 import { useSessionActor } from '~/composables/useSessionActor'
 
 export function usePrizeRedemptionWorkspace() {
   const apiFetch = useApiClient()
-  const actor = useSessionActor().actor
-  const authSubject = computed(() => actor.value.isAuthenticated
-    ? actor.value.sessionUser.sub
-    : 'anonymous')
+  const session = useSessionActor()
+  const actor = session.actor
+  const authorizationCache = useAuthorizationCache()
 
-  const pendingRedemptionsRequest = useApiData<PrizeRedemptionRecord[]>(
-    () => `prize-redemptions:${authSubject.value}`,
+  const workspaceRequest = useApiData<AccountPrizeRedemptionsPage>(
+    buildAccountPrizeRedemptionsPageCacheKey(),
     async ({ apiFetch, signal }) => {
+      await session.ensureLoaded()
+
       if (actor.value.kind !== 'platform_user') {
-        return []
+        return { redemptions: [] }
       }
 
-      const response = await apiFetch<PrizeRedemptionApiDataResponse<PrizeRedemptionRecord[]>>('/api/prize-redemptions/me', {
-        signal
-      })
+      const response = await apiFetch<ApiDataResponse<AccountPrizeRedemptionsPage>>(
+        accountPrizeRedemptionsPagePath,
+        { signal }
+      )
+
       return response.data
     },
     {
-      default: () => [],
-      watch: [authSubject, actor],
-      server: false
-    }
-  )
-
-  const visibleEventIds = computed(() =>
-    [...new Set(pendingRedemptionsRequest.data.value.map(redemption => redemption.event.id))]
-      .sort((left, right) => left.localeCompare(right))
-  )
-
-  const currentTermsRequest = useApiData<Record<string, TermsDocument | null>>(
-    () => `prize-redemption-terms:${authSubject.value}:${visibleEventIds.value.join(',')}`,
-    async ({ apiFetch, signal }) => {
-      if (actor.value.kind !== 'platform_user' || visibleEventIds.value.length === 0) {
-        return {}
-      }
-
-      const entries = await Promise.all(
-        visibleEventIds.value.map(async (eventId) => {
-          const response = await apiFetch<PrizeRedemptionApiDataResponse<PrizeRedemptionCurrentTermsResponse>>(
-            `/api/events/${eventId}/terms/current`,
-            {
-              signal
-            }
-          )
-
-          return [eventId, response.data.winner_terms ?? null] as const
-        })
-      )
-
-      return Object.fromEntries(entries)
-    },
-    {
-      default: () => ({}),
-      watch: [authSubject, actor, visibleEventIds],
+      default: () => ({ redemptions: [] }),
       server: false
     }
   )
 
   const tasks = computed<PrizeRedemptionTask[]>(() =>
-    pendingRedemptionsRequest.data.value.map(redemption => ({
-      ...redemption,
-      currentWinnerTerms: currentTermsRequest.data.value[redemption.event.id] ?? null
-    }))
+    workspaceRequest.data.value.redemptions
   )
 
   const recentlyRedeemed = ref<PrizeRedemptionRecord[]>([])
@@ -83,6 +53,16 @@ export function usePrizeRedemptionWorkspace() {
   const submissionErrorById = reactive<Record<string, string>>({})
   const submissionSuccessById = reactive<Record<string, string>>({})
   const submittingById = reactive<Record<string, boolean>>({})
+
+  watch(authorizationCache.authorizationGeneration, () => {
+    recentlyRedeemed.value = []
+
+    for (const state of [legalNameById, termsAcceptedById, submissionErrorById, submissionSuccessById, submittingById]) {
+      for (const key of Object.keys(state)) {
+        Reflect.deleteProperty(state, key)
+      }
+    }
+  })
 
   watch(tasks, (nextTasks) => {
     for (const task of nextTasks) {
@@ -111,8 +91,7 @@ export function usePrizeRedemptionWorkspace() {
   })
 
   async function refresh() {
-    await pendingRedemptionsRequest.refresh()
-    await currentTermsRequest.refresh()
+    await workspaceRequest.refresh()
   }
 
   async function redeemPrize(redemptionId: string) {
@@ -145,6 +124,7 @@ export function usePrizeRedemptionWorkspace() {
       return null
     }
 
+    const requestGeneration = authorizationCache.authorizationGeneration.value
     submittingById[redemptionId] = true
     submissionErrorById[redemptionId] = ''
     submissionSuccessById[redemptionId] = ''
@@ -161,6 +141,10 @@ export function usePrizeRedemptionWorkspace() {
         }
       )
 
+      if (authorizationCache.authorizationGeneration.value !== requestGeneration) {
+        return null
+      }
+
       recentlyRedeemed.value = [
         response.data,
         ...recentlyRedeemed.value.filter(entry => entry.id !== response.data.id)
@@ -169,27 +153,25 @@ export function usePrizeRedemptionWorkspace() {
       await refresh()
       return response.data
     } catch (error) {
-      submissionErrorById[redemptionId] = normalizePrizeRedemptionApiError(error).message
+      if (authorizationCache.authorizationGeneration.value === requestGeneration) {
+        submissionErrorById[redemptionId] = normalizePrizeRedemptionApiError(error).message
+      }
       return null
     } finally {
-      submittingById[redemptionId] = false
+      if (authorizationCache.authorizationGeneration.value === requestGeneration) {
+        submittingById[redemptionId] = false
+      }
     }
   }
 
   return {
-    currentTermsErrorMessage: computed(() =>
-      currentTermsRequest.error.value
-        ? normalizePrizeRedemptionApiError(currentTermsRequest.error.value).message
-        : ''
-    ),
-    currentTermsStatus: computed(() => currentTermsRequest.status.value),
     legalNameById,
-    pendingErrorMessage: computed(() =>
-      pendingRedemptionsRequest.error.value
-        ? normalizePrizeRedemptionApiError(pendingRedemptionsRequest.error.value).message
+    errorMessage: computed(() =>
+      workspaceRequest.error.value
+        ? normalizePrizeRedemptionApiError(workspaceRequest.error.value).message
         : ''
     ),
-    pendingStatus: computed(() => pendingRedemptionsRequest.status.value),
+    status: computed(() => workspaceRequest.status.value),
     recentlyRedeemed,
     redeemPrize,
     refresh,

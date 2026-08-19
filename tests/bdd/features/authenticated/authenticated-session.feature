@@ -20,3 +20,9 @@ Feature: Authenticated session foundation
     Then the account event bootstrap should be requested once
     When I switch the account event tab to "Participants"
     Then the account event bootstrap should still be requested once
+
+  Scenario: Account overview uses one page-shaped read
+    Given the saved "regular_user" local session state exists
+    When I open my events with the saved "regular_user" session
+    Then I should see the my events heading
+    And the account overview should request one bootstrap and one page read

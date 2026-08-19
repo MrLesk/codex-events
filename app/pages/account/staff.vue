@@ -6,20 +6,19 @@ import {
   formatEventTypeLabel,
   getEventDashboardTeamSizeMetaItems
 } from '~/domains/events/presentation'
-import { filterStaffAccessibleEvents } from '~/domains/events/staff-dashboard'
+import { formatStaffDashboardRole } from '~/domains/events/staff-dashboard'
 
 definePageMeta({
   middleware: ['require-staff-dashboard']
 })
 
-const { actor, status: actorStatus } = useSessionActor()
 const events = useUserEvents()
 
 const currentStaffEvents = computed(() =>
-  filterStaffAccessibleEvents(events.data.value?.data.current ?? [], actor.value)
+  events.data.value.current
 )
 const pastStaffEvents = computed(() =>
-  filterStaffAccessibleEvents(events.data.value?.data.past ?? [], actor.value)
+  events.data.value.past
 )
 const allStaffEvents = computed(() => [
   ...currentStaffEvents.value,
@@ -36,7 +35,7 @@ const listItems = computed(() =>
     to: `/account/events/${event.slug}?tab=participants`,
     actionLabel: 'Open staff view',
     sortAt: event.startsAt,
-    overline: 'Staff',
+    overline: formatStaffDashboardRole(event),
     externalAction: {
       label: 'Public page',
       to: `/events/${event.slug}`
@@ -55,8 +54,7 @@ const errorMessage = computed(() =>
   ?? ''
 )
 const isLoading = computed(() =>
-  actorStatus.value === 'pending'
-  || events.status.value === 'pending'
+  events.status.value === 'idle' || events.status.value === 'pending'
 )
 
 useSeoMeta({

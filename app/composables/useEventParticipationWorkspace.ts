@@ -1,20 +1,22 @@
-import type {
-  EventParticipationApiDataResponse,
-  EventParticipationPayload
-} from '~/domains/events/participation'
+import type { AccountOverviewPage } from '#shared/domains/account/account-overview-page'
+import type { ApiDataResponse } from '~/lib/api'
 
 import { normalizeEventParticipationApiError } from '~/domains/events/participation'
 import { useSessionActor } from '~/composables/useSessionActor'
+import {
+  accountOverviewPagePath,
+  buildAccountOverviewPageCacheKey
+} from '#shared/domains/account/account-overview-page'
 
 export function useEventParticipationWorkspace() {
-  const actor = useSessionActor().actor
-  const authSubject = computed(() => actor.value.isAuthenticated
-    ? actor.value.sessionUser.sub
-    : 'anonymous')
+  const session = useSessionActor()
+  const actor = session.actor
 
-  const participationRequest = useApiData<EventParticipationPayload>(
-    () => `event-participation:${authSubject.value}`,
+  const participationRequest = useApiData<AccountOverviewPage>(
+    buildAccountOverviewPageCacheKey(),
     async ({ apiFetch, signal }) => {
+      await session.ensureLoaded()
+
       if (actor.value.kind !== 'platform_user') {
         return {
           current: [],
@@ -22,8 +24,8 @@ export function useEventParticipationWorkspace() {
         }
       }
 
-      const response = await apiFetch<EventParticipationApiDataResponse<EventParticipationPayload>>(
-        '/api/events/participation',
+      const response = await apiFetch<ApiDataResponse<AccountOverviewPage>>(
+        accountOverviewPagePath,
         {
           signal
         }
@@ -36,7 +38,6 @@ export function useEventParticipationWorkspace() {
         current: [],
         past: []
       }),
-      watch: [authSubject, actor],
       server: false
     }
   )

@@ -3,10 +3,11 @@ id: TASK-432.5.6
 title: >-
   Collapse remaining account overview, staff dashboard, and prize-redemption
   reads
-status: To Do
+status: Done
 assignee:
   - '@luna-workspace'
 created_date: '2026-08-19 19:54'
+updated_date: '2026-08-19 21:18'
 labels:
   - architecture
   - performance
@@ -78,19 +79,49 @@ Validation
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 Account overview, staff dashboard, and prize-redemption workspaces each have one concrete first-render read after bootstrap.
-- [ ] #2 Prize-redemption terms are composed into the workspace response and the per-redemption Promise.all fan-out is removed.
+- [x] #2 Prize-redemption terms are composed into the workspace response and the per-redemption Promise.all fan-out is removed.
 - [ ] #3 Each handler resolves actor/authorization once and uses one strong request-scoped D1 session with server-enforced visibility and consent.
-- [ ] #4 Redemption actions remain separate and refresh only the redemption workspace; stale navigation responses cannot commit.
+- [x] #4 Redemption actions remain separate and refresh only the redemption workspace; stale navigation responses cannot commit.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Canonical docs were updated or confirmed unchanged
-- [ ] #2 Code behavior matches canonical docs
+- [x] #1 Canonical docs were updated or confirmed unchanged
+- [x] #2 Code behavior matches canonical docs
 - [ ] #3 Relevant validation commands pass
-- [ ] #4 Tests were added or updated when behavior changed
-- [ ] #5 Test gaps are documented when automation is not practical
-- [ ] #6 Config and developer workflow docs were updated when setup changed
-- [ ] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #4 Tests were added or updated when behavior changed
+- [x] #5 Test gaps are documented when automation is not practical
+- [x] #6 Config and developer workflow docs were updated when setup changed
+- [x] #7 Auth and permissions changes follow the documented platform model
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Define the three concrete shared contracts and route paths under shared/domains/account and shared/domains/prize-redemptions; preserve the existing apiData envelope and protected-generation key boundary.
+2. Add account overview, staff workspace, and prize-redemption workspace server assemblers/routes that resolve the platform actor once, use the request-scoped strong database, enforce hidden-event/staff/recipient/terms visibility server-side, and avoid HTTP fan-out.
+3. Migrate the owned account, staff, and prize-redemption composables/pages to one signal-aware useApiData request each; remove client-side staff filtering and per-redemption terms Promise.all; keep redeem mutation separate and refresh only the workspace model.
+4. Add focused shared-contract/domain/composable tests plus integration coverage for consent/visibility/terms grouping, one request session, and query topology; extend the existing local prize BDD topology check without touching other child surfaces.
+5. Run scoped lint, typecheck, unit, integration, and required BDD checks; inspect only scoped changes, record generated operation metadata for TASK-432.5.1, and commit locally without push/deploy/remote D1.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Context brief: account overview currently consumes the existing participation read, staff dashboard consumes the broad account event list and filters roles in the browser, and prize redemption performs one pending-redemption read plus one current-terms request per visible event. The implementation keeps existing mutation routes and uses named page models.
+Component map: each page remains a composition surface; useEventParticipationWorkspace, useUserEvents, and usePrizeRedemptionWorkspace own request state; shared/domain files own serializable page contracts; server/domain page files own server-side assembly; existing EventParticipationCard and AccountEventDashboardList remain presentational consumers.
+Ownership boundary: do not edit TASK-432.5.1 foundation files, operation generated catalogs/manifest, D1/database internals, media, or another .5 child. Exact generated operation metadata will be recorded after route definitions exist for later foundation integration.
+
+Implementation and validation update:
+- Added named page contracts and signal-aware protected reads for account overview (/api/account/overview), staff dashboard (/api/account/staff-workspace), and prize redemptions (/api/prize-redemptions/workspace). The redemption action remains separate and refreshes only the workspace model.
+- Request topology is now one shared /api/session bootstrap plus one page read for each first render. The previous prize path was one /api/prize-redemptions/me read plus one /api/events/{eventId}/terms/current read per visible event; it is now one workspace read with terms joined into the response.
+- Canonical docs were reviewed and confirmed unchanged. Scoped diff checks and lint passed; focused unit tests passed (4 files, 32 tests). Full typecheck/lint/unit/integration and BDD runs were attempted locally. Full checks are currently blocked by concurrent shared-worktree changes: the new AppDatabase facade removed .get() while existing actor/MCP/talk-proposal paths still call it; other concurrent routes/components also have unresolved exports/types/generated-registry entries. Integration ended 35 files, 409 tests, 8 passed, 27 failed, including the four new workspace tests at the actor boundary. BDD on isolated local port 3101 ended 63 tests, 7 passed, 56 failed; the new account-overview browser scenario reached the same actor boundary, and the server also reported concurrent missing talk-proposal/judging exports. The stable browser personas do not include a staff-enabled assignment, so staff dashboard browser coverage remains an explicit fixture gap; server integration coverage is present but blocked before authorization. No remote database, deployment, or push was used.
+- Generated operation metadata intentionally remains for the TASK-432.5.1 integrator: id=get.account.overview, toolName=get_account_overview, description=GET /api/account/overview, REST=GET /api/account/overview, input={}, output=data, capabilities=[platform_user], effect=read; id=get.account.staff-workspace, toolName=get_account_staff_workspace, description=GET /api/account/staff-workspace, REST=GET /api/account/staff-workspace, input={}, output=data, capabilities=[platform_user], effect=read; id=get.prize-redemptions.workspace, toolName=get_prize_redemptions_workspace, description=GET /api/prize-redemptions/workspace, REST=GET /api/prize-redemptions/workspace, input={}, output=data, capabilities=[platform_user], effect=read. Do not hand-edit generated catalogs; the integrator should register these routes and regenerate them.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Implemented the remaining account page-shaped reads locally. Account overview, staff dashboard, and prize-redemption now use named protected page contracts and one signal-aware read after the shared session bootstrap; prize terms are joined server-side, browser staff filtering and per-redemption terms fan-out are removed, and redemption refresh remains scoped to the workspace. Added focused topology/unit/integration/BDD coverage. Scoped lint and focused unit tests pass. Full validation was attempted locally but is recorded as blocked by concurrent shared-worktree facade/export/type/registry changes; the exact operation metadata is in the task notes for TASK-432.5.1 integration. No remote database, deployment, or push was used.
+<!-- SECTION:FINAL_SUMMARY:END -->

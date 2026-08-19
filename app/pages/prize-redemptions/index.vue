@@ -16,10 +16,8 @@ const toast = useToast()
 const workspace = usePrizeRedemptionWorkspace()
 
 const isWorkspaceLoading = computed(() =>
-  workspace.pendingStatus.value === 'idle'
-  || workspace.pendingStatus.value === 'pending'
-  || (workspace.tasks.value.length > 0
-    && (workspace.currentTermsStatus.value === 'idle' || workspace.currentTermsStatus.value === 'pending'))
+  workspace.status.value === 'idle'
+  || workspace.status.value === 'pending'
 )
 
 const availabilityById = computed(() =>
@@ -67,19 +65,11 @@ useSeoMeta({
     </PageSection>
 
     <AppAlert
-      v-if="workspace.pendingErrorMessage.value"
+      v-if="workspace.errorMessage.value"
       color="error"
       variant="soft"
       title="Prize redemptions unavailable"
-      :description="workspace.pendingErrorMessage.value"
-    />
-
-    <AppAlert
-      v-else-if="workspace.currentTermsErrorMessage.value"
-      color="error"
-      variant="soft"
-      title="Winner terms unavailable"
-      :description="workspace.currentTermsErrorMessage.value"
+      :description="workspace.errorMessage.value"
     />
 
     <AppAlert

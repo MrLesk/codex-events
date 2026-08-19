@@ -1,64 +1,21 @@
 import type { PublicEventState, PublicEventType } from '~/domains/events/presentation'
-import type { ParticipantApplicationLumaSyncStatus } from '~/domains/applications/participant-application'
-import type { TeamSubmissionRecord } from '~/domains/submissions/team-submission'
+import type {
+  AccountOverviewApplicationSummary,
+  AccountOverviewEventSummary,
+  AccountOverviewOutcomeSummary,
+  AccountOverviewRecord,
+  AccountOverviewSubmissionSummary,
+  AccountOverviewTeamSummary
+} from '#shared/domains/account/account-overview-page'
 
 import { buildEventCertificatePath } from '#shared/domains/events/certificates'
 import { normalizeApiError } from '~/lib/api'
 
-export interface EventParticipationEventSummary {
-  id: string
-  eventType: PublicEventType
-  name: string
-  slug: string
-  city: string
-  country: string
-  state: PublicEventState
-  startsAt: string
-  registrationOpensAt: string
-  registrationClosesAt: string
-  submissionClosesAt: string | null
-  maxTeamMembers: number
-}
-
-export interface EventParticipationApplicationSummary {
-  id: string
-  userId: string
-  status: 'submitted' | 'approved' | 'rejected' | 'withdrawn'
-  lumaSyncStatus: ParticipantApplicationLumaSyncStatus
-  submittedAt: string
-  withdrawnAt: string | null
-  reviewedAt: string | null
-  checkedInAt: string | null
-  isCheckedIn: boolean
-  certificateHiddenAt: string | null
-  certificateRevokedAt: string | null
-  selectedTrackId: string | null
-  updatedAt: string
-}
-
-export interface EventParticipationTeamSummary {
-  id: string
-  name: string
-  slug: string
-  membershipRole: 'member' | 'admin'
-  joinedAt: string
-  leftAt: string | null
-  isActiveMembership: boolean
-  activeMemberCount: number
-}
-
-export interface EventParticipationPrizeSummary {
-  id: string
-  name: string
-}
-
-export interface EventParticipationOutcomeSummary {
-  isShortlisted: boolean
-  isWinner: boolean
-  finalRank: number | null
-  rankedTeamCount: number
-  prizes: EventParticipationPrizeSummary[]
-}
+export type EventParticipationEventSummary = AccountOverviewEventSummary
+export type EventParticipationApplicationSummary = AccountOverviewApplicationSummary
+export type EventParticipationTeamSummary = AccountOverviewTeamSummary
+export type EventParticipationSubmissionSummary = AccountOverviewSubmissionSummary
+export type EventParticipationOutcomeSummary = AccountOverviewOutcomeSummary
 
 export interface EventParticipationRankSummary {
   basis: 'final' | 'blind_review'
@@ -67,25 +24,7 @@ export interface EventParticipationRankSummary {
   totalTeamCount: number
 }
 
-export interface EventParticipationRecord {
-  event: EventParticipationEventSummary
-  isPast: boolean
-  lastActivityAt: string
-  application: EventParticipationApplicationSummary | null
-  activeTeam: EventParticipationTeamSummary | null
-  latestTeam: EventParticipationTeamSummary | null
-  latestSubmission: TeamSubmissionRecord | null
-  outcome: EventParticipationOutcomeSummary | null
-}
-
-export interface EventParticipationPayload {
-  current: EventParticipationRecord[]
-  past: EventParticipationRecord[]
-}
-
-export interface EventParticipationApiDataResponse<T> {
-  data: T
-}
+export type EventParticipationRecord = AccountOverviewRecord
 
 export interface EventParticipationPrimaryAction {
   href: string

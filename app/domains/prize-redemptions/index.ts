@@ -1,53 +1,15 @@
-import type { TermsDocument } from '~/domains/events/records'
-import type { EventState } from '~/domains/events/states'
+import type {
+  AccountPrizeRedemptionEvent,
+  AccountPrizeRedemptionPrize,
+  AccountPrizeRedemptionRecord,
+  AccountPrizeRedemptionTask
+} from '#shared/domains/prize-redemptions/account-prize-redemptions-page'
 import type { WinnerEntry } from '~/domains/outcomes/published-outcomes'
 
-export interface PrizeRedemptionPrize {
-  id: string
-  eventId: string
-  name: string
-  description: string
-  rewardType: 'api_credits' | 'subscription' | 'physical' | 'other'
-  rewardValue: string
-  rewardCurrency: string | null
-  awardScope: 'team' | 'member'
-  rankStart: number
-  rankEnd: number
-  displayOrder: number
-  createdAt: string
-}
-
-export interface PrizeRedemptionEvent {
-  id: string
-  name: string
-  slug: string
-  state: EventState
-  currentWinnerTermsDocumentId: string | null
-}
-
-export interface PrizeRedemptionRecord {
-  id: string
-  status: 'pending' | 'redeemed'
-  userId: string | null
-  teamId: string | null
-  legalName: string | null
-  winnerTermsDocumentId: string | null
-  winnerTermsAcceptedAt: string | null
-  redeemedAt: string | null
-  createdAt: string
-  updatedAt: string
-  prize: PrizeRedemptionPrize
-  event: PrizeRedemptionEvent
-}
-
-export interface PrizeRedemptionTask extends PrizeRedemptionRecord {
-  currentWinnerTerms: TermsDocument | null
-}
-
-export interface PrizeRedemptionCurrentTermsResponse {
-  application_terms: TermsDocument | null
-  winner_terms: TermsDocument | null
-}
+export type PrizeRedemptionPrize = AccountPrizeRedemptionPrize
+export type PrizeRedemptionEvent = AccountPrizeRedemptionEvent
+export type PrizeRedemptionRecord = AccountPrizeRedemptionRecord
+export type PrizeRedemptionTask = AccountPrizeRedemptionTask
 
 export type PrizeRedemptionTeamMember = WinnerEntry['teamMembers'][number]
 
