@@ -156,11 +156,16 @@ describe('request-scoped D1 sessions', () => {
           method: 'get',
           path: '/api/database/session-operations',
           handler: defineApiHandler(async (event) => {
-            await getDatabase(event).query.users.findFirst()
+            const database = getDatabase(event)
+            await database.query.users.findFirst()
+            await database.batch([database.select().from(users)])
             const session = getDatabaseSession(event)
             await session.prepare('select 1').all()
             await session.batch([session.prepare('select 1')])
-            return apiData({ ok: true })
+            return apiData({
+              ok: true,
+              hasPublicClient: '$client' in database
+            })
           })
         }
       ]
@@ -170,7 +175,13 @@ describe('request-scoped D1 sessions', () => {
     const response = await harness.request('/api/database/session-operations')
 
     expect(response.status).toBe(200)
-    expect(harness.d1Database.queries.length).toBeGreaterThanOrEqual(3)
+    expect(await response.json()).toEqual({
+      data: {
+        ok: true,
+        hasPublicClient: false
+      }
+    })
+    expect(harness.d1Database.queries.length).toBeGreaterThanOrEqual(4)
     expect(harness.d1Database.sessions).toHaveLength(1)
     const recordedSessionId = harness.d1Database.sessions[0]?.id
     expect(recordedSessionId).toBeDefined()

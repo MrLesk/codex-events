@@ -3,16 +3,14 @@ import type { H3Event } from 'h3'
 import { describe, expect, test, vi } from 'vitest'
 
 import { ApiError } from '../../../../server/http/api-error'
-import { getDatabase, withDatabaseBatch, type AppDatabase } from '../../../../server/database/client'
+import { getDatabase, getDatabaseSession, withDatabaseBatch, type AppDatabase } from '../../../../server/database/client'
 import { resolveNonHttpD1Binding, setTestDatabase } from '../../../../server/database/non-http'
 
-function assertApplicationDatabaseClientType(client: AppDatabase['$client']) {
-  void client.prepare
-  void client.batch
-  // @ts-expect-error Application database clients must not expose raw D1 session construction.
-  void client.withSession
-  // @ts-expect-error Application database clients must not expose raw D1 execution.
-  void client.exec
+function assertApplicationDatabaseType(database: AppDatabase) {
+  void database.query
+  void database.batch
+  // @ts-expect-error Application databases must not expose Drizzle's provider client.
+  void database.$client
 }
 
 function createEvent(binding?: unknown): H3Event {
@@ -76,7 +74,7 @@ describe('resolveNonHttpD1Binding', () => {
     expect(withSession).toHaveBeenCalledWith('first-primary')
   })
 
-  test('keeps raw D1 capabilities out of the returned application database client', async () => {
+  test('does not expose Drizzle client while preserving request-scoped session access', async () => {
     const session = {
       prepare: vi.fn(),
       batch: vi.fn(),
@@ -87,17 +85,17 @@ describe('resolveNonHttpD1Binding', () => {
       batch: vi.fn(),
       withSession: vi.fn(() => session)
     }
-    const database = getDatabase(createEvent(binding))
+    const event = createEvent(binding)
+    const database = getDatabase(event)
 
-    assertApplicationDatabaseClientType(database.$client)
-    database.$client.prepare('select 1')
-    await database.$client.batch([])
+    assertApplicationDatabaseType(database)
+    const requestSession = getDatabaseSession(event)
+    requestSession.prepare('select 1')
+    await requestSession.batch([])
 
-    expect(Object.keys(database.$client).sort()).toEqual(['batch', 'prepare'])
-    expect(database.$client).not.toBe(binding)
-    expect('withSession' in database.$client).toBe(false)
-    expect('getBookmark' in database.$client).toBe(false)
-    expect('exec' in database.$client).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(database, '$client')).toBe(false)
+    expect('$client' in database).toBe(false)
+    expect(requestSession).toBe(session)
     expect(session.prepare).toHaveBeenCalledWith('select 1')
     expect(session.batch).toHaveBeenCalledTimes(1)
   })

@@ -24,15 +24,15 @@ function createDrizzleDatabase(binding: D1DatabaseBinding) {
 
 type DrizzleAppDatabase = ReturnType<typeof createDrizzleDatabase>
 
-export type AppDatabase = Omit<DrizzleAppDatabase, '$client'> & {
-  $client: D1DatabaseClientBinding
-}
+export type AppDatabase = Omit<DrizzleAppDatabase, '$client'>
 
 export function createNonHttpDatabase(binding: D1DatabaseBinding | D1DatabaseClientBinding): AppDatabase {
   const client = createD1DatabaseClientBinding(binding)
   const database = createDrizzleDatabase(client as D1DatabaseBinding)
 
-  return Object.assign(database, { $client: client }) as AppDatabase
+  Reflect.deleteProperty(database, '$client')
+
+  return database as AppDatabase
 }
 
 export type AppDatabaseBatch = Parameters<AppDatabase['batch']>[0]
