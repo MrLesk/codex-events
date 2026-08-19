@@ -107,7 +107,7 @@ const profileIconSrc = computed(() => {
     return undefined
   }
 
-  const version = actor.value.platformUser.profileIconUpdatedAt
+  const version = actor.value.platformUser.profileIconRevision
 
   if (!version) {
     return undefined

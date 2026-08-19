@@ -422,3 +422,28 @@ export async function deleteEventImageObject(event: H3Event, objectKey: string) 
 export async function deletePlatformDefaultEventBackgroundImageObject(event: H3Event, objectKey: string) {
   await getEventImagesBucket(event).delete(objectKey)
 }
+
+export async function deleteEventImageObjectBestEffort(event: H3Event, objectKey: string) {
+  try {
+    await deleteEventImageObject(event, objectKey)
+  } catch (error) {
+    console.error('Unable to delete an unreferenced event image object.', {
+      objectKey,
+      error
+    })
+  }
+}
+
+export async function deletePlatformDefaultEventBackgroundImageObjectBestEffort(
+  event: H3Event,
+  objectKey: string
+) {
+  try {
+    await deletePlatformDefaultEventBackgroundImageObject(event, objectKey)
+  } catch (error) {
+    console.error('Unable to delete an unreferenced platform default event background object.', {
+      objectKey,
+      error
+    })
+  }
+}

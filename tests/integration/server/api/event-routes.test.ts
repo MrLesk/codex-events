@@ -174,6 +174,10 @@ describe('TASK-3.5 event CRUD routes', () => {
     async delete(key: string) {
       this.objects.delete(key)
     }
+
+    keys() {
+      return [...this.objects.keys()]
+    }
   }
 
   async function insertEventsInBatches(
@@ -205,6 +209,7 @@ describe('TASK-3.5 event CRUD routes', () => {
 
   afterEach(async () => {
     vi.unstubAllGlobals()
+    vi.restoreAllMocks()
 
     while (harnesses.length > 0) {
       await harnesses.pop()?.d1Database.close()
@@ -1557,7 +1562,8 @@ describe('TASK-3.5 event CRUD routes', () => {
         xProfileUrl: null,
         linkedinProfileUrl: null,
         githubProfileUrl: 'https://github.com/admin-user',
-        profileIconUpdatedAt: null
+        profileIconUpdatedAt: null,
+        profileIconRevision: 0
       },
       {
         id: 'judge_user',
@@ -1567,7 +1573,8 @@ describe('TASK-3.5 event CRUD routes', () => {
         xProfileUrl: 'https://x.com/judge-user',
         linkedinProfileUrl: null,
         githubProfileUrl: null,
-        profileIconUpdatedAt: '2026-03-15T10:00:00.000Z'
+        profileIconUpdatedAt: '2026-03-15T10:00:00.000Z',
+        profileIconRevision: 0
       }
     ])
     expect(judgesPayload.data[0]).not.toHaveProperty('email')
@@ -2175,7 +2182,8 @@ describe('TASK-3.5 event CRUD routes', () => {
     await harness.database.insert(platformSettings).values({
       id: 'default',
       defaultEventBackgroundImageUrl: defaultBackgroundUrl,
-      mediaRevision: 1,
+      defaultEventBackgroundImageObjectKey: 'platform/default-event-background/fixture-1',
+      defaultEventBackgroundImageRevision: 1,
       updatedAt: defaultBackgroundVersion
     })
     await harness.database.insert(events).values([
@@ -2186,7 +2194,8 @@ describe('TASK-3.5 event CRUD routes', () => {
         slug: 'banner-only-event',
         description: 'Event with a banner and platform default background',
         bannerImageUrl,
-        mediaRevision: 1,
+        bannerImageObjectKey: 'events/event_banner_only/banner/fixture-1',
+        bannerImageRevision: 1,
         city: 'Vienna',
         country: 'Austria',
         address: 'Address',
@@ -2205,7 +2214,8 @@ describe('TASK-3.5 event CRUD routes', () => {
         slug: 'own-background-event',
         description: 'Event with an uploaded background',
         backgroundImageUrl: eventBackgroundUrl,
-        mediaRevision: 1,
+        backgroundImageObjectKey: 'events/event_own_background/background/fixture-1',
+        backgroundImageRevision: 1,
         city: 'Vienna',
         country: 'Austria',
         address: 'Address',
@@ -3032,7 +3042,9 @@ describe('TASK-3.5 event CRUD routes', () => {
         xProfileUrl: 'https://x.com/winner-user',
         linkedinProfileUrl: 'https://linkedin.com/in/winner-user',
         githubProfileUrl: 'https://github.com/winner-user',
-        profileIconUpdatedAt: '2026-03-18T15:00:00.000Z'
+        profileIconUpdatedAt: '2026-03-18T15:00:00.000Z',
+        profileIconObjectKey: 'users/winner_user/profile-icon/fixture-1',
+        profileIconRevision: 1
       },
       {
         id: 'published_user',
@@ -3045,7 +3057,9 @@ describe('TASK-3.5 event CRUD routes', () => {
         xProfileUrl: 'https://x.com/published-user',
         linkedinProfileUrl: 'https://linkedin.com/in/published-user',
         githubProfileUrl: 'https://github.com/published-user',
-        profileIconUpdatedAt: '2026-03-18T16:00:00.000Z'
+        profileIconUpdatedAt: '2026-03-18T16:00:00.000Z',
+        profileIconObjectKey: 'users/published_user/profile-icon/fixture-1',
+        profileIconRevision: 1
       }
     ])
     await harness.database.insert(events).values({
@@ -3183,7 +3197,7 @@ describe('TASK-3.5 event CRUD routes', () => {
       updatedAt: '2026-03-25T13:10:00.000Z'
     })
     await profileIconsBucket.put(
-      'users/winner_user/profile-icon',
+      'users/winner_user/profile-icon/fixture-1',
       pngSignatureBytes,
       {
         httpMetadata: {
@@ -3192,7 +3206,7 @@ describe('TASK-3.5 event CRUD routes', () => {
       }
     )
     await profileIconsBucket.put(
-      'users/published_user/profile-icon',
+      'users/published_user/profile-icon/fixture-1',
       pngSignatureBytes,
       {
         httpMetadata: {
@@ -3242,7 +3256,7 @@ describe('TASK-3.5 event CRUD routes', () => {
               xProfileUrl: 'https://x.com/winner-user',
               linkedinProfileUrl: 'https://linkedin.com/in/winner-user',
               githubProfileUrl: 'https://github.com/winner-user',
-              profileIconUrl: '/api/public/events/public-winners-event/winners/winner_user/profile-icon?v=2026-03-18T15%3A00%3A00.000Z'
+              profileIconUrl: '/api/public/events/public-winners-event/winners/winner_user/profile-icon?v=1'
             })
           ]
         }
@@ -3270,7 +3284,7 @@ describe('TASK-3.5 event CRUD routes', () => {
               xProfileUrl: 'https://x.com/published-user',
               linkedinProfileUrl: 'https://linkedin.com/in/published-user',
               githubProfileUrl: 'https://github.com/published-user',
-              profileIconUrl: '/api/public/events/public-winners-event/published-projects/published_user/profile-icon?v=2026-03-18T16%3A00%3A00.000Z'
+              profileIconUrl: '/api/public/events/public-winners-event/published-projects/published_user/profile-icon?v=1'
             })
           ]
         }
@@ -3278,7 +3292,7 @@ describe('TASK-3.5 event CRUD routes', () => {
     })
 
     const iconResponse = await harness.request(
-      '/api/public/events/public-winners-event/winners/winner_user/profile-icon?v=2026-03-18T15%3A00%3A00.000Z'
+      '/api/public/events/public-winners-event/winners/winner_user/profile-icon?v=1'
     )
 
     expect(iconResponse.status).toBe(200)
@@ -3287,13 +3301,13 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect(iconResponse.headers.get('content-type')).toBe('image/png')
 
     const missingIconResponse = await harness.request(
-      '/api/public/events/public-winners-event/winners/unknown_user/profile-icon?v=2026-03-18T15%3A00%3A00.000Z'
+      '/api/public/events/public-winners-event/winners/unknown_user/profile-icon?v=1'
     )
 
     expect(missingIconResponse.status).toBe(404)
 
     const publishedIconResponse = await harness.request(
-      '/api/public/events/public-winners-event/published-projects/published_user/profile-icon?v=2026-03-18T16%3A00%3A00.000Z'
+      '/api/public/events/public-winners-event/published-projects/published_user/profile-icon?v=1'
     )
 
     expect(publishedIconResponse.status).toBe(200)
@@ -4677,10 +4691,10 @@ describe('TASK-3.5 event CRUD routes', () => {
     }
 
     expect(backgroundDetailPayload.data.backgroundImageUrl).toBe(
-      `http://localhost/api/public/events/image-event/images/background?variant=background&v=${backgroundEvent!.mediaRevision}`
+      `http://localhost/api/public/events/image-event/images/background?variant=background&v=${backgroundEvent!.backgroundImageRevision}`
     )
     const versionedBackgroundResponse = await harness.request(
-      `/api/public/events/image-event/images/background?variant=background&v=${backgroundEvent!.mediaRevision}`,
+      `/api/public/events/image-event/images/background?variant=background&v=${backgroundEvent!.backgroundImageRevision}`,
       {
         headers: {
           accept: 'image/avif,image/webp;q=0.8'
@@ -4710,10 +4724,41 @@ describe('TASK-3.5 event CRUD routes', () => {
     const replacedBackgroundEvent = await harness.database.query.events.findFirst({
       where: eq(events.id, 'event_images')
     })
-    expect(replacedBackgroundEvent?.mediaRevision).toBe(backgroundEvent!.mediaRevision + 1)
+    expect(replacedBackgroundEvent?.backgroundImageRevision).toBe(backgroundEvent!.backgroundImageRevision + 1)
+    expect(replacedBackgroundEvent?.backgroundImageObjectKey).not.toBe(backgroundEvent!.backgroundImageObjectKey)
+    expect(await eventImagesBucket.get(backgroundEvent!.backgroundImageObjectKey!)).toBeNull()
+
+    const concurrentBackgroundUploads = await Promise.all([1, 2].map(async (index) => {
+      const form = new FormData()
+      form.append(
+        'file',
+        new Blob([pngSignatureBytes], { type: 'image/png' }),
+        `background-concurrent-${index}.png`
+      )
+
+      return await harness.request('/api/events/event_images/images/background', {
+        method: 'POST',
+        body: form
+      })
+    }))
+
+    expect(concurrentBackgroundUploads.every(response => response.status === 200 || response.status === 409)).toBe(true)
+    expect(concurrentBackgroundUploads.some(response => response.status === 200)).toBe(true)
+    const concurrentlyReplacedBackgroundEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_images')
+    })
+    expect(concurrentlyReplacedBackgroundEvent?.backgroundImageRevision).toBeGreaterThanOrEqual(
+      replacedBackgroundEvent!.backgroundImageRevision + 1
+    )
+    const backgroundObjectKeys = eventImagesBucket
+      .keys()
+      .filter(key => key.startsWith('events/event_images/background/'))
+    expect(backgroundObjectKeys).toContain(concurrentlyReplacedBackgroundEvent!.backgroundImageObjectKey)
+    expect(backgroundObjectKeys.length).toBeLessThanOrEqual(2)
+    expect(new Set(backgroundObjectKeys).size).toBe(backgroundObjectKeys.length)
 
     const staleReplacedBackgroundResponse = await harness.request(
-      `/api/public/events/image-event/images/background?variant=background&v=${backgroundEvent!.mediaRevision}`
+      `/api/public/events/image-event/images/background?variant=background&v=${backgroundEvent!.backgroundImageRevision}`
     )
     expect(staleReplacedBackgroundResponse.status).toBe(404)
 
@@ -4750,10 +4795,10 @@ describe('TASK-3.5 event CRUD routes', () => {
     }
 
     expect(bannerDetailPayload.data.bannerImageUrl).toBe(
-      `http://localhost/api/public/events/image-event/images/banner?variant=banner&v=${bannerEvent!.mediaRevision}`
+      `http://localhost/api/public/events/image-event/images/banner?variant=banner&v=${bannerEvent!.bannerImageRevision}`
     )
     const versionedBannerResponse = await harness.request(
-      `/api/public/events/image-event/images/banner?variant=banner&v=${bannerEvent!.mediaRevision}`,
+      `/api/public/events/image-event/images/banner?variant=banner&v=${bannerEvent!.bannerImageRevision}`,
       {
         headers: {
           accept: 'image/avif,image/webp;q=0.8'
@@ -4788,10 +4833,82 @@ describe('TASK-3.5 event CRUD routes', () => {
       }
     })
     const staleBackgroundResponse = await harness.request(
-      `/api/public/events/image-event/images/background?variant=background&v=${backgroundEvent!.mediaRevision}`
+      `/api/public/events/image-event/images/background?variant=background&v=${backgroundEvent!.backgroundImageRevision}`
     )
 
     expect(staleBackgroundResponse.status).toBe(404)
+    expect(await eventImagesBucket.get(concurrentlyReplacedBackgroundEvent!.backgroundImageObjectKey!)).toBeNull()
+
+    const beforeFailedUpload = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_images')
+    })
+    vi.spyOn(eventImagesBucket, 'put').mockRejectedValueOnce(new Error('R2 write failed'))
+    const failedUploadForm = new FormData()
+    failedUploadForm.append(
+      'file',
+      new Blob([pngSignatureBytes], { type: 'image/png' }),
+      'background-failed.png'
+    )
+    const failedUploadResponse = await harness.request('/api/events/event_images/images/background', {
+      method: 'POST',
+      body: failedUploadForm
+    })
+    const afterFailedUpload = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_images')
+    })
+
+    expect(failedUploadResponse.status).toBe(500)
+    expect(afterFailedUpload).toMatchObject({
+      backgroundImageObjectKey: beforeFailedUpload!.backgroundImageObjectKey,
+      backgroundImageRevision: beforeFailedUpload!.backgroundImageRevision,
+      publicContentRevision: beforeFailedUpload!.publicContentRevision
+    })
+
+    vi.restoreAllMocks()
+    const objectKeysBeforeD1Failure = eventImagesBucket.keys()
+    const beforeD1Failure = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_images')
+    })
+    const originalWithSession = harness.d1Database.withSession.bind(harness.d1Database)
+    let failEventUpdate = true
+    vi.spyOn(harness.d1Database, 'withSession').mockImplementation((constraintOrBookmark?: string) => {
+      const session = originalWithSession(constraintOrBookmark)
+      const originalPrepare = session.prepare.bind(session)
+
+      session.prepare = (query: string) => {
+        if (failEventUpdate && /^\s*update\b/i.test(query) && query.toLowerCase().includes('events')) {
+          failEventUpdate = false
+          throw new Error('D1 pointer update failed')
+        }
+
+        return originalPrepare(query)
+      }
+
+      return session
+    })
+    const d1FailureForm = new FormData()
+    d1FailureForm.append(
+      'file',
+      new Blob([pngSignatureBytes], { type: 'image/png' }),
+      'background-d1-failed.png'
+    )
+    const d1FailureResponse = await harness.request('/api/events/event_images/images/background', {
+      method: 'POST',
+      body: d1FailureForm
+    })
+    const afterD1Failure = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_images')
+    })
+    const orphanedObjectKeys = eventImagesBucket.keys().filter(key => !objectKeysBeforeD1Failure.includes(key))
+
+    expect(d1FailureResponse.status).toBe(500)
+    expect(orphanedObjectKeys).toHaveLength(1)
+    expect(await eventImagesBucket.get(orphanedObjectKeys[0]!)).not.toBeNull()
+    expect(afterD1Failure).toMatchObject({
+      backgroundImageObjectKey: beforeD1Failure!.backgroundImageObjectKey,
+      backgroundImageRevision: beforeD1Failure!.backgroundImageRevision,
+      publicContentRevision: beforeD1Failure!.publicContentRevision
+    })
 
     const bannerDeleteResponse = await harness.request('/api/events/event_images/images/banner', {
       method: 'DELETE'
@@ -4892,7 +5009,7 @@ describe('TASK-3.5 event CRUD routes', () => {
       where: eq(events.id, 'event_draft_banner')
     })
     const draftVersionedResponse = await harness.request(
-      `/api/public/events/draft-banner-event/images/banner?variant=banner&v=${draftEvent!.mediaRevision}`
+      `/api/public/events/draft-banner-event/images/banner?variant=banner&v=${draftEvent!.bannerImageRevision}`
     )
 
     expect(draftVersionedResponse.status).toBe(404)
@@ -4912,6 +5029,11 @@ describe('TASK-3.5 event CRUD routes', () => {
   test('event photo routes let approved participants read but not manage the protected gallery', async () => {
     const eventImagesBucket = new InMemoryR2Bucket()
     const previewBytes = new Uint8Array([1, 2, 3, 4])
+    const transformCalls: Array<{
+      width?: number
+      height?: number
+      fit?: string
+    }> = []
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/events/:eventId/photos', handler: eventPhotosGetHandler },
@@ -4928,7 +5050,8 @@ describe('TASK-3.5 event CRUD routes', () => {
       cloudflareEnv: {
         [eventImagesBindingName]: eventImagesBucket,
         IMAGES: createImagesBinding({
-          previewBytes
+          previewBytes,
+          transformCalls
         }),
         [authenticatedUploadRateLimitBindingName]: createRateLimiter()
       },
@@ -4989,7 +5112,7 @@ describe('TASK-3.5 event CRUD routes', () => {
       applicationTermsDocumentId: 'application_terms_photo_read',
       applicationTermsAcceptedAt: '2026-03-02T00:00:00.000Z'
     })
-    await eventImagesBucket.put('events/event_photos_read/photos/photo_1', pngSignatureBytes, {
+    await eventImagesBucket.put('events/event_photos_read/photos/photo_1/fixture-1', pngSignatureBytes, {
       httpMetadata: {
         contentType: 'image/png'
       }
@@ -5002,6 +5125,8 @@ describe('TASK-3.5 event CRUD routes', () => {
       contentType: 'image/png',
       width: 1600,
       height: 900,
+      objectKey: 'events/event_photos_read/photos/photo_1/fixture-1',
+      imageRevision: 1,
       createdAt: '2026-04-01T12:00:00.000Z'
     })
 
@@ -5015,8 +5140,8 @@ describe('TASK-3.5 event CRUD routes', () => {
           fileName: 'gallery-photo.png',
           isPubliclyVisible: false,
           isHighlighted: false,
-          previewUrl: '/api/events/event_photos_read/photos/photo_1/image?variant=preview&v=2026-04-01T12%3A00%3A00.000Z',
-          originalUrl: '/api/events/event_photos_read/photos/photo_1/image?variant=original&v=2026-04-01T12%3A00%3A00.000Z'
+          previewUrl: '/api/events/event_photos_read/photos/photo_1/image?variant=preview&v=1',
+          originalUrl: '/api/events/event_photos_read/photos/photo_1/image?variant=original&v=1'
         })
       ]
     })
@@ -5025,14 +5150,29 @@ describe('TASK-3.5 event CRUD routes', () => {
 
     expect(previewResponse.status).toBe(200)
     expect(previewResponse.headers.get('content-type')).toBe('image/webp')
-    expect(previewResponse.headers.get('cache-control')).toBe('private, max-age=31536000, immutable')
+    expect(previewResponse.headers.get('cache-control')).toBe('private, no-store')
+    expect(previewResponse.headers.get('cloudflare-cdn-cache-control')).toBeNull()
     expect(new Uint8Array(await previewResponse.arrayBuffer())).toEqual(previewBytes)
 
     const originalResponse = await harness.request('/api/events/event_photos_read/photos/photo_1/image?variant=original')
 
     expect(originalResponse.status).toBe(200)
-    expect(originalResponse.headers.get('content-type')).toBe('image/png')
-    expect(new Uint8Array(await originalResponse.arrayBuffer())).toEqual(pngSignatureBytes)
+    expect(originalResponse.headers.get('content-type')).toBe('image/webp')
+    expect(originalResponse.headers.get('cache-control')).toBe('private, no-store')
+    expect(originalResponse.headers.get('cloudflare-cdn-cache-control')).toBeNull()
+    expect(new Uint8Array(await originalResponse.arrayBuffer())).toEqual(previewBytes)
+    expect(transformCalls).toEqual([
+      {
+        width: 720,
+        height: 720,
+        fit: 'scale-down'
+      },
+      {
+        width: 2400,
+        height: 2400,
+        fit: 'scale-down'
+      }
+    ])
 
     const uploadForm = new FormData()
     uploadForm.append('file', new Blob([pngSignatureBytes], { type: 'image/png' }), 'blocked-upload.png')
@@ -5189,7 +5329,10 @@ describe('TASK-3.5 event CRUD routes', () => {
     })
 
     const createdPhotoId = uploadPayload.data[0].id as string
-    const storedPhotoObject = await eventImagesBucket.get(`events/event_photos_judge/photos/${createdPhotoId}`)
+    const storedPhoto = await harness.database.query.eventPhotos.findFirst({
+      where: eq(eventPhotos.id, createdPhotoId)
+    })
+    const storedPhotoObject = await eventImagesBucket.get(storedPhoto!.objectKey!)
 
     expect(storedPhotoObject).not.toBeNull()
     expect(new Uint8Array(await storedPhotoObject!.arrayBuffer())).toEqual(pngSignatureBytes)
@@ -5253,6 +5396,7 @@ describe('TASK-3.5 event CRUD routes', () => {
 
     const remainingPhotos = await harness.database.select().from(eventPhotos)
     expect(remainingPhotos).toEqual([])
+    expect(await eventImagesBucket.get(storedPhoto!.objectKey!)).toBeNull()
 
     const auditEntries = await harness.database.select().from(auditLogs)
     expect(auditEntries).toEqual([
@@ -5368,7 +5512,7 @@ describe('TASK-3.5 event CRUD routes', () => {
           isPubliclyVisible: false,
           isHighlighted: false,
           uploadedByUserId: 'staff_user',
-          previewUrl: expect.stringContaining(`v=${encodeURIComponent(capturedAt)}`)
+          previewUrl: expect.stringContaining('v=1')
         })
       ]
     })
@@ -5570,12 +5714,12 @@ describe('TASK-3.5 event CRUD routes', () => {
       createdAt: '2026-04-01T12:00:00.000Z'
     })
 
-    await eventImagesBucket.put('events/event_public_gallery/photos/photo_public', pngSignatureBytes, {
+    await eventImagesBucket.put('events/event_public_gallery/photos/photo_public/fixture-1', pngSignatureBytes, {
       httpMetadata: {
         contentType: 'image/png'
       }
     })
-    await eventImagesBucket.put('events/event_public_gallery/photos/photo_private', pngSignatureBytes, {
+    await eventImagesBucket.put('events/event_public_gallery/photos/photo_private/fixture-1', pngSignatureBytes, {
       httpMetadata: {
         contentType: 'image/png'
       }
@@ -5592,6 +5736,8 @@ describe('TASK-3.5 event CRUD routes', () => {
         contentType: 'image/png',
         width: 1600,
         height: 900,
+        objectKey: 'events/event_public_gallery/photos/photo_public/fixture-1',
+        imageRevision: 1,
         createdAt: '2026-04-01T12:00:00.000Z'
       },
       {
@@ -5604,6 +5750,8 @@ describe('TASK-3.5 event CRUD routes', () => {
         contentType: 'image/png',
         width: 1600,
         height: 900,
+        objectKey: 'events/event_public_gallery/photos/photo_private/fixture-1',
+        imageRevision: 1,
         createdAt: '2026-04-01T12:05:00.000Z'
       }
     ])
@@ -5621,14 +5769,14 @@ describe('TASK-3.5 event CRUD routes', () => {
           isPubliclyVisible: true,
           uploadedByUserId: null,
           uploadedBy: null,
-          previewUrl: '/api/public/events/public-gallery-event/photos/photo_public/image?variant=preview&v=0',
-          originalUrl: '/api/public/events/public-gallery-event/photos/photo_public/image?variant=original&v=0'
+          previewUrl: '/api/public/events/public-gallery-event/photos/photo_public/image?variant=preview&v=1',
+          originalUrl: '/api/public/events/public-gallery-event/photos/photo_public/image?variant=original&v=1'
         }
       ]
     })
     expect(listPayload.data[0]).not.toHaveProperty('isHighlighted')
 
-    const previewResponse = await harness.request('/api/public/events/public-gallery-event/photos/photo_public/image?variant=preview&v=0')
+    const previewResponse = await harness.request('/api/public/events/public-gallery-event/photos/photo_public/image?variant=preview&v=1')
 
     expect(previewResponse.status).toBe(200)
     expect(previewResponse.headers.get('content-type')).toBe('image/webp')
@@ -5637,7 +5785,7 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect(previewResponse.headers.get('vary')).toBeNull()
     expect(new Uint8Array(await previewResponse.arrayBuffer())).toEqual(previewBytes)
 
-    const originalResponse = await harness.request('/api/public/events/public-gallery-event/photos/photo_public/image?variant=original&v=0')
+    const originalResponse = await harness.request('/api/public/events/public-gallery-event/photos/photo_public/image?variant=original&v=1')
 
     expect(originalResponse.status).toBe(200)
     expect(originalResponse.headers.get('content-type')).toBe('image/webp')
@@ -5671,9 +5819,9 @@ describe('TASK-3.5 event CRUD routes', () => {
     const hiddenEvent = await harness.database.query.events.findFirst({
       where: eq(events.id, 'event_public_gallery')
     })
-    expect(hiddenEvent?.mediaRevision).toBe(1)
+    expect(hiddenEvent?.publicContentRevision).toBe(1)
 
-    const staleVisibilityResponse = await harness.request('/api/public/events/public-gallery-event/photos/photo_public/image?variant=preview&v=0')
+    const staleVisibilityResponse = await harness.request('/api/public/events/public-gallery-event/photos/photo_public/image?variant=preview&v=1')
 
     expect(staleVisibilityResponse.status).toBe(404)
 
@@ -5691,19 +5839,21 @@ describe('TASK-3.5 event CRUD routes', () => {
     const restoredEvent = await harness.database.query.events.findFirst({
       where: eq(events.id, 'event_public_gallery')
     })
-    expect(restoredEvent?.mediaRevision).toBe(2)
+    expect(restoredEvent?.publicContentRevision).toBe(2)
 
-    const deleteVersionedUrl = '/api/public/events/public-gallery-event/photos/photo_public/image?variant=preview&v=2'
-    expect((await harness.request(deleteVersionedUrl)).status).toBe(200)
+    const staleRestoredUrl = '/api/public/events/public-gallery-event/photos/photo_public/image?variant=preview&v=1'
+    expect((await harness.request(staleRestoredUrl)).status).toBe(404)
+    const currentRestoredUrl = '/api/public/events/public-gallery-event/photos/photo_public/image?variant=preview&v=3'
+    expect((await harness.request(currentRestoredUrl)).status).toBe(200)
 
     const deleteResponse = await harness.request('/api/events/event_public_gallery/photos/photo_public', {
       method: 'DELETE'
     })
 
     expect(deleteResponse.status).toBe(200)
-    expect((await harness.request(deleteVersionedUrl)).status).toBe(404)
+    expect((await harness.request(currentRestoredUrl)).status).toBe(404)
 
-    const hiddenPhotoResponse = await harness.request('/api/public/events/public-gallery-event/photos/photo_private/image?variant=original&v=0')
+    const hiddenPhotoResponse = await harness.request('/api/public/events/public-gallery-event/photos/photo_private/image?variant=original&v=1')
 
     expect(hiddenPhotoResponse.status).toBe(404)
   })
@@ -6123,7 +6273,7 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect(hiddenEvent?.hiddenAt).toEqual(expect.any(String))
     expect(hiddenEvent?.hiddenByUserId).toBe('event_admin')
     expect(hiddenEvent?.hiddenReason).toBe('Incorrect public details')
-    expect(hiddenEvent?.mediaRevision).toBe(1)
+    expect(hiddenEvent?.publicContentRevision).toBe(1)
 
     const unhideResponse = await harness.request('/api/events/event_hide_action/actions/unhide', {
       method: 'POST'
@@ -6150,7 +6300,7 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect(restoredEvent?.hiddenAt).toBeNull()
     expect(restoredEvent?.hiddenByUserId).toBeNull()
     expect(restoredEvent?.hiddenReason).toBeNull()
-    expect(restoredEvent?.mediaRevision).toBe(2)
+    expect(restoredEvent?.publicContentRevision).toBe(2)
     expect(auditEntries).toEqual([
       expect.objectContaining({
         actorUserId: 'event_admin',

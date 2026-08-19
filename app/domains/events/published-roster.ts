@@ -18,7 +18,7 @@ export interface PublishedEventRosterMember {
   xProfileUrl: string | null
   linkedinProfileUrl: string | null
   githubProfileUrl: string | null
-  profileIconUpdatedAt: string | null
+  profileIconRevision: number | null
   staffTrack?: PublishedEventStaffTrack | null
 }
 

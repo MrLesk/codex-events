@@ -300,7 +300,7 @@ function getParticipantAvatarAlt(application: AdminApplicationRecord) {
 function getParticipantProfileIconHref(application: AdminApplicationRecord) {
   return buildProfileIconHref(
     application.userId,
-    application.user?.profileIconUpdatedAt,
+    application.user?.profileIconRevision,
     eventId.value
   )
 }

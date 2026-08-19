@@ -55,12 +55,12 @@ export interface AccountEventEntryEvent extends Record<string, unknown> {
   agendaItems: AccountEventEntryAgendaItem[]
   tracks: AccountEventEntryTrack[]
   backgroundImageUrl: string | null
-  backgroundImageRevision: string | number
+  backgroundImageRevision: number
   displayBackgroundImageUrl: string | null
-  displayBackgroundImageRevision: string | number | null
+  displayBackgroundImageRevision: number | null
   bannerImageUrl: string | null
-  bannerImageRevision: string | number
-  publicContentRevision: string | number
+  bannerImageRevision: number
+  publicContentRevision: number
   lumaEventUrl: string | null
   city: string
   country: string

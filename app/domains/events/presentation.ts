@@ -68,6 +68,7 @@ export interface PublicEvent {
   backgroundImageUrl: string | null
   displayBackgroundImageUrl: string | null
   bannerImageUrl: string | null
+  publicContentRevision: number
   lumaEventUrl?: string | null
   city: string
   country: string
@@ -149,9 +150,24 @@ export interface EventImageSource {
   bannerImageUrl: string | null
 }
 
+export interface EventImageVersions {
+  background: string | number | null | undefined
+  banner: string | number | null | undefined
+}
+
+export function resolveEventImageVersion(
+  version: string | number | EventImageVersions | null | undefined,
+  variant: 'background' | 'banner'
+) {
+  return typeof version === 'object' && version !== null
+    ? version[variant]
+    : version
+}
+
 export function buildVersionedEventImageUrl(
   imageUrl: string | null | undefined,
-  version: string | number | null | undefined
+  version: string | number | null | undefined,
+  variant: 'background' | 'banner'
 ) {
   const normalizedImageUrl = imageUrl?.trim() ?? ''
   const normalizedVersion = version === null || version === undefined ? '' : String(version).trim()
@@ -163,9 +179,28 @@ export function buildVersionedEventImageUrl(
   const hashIndex = normalizedImageUrl.indexOf('#')
   const urlWithoutHash = hashIndex === -1 ? normalizedImageUrl : normalizedImageUrl.slice(0, hashIndex)
   const hash = hashIndex === -1 ? '' : normalizedImageUrl.slice(hashIndex)
-  const separator = urlWithoutHash.includes('?') ? '&' : '?'
+  const queryIndex = urlWithoutHash.indexOf('?')
+  const base = queryIndex === -1 ? urlWithoutHash : urlWithoutHash.slice(0, queryIndex)
+  const query = queryIndex === -1 ? '' : urlWithoutHash.slice(queryIndex + 1)
+  const params = new URLSearchParams(query)
 
-  return `${urlWithoutHash}${separator}v=${encodeURIComponent(normalizedVersion)}${hash}`
+  let pathname = ''
+  try {
+    pathname = new URL(base, 'https://codex-events.invalid').pathname
+  } catch {
+    pathname = ''
+  }
+
+  if (
+    /^\/api\/public\/events\/[^/]+\/images\/(background|banner)$/.test(pathname)
+    || pathname === '/api/public/platform/event-default-background-image'
+  ) {
+    params.set('variant', variant)
+  }
+
+  params.set('v', normalizedVersion)
+
+  return `${base}?${params.toString()}${hash}`
 }
 
 export function resolveEventDetailBackgroundImageUrl(event: EventImageSource) {

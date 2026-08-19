@@ -91,6 +91,12 @@ describe('MCP application operation registry', () => {
     const patchOutput = z.toJSONSchema(patchAccount.outputSchema)
     expect(JSON.stringify(patchOutput)).toContain('displayName')
     expect(JSON.stringify(patchOutput)).toContain('profileIconUpdatedAt')
+    expect(JSON.stringify(patchOutput)).toContain('profileIconRevision')
+
+    const publicEventsOutput = getApplicationOperation('get.public.events')!.outputSchema
+    expect(JSON.stringify(z.toJSONSchema(publicEventsOutput))).toContain('publicContentRevision')
+    expect(JSON.stringify(z.toJSONSchema(publicEventsOutput))).toContain('backgroundImageUrl')
+    expect(JSON.stringify(z.toJSONSchema(publicEventsOutput))).not.toContain('mediaRevision')
 
     const talkList = getApplicationOperation('get.events.by-eventId.talk-proposals')!
     const talkInput = z.toJSONSchema(talkList.inputSchema)
@@ -137,6 +143,10 @@ describe('MCP application operation registry', () => {
     const generatedOutputSource = await readFile(join(process.cwd(), 'server/application/operations/generated-output-schemas.ts'), 'utf8')
     expect(generatedOutputSource).not.toMatch(/z\.(?:any|unknown|json)\(/u)
     expect(generatedOutputSource).not.toContain('additionalProperties":true')
+    expect(generatedOutputSource).toContain('backgroundImageRevision')
+    expect(generatedOutputSource).toContain('bannerImageRevision')
+    expect(generatedOutputSource).toContain('profileIconRevision')
+    expect(generatedOutputSource).not.toContain('mediaRevision')
     expect(generatedOutputSource).toBe(generateOutputSchemaSource())
   }, 15_000)
 

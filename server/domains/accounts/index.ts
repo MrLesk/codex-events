@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import type { AuthenticatedIdentityActor } from '#server/auth/actor'
@@ -167,6 +167,7 @@ export function serializePlatformUser(user: PlatformUserRecord) {
     lumaEmail: user.lumaEmail,
     lumaUsername: user.lumaUsername,
     profileIconUpdatedAt: user.profileIconUpdatedAt,
+    profileIconRevision: user.profileIconObjectKey ? user.profileIconRevision : null,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
     deletedAt: user.deletedAt
@@ -204,6 +205,8 @@ function buildPlatformAccountInsert(
     lumaEmail: null,
     lumaUsername: null,
     profileIconUpdatedAt: null,
+    profileIconObjectKey: null,
+    profileIconRevision: 0,
     createdAt,
     updatedAt: createdAt,
     deletedAt: null
@@ -507,10 +510,15 @@ export async function updatePlatformAccountProfile(
   return serializePlatformUser(updatedUser!)
 }
 
-export async function updatePlatformAccountProfileIconTimestamp(
+export async function updatePlatformAccountProfileIcon(
   database: AppDatabase,
   userId: string,
-  profileIconUpdatedAt: string | null
+  input: {
+    profileIconUpdatedAt: string | null
+    profileIconObjectKey: string | null
+    expectedProfileIconRevision: number
+    expectedProfileIconObjectKey: string | null
+  }
 ) {
   const existingUser = await database.query.users.findFirst({
     where: eq(users.id, userId)
@@ -527,14 +535,32 @@ export async function updatePlatformAccountProfileIconTimestamp(
 
   const updatedAt = new Date().toISOString()
   const patch = {
-    profileIconUpdatedAt,
+    profileIconUpdatedAt: input.profileIconUpdatedAt,
+    profileIconObjectKey: input.profileIconObjectKey,
+    profileIconRevision: sql`${users.profileIconRevision} + 1`,
     updatedAt
-  } satisfies Partial<typeof users.$inferInsert>
+  }
 
-  await database
+  const [updatedUserRow] = await database
     .update(users)
     .set(patch)
-    .where(eq(users.id, userId))
+    .where(and(
+      eq(users.id, userId),
+      eq(users.profileIconRevision, input.expectedProfileIconRevision),
+      input.expectedProfileIconObjectKey
+        ? eq(users.profileIconObjectKey, input.expectedProfileIconObjectKey)
+        : isNull(users.profileIconObjectKey)
+    ))
+    .returning({ id: users.id })
+
+  assertGuard(Boolean(updatedUserRow), {
+    statusCode: 409,
+    code: 'profile_icon_changed',
+    message: 'The profile icon changed while this request was in progress.',
+    details: {
+      userId
+    }
+  })
 
   await writeAuditLog(database, {
     actorUserId: userId,
@@ -583,6 +609,8 @@ export function buildDeletedUserPatch(userId: string, deletedAt: string) {
     lumaEmail: null,
     lumaUsername: null,
     profileIconUpdatedAt: null,
+    profileIconObjectKey: null,
+    profileIconRevision: 0,
     updatedAt: deletedAt,
     deletedAt
   } satisfies Partial<typeof users.$inferInsert>

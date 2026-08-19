@@ -1,8 +1,9 @@
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 
 import { writeAuditLog } from '#server/database/audit-log'
 import type { AppDatabase } from '#server/database/client'
 import { platformSettings } from '#server/database/schema'
+import { assertGuard } from '#server/domains/lifecycle-guard'
 import {
   buildVersionedPublicEventImageUrl,
   isManagedPublicEventImageUrl
@@ -15,7 +16,12 @@ type PlatformSettingsRecord = typeof platformSettings.$inferSelect
 export interface EventDisplayImageOptions {
   defaultEventBackgroundImageUrl?: string | null
   defaultEventBackgroundImageObjectKey?: string | null
-  defaultEventBackgroundImageRevision?: string | number | null
+  defaultEventBackgroundImageRevision?: number | null
+}
+
+export interface PlatformDefaultEventBackgroundImageExpectation {
+  revision: number
+  objectKey: string | null
 }
 
 export function serializePlatformSettings(settings: PlatformSettingsRecord) {
@@ -55,6 +61,51 @@ export function resolveEventDisplayBackgroundImageUrl(
   return defaultEventBackgroundImageUrl || null
 }
 
+export function resolveVersionedEventDisplayBackgroundImageUrl(
+  event: {
+    backgroundImageUrl: string | null
+    backgroundImageObjectKey?: string | null
+    backgroundImageRevision?: number | null
+  },
+  options: EventDisplayImageOptions = {}
+) {
+  const eventBackgroundImageUrl = event.backgroundImageUrl?.trim()
+
+  if (eventBackgroundImageUrl) {
+    if (!isManagedPublicEventImageUrl(eventBackgroundImageUrl)) {
+      return eventBackgroundImageUrl
+    }
+
+    return event.backgroundImageObjectKey && event.backgroundImageRevision && event.backgroundImageRevision > 0
+      ? buildVersionedPublicEventImageUrl(
+          eventBackgroundImageUrl,
+          event.backgroundImageRevision,
+          'background'
+        )
+      : null
+  }
+
+  const defaultEventBackgroundImageUrl = options.defaultEventBackgroundImageUrl?.trim()
+
+  if (!defaultEventBackgroundImageUrl) {
+    return null
+  }
+
+  if (!isManagedPublicEventImageUrl(defaultEventBackgroundImageUrl)) {
+    return defaultEventBackgroundImageUrl
+  }
+
+  return options.defaultEventBackgroundImageObjectKey
+    && options.defaultEventBackgroundImageRevision
+    && options.defaultEventBackgroundImageRevision > 0
+    ? buildVersionedPublicEventImageUrl(
+        defaultEventBackgroundImageUrl,
+        options.defaultEventBackgroundImageRevision,
+        'background'
+      )
+    : null
+}
+
 export async function getPlatformSettings(database: AppDatabase) {
   return await database.query.platformSettings.findFirst({
     where: eq(platformSettings.id, platformSettingsId)
@@ -75,7 +126,8 @@ export async function setDefaultEventBackgroundImageUrl(
   database: AppDatabase,
   defaultEventBackgroundImageUrl: string,
   defaultEventBackgroundImageObjectKey: string,
-  actorUserId: string
+  actorUserId: string,
+  expected: PlatformDefaultEventBackgroundImageExpectation
 ) {
   const now = new Date().toISOString()
   const existingSettings = await getPlatformSettings(database)
@@ -86,19 +138,42 @@ export async function setDefaultEventBackgroundImageUrl(
   }
 
   if (existingSettings) {
-    await database
+    const [updatedSettings] = await database
       .update(platformSettings)
       .set({
         ...values,
         defaultEventBackgroundImageRevision: sql`${platformSettings.defaultEventBackgroundImageRevision} + 1`
       })
-      .where(eq(platformSettings.id, platformSettingsId))
+      .where(and(
+        eq(platformSettings.id, platformSettingsId),
+        eq(platformSettings.defaultEventBackgroundImageRevision, expected.revision),
+        expected.objectKey
+          ? eq(platformSettings.defaultEventBackgroundImageObjectKey, expected.objectKey)
+          : isNull(platformSettings.defaultEventBackgroundImageObjectKey)
+      ))
+      .returning({ id: platformSettings.id })
+
+    assertGuard(Boolean(updatedSettings), {
+      statusCode: 409,
+      code: 'platform_default_event_background_image_changed',
+      message: 'The platform default event background image changed while this request was in progress.'
+    })
   } else {
-    await database.insert(platformSettings).values({
-      id: platformSettingsId,
-      ...values,
-      defaultEventBackgroundImageRevision: 1,
-      createdAt: now
+    const [insertedSettings] = await database
+      .insert(platformSettings)
+      .values({
+        id: platformSettingsId,
+        ...values,
+        defaultEventBackgroundImageRevision: 1,
+        createdAt: now
+      })
+      .onConflictDoNothing({ target: platformSettings.id })
+      .returning({ id: platformSettings.id })
+
+    assertGuard(Boolean(insertedSettings), {
+      statusCode: 409,
+      code: 'platform_default_event_background_image_changed',
+      message: 'The platform default event background image changed while this request was in progress.'
     })
   }
 
@@ -117,7 +192,8 @@ export async function setDefaultEventBackgroundImageUrl(
 
 export async function clearDefaultEventBackgroundImageUrl(
   database: AppDatabase,
-  actorUserId: string
+  actorUserId: string,
+  expected: PlatformDefaultEventBackgroundImageExpectation
 ) {
   const existingSettings = await getPlatformSettings(database)
 
@@ -125,7 +201,7 @@ export async function clearDefaultEventBackgroundImageUrl(
     return null
   }
 
-  await database
+  const [updatedSettings] = await database
     .update(platformSettings)
     .set({
       defaultEventBackgroundImageUrl: null,
@@ -133,7 +209,20 @@ export async function clearDefaultEventBackgroundImageUrl(
       updatedAt: new Date().toISOString(),
       defaultEventBackgroundImageRevision: sql`${platformSettings.defaultEventBackgroundImageRevision} + 1`
     })
-    .where(eq(platformSettings.id, platformSettingsId))
+    .where(and(
+      eq(platformSettings.id, platformSettingsId),
+      eq(platformSettings.defaultEventBackgroundImageRevision, expected.revision),
+      expected.objectKey
+        ? eq(platformSettings.defaultEventBackgroundImageObjectKey, expected.objectKey)
+        : isNull(platformSettings.defaultEventBackgroundImageObjectKey)
+    ))
+    .returning({ id: platformSettings.id })
+
+  assertGuard(Boolean(updatedSettings), {
+    statusCode: 409,
+    code: 'platform_default_event_background_image_changed',
+    message: 'The platform default event background image changed while this request was in progress.'
+  })
 
   await writeAuditLog(database, {
     actorUserId,

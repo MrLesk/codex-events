@@ -12,6 +12,7 @@ import EventTalkProposalControl from '~/components/admin/EventTalkProposalContro
 
 import type { EventFormState } from '~/domains/events/admin-event'
 import type { EventRecord } from '~/domains/events/records'
+import type { EventImageVersions } from '~/domains/events/presentation'
 import type { EventProgramSettingsMode } from '~/domains/events/program-settings'
 
 import {
@@ -60,7 +61,7 @@ const props = defineProps<{
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
   bannerImageUploadError?: string
-  imageVersion?: string | number | null
+  imageVersion?: string | number | EventImageVersions | null
   eventId?: string | null
   persistedSimplifiedClaimingEnabled?: boolean
   persistedTalkProposalsEnabled?: boolean

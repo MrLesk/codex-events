@@ -243,8 +243,8 @@ describe('event photo utilities', () => {
       }
     ])
     expect(arrayBuffer).not.toHaveBeenCalled()
-    expect(previewResponse.headers.get('cache-control')).toBe('public, max-age=30, must-revalidate')
-    expect(originalResponse.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, must-revalidate')
+    expect(previewResponse.headers.get('cache-control')).toBe('public, max-age=30, stale-if-error=0')
+    expect(originalResponse.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-if-error=0')
     expect(privateFullDisplayResponse.headers.get('cache-control')).toBe('private, no-store')
     expect(privateFullDisplayResponse.headers.get('vary')).toBe('Cookie')
   })

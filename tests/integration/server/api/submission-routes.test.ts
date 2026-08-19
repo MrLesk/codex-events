@@ -654,8 +654,12 @@ describe('TASK-3.7 submission routes', () => {
     const storedSubmission = await harness.database.query.submissions.findFirst({
       where: eq(submissions.id, 'submission_1')
     })
+    const storedEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_1')
+    })
 
     expect(storedSubmission?.isPubliclyVisible).toBe(true)
+    expect(storedEvent?.publicContentRevision).toBe(1)
   })
 
   test('public visibility toggle stays unavailable before completion and for winner teams', async () => {

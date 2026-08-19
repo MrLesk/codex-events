@@ -457,6 +457,7 @@ onBeforeUnmount(() => {
               class="group overflow-hidden rounded-2xl border border-black/8 bg-white/80 shadow-[0_18px_50px_-28px_rgba(15,23,42,0.35)] dark:border-white/[0.08] dark:bg-[#111111]"
             >
               <a
+                v-if="photo.originalUrl && photo.previewUrl"
                 :href="photo.originalUrl"
                 :data-photoswipe-photo="photo.id"
                 :data-pswp-width="photo.width"

@@ -2102,6 +2102,10 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
 
     expect(response.status).toBe(200)
+    const announcedEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_1')
+    })
+    expect(announcedEvent?.publicContentRevision).toBe(1)
     expect(queueProducer.send).toHaveBeenCalledTimes(3)
     expect(queueProducer.send).toHaveBeenCalledWith(expect.objectContaining({
       notificationType: 'winner',
@@ -2273,7 +2277,8 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         xProfileUrl: 'https://x.com/team-admin-one',
         linkedinProfileUrl: 'https://linkedin.com/in/team-admin-one',
         githubProfileUrl: 'https://github.com/team-admin-one',
-        profileIconUpdatedAt: '2026-03-18T13:00:00.000Z'
+        profileIconUpdatedAt: '2026-03-18T13:00:00.000Z',
+        profileIconRevision: 1
       })
       .where(eq(users.id, 'team_admin_one'))
     await seedPitchAssignments(publicHarness, [
@@ -2347,7 +2352,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
               xProfileUrl: 'https://x.com/team-admin-one',
               linkedinProfileUrl: 'https://linkedin.com/in/team-admin-one',
               githubProfileUrl: 'https://github.com/team-admin-one',
-              profileIconUrl: '/api/public/events/outcome-event/winners/team_admin_one/profile-icon?v=2026-03-18T13%3A00%3A00.000Z'
+              profileIconUrl: '/api/public/events/outcome-event/winners/team_admin_one/profile-icon?v=1'
             })
           ])
         }),
@@ -2469,6 +2474,10 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
 
     expect(response.status).toBe(200)
+    const completedEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_1')
+    })
+    expect(completedEvent?.publicContentRevision).toBe(1)
     expect(queueProducer.send).toHaveBeenCalledTimes(3)
     expect(queueProducer.send).toHaveBeenCalledWith(expect.objectContaining({
       notificationType: 'winner',

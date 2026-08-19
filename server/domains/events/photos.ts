@@ -683,6 +683,17 @@ export async function deleteEventPhotoObject(
   await getEventImagesBucket(event).delete(objectKey)
 }
 
+export async function deleteEventPhotoObjectBestEffort(event: H3Event, objectKey: string) {
+  try {
+    await deleteEventPhotoObject(event, objectKey)
+  } catch (error) {
+    console.error('Unable to delete an unreferenced event photo object.', {
+      objectKey,
+      error
+    })
+  }
+}
+
 export async function getEventPhotoRecordOrThrow(
   database: AppDatabase,
   eventId: string,

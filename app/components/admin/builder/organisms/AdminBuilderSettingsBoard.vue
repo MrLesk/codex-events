@@ -2,6 +2,7 @@
 import { Switch as UiSwitch } from '~/components/ui/switch'
 import type { TermsDocument, EventRecord } from '~/domains/events/records'
 import type { EventFormState, EventFormTrack } from '~/domains/events/admin-event'
+import type { EventImageVersions } from '~/domains/events/presentation'
 import {
   formatParticipantsLimitInput,
   parseParticipantsLimitInput
@@ -27,7 +28,7 @@ const props = defineProps<{
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
   bannerImageUploadError?: string
-  imageVersion?: string | number | null
+  imageVersion?: string | number | EventImageVersions | null
   currentApplicationTerms?: TermsDocument | null
   currentWinnerTerms?: TermsDocument | null
   savingTermsDocumentType?: TermsDocument['documentType'] | null

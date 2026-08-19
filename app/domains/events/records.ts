@@ -61,9 +61,11 @@ export interface EventRecord {
   agendaItems: EventAgendaItem[]
   tracks?: EventTrack[]
   backgroundImageUrl: string | null
+  backgroundImageRevision: number
   displayBackgroundImageUrl: string | null
   bannerImageUrl: string | null
-  mediaRevision: number
+  bannerImageRevision: number
+  publicContentRevision: number
   discordServerUrl?: string | null
   lumaEventUrl: string | null
   slidesUrl?: string | null

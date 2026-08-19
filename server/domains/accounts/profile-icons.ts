@@ -182,3 +182,14 @@ export async function putProfileIconObject(
 export async function deleteProfileIconObject(event: H3Event, objectKey: string) {
   await getProfileIconsBucket(event).delete(objectKey)
 }
+
+export async function deleteProfileIconObjectBestEffort(event: H3Event, objectKey: string) {
+  try {
+    await deleteProfileIconObject(event, objectKey)
+  } catch (error) {
+    console.error('Unable to delete an unreferenced profile icon object.', {
+      objectKey,
+      error
+    })
+  }
+}

@@ -1304,7 +1304,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
 
         <LazyAdminEventCreateEditForm
           :initial-event="currentEvent"
-          :image-version="currentEvent.mediaRevision"
+          :image-version="{ background: currentEvent.backgroundImageRevision, banner: currentEvent.bannerImageRevision }"
           :can-upload-managed-images="true"
           :is-submitting="isSavingConfig"
           :mode="props.programSettingsMode"

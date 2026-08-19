@@ -6,10 +6,12 @@ import { getDatabase } from '#server/database/client'
 import {
   assertValidEventImagePart,
   buildPublicPlatformDefaultEventBackgroundImageUrl,
+  deletePlatformDefaultEventBackgroundImageObjectBestEffort,
   platformDefaultEventBackgroundImageObjectKey,
   putPlatformDefaultEventBackgroundImageObject
 } from '#server/domains/events/images'
 import {
+  getPlatformSettings,
   serializePlatformSettings,
   setDefaultEventBackgroundImageUrl
 } from '#server/domains/platform/settings'
@@ -26,6 +28,8 @@ export default defineApiHandler(async (h3Event) => {
   const filePart = multipart?.find(part => part.name === 'file')
   const validFile = assertValidEventImagePart(filePart ?? {})
   const objectKey = platformDefaultEventBackgroundImageObjectKey()
+  const database = getDatabase(h3Event)
+  const existingSettings = await getPlatformSettings(database)
 
   await putPlatformDefaultEventBackgroundImageObject(h3Event, objectKey, {
     contentType: validFile.contentType,
@@ -33,11 +37,22 @@ export default defineApiHandler(async (h3Event) => {
   })
 
   const settings = await setDefaultEventBackgroundImageUrl(
-    getDatabase(h3Event),
+    database,
     buildPublicPlatformDefaultEventBackgroundImageUrl(h3Event),
     objectKey,
-    actor.platformUser.id
+    actor.platformUser.id,
+    {
+      revision: existingSettings?.defaultEventBackgroundImageRevision ?? 0,
+      objectKey: existingSettings?.defaultEventBackgroundImageObjectKey ?? null
+    }
   )
+
+  if (existingSettings?.defaultEventBackgroundImageObjectKey) {
+    await deletePlatformDefaultEventBackgroundImageObjectBestEffort(
+      h3Event,
+      existingSettings.defaultEventBackgroundImageObjectKey
+    )
+  }
 
   return apiData(serializePlatformSettings(settings))
 })

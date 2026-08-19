@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import type { EventFormState } from '~/domains/events/admin-event'
 
-import { buildVersionedEventImageUrl } from '~/domains/events/presentation'
+import {
+  buildVersionedEventImageUrl,
+  resolveEventImageVersion,
+  type EventImageVersions
+} from '~/domains/events/presentation'
 import { getCountryOptions } from '~/utils/country-options'
 
 const form = defineModel<EventFormState>('form', {
@@ -15,7 +19,7 @@ const props = defineProps<{
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
   bannerImageUploadError?: string
-  imageVersion?: string | number | null
+  imageVersion?: string | number | EventImageVersions | null
 }>()
 
 const emit = defineEmits<{
@@ -31,10 +35,18 @@ const bannerImageInput = ref<HTMLInputElement | null>(null)
 const managedBackgroundImageUrl = computed(() => form.value.backgroundImageUrl.trim())
 const managedBannerImageUrl = computed(() => form.value.bannerImageUrl.trim())
 const managedBackgroundImagePreviewUrl = computed(() =>
-  buildVersionedEventImageUrl(managedBackgroundImageUrl.value, props.imageVersion)
+  buildVersionedEventImageUrl(
+    managedBackgroundImageUrl.value,
+    resolveEventImageVersion(props.imageVersion, 'background'),
+    'background'
+  )
 )
 const managedBannerImagePreviewUrl = computed(() =>
-  buildVersionedEventImageUrl(managedBannerImageUrl.value, props.imageVersion)
+  buildVersionedEventImageUrl(
+    managedBannerImageUrl.value,
+    resolveEventImageVersion(props.imageVersion, 'banner'),
+    'banner'
+  )
 )
 const showBackgroundImageSection = computed(() =>
   Boolean(props.canUploadManagedImages || managedBackgroundImageUrl.value)

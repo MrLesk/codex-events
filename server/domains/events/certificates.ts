@@ -17,7 +17,7 @@ import {
 } from '#server/domains/events'
 import {
   getEventDisplayImageOptions,
-  resolveEventDisplayBackgroundImageUrl
+  resolveVersionedEventDisplayBackgroundImageUrl
 } from '#server/domains/platform/settings'
 import { getTeamCompetitionOutcome } from '#server/domains/outcomes'
 import { ApiError } from '#server/http/api-error'
@@ -166,7 +166,7 @@ export async function getEventCertificateOrThrow(
       participantName,
       applicationId: application.id
     }),
-    backgroundImageUrl: resolveEventDisplayBackgroundImageUrl(event, imageOptions)
+    backgroundImageUrl: resolveVersionedEventDisplayBackgroundImageUrl(event, imageOptions)
   }
 }
 
@@ -204,6 +204,6 @@ export async function getEventCertificatePreview(
       participantName: query.name,
       applicationId: 'preview'
     }),
-    backgroundImageUrl: resolveEventDisplayBackgroundImageUrl(event, imageOptions)
+    backgroundImageUrl: resolveVersionedEventDisplayBackgroundImageUrl(event, imageOptions)
   }
 }

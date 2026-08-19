@@ -93,19 +93,39 @@ export const applicationOperation = defineStructuredRouteOperation({
   // written, so classic edits of builder events keep the stored score honest.
   Object.assign(patch, computeEventBalanceColumns({ ...event, ...patch }))
 
-  const eventWriteWhere = body.talkProposalsEnabled === false && event.talkProposalsEnabled
-    ? and(
-        eq(events.id, eventId),
-        notExists(database.select({ id: talkProposals.id }).from(talkProposals).where(eq(talkProposals.eventId, eventId)))
-      )
-    : eq(events.id, eventId)
+  const mediaPointerChanged = Object.hasOwn(patch, 'backgroundImageRevision')
+    || Object.hasOwn(patch, 'bannerImageRevision')
+  const eventWritePredicates = [eq(events.id, eventId)]
+
+  if (Object.hasOwn(patch, 'backgroundImageRevision')) {
+    eventWritePredicates.push(eq(events.backgroundImageRevision, event.backgroundImageRevision))
+  }
+
+  if (Object.hasOwn(patch, 'bannerImageRevision')) {
+    eventWritePredicates.push(eq(events.bannerImageRevision, event.bannerImageRevision))
+  }
+
+  if (body.talkProposalsEnabled === false && event.talkProposalsEnabled) {
+    eventWritePredicates.push(
+      notExists(database.select({ id: talkProposals.id }).from(talkProposals).where(eq(talkProposals.eventId, eventId)))
+    )
+  }
+
   const [updatedEventWrite] = await database
     .update(events)
     .set(patch)
-    .where(eventWriteWhere)
+    .where(and(...eventWritePredicates))
     .returning({ id: events.id })
 
   if (!updatedEventWrite) {
+    assertGuard(!mediaPointerChanged, {
+      statusCode: 409,
+      code: 'event_image_changed',
+      message: 'An event image changed while this request was in progress.',
+      details: {
+        eventId
+      }
+    })
     assertTalkProposalConfigurationChangeAllowed(event, body, true)
   }
 

@@ -157,6 +157,7 @@ Behavior:
 - For Meetup and Build events, the registration-only lifecycle is finished.
 - For Hackathon events, the outcome is final.
 - Public and account-scoped Hackathon detail pages switch from `Prizes` to `Winners` and show the completed outcome showcase.
+- Completion rotates the event public-content revision before the completed public HTML/JSON and outcome showcase are served.
 - The completed winners showcase exposes one card per winning project with prize information, project links, and the published winning-team roster.
 - A separate published-projects section appears below the winners for locked non-winning submissions that team admins opted to show publicly after completion.
 - Completing the event also enqueues winner emails for frozen prize-eligible members of winning teams.

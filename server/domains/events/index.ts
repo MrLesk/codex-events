@@ -36,6 +36,8 @@ import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard
 import { ApiError } from '#server/http/api-error'
 import {
   buildVersionedPublicEventImageUrl,
+  getManagedPublicEventImagePath,
+  isManagedPublicEventImageUrl,
   publicEventImagePath
 } from '#server/domains/events/images'
 import {
@@ -1608,19 +1610,35 @@ export function buildEventUpdatePayload(
   assertEventApplicationFieldConfiguration(mergedEvent, existingEvent.id)
   assertSimplifiedClaimingConfiguration(mergedEvent, existingEvent.id)
 
-  const publicMediaChanged = (
-    normalizedPatch.backgroundImageUrl !== undefined
+  const backgroundImageChanged = normalizedPatch.backgroundImageUrl !== undefined
     && normalizedPatch.backgroundImageUrl !== existingEvent.backgroundImageUrl
-  ) || (
-    normalizedPatch.bannerImageUrl !== undefined
+  const bannerImageChanged = normalizedPatch.bannerImageUrl !== undefined
     && normalizedPatch.bannerImageUrl !== existingEvent.bannerImageUrl
-  )
+  const effectiveSlug = nextSlug ?? existingEvent.slug
+  const preservesBackgroundPointer = isManagedPublicEventImageUrl(normalizedPatch.backgroundImageUrl ?? '')
+    && getManagedPublicEventImagePath(normalizedPatch.backgroundImageUrl ?? '') === publicEventImagePath(effectiveSlug, 'background')
+  const preservesBannerPointer = isManagedPublicEventImageUrl(normalizedPatch.bannerImageUrl ?? '')
+    && getManagedPublicEventImagePath(normalizedPatch.bannerImageUrl ?? '') === publicEventImagePath(effectiveSlug, 'banner')
 
   return {
     ...normalizedPatch,
-    ...(publicMediaChanged
-      ? { mediaRevision: sql`${events.mediaRevision} + 1` }
+    ...(backgroundImageChanged
+      ? {
+          backgroundImageObjectKey: preservesBackgroundPointer
+            ? existingEvent.backgroundImageObjectKey
+            : null,
+          backgroundImageRevision: sql`${events.backgroundImageRevision} + 1`
+        }
       : {}),
+    ...(bannerImageChanged
+      ? {
+          bannerImageObjectKey: preservesBannerPointer
+            ? existingEvent.bannerImageObjectKey
+            : null,
+          bannerImageRevision: sql`${events.bannerImageRevision} + 1`
+        }
+      : {}),
+    publicContentRevision: sql`${events.publicContentRevision} + 1`,
     updatedAt: new Date().toISOString()
   }
 }
@@ -2124,9 +2142,16 @@ export function serializeEvent(
     description: event.description,
     agendaItems: parseEventAgendaItems(event.agendaItemsJson),
     backgroundImageUrl: event.backgroundImageUrl,
+    backgroundImageRevision: event.backgroundImageRevision,
     displayBackgroundImageUrl: resolveEventDisplayBackgroundImageUrl(event, options),
+    displayBackgroundImageRevision: event.backgroundImageUrl
+      ? event.backgroundImageRevision
+      : options.defaultEventBackgroundImageObjectKey
+        ? options.defaultEventBackgroundImageRevision ?? null
+        : null,
     bannerImageUrl: event.bannerImageUrl,
-    mediaRevision: event.mediaRevision,
+    bannerImageRevision: event.bannerImageRevision,
+    publicContentRevision: event.publicContentRevision,
     lumaEventUrl: event.lumaEventUrl,
     lumaEventApiId: event.lumaEventApiId,
     city: event.city,
@@ -2255,23 +2280,37 @@ export function serializePublicEvent(
   tracks?: EventTrackRecord[],
   options: EventDisplayImageOptions & { includeFullTrackDetails?: boolean } = {}
 ) {
-  const backgroundImageUrl = buildVersionedPublicEventImageUrl(
-    event.backgroundImageUrl,
-    event.mediaRevision,
-    'background'
-  )
-  const bannerImageUrl = buildVersionedPublicEventImageUrl(
-    event.bannerImageUrl,
-    event.mediaRevision,
-    'banner'
-  )
+  const isManagedBackgroundImage = isManagedPublicEventImageUrl(event.backgroundImageUrl ?? '')
+  const isManagedBannerImage = isManagedPublicEventImageUrl(event.bannerImageUrl ?? '')
+  const backgroundImageUrl = isManagedBackgroundImage
+    ? (event.backgroundImageObjectKey
+        ? buildVersionedPublicEventImageUrl(
+            event.backgroundImageUrl,
+            event.backgroundImageRevision,
+            'background'
+          )
+        : null)
+    : event.backgroundImageUrl?.trim() || null
+  const bannerImageUrl = isManagedBannerImage
+    ? (event.bannerImageObjectKey
+        ? buildVersionedPublicEventImageUrl(
+            event.bannerImageUrl,
+            event.bannerImageRevision,
+            'banner'
+          )
+        : null)
+    : event.bannerImageUrl?.trim() || null
   const displayBackgroundImageUrl = event.backgroundImageUrl
     ? backgroundImageUrl
-    : buildVersionedPublicEventImageUrl(
-        options.defaultEventBackgroundImageUrl,
-        options.defaultEventBackgroundImageVersion,
-        'background'
-      )
+    : options.defaultEventBackgroundImageObjectKey
+      ? buildVersionedPublicEventImageUrl(
+          options.defaultEventBackgroundImageUrl,
+          options.defaultEventBackgroundImageRevision,
+          'background'
+        )
+      : isManagedPublicEventImageUrl(options.defaultEventBackgroundImageUrl ?? '')
+        ? null
+        : options.defaultEventBackgroundImageUrl?.trim() || null
 
   return {
     eventType: event.eventType,
@@ -2289,6 +2328,7 @@ export function serializePublicEvent(
     backgroundImageUrl,
     displayBackgroundImageUrl,
     bannerImageUrl,
+    publicContentRevision: event.publicContentRevision,
     lumaEventUrl: event.lumaEventUrl,
     city: event.city,
     country: event.country,
@@ -2392,6 +2432,7 @@ export function serializePublishedEventRosterMember(
     linkedinProfileUrl: user.linkedinProfileUrl,
     githubProfileUrl: user.githubProfileUrl,
     profileIconUpdatedAt: user.profileIconUpdatedAt,
+    profileIconRevision: user.profileIconObjectKey ? user.profileIconRevision : null,
     ...(staffTrack !== undefined
       ? {
           staffTrack: staffTrack ? serializePublishedStaffTrack(staffTrack) : null
@@ -2404,9 +2445,12 @@ function buildPublicCompletedProjectProfileIconUrl(
   eventSlug: string,
   section: 'winners' | 'published-projects',
   userId: string,
-  profileIconUpdatedAt: string | null | undefined
+  profileIconRevision: number | null | undefined,
+  profileIconObjectKey: string | null | undefined
 ) {
-  const normalizedVersion = profileIconUpdatedAt?.trim()
+  const normalizedVersion = profileIconObjectKey && profileIconRevision && profileIconRevision > 0
+    ? String(profileIconRevision)
+    : null
 
   if (!normalizedVersion) {
     return null
@@ -2422,26 +2466,30 @@ function buildPublicCompletedProjectProfileIconUrl(
 export function buildPublicWinnerProfileIconUrl(
   eventSlug: string,
   userId: string,
-  profileIconUpdatedAt: string | null | undefined
+  profileIconRevision: number | null | undefined,
+  profileIconObjectKey: string | null | undefined
 ) {
   return buildPublicCompletedProjectProfileIconUrl(
     eventSlug,
     'winners',
     userId,
-    profileIconUpdatedAt
+    profileIconRevision,
+    profileIconObjectKey
   )
 }
 
 export function buildPublicPublishedProjectProfileIconUrl(
   eventSlug: string,
   userId: string,
-  profileIconUpdatedAt: string | null | undefined
+  profileIconRevision: number | null | undefined,
+  profileIconObjectKey: string | null | undefined
 ) {
   return buildPublicCompletedProjectProfileIconUrl(
     eventSlug,
     'published-projects',
     userId,
-    profileIconUpdatedAt
+    profileIconRevision,
+    profileIconObjectKey
   )
 }
 
@@ -2461,7 +2509,8 @@ export function serializeEventWinnerTeamMember(
     profileIconUrl: buildPublicWinnerProfileIconUrl(
       eventSlug,
       user.id,
-      user.profileIconUpdatedAt
+      user.profileIconRevision,
+      user.profileIconObjectKey
     )
   }
 }
@@ -2482,7 +2531,8 @@ export function serializeEventPublishedProjectTeamMember(
     profileIconUrl: buildPublicPublishedProjectProfileIconUrl(
       eventSlug,
       user.id,
-      user.profileIconUpdatedAt
+      user.profileIconRevision,
+      user.profileIconObjectKey
     )
   }
 }

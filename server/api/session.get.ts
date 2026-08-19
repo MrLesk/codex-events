@@ -59,6 +59,7 @@ export default defineApiHandler(async (h3Event) => {
         lumaEmail: actor.platformUser.lumaEmail,
         lumaUsername: actor.platformUser.lumaUsername,
         profileIconUpdatedAt: actor.platformUser.profileIconUpdatedAt,
+        profileIconRevision: actor.platformUser.profileIconRevision,
         createdAt: actor.platformUser.createdAt,
         updatedAt: actor.platformUser.updatedAt,
         deletedAt: actor.platformUser.deletedAt

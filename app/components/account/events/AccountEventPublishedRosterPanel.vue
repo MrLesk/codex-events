@@ -165,7 +165,7 @@ const currentPlatformUserId = computed(() =>
 function getMemberProfileIconHref(member: PublishedEventRosterMember) {
   return buildProfileIconHref(
     member.id,
-    member.profileIconUpdatedAt,
+    member.profileIconRevision,
     props.eventId
   )
 }

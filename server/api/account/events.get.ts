@@ -81,7 +81,14 @@ function serializeEventParticipation(
     name: event.name,
     description: event.description,
     state: event.state,
-    mediaRevision: event.mediaRevision,
+    backgroundImageRevision: event.backgroundImageRevision,
+    bannerImageRevision: event.bannerImageRevision,
+    displayBackgroundImageRevision: event.backgroundImageUrl
+      ? event.backgroundImageRevision
+      : imageOptions.defaultEventBackgroundImageObjectKey
+        ? imageOptions.defaultEventBackgroundImageRevision ?? null
+        : null,
+    publicContentRevision: event.publicContentRevision,
     city: event.city,
     country: event.country,
     address: showRestrictedDetails ? event.address : '',

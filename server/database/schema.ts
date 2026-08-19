@@ -80,6 +80,8 @@ export const users = sqliteTable(
     lumaEmail: text('luma_email'),
     lumaUsername: text('luma_username'),
     profileIconUpdatedAt: text('profile_icon_updated_at'),
+    profileIconObjectKey: text('profile_icon_object_key'),
+    profileIconRevision: integer('profile_icon_revision').notNull().default(0),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn(),
     deletedAt: text('deleted_at')
@@ -145,8 +147,12 @@ export const events = sqliteTable(
     description: text('description').notNull(),
     agendaItemsJson: text('agenda_items_json').notNull().default('[]'),
     backgroundImageUrl: text('background_image_url'),
+    backgroundImageObjectKey: text('background_image_object_key'),
+    backgroundImageRevision: integer('background_image_revision').notNull().default(0),
     bannerImageUrl: text('banner_image_url'),
-    mediaRevision: integer('media_revision').notNull().default(0),
+    bannerImageObjectKey: text('banner_image_object_key'),
+    bannerImageRevision: integer('banner_image_revision').notNull().default(0),
+    publicContentRevision: integer('public_content_revision').notNull().default(0),
     discordServerUrl: text('discord_server_url'),
     lumaEventUrl: text('luma_event_url'),
     slidesUrl: text('slides_url'),
@@ -308,6 +314,8 @@ export const eventPhotos = sqliteTable(
     uploadedByUserId: text('uploaded_by_user_id')
       .notNull()
       .references(() => users.id),
+    objectKey: text('object_key'),
+    imageRevision: integer('image_revision').notNull().default(0),
     fileName: text('file_name'),
     isPubliclyVisible: integer('is_publicly_visible', { mode: 'boolean' }).notNull().default(false),
     isHighlighted: integer('is_highlighted', { mode: 'boolean' }).notNull().default(false),
@@ -488,7 +496,8 @@ export const platformSettings = sqliteTable(
   {
     id: text('id').primaryKey(),
     defaultEventBackgroundImageUrl: text('default_event_background_image_url'),
-    mediaRevision: integer('media_revision').notNull().default(0),
+    defaultEventBackgroundImageObjectKey: text('default_event_background_image_object_key'),
+    defaultEventBackgroundImageRevision: integer('default_event_background_image_revision').notNull().default(0),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn()
   },

@@ -8,6 +8,7 @@ import type {
   EventRecord
 } from '~/domains/events/records'
 import type { EventProgramSettingsMode } from '~/domains/events/program-settings'
+import type { EventImageVersions } from '~/domains/events/presentation'
 
 import {
   createEmptyEventFormState,
@@ -37,7 +38,7 @@ const props = defineProps<{
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
   bannerImageUploadError?: string
-  imageVersion?: string | number | null
+  imageVersion?: string | number | EventImageVersions | null
   isRetryingLumaConfiguration?: boolean
 }>()
 

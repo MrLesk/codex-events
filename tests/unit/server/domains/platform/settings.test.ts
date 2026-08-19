@@ -7,7 +7,9 @@ import { auditLogs, platformSettings, users } from '../../../../../server/databa
 import {
   clearDefaultEventBackgroundImageUrl,
   getEventDisplayImageOptions,
+  getPlatformSettings,
   resolveEventDisplayBackgroundImageUrl,
+  resolveVersionedEventDisplayBackgroundImageUrl,
   serializePlatformSettings,
   setDefaultEventBackgroundImageUrl
 } from '../../../../../server/domains/platform/settings'
@@ -38,7 +40,11 @@ describe('platform settings utilities', () => {
       database,
       'https://example.com/default-background.png',
       'platform/default/background-1',
-      'platform_admin'
+      'platform_admin',
+      {
+        revision: 0,
+        objectKey: null
+      }
     )
 
     expect(serializePlatformSettings(created)).toMatchObject({
@@ -66,18 +72,26 @@ describe('platform settings utilities', () => {
   })
 
   test('updates the existing default event background image URL', async () => {
-    await setDefaultEventBackgroundImageUrl(
+    const created = await setDefaultEventBackgroundImageUrl(
       database,
       'https://example.com/default-background.png',
       'platform/default/background-1',
-      'platform_admin'
+      'platform_admin',
+      {
+        revision: 0,
+        objectKey: null
+      }
     )
 
     const updated = await setDefaultEventBackgroundImageUrl(
       database,
       'https://example.com/replacement-background.png',
       'platform/default/background-2',
-      'platform_admin'
+      'platform_admin',
+      {
+        revision: created.defaultEventBackgroundImageRevision,
+        objectKey: created.defaultEventBackgroundImageObjectKey
+      }
     )
     const storedSettings = await database.query.platformSettings.findFirst({
       where: eq(platformSettings.id, 'default')
@@ -103,14 +117,21 @@ describe('platform settings utilities', () => {
   })
 
   test('clears the default event background image URL without deleting the settings row', async () => {
-    await setDefaultEventBackgroundImageUrl(
+    const created = await setDefaultEventBackgroundImageUrl(
       database,
       'https://example.com/default-background.png',
       'platform/default/background-1',
-      'platform_admin'
+      'platform_admin',
+      {
+        revision: 0,
+        objectKey: null
+      }
     )
 
-    const cleared = await clearDefaultEventBackgroundImageUrl(database, 'platform_admin')
+    const cleared = await clearDefaultEventBackgroundImageUrl(database, 'platform_admin', {
+      revision: created.defaultEventBackgroundImageRevision,
+      objectKey: created.defaultEventBackgroundImageObjectKey
+    })
     const storedSettings = await database.query.platformSettings.findFirst({
       where: eq(platformSettings.id, 'default')
     })
@@ -122,6 +143,39 @@ describe('platform settings utilities', () => {
     expect(storedSettings).toMatchObject({
       id: 'default',
       defaultEventBackgroundImageUrl: null
+    })
+  })
+
+  test('rejects a stale replacement expectation without changing the pointer', async () => {
+    const created = await setDefaultEventBackgroundImageUrl(
+      database,
+      'https://example.com/default-background.png',
+      'platform/default/background-1',
+      'platform_admin',
+      {
+        revision: 0,
+        objectKey: null
+      }
+    )
+
+    await expect(setDefaultEventBackgroundImageUrl(
+      database,
+      'https://example.com/stale-background.png',
+      'platform/default/background-stale',
+      'platform_admin',
+      {
+        revision: created.defaultEventBackgroundImageRevision - 1,
+        objectKey: null
+      }
+    )).rejects.toMatchObject({
+      statusCode: 409,
+      code: 'platform_default_event_background_image_changed'
+    })
+
+    await expect(getPlatformSettings(database)).resolves.toMatchObject({
+      defaultEventBackgroundImageUrl: 'https://example.com/default-background.png',
+      defaultEventBackgroundImageObjectKey: 'platform/default/background-1',
+      defaultEventBackgroundImageRevision: 1
     })
   })
 
@@ -137,5 +191,27 @@ describe('platform settings utilities', () => {
     }, {
       defaultEventBackgroundImageUrl: 'https://example.com/default-background.png'
     })).toBe('https://example.com/default-background.png')
+  })
+
+  test('serializes managed certificate backgrounds with the current pointer revision', () => {
+    expect(resolveVersionedEventDisplayBackgroundImageUrl({
+      backgroundImageUrl: 'https://codex-events.test/api/public/events/fixture/images/background',
+      backgroundImageObjectKey: 'events/fixture/background/immutable-1',
+      backgroundImageRevision: 3
+    })).toBe('https://codex-events.test/api/public/events/fixture/images/background?variant=background&v=3')
+
+    expect(resolveVersionedEventDisplayBackgroundImageUrl({
+      backgroundImageUrl: null
+    }, {
+      defaultEventBackgroundImageUrl: 'https://codex-events.test/api/public/platform/event-default-background-image',
+      defaultEventBackgroundImageObjectKey: 'platform/default-event-background/immutable-1',
+      defaultEventBackgroundImageRevision: 4
+    })).toBe('https://codex-events.test/api/public/platform/event-default-background-image?variant=background&v=4')
+
+    expect(resolveVersionedEventDisplayBackgroundImageUrl({
+      backgroundImageUrl: 'https://codex-events.test/api/public/events/fixture/images/background',
+      backgroundImageObjectKey: null,
+      backgroundImageRevision: 3
+    })).toBeNull()
   })
 })

@@ -1,6 +1,6 @@
 import { readMultipartFormData } from 'h3'
 
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
@@ -11,6 +11,7 @@ import { apiData } from '#server/http/api-response'
 import {
   assertValidEventImagePart,
   buildPublicEventImageUrl,
+  deleteEventImageObjectBestEffort,
   eventImageObjectKey,
   putEventImageObject
 } from '#server/domains/events/images'
@@ -22,6 +23,7 @@ import {
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { assertAuthenticatedUploadRateLimit } from '#server/utils/rate-limit'
 import { parseValidatedParams } from '#server/http/validation'
+import { assertGuard } from '#server/domains/lifecycle-guard'
 
 export default defineApiHandler(async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
@@ -32,6 +34,7 @@ export default defineApiHandler(async (h3Event) => {
   const filePart = multipart?.find(part => part.name === 'file')
   const validFile = assertValidEventImagePart(filePart ?? {})
   const objectKey = eventImageObjectKey(event.id, 'background')
+  const previousObjectKey = event.backgroundImageObjectKey
 
   await putEventImageObject(h3Event, objectKey, {
     contentType: validFile.contentType,
@@ -42,7 +45,7 @@ export default defineApiHandler(async (h3Event) => {
   const updatedAt = new Date().toISOString()
   const backgroundImageUrl = buildPublicEventImageUrl(h3Event, event.slug, 'background')
 
-  await database
+  const [updatedEventRow] = await database
     .update(events)
     .set({
       backgroundImageUrl,
@@ -51,7 +54,27 @@ export default defineApiHandler(async (h3Event) => {
       publicContentRevision: sql`${events.publicContentRevision} + 1`,
       updatedAt
     })
-    .where(eq(events.id, event.id))
+    .where(and(
+      eq(events.id, event.id),
+      eq(events.backgroundImageRevision, event.backgroundImageRevision),
+      previousObjectKey
+        ? eq(events.backgroundImageObjectKey, previousObjectKey)
+        : isNull(events.backgroundImageObjectKey)
+    ))
+    .returning({ id: events.id })
+
+  assertGuard(Boolean(updatedEventRow), {
+    statusCode: 409,
+    code: 'event_background_image_changed',
+    message: 'The event background image changed while this request was in progress.',
+    details: {
+      eventId: event.id
+    }
+  })
+
+  if (previousObjectKey) {
+    await deleteEventImageObjectBestEffort(h3Event, previousObjectKey)
+  }
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,

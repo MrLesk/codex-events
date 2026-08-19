@@ -1173,7 +1173,9 @@ describe('TASK-3.5 actor-facing API routes', () => {
 
     await harness.database.insert(platformSettings).values({
       id: 'default',
-      defaultEventBackgroundImageUrl: defaultBackgroundUrl
+      defaultEventBackgroundImageUrl: defaultBackgroundUrl,
+      defaultEventBackgroundImageObjectKey: 'platform/default-event-background/fixture-1',
+      defaultEventBackgroundImageRevision: 1
     })
 
     const configuredResponse = await harness.request('/api/platform-settings/current')
@@ -1182,7 +1184,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(await configuredResponse.json()).toMatchObject({
       data: {
         id: 'default',
-        defaultEventBackgroundImageUrl: defaultBackgroundUrl
+        defaultEventBackgroundImageUrl: `${defaultBackgroundUrl}?variant=background&v=1`,
+        defaultEventBackgroundImageRevision: 1
       }
     })
   })
@@ -1424,20 +1427,23 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(await uploadResponse.json()).toMatchObject({
       data: {
         id: 'default',
-        defaultEventBackgroundImageUrl: defaultBackgroundUrl
+        defaultEventBackgroundImageUrl: `${defaultBackgroundUrl}?variant=background&v=1`,
+        defaultEventBackgroundImageRevision: 1
       }
     })
     expect(storedSettings).toMatchObject({
       id: 'default',
-      defaultEventBackgroundImageUrl: defaultBackgroundUrl
+      defaultEventBackgroundImageUrl: defaultBackgroundUrl,
+      defaultEventBackgroundImageRevision: 1
     })
+    expect(storedSettings?.defaultEventBackgroundImageObjectKey).toMatch(/^platform\/default-event-background\//)
 
     const imageResponse = await adminHarness.request('/api/public/platform/event-default-background-image')
 
     expect(imageResponse.status).toBe(404)
 
     const versionedImageResponse = await adminHarness.request(
-      `/api/public/platform/event-default-background-image?variant=background&v=${storedSettings!.mediaRevision}`,
+      `/api/public/platform/event-default-background-image?variant=background&v=${storedSettings!.defaultEventBackgroundImageRevision}`,
       {
         headers: {
           accept: 'image/avif,image/webp;q=0.8'
@@ -1467,9 +1473,11 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
 
     expect(replacementUploadResponse.status).toBe(200)
-    expect(replacedSettings?.mediaRevision).toBe(storedSettings!.mediaRevision + 1)
+    expect(replacedSettings?.defaultEventBackgroundImageRevision).toBe(storedSettings!.defaultEventBackgroundImageRevision + 1)
+    expect(replacedSettings?.defaultEventBackgroundImageObjectKey).not.toBe(storedSettings!.defaultEventBackgroundImageObjectKey)
+    expect(await eventImagesBucket.get(storedSettings!.defaultEventBackgroundImageObjectKey!)).toBeNull()
     expect((await adminHarness.request(
-      `/api/public/platform/event-default-background-image?variant=background&v=${storedSettings!.mediaRevision}`
+      `/api/public/platform/event-default-background-image?variant=background&v=${storedSettings!.defaultEventBackgroundImageRevision}`
     )).status).toBe(404)
 
     const deleteResponse = await adminHarness.request('/api/platform-settings/event-default-background-image', {
@@ -1488,8 +1496,11 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
     expect(clearedSettings).toMatchObject({
       id: 'default',
-      defaultEventBackgroundImageUrl: null
+      defaultEventBackgroundImageUrl: null,
+      defaultEventBackgroundImageObjectKey: null,
+      defaultEventBackgroundImageRevision: replacedSettings!.defaultEventBackgroundImageRevision + 1
     })
+    expect(await eventImagesBucket.get(replacedSettings!.defaultEventBackgroundImageObjectKey!)).toBeNull()
 
     const removedImageResponse = await adminHarness.request('/api/public/platform/event-default-background-image')
     const auditRows = await adminHarness.database.select().from(auditLogs)
@@ -1501,7 +1512,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       }
     })
     expect((await adminHarness.request(
-      `/api/public/platform/event-default-background-image?variant=background&v=${replacedSettings!.mediaRevision}`
+      `/api/public/platform/event-default-background-image?variant=background&v=${replacedSettings!.defaultEventBackgroundImageRevision}`
     )).status).toBe(404)
     expect(auditRows).toEqual([
       expect.objectContaining({
@@ -3231,15 +3242,43 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(await uploadResponse.json()).toMatchObject({
       data: {
         user: {
-          id: 'user_profile_icon'
+          id: 'user_profile_icon',
+          profileIconRevision: 1
         }
       }
     })
 
+    const uploadedUser = await harness.database.query.users.findFirst({
+      where: eq(users.id, 'user_profile_icon')
+    })
+    expect(uploadedUser?.profileIconRevision).toBe(1)
+    expect(uploadedUser?.profileIconObjectKey).toMatch(/^users\/user_profile_icon\/profile-icon\//)
+
+    const replacementForm = new FormData()
+    replacementForm.append(
+      'file',
+      new Blob([pngSignatureBytes], { type: 'image/png' }),
+      'profile-replacement.png'
+    )
+
+    const replacementResponse = await harness.request('/api/account/profile-icon', {
+      method: 'POST',
+      body: replacementForm
+    })
+
+    expect(replacementResponse.status).toBe(200)
+    const replacedUser = await harness.database.query.users.findFirst({
+      where: eq(users.id, 'user_profile_icon')
+    })
+    expect(replacedUser?.profileIconRevision).toBe(2)
+    expect(replacedUser?.profileIconObjectKey).not.toBe(uploadedUser?.profileIconObjectKey)
+    expect(await profileIconsBucket.get(uploadedUser!.profileIconObjectKey!)).toBeNull()
+
     const iconResponse = await harness.request('/api/account/profile-icon')
 
     expect(iconResponse.status).toBe(200)
-    expect(iconResponse.headers.get('cache-control')).toBe('private, max-age=31536000, immutable')
+    expect(iconResponse.headers.get('cache-control')).toBe('private, no-store')
+    expect(iconResponse.headers.get('cloudflare-cdn-cache-control')).toBeNull()
     expect(iconResponse.headers.get('vary')).toBe('Cookie')
     expect(iconResponse.headers.get('content-type')).toBe('image/png')
     expect(iconResponse.headers.get('x-content-type-options')).toBe('nosniff')
@@ -3267,10 +3306,18 @@ describe('TASK-3.5 actor-facing API routes', () => {
       data: {
         user: {
           id: 'user_profile_icon',
-          profileIconUpdatedAt: null
+          profileIconUpdatedAt: null,
+          profileIconRevision: null
         }
       }
     })
+
+    const removedUser = await harness.database.query.users.findFirst({
+      where: eq(users.id, 'user_profile_icon')
+    })
+    expect(removedUser?.profileIconRevision).toBe(3)
+    expect(removedUser?.profileIconObjectKey).toBeNull()
+    expect(await profileIconsBucket.get(replacedUser!.profileIconObjectKey!)).toBeNull()
 
     const removedIconResponse = await harness.request('/api/account/profile-icon')
 
@@ -3285,7 +3332,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
   test('GET /api/account/profile-icon supports event-scoped participant visibility reads', async () => {
     const profileIconsBucket = new InMemoryR2Bucket()
     await profileIconsBucket.put(
-      'users/user_participant_icon/profile-icon',
+      'users/user_participant_icon/profile-icon/fixture-1',
       pngSignatureBytes,
       {
         httpMetadata: {
@@ -3326,7 +3373,9 @@ describe('TASK-3.5 actor-facing API routes', () => {
         auth0Subject: 'auth0|participant-profile-icon',
         email: 'participant-profile-icon@example.com',
         displayName: 'Participant Icon User',
-        profileIconUpdatedAt: fixtureTimestamp()
+        profileIconUpdatedAt: fixtureTimestamp(),
+        profileIconObjectKey: 'users/user_participant_icon/profile-icon/fixture-1',
+        profileIconRevision: 1
       }
     ])
     await harness.database.insert(platformDocuments).values([
@@ -3426,7 +3475,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
   test('GET /api/account/profile-icon supports published roster reads for workspace users', async () => {
     const profileIconsBucket = new InMemoryR2Bucket()
     await profileIconsBucket.put(
-      'users/user_judge_icon/profile-icon',
+      'users/user_judge_icon/profile-icon/fixture-1',
       pngSignatureBytes,
       {
         httpMetadata: {
@@ -3467,14 +3516,18 @@ describe('TASK-3.5 actor-facing API routes', () => {
         auth0Subject: 'auth0|judge-profile-icon',
         email: 'judge-profile-icon@example.com',
         displayName: 'Judge Icon User',
-        profileIconUpdatedAt: fixtureTimestamp()
+        profileIconUpdatedAt: fixtureTimestamp(),
+        profileIconObjectKey: 'users/user_judge_icon/profile-icon/fixture-1',
+        profileIconRevision: 1
       },
       {
         id: 'user_unrelated_icon',
         auth0Subject: 'auth0|unrelated-profile-icon',
         email: 'unrelated-profile-icon@example.com',
         displayName: 'Unrelated Icon User',
-        profileIconUpdatedAt: fixtureTimestamp()
+        profileIconUpdatedAt: fixtureTimestamp(),
+        profileIconObjectKey: 'users/user_unrelated_icon/profile-icon/fixture-1',
+        profileIconRevision: 1
       }
     ])
     await harness.database.insert(platformDocuments).values([
@@ -3698,7 +3751,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
   test('DELETE /api/account soft-deletes the user and writes an audit record', async () => {
     const profileIconsBucket = new InMemoryR2Bucket()
     await profileIconsBucket.put(
-      'users/user_delete/profile-icon',
+      'users/user_delete/profile-icon/fixture-1',
       new Uint8Array([9, 9, 9]),
       {
         httpMetadata: {
@@ -3733,7 +3786,9 @@ describe('TASK-3.5 actor-facing API routes', () => {
       email: 'delete-me@example.com',
       displayName: 'Delete Me',
       isPlatformAdmin: true,
-      profileIconUpdatedAt: fixtureTimestamp()
+      profileIconUpdatedAt: fixtureTimestamp(),
+      profileIconObjectKey: 'users/user_delete/profile-icon/fixture-1',
+      profileIconRevision: 1
     })
     await harness.database.insert(events).values({
       id: 'event_1',
@@ -3811,7 +3866,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(deletedAcceptances).toHaveLength(0)
     expect(deletedAssignments).toHaveLength(0)
     expect(deletedMcpTokens).toHaveLength(0)
-    expect(await profileIconsBucket.get('users/user_delete/profile-icon')).toBeNull()
+    expect(await profileIconsBucket.get('users/user_delete/profile-icon/fixture-1')).toBeNull()
     expect(auditEntries).toEqual([
       expect.objectContaining({
         actorUserId: 'user_delete',

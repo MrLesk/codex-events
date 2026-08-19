@@ -33,6 +33,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `luma_email`
 - `luma_username`
 - `profile_icon_updated_at`
+- `profile_icon_object_key`
+- `profile_icon_revision`
 - `created_at`
 - `updated_at`
 - `deleted_at`
@@ -53,7 +55,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `deleted_at` supports GDPR-compliant account lifecycle handling.
 - `is_platform_admin` replaces a separate platform role entity.
 - `is_event_organizer` grants event creation access without platform-wide or unrelated-event admin visibility.
-- `profile_icon_updated_at` records when the current profile icon object was last replaced. Winner and published-project profile-icon routes use it as a request/version guard but remain private, `no-store` media outside the managed public-media revision and cache scope.
+- `profile_icon_object_key` points to the current immutable private R2 object for the user's profile icon. `profile_icon_revision` increments when the pointer changes and is the only profile-icon URL version guard. `profile_icon_updated_at` remains replacement metadata. Profile-icon responses are private and `no-store`.
 - Platform actor resolution uses `UserAuthIdentity` records so multiple linked Auth0 subjects can resolve to the same user.
 - `luma_username` is retained only as legacy migration data for users who registered before Luma email became the canonical profile field.
 
@@ -88,8 +90,12 @@ It describes the intended persistent model at the level of entities, key fields,
 - `description`
 - `agenda_items_json`
 - `background_image_url`
+- `background_image_object_key`
+- `background_image_revision`
 - `banner_image_url`
-- `media_revision`
+- `banner_image_object_key`
+- `banner_image_revision`
+- `public_content_revision`
 - `discord_server_url`
 - `luma_event_url`
 - `slides_url`
@@ -237,7 +243,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `slides_url` is optional because not every event has participant-facing slides, and when present it is returned only in account-scoped detail reads for approved participants plus judges, staff, event admins, and platform admins.
 - `background_image_url` stores only the event-specific uploaded background image URL. Event read serializers expose a separate `displayBackgroundImageUrl` derived from this field or from the platform default event background image.
 - `banner_image_url` stores only the event-specific uploaded banner image URL.
-- `media_revision` is a non-negative, atomically incremented event revision for public media and visibility. It increments when a managed background or banner image is uploaded or removed, when event visibility changes, and when another event-scoped public media mutation changes the set of public media. Versioned public media URLs must contain the exact current revision; `updated_at` is not a media revision.
+- `background_image_object_key` and `banner_image_object_key` point to independent immutable private R2 objects. Their corresponding revisions increment whenever the active pointer is replaced or cleared. `public_content_revision` is an independent non-negative revision for public event HTML/JSON visibility; it rotates for public media, gallery visibility/removal, submission public visibility, completion, and hide/unhide. Versioned public URLs must contain the exact current resource revision; `updated_at` is not a revision.
 - `luma_event_url` is optional because not every event has a public Luma event page to link.
 - `luma_event_api_id` and `luma_api_key` are optional because not every event has Luma configured for approval, rejection, and attendance sync.
 - Luma email visibility and requirement are enabled together when an event uses Luma Sync because guest sync matches Codex participants to Luma guests by that email.
@@ -285,6 +291,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `id`
 - `event_id`
 - `uploaded_by_user_id`
+- `object_key`
+- `image_revision`
 - `file_name`
 - `is_publicly_visible`
 - `content_type`
@@ -300,12 +308,12 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Notes
 
 - Each row records one protected gallery photo for an event.
-- Original image bytes are stored in object storage keyed by `event_id` and photo `id`.
+- `object_key` points to the current immutable private R2 object. `image_revision` increments whenever the photo's public visibility or active object pointer changes.
 - `file_name` is optional because the upload can succeed even when the client omits a stable file name.
 - `created_at` stores the image creation time when the upload can read it from image metadata, otherwise the upload time.
 - `is_publicly_visible` controls whether a gallery photo appears in the public event Gallery tab.
 - `is_highlighted` controls whether a gallery photo appears in the highlighted account-scoped gallery view.
-- Preview variants are derived at read time from the stored original image and are not stored as separate canonical rows.
+- Preview variants are derived at read time from the stored private object and are not stored as separate canonical rows. Public `preview` is capped at 720px and public `original` is a bounded 2400px full-display transform; neither exposes the stored original.
 - Approved participants can read gallery rows for their events, while judges, staff, event admins, and platform admins can also create, delete, highlight, and mark them public.
 
 ## EventRoleAssignment
@@ -416,7 +424,8 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - `id`
 - `default_event_background_image_url`
-- `media_revision`
+- `default_event_background_image_object_key`
+- `default_event_background_image_revision`
 - `created_at`
 - `updated_at`
 
@@ -428,7 +437,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - This singleton stores deployment-wide presentation defaults.
 - `default_event_background_image_url` points to the managed public platform default event background image endpoint when configured.
-- `media_revision` is a non-negative, atomically incremented revision for the managed default image. Versioned public default-image URLs must contain the exact current revision; `updated_at` is not a media revision.
+- `default_event_background_image_object_key` points to the current immutable private R2 object. `default_event_background_image_revision` increments whenever the active pointer is replaced or cleared. Versioned public default-image URLs include the exact revision and `variant=background`; `updated_at` is not a revision.
 - Event-specific `background_image_url` values remain stored on `Event` and override this default in event display payloads.
 
 ## PlatformDocument

@@ -32,8 +32,12 @@ function buildEventRecord(
     description: 'Fixture event',
     agendaItemsJson: '[]',
     backgroundImageUrl: null,
+    backgroundImageObjectKey: null,
+    backgroundImageRevision: 0,
     bannerImageUrl: null,
-    mediaRevision: 0,
+    bannerImageObjectKey: null,
+    bannerImageRevision: 0,
+    publicContentRevision: 0,
     discordServerUrl: null,
     lumaEventUrl: null,
     slidesUrl: null,
@@ -487,6 +491,20 @@ describe('event management utilities', () => {
     })
   })
 
+  test('does not retain an active pointer for an unrelated managed image path', () => {
+    const patch = buildEventUpdatePayload(buildEventRecord({
+      backgroundImageUrl: 'http://localhost/api/public/events/fixture-event/images/background',
+      backgroundImageObjectKey: 'events/event_1/background/current-object',
+      backgroundImageRevision: 4
+    }), {
+      backgroundImageUrl: 'http://localhost/api/public/events/another-event/images/background'
+    })
+
+    expect(patch.backgroundImageObjectKey).toBeNull()
+    expect(patch.backgroundImageRevision).toBeDefined()
+    expect(patch.publicContentRevision).toBeDefined()
+  })
+
   test('does not materialize create defaults in update request schemas', () => {
     const patch = updateEventBodySchema.parse({
       address: 'Updated Address'
@@ -898,10 +916,12 @@ describe('event management utilities', () => {
   test('serializes public event display background without replacing stored event fields', () => {
     expect(serializePublicEvent(buildEventRecord({
       bannerImageUrl: 'https://example.com/api/public/events/fixture-event/images/banner',
-      mediaRevision: 1
+      bannerImageObjectKey: 'events/fixture-event/banner/immutable-1',
+      bannerImageRevision: 1
     }), undefined, undefined, {
       defaultEventBackgroundImageUrl: 'https://example.com/api/public/platform/event-default-background-image',
-      defaultEventBackgroundImageVersion: 1
+      defaultEventBackgroundImageObjectKey: 'platform/default-event-background/immutable-1',
+      defaultEventBackgroundImageRevision: 1
     })).toMatchObject({
       backgroundImageUrl: null,
       displayBackgroundImageUrl: 'https://example.com/api/public/platform/event-default-background-image?variant=background&v=1',
@@ -984,6 +1004,8 @@ describe('event management utilities', () => {
       lumaEmail: 'hidden-luma@example.com',
       lumaUsername: 'hidden-luma',
       profileIconUpdatedAt: '2026-03-20T12:00:00.000Z',
+      profileIconObjectKey: 'users/user_1/profile-icon/fixture-1',
+      profileIconRevision: 1,
       createdAt: '2026-03-01T00:00:00.000Z',
       updatedAt: '2026-03-02T00:00:00.000Z',
       deletedAt: null
@@ -995,7 +1017,8 @@ describe('event management utilities', () => {
       xProfileUrl: 'https://x.com/display-name',
       linkedinProfileUrl: 'https://linkedin.com/in/display-name',
       githubProfileUrl: 'https://github.com/display-name',
-      profileIconUpdatedAt: '2026-03-20T12:00:00.000Z'
+      profileIconUpdatedAt: '2026-03-20T12:00:00.000Z',
+      profileIconRevision: 1
     })
 
     expect(serializePublishedEventRosterMember({

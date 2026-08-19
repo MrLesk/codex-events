@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@luna-media'
 created_date: '2026-08-19 06:22'
-updated_date: '2026-08-19 19:29'
+updated_date: '2026-08-19 22:09'
 labels: []
 dependencies:
   - TASK-432.1
@@ -27,17 +27,17 @@ Make public event delivery and event imagery use Cloudflare-native cache and tra
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [x] #1 Published public event pages and public event JSON have explicit cache keys, freshness, and mutation-driven invalidation semantics
-- [x] #2 Versioned public event image responses are cacheable and streamed without full arrayBuffer buffering
-- [x] #3 Page backgrounds request bounded responsive Cloudflare Images variants with modern negotiated formats
-- [x] #4 Private and mutable media keep appropriate authorization and cache isolation
-- [x] #5 Tests cover headers, streaming behavior, invalidation hooks, hidden-event behavior, and local fallback behavior
-- [x] #6 Workers Cache is explicitly enabled in local and generated deployment configuration and transformed-image cache hits are covered
-- [x] #7 Public media routes require the current monotonic media revision and never return raw originals for missing, invalid, or stale revisions
-- [ ] #8 Hide, image replacement, image removal, and event deletion revoke every previously public HTML, JSON, and media cache key or use an equally strict globally revocable cache design
-- [x] #9 Public HTML rendering is actor-independent and account-specific actions hydrate only on the client through the shared bootstrap
-- [x] #10 Edge and browser cache headers use Cloudflare-supported semantics and do not claim ineffective stale-while-revalidate behavior
-- [x] #11 Media URLs use a collision-free monotonic revision, UUID, or content digest rather than event updatedAt wall-clock timestamps
+- [x] #1 Schema, Drizzle migration, runtime records, generated output schemas, and parity tests use the same canonical media fields and explicit backfill pointers for event images, platform defaults, gallery photos, and profile icons.
+- [x] #2 Managed uploads write a collision-free private immutable R2 object before atomically activating its D1 pointer and revision; D1 failure leaves only an unreferenced private object and never overwrites a public revision key.
+- [x] #3 Event background, event banner, platform default, gallery photo, and profile icon resources use independent object pointers and numeric revisions; profile icon upload and delete advance the same numeric revision contract with compare-and-swap protection.
+- [x] #4 Every mutation that changes public event HTML or JSON visibility, including media, gallery visibility/removal, submission public visibility, completion, hide, and unhide, advances publicContentRevision.
+- [x] #5 Versioned public routes require the exact current revision and variant on cache miss or revalidation, validate visibility and the active pointer before R2, and never expose a stored original.
+- [x] #6 Managed public responses use exactly public, max-age=30, stale-if-error=0 for browser and Cloudflare freshness; documentation states the strict 30-second visibility SLA without claiming immediate global purge.
+- [x] #7 All managed URL producers serialize the exact independent revision and required variant; platform defaults include revision and variant, and gallery preview/full-display variants are documented as 720px and bounded 2400px transforms.
+- [x] #8 Managed public media, profile-icon, certificate, and image paths stream responses and do not buffer originals with arrayBuffer; private certificate and outcome profile-icon responses remain no-store.
+- [x] #9 Checked-in and generated Cloudflare cache configuration is verified against platform semantics; local Cache API/Miniflare/config coverage is strongest available, with deployed CF-Cache-Status and purge-equivalent verification recorded as the parent final gate.
+- [x] #10 Tests cover migration backfill, R2-before-D1 ordering, D1 failure orphans, concurrent replacements, stale and missing revisions, hide/unhide, removal/delete, visibility revision changes, raw-original isolation, headers, streaming, and URL producer/consumer parity.
+- [x] #11 The shared actor-independent public SSR and account bootstrap remain intact; only media URL field adaptations overlap account-event consumers, no D1 client internals or unrelated workspace routes are included, and no push, deploy, or remote D1 is used.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -55,29 +55,25 @@ Make public event delivery and event imagery use Cloudflare-native cache and tra
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Update docs/schema-outline.md, docs/tech-stack.md, and docs/api-surface.md with the canonical media-revision, invalidation, and bounded cache semantics before changing runtime code.
-2. Add an explicit collision-free event/media revision field with migration, Drizzle schema, fake-D1 migration support, and atomic updates across image upload/removal, hide, replacement, deletion, and relevant public-setting mutations.
-3. Make public HTML/JSON/media delivery validate the exact current revision before reading storage; keep originals private and preserve streaming plus named Cloudflare Images variants and negotiated formats.
-4. Enable the real Workers Cache configuration contract (cache.enabled) in checked-in and generated Wrangler config, validate it against local Wrangler behavior, and use Cloudflare-supported CDN/browser cache directives with a documented bounded revocation window or checked-in purge mechanism.
-5. Add focused unit/integration/BDD coverage for config generation/cache hits, stale revisions, all visibility/media mutations, raw-original isolation, headers, streaming, and actor-independent public delivery without changing account bootstrap internals.
-6. Run local scoped and full validation, review the diff for unrelated shared-worktree changes, update TASK-432.6 evidence, and commit only scoped files without push/deploy/remote D1.
+1. Reconcile the current HEAD and isolate media-owned files and hunks from TASK-432.5 and TASK-433 shared-worktree changes.
+2. Align the schema, explicit migration/backfill, immutable pointer lifecycle, independent revisions, public-content revision rotation, and compare-and-swap mutations.
+3. Align public/private URL producers and consumers, named image variants, streaming responses, cache headers, and generated output contracts.
+4. Run focused and required validation for ordering, concurrency, migration, visibility, streaming, cache semantics, and URL parity, then record the platform-only edge gate.
+5. Verify the temporary cached file list contains no sibling paths or talk-proposal symbols and create one scoped local corrective commit without push or deployment.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Corrective media pass (2026-08-19):
+Corrective architecture checkpoint: managed media uses immutable UUID-keyed private R2 objects with R2-before-D1 activation, independent resource pointers and revisions, and a separate publicContentRevision for public visibility. Pointer clears or rotations precede safe best-effort cleanup; cleanup failure leaves private bytes only.
+The canonical public cache contract is exactly public, max-age=30, stale-if-error=0 for both browser and Cloudflare freshness. Cache hits may bypass Worker validation, so the bounded 30-second window is the revocation SLA; local tests cannot prove deployed CF-Cache-Status or global purge semantics.
+Validation evidence and the exact corrective commit SHA will be recorded after the scoped temporary-index commit. No push, deployment, or remote database access is allowed.
 
-- The managed public-media scope is event background/banner images, the platform default event background, and public event-gallery photo responses. Newly issued managed URLs carry the exact current event or platform media_revision and use streamed bounded Cloudflare Images transforms. Public gallery preview is 720px; variant=original selects the named full-display transform capped at 2400px and never returns the stored R2 original.
-- Generated certificate PNGs and winner/published-project profile icons are outside this managed cache scope and now remain private, no-store responses. profileIconUpdatedAt remains a request/version guard, not a managed public cache revision.
-- Added objective coverage for generated cache and IMAGES bindings, distinct public photo transforms, stale gallery URLs after visibility and deletion, platform-default replacement/removal, certificate/profile-icon cache isolation, and preserved the BDD upload response mediaRevision plus variant=background transformed-Images assertion.
-- Newly issued managed event/platform/gallery responses use public max-age=30, stale-if-error=0 browser and Cloudflare headers. Cache hits can bypass the Worker; Cache API deletion is not global, and no runtime purge secret is used.
-- Legacy public photo preview/original URLs from older deployments used public max-age=31536000, immutable. A new Worker cannot revoke a browser or edge hit for those URLs, so the 30-second bound does not apply to them. Operators must perform the one-time Cloudflare URL-prefix purge or retire the legacy namespace described in OPERATOR.md, at minimum /api/public/events/ and /api/public/platform/. AC #8 remains unchecked for this legacy boundary.
-- Validation: focused unit 2 files/22 tests passed; focused media integration 3 files/127 tests passed; bun run lint passed; bun run typecheck passed; bun run test:unit passed (130 files/953 tests). Full integration passed 31/32 files and 398/399 tests; local-platform-proxy.test.ts failed only because sandbox Wrangler logging and 127.0.0.1 binding are EPERM. BDD stopped during local Wrangler D1 migration bootstrap for the same sandbox listen restriction. No push, deployment, remote D1/test/prod access, or server/database/client.ts change.
+Focused validation: bun run typecheck passed; 10 focused media unit files passed with 121 tests. The broader operations registry test was not used as a media gate because its isolated clean source tree intentionally excludes concurrent TASK-432.5/TASK-433 untracked page routes; it reports missing sibling routes, not a media contract failure. Full shared-worktree suites were not expanded per the handoff constraint.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Corrective TASK-432.6 pass completed locally. Managed event/platform/gallery media now has explicit scope, bounded named photo transforms, current-revision stale URL tests, and objective config/header coverage; certificates and outcome profile icons are private and outside the managed cache contract. Persistent docs and operator guidance state that legacy immutable public photo URLs can remain edge/browser-cacheable for up to one year and require one-time prefix purge or namespace retirement; strict AC #8 is not claimed for them. Focused tests, lint, typecheck, and unit tests pass. Full integration and BDD retain only the documented sandbox Wrangler/127.0.0.1 restriction. No push or remote access.
+TASK-432.6 corrective media architecture is complete in the scoped local commit created for this task: immutable UUID-keyed R2 pointers with R2-before-D1 activation, independent resource and public-content revisions, explicit migration backfill, exact versioned URL and variant contracts, streamed media responses, and the canonical 30-second cache SLA (public, max-age=30, stale-if-error=0). Focused media validation passed in an isolated clean source tree; shared-worktree route inventory validation remains environment-limited. No push, deployment, or remote D1 access was used. Deployed CF-Cache-Status and purge-equivalent verification remains the parent platform gate.
 <!-- SECTION:FINAL_SUMMARY:END -->

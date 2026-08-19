@@ -7,6 +7,7 @@ import { apiData } from '#server/http/api-response'
 import {
   getEventPhotoRecordOrThrow,
   eventPhotoParamsSchema,
+  deleteEventPhotoObjectBestEffort,
   requireEventPhotoManageAccess
 } from '#server/domains/events/photos'
 import { parseValidatedParams } from '#server/http/validation'
@@ -39,6 +40,10 @@ export const applicationOperation = defineStructuredRouteOperation({
       })
       .where(eq(events.id, event.id))
   ])
+
+  if (photo.objectKey) {
+    await deleteEventPhotoObjectBestEffort(h3Event, photo.objectKey)
+  }
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,

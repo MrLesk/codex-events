@@ -382,7 +382,7 @@ function getApplicantAvatarAlt(application: AdminApplicationRecord) {
 function getApplicantProfileIconHref(application: AdminApplicationRecord) {
   return buildProfileIconHref(
     application.userId,
-    application.user?.profileIconUpdatedAt,
+    application.user?.profileIconRevision,
     props.eventId
   )
 }

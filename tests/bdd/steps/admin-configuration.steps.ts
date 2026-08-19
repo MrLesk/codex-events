@@ -120,24 +120,24 @@ When('the saved {string} session uploads a background image for the remembered m
     const json = await response.json() as {
       data?: {
         backgroundImageUrl?: string
-        mediaRevision?: number
+        backgroundImageRevision?: number
       }
     }
     const backgroundImageUrl = json.data?.backgroundImageUrl
-    const mediaRevision = json.data?.mediaRevision
+    const backgroundImageRevision = json.data?.backgroundImageRevision
 
-    if (!backgroundImageUrl || !Number.isInteger(mediaRevision) || mediaRevision < 0) {
-      throw new Error('The background image upload did not return a managed URL and media revision.')
+    if (!backgroundImageUrl || !Number.isInteger(backgroundImageRevision) || backgroundImageRevision < 0) {
+      throw new Error('The background image upload did not return a managed URL and background image revision.')
     }
 
     const versionedBackgroundImageUrl = new URL(backgroundImageUrl)
     versionedBackgroundImageUrl.searchParams.set('variant', 'background')
-    versionedBackgroundImageUrl.searchParams.set('v', String(mediaRevision))
+    versionedBackgroundImageUrl.searchParams.set('v', String(backgroundImageRevision))
 
     state.response = response
     state.json = json
     state.backgroundImageUrl = versionedBackgroundImageUrl.toString()
-    state.backgroundImageRevision = mediaRevision
+    state.backgroundImageRevision = backgroundImageRevision
   } finally {
     await apiClient.dispose()
   }

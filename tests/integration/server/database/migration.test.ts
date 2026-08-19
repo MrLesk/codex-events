@@ -12,6 +12,18 @@ const migrationSql = readdirSync(join(process.cwd(), 'drizzle'))
   .join('\n')
   .replaceAll('--> statement-breakpoint', '\n')
 
+const revisionedMediaMigrationFileName = '0075_revisioned_media_pointers.sql'
+const preRevisionedMediaMigrationSql = readdirSync(join(process.cwd(), 'drizzle'))
+  .filter(fileName => /^\d+.*\.sql$/.test(fileName) && fileName < revisionedMediaMigrationFileName)
+  .sort()
+  .map(fileName => readFileSync(join(process.cwd(), 'drizzle', fileName), 'utf8'))
+  .join('\n')
+  .replaceAll('--> statement-breakpoint', '\n')
+const revisionedMediaMigrationSql = readFileSync(
+  join(process.cwd(), 'drizzle', revisionedMediaMigrationFileName),
+  'utf8'
+).replaceAll('--> statement-breakpoint', '\n')
+
 const judgeScaleMigrationFileName = '0040_judge_score_scale_1_to_5.sql'
 const preJudgeScaleMigrationSql = readdirSync(join(process.cwd(), 'drizzle'))
   .filter(fileName => /^\d+.*\.sql$/.test(fileName) && fileName < judgeScaleMigrationFileName)
@@ -75,6 +87,107 @@ describe('shared database migration', () => {
     await expect(insertUser.run('user_2', 'auth0|user_2', 'user@example.com', 'User Two', 0, now, now, null)).rejects.toThrow()
 
     await insertUser.run('user_3', 'auth0|user_3', 'user@example.com', 'Deleted User', 0, now, now, now)
+  })
+
+  test('backfills canonical immutable media pointers and positive revisions', async () => {
+    const legacyDatabase = createTestD1Database({
+      applyMigrations: false
+    })
+    const now = isoTimestamp(0)
+
+    await legacyDatabase.exec(preRevisionedMediaMigrationSql)
+    await seedUser(legacyDatabase, 'media_user', now)
+    await seedEvent(legacyDatabase, 'media_event', 'registration_open', now, 'media_user')
+    await legacyDatabase.prepare(`
+      update users
+      set profile_icon_updated_at = ?
+      where id = ?
+    `).run(now, 'media_user')
+    await legacyDatabase.prepare(`
+      update events
+      set
+        background_image_url = ?,
+        banner_image_url = ?
+      where id = ?
+    `).run(
+      'https://codex-events.test/api/public/events/media-event/images/background',
+      'https://codex-events.test/api/public/events/media-event/images/banner',
+      'media_event'
+    )
+    await legacyDatabase.prepare(`
+      insert into event_photos (
+        id, event_id, uploaded_by_user_id, file_name, is_publicly_visible,
+        is_highlighted, content_type, width, height, created_at
+      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      'media_photo',
+      'media_event',
+      'media_user',
+      'photo.png',
+      1,
+      0,
+      'image/png',
+      640,
+      480,
+      now
+    )
+    await legacyDatabase.prepare(`
+      insert into platform_settings (
+        id, default_event_background_image_url, media_revision, created_at, updated_at
+      ) values (?, ?, ?, ?, ?)
+    `).run(
+      'default',
+      'https://codex-events.test/api/public/platform/event-default-background-image',
+      0,
+      now,
+      now
+    )
+
+    await legacyDatabase.exec(revisionedMediaMigrationSql)
+
+    await expect(legacyDatabase.prepare(`
+      select profile_icon_object_key, profile_icon_revision
+      from users where id = ?
+    `).all('media_user')).resolves.toMatchObject({
+      results: [{
+        profile_icon_object_key: 'users/media_user/profile-icon',
+        profile_icon_revision: 1
+      }]
+    })
+    await expect(legacyDatabase.prepare(`
+      select
+        background_image_object_key, background_image_revision,
+        banner_image_object_key, banner_image_revision, public_content_revision
+      from events where id = ?
+    `).all('media_event')).resolves.toMatchObject({
+      results: [{
+        background_image_object_key: 'events/media_event/background-image',
+        background_image_revision: 1,
+        banner_image_object_key: 'events/media_event/banner-image',
+        banner_image_revision: 1,
+        public_content_revision: 1
+      }]
+    })
+    await expect(legacyDatabase.prepare(`
+      select object_key, image_revision
+      from event_photos where id = ?
+    `).all('media_photo')).resolves.toMatchObject({
+      results: [{
+        object_key: 'events/media_event/photos/media_photo',
+        image_revision: 1
+      }]
+    })
+    await expect(legacyDatabase.prepare(`
+      select default_event_background_image_object_key, default_event_background_image_revision
+      from platform_settings where id = ?
+    `).all('default')).resolves.toMatchObject({
+      results: [{
+        default_event_background_image_object_key: 'platform/default-event-background-image',
+        default_event_background_image_revision: 1
+      }]
+    })
+
+    await legacyDatabase.close()
   })
 
   test('allows duplicate Auth0 subjects only after soft deletion', async () => {

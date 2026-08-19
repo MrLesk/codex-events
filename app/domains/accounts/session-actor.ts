@@ -28,6 +28,7 @@ export interface PlatformUserProfile {
   lumaEmail?: string | null
   lumaUsername?: string | null
   profileIconUpdatedAt?: string | null
+  profileIconRevision?: number | null
   createdAt?: string | null
   updatedAt?: string | null
   deletedAt?: string | null
@@ -45,6 +46,7 @@ export interface OperationalUserSummary {
   lumaEmail?: string | null
   lumaUsername?: string | null
   profileIconUpdatedAt?: string | null
+  profileIconRevision?: number | null
 }
 
 export interface EventRoleSummary {

@@ -25,7 +25,7 @@ describe('published event roster helpers', () => {
       xProfileUrl: ' https://x.com/judge-user ',
       linkedinProfileUrl: 'https://linkedin.com/in/judge-user',
       githubProfileUrl: 'https://github.com/judge-user',
-      profileIconUpdatedAt: null
+      profileIconRevision: null
     })).toEqual([
       {
         key: 'x',
@@ -54,7 +54,7 @@ describe('published event roster helpers', () => {
       xProfileUrl: '   ',
       linkedinProfileUrl: null,
       githubProfileUrl: null,
-      profileIconUpdatedAt: null
+      profileIconRevision: null
     })).toEqual([])
   })
 
@@ -87,7 +87,7 @@ describe('published event roster helpers', () => {
       xProfileUrl: null,
       linkedinProfileUrl: null,
       githubProfileUrl: null,
-      profileIconUpdatedAt: null,
+      profileIconRevision: null,
       staffTrack
     })
     const members = [
@@ -143,7 +143,7 @@ describe('published event roster helpers', () => {
             xProfileUrl: null,
             linkedinProfileUrl: null,
             githubProfileUrl: null,
-            profileIconUpdatedAt: null
+            profileIconRevision: null
           }
         ]
       }
@@ -162,7 +162,7 @@ describe('published event roster helpers', () => {
           xProfileUrl: null,
           linkedinProfileUrl: null,
           githubProfileUrl: null,
-          profileIconUpdatedAt: null
+          profileIconRevision: null
         }
       ],
       errorMessage: null

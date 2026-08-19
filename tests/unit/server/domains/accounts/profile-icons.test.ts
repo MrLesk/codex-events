@@ -36,7 +36,11 @@ function createOversizedPngBytes(size: number) {
 
 describe('profile icon utilities', () => {
   test('builds the canonical profile icon object key', () => {
-    expect(profileIconObjectKey('user_1')).toBe('users/user_1/profile-icon')
+    const firstKey = profileIconObjectKey('user_1')
+    const secondKey = profileIconObjectKey('user_1')
+
+    expect(firstKey).toMatch(/^users\/user_1\/profile-icon\/[0-9a-f-]{36}$/)
+    expect(secondKey).not.toBe(firstKey)
   })
 
   test('accepts supported image signatures and derives the content type from bytes', () => {

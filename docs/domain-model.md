@@ -78,6 +78,8 @@ Key characteristics:
 - Multiple events can exist in parallel.
 - Each event has an `eventType` of `hackathon`, `meetup`, or `build`.
 - Each event can define an event-specific background image and a banner image.
+- Each managed event image has its own immutable private R2 object pointer and numeric revision. Uploads write a new object before changing the active D1 pointer; removals clear the pointer before best-effort cleanup, and cleanup failures leave bytes private.
+- Event public HTML and JSON use an independent public-content revision that rotates when public media, public gallery visibility/removal, submission public visibility, completion, or hide/unhide changes.
 - An event-specific background image overrides the platform default event background image.
 - When an event has no event-specific background image, event detail backgrounds use the platform default event background image when one is configured, even if the event has a banner image.
 - Event cards can present the event banner before the effective background image.
@@ -217,7 +219,7 @@ Rules:
 - The public event detail page exposes only the subset of gallery photos marked public for that event.
 - Public event gallery behavior does not depend on whether a photo is highlighted.
 - Photo delivery uses protected account-scoped routes for the private gallery and separate public routes for the public gallery subset.
-- Preview images are derived from the stored original object and do not create a separate canonical domain entity.
+- Photo delivery uses an immutable private R2 object pointer and an independent image revision. Preview images are derived at read time through Cloudflare Images: public `preview` is capped at 720px and public `original` is a bounded 2400px full-display transform. The stored original is never a public response.
 
 ### EventFeedback
 
@@ -527,6 +529,7 @@ Rules:
 - A submission can be marked with workflow outcomes such as withdrawn or disqualified.
 - Public project publishing is submission-scoped, not team-scoped.
 - Public project publishing is available only after `completed`, only for locked non-winning submissions, and only when a team admin opts in.
+- Changing a locked submission's public visibility rotates the event public-content revision so public event HTML, JSON, and outcome reads receive a fresh version.
 - A team with no submission is not eligible for judging, but this is represented by the absence of a submission rather than by a submission outcome.
 - A draft submission that is never submitted is treated as no submission for judging and dashboard purposes.
 - Blind judging includes the selected track because track membership is part of the submission itself and does not reveal team identity.

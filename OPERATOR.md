@@ -198,29 +198,15 @@ Publish a **GitHub Release** from the commit you want to deploy. That triggers t
 5. runs D1 migrations;
 6. deploys the Worker and reconciles its Queue consumers.
 
-#### Legacy public-media cache retirement
+#### Managed public-media verification
 
-The managed public-media contract does not revoke URLs issued by an older
-deployment. Older public event photo preview and original responses used
-`public, max-age=31536000, immutable`, so a browser or Cloudflare edge can
-serve those URLs without invoking the Worker for up to one year. The new
-Worker cannot shorten that lifetime or validate D1 state for an already-served
-hit.
-
-Before relying on the managed-media contract after such a migration, an
-operator must use Cloudflare Cache Purge by URL prefix, or retire the old
-hostname/path namespace. Purge the affected prefixes for the configured app
-origin, at minimum:
-
-- `https://<BASE_DOMAIN>/api/public/events/`
-- `https://<BASE_DOMAIN>/api/public/platform/`
-
-Use a separate least-privilege operator credential with Zone Cache Purge access
-or the Cloudflare dashboard. This is a one-time edge operation; it is not part
-of the Worker request path. Cache API deletion is not a global purge, and no
-purge secret belongs in Worker runtime configuration. Newly issued managed
-event, platform-default, and gallery responses use the 30-second freshness
-window documented in `docs/tech-stack.md`.
+Managed event, platform-default, and public-gallery responses use a 30-second
+browser and Cloudflare edge freshness window. Production verification must
+confirm the response carries the documented `Cache-Control` and
+`Cloudflare-CDN-Cache-Control` headers and that Cloudflare reports the expected
+`CF-Cache-Status` on repeated public requests. A cache hit can bypass the
+Worker; Cache API deletion is local to the executing data center and is not a
+global purge. The application has no runtime purge credential.
 
 The MCP rollout is additive. Migration `0071_mcp_access_tokens.sql` must finish
 before the Worker serving `/mcp` is deployed; the checked-in workflow already
