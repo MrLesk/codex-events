@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { drizzle } from 'drizzle-orm/d1'
+import { drizzle, type DrizzleD1Database } from 'drizzle-orm/d1'
 
 import * as schema from './schema'
 import { ApiError } from '#server/http/api-error'
@@ -19,20 +19,19 @@ function createD1DatabaseClientBinding(
 }
 
 function createDrizzleDatabase(binding: D1DatabaseBinding) {
-  return drizzle(binding, { schema })
+  return drizzle<typeof schema, D1DatabaseBinding>(binding, { schema })
 }
 
-type DrizzleAppDatabase = ReturnType<typeof createDrizzleDatabase>
-
-export type AppDatabase = Omit<DrizzleAppDatabase, '$client'>
+export type AppDatabase = DrizzleD1Database<typeof schema>
 
 export function createNonHttpDatabase(binding: D1DatabaseBinding | D1DatabaseClientBinding): AppDatabase {
   const client = createD1DatabaseClientBinding(binding)
   const database = createDrizzleDatabase(client as D1DatabaseBinding)
 
   Reflect.deleteProperty(database, '$client')
+  Object.preventExtensions(database)
 
-  return database as AppDatabase
+  return database
 }
 
 export type AppDatabaseBatch = Parameters<AppDatabase['batch']>[0]

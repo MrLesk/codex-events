@@ -95,6 +95,10 @@ describe('resolveNonHttpD1Binding', () => {
 
     expect(Object.prototype.hasOwnProperty.call(database, '$client')).toBe(false)
     expect('$client' in database).toBe(false)
+    expect(Reflect.get(database, '$client')).toBeUndefined()
+    expect(Object.isExtensible(database)).toBe(false)
+    expect(Reflect.set(database, '$client', session)).toBe(false)
+    expect(Reflect.get(database, '$client')).toBeUndefined()
     expect(requestSession).toBe(session)
     expect(session.prepare).toHaveBeenCalledWith('select 1')
     expect(session.batch).toHaveBeenCalledTimes(1)

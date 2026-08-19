@@ -1,11 +1,11 @@
 ---
 id: TASK-432.4
 title: Add request-scoped D1 sessions and consistency bookmarks
-status: In Progress
+status: Done
 assignee:
   - '@luna-d1'
 created_date: '2026-08-19 06:22'
-updated_date: '2026-08-19 19:15'
+updated_date: '2026-08-19 19:54'
 labels: []
 dependencies:
   - TASK-432.1
@@ -37,13 +37,14 @@ Introduce a shared request-scoped Cloudflare D1 Sessions access path with strong
 - [x] #8 The local fake-D1 can model a stale replica and proves that an unbookmarked read may be stale while a bookmarked read observes the write
 - [x] #9 Direct database injection is restricted to explicit test or non-HTTP execution paths and cannot silently bypass request sessions
 - [x] #10 Strong consistency is the only production HTTP database path; no generic consistency option or public-replica accessor is exposed; actor, consent, permission, lifecycle, mutation, and read-after-write paths use request-scoped primary or bookmarked sessions.
+- [x] #11 The returned application database does not expose a public Drizzle $client or raw binding/session capabilities; raw prepare and batch access is available only through the request-scoped session accessor.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [x] #1 Canonical docs were updated or confirmed unchanged
 - [x] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
+- [x] #3 Relevant validation commands pass
 - [x] #4 Tests were added or updated when behavior changed
 - [x] #5 Test gaps are documented when automation is not practical
 - [x] #6 Config and developer workflow docs were updated when setup changed
@@ -60,6 +61,13 @@ Introduce a shared request-scoped Cloudflare D1 Sessions access path with strong
 4. Verify the production server tree contains no public-replica option/accessor/path; leave the media-owned platform image route untouched and report any removed-symbol import.
 5. Exercise the actual Nitro bookmark hook for sendRedirect and sendNoContent when locally possible, preserving one production hook owner.
 6. Run lint, typecheck, unit, integration, and BDD only when the local port is free; commit only the scoped D1/task files, with no push, deployment, or remote database.
+
+7. Hide the raw D1 binding from the returned Drizzle client so database internals cannot create a second session; extend the source-boundary test and validate the public shape.
+
+8. Remove the public Drizzle $client from the application database surface while preserving Drizzle query and batch behavior through its internal request session; add a runtime/type regression.
+
+9. Remove the public AppDatabase `$client` surface at both the TypeScript and runtime levels; keep Drizzle query/select/insert/update/delete/batch/execute on the single request session.
+10. Add type/runtime/session-id regressions and strengthen the full production source boundary so only getDatabaseSession(event) and explicit non-HTTP infrastructure can reach raw prepare/batch.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -87,6 +95,14 @@ Fresh corrective scope requested after 5d6fd339 and 7858c1fb. Do not touch serve
 Fresh corrective verification: fake-D1 now parses leading comments/quoted tokens and resolves the top-level statement keyword after CTE bodies; the simplified-claiming INSERT ... WITH ... SELECT regression records isWrite:true, advances to test-bookmark-2, stays invisible to an unbookmarked stale read, and is visible to a bookmark-anchored read. Removed StrongDatabaseAccessOptions and all direct strong option callers. Production server-tree replica search is clean and both canonical D1 docs now describe strong-only HTTP access. The real H3 harness was exercised for handled responses: sendRedirect/sendNoContent mark the event handled before onBeforeResponse, so no coverage was added and no parallel production hook was introduced. Focused D1 integration (2 files/10 tests), targeted changed-file ESLint, and full elevated integration (32 files/399 tests) passed. Full lint has four unrelated concurrent app/test errors; typecheck has one unrelated app error; full unit has 125 passing files/939 tests and 4 unrelated app failures; BDD ran with port 3100 free and reached 38 passed/23 failures, dominated by concurrent media/server state and connection refusal. No remote DB, URL, deployment, or push used.
 
 Independent handoff verification: focused integration for fake-D1, request-scoped sessions, and actor topology passed 3 files/14 tests; targeted ESLint passed; git diff --check and the full production-server replica/no-op symbol scan passed. HEAD is 963a657f and remains unpushed. The task stays In Progress because full lint/typecheck/unit and BDD include unrelated concurrent app/media failures; full integration passed 32 files/399 tests.
+
+Adversarial review of 963a657f found a P1 boundary leak: createSessionDatabaseBinding spreads the raw D1 binding into Drizzle, so database.$client.withSession remains reachable. No current handler uses it, but the returned application database can bypass the request-scoped session/bookmark boundary. Fresh corrective pass required: strengthen AGENTS/docs and close the binding exposure with a boundary regression.
+
+Follow-up review of 9c86ae87: the raw binding and withSession leak is closed, but AppDatabase still exposes a sanitized $client.prepare/batch. This remains an architectural layering violation because raw request-session operations must be reachable only through getDatabaseSession(event); fresh corrective work will remove the public $client surface while preserving database.batch and query behavior.
+
+Final corrective scope after 9c86ae87: the public AppDatabase type and runtime must not expose Drizzle `$client` at all. The only raw request-session capability is getDatabaseSession(event); AppDatabase query/select/insert/update/delete/batch/execute must continue to use the same request session and bookmark. No media or app client/page files are in scope. Commit only scoped D1/task/docs files; no remote database, deployment, or push.
+
+Final corrective verification: AppDatabase uses DrizzleD1Database without a public $client, runtime construction removes and prevents recreating the Drizzle property, and raw binding/client/session types are not re-exported from the HTTP database module. Runtime/type/source-boundary regressions and same-session Drizzle query/execute/batch coverage pass. bun run lint, bun run typecheck, bun run test:unit (130 files/954 tests), bun run test:integration (32 files/399 tests with elevated local Wrangler permissions), bun run test:bdd (62 non-destructive plus 2 destructive tests), and git diff --check pass. No push, deployment, remote URL, or remote D1 access.
 <!-- SECTION:NOTES:END -->
 
 ## Comments
@@ -102,12 +118,28 @@ created: 2026-08-19 18:57
 ---
 Fresh corrective pass scoped to fake-D1 writable CTE semantics, no-op strong API removal, public-replica verification, and handled-response bookmark coverage. Media route and client/bootstrap UI are out of scope.
 ---
+
+author: @codex
+created: 2026-08-19 19:25
+---
+Fresh corrective scope opened for the P1 raw D1 exposure through the returned Drizzle database $client. The next Luna pass must update persistent D1 guardrails and close the boundary without touching media or client/bootstrap UI.
+---
+
+author: @codex
+created: 2026-08-19 19:35
+---
+The 9c86ae87 fix narrowed the binding but left a public sanitized $client. Fresh corrective pass will remove that public surface to satisfy the strong session accessor boundary.
+---
+
+author: @codex
+created: 2026-08-19 19:42
+---
+Final corrective implementation requested: remove the public Drizzle $client surface, prove fail-closed runtime/type behavior and same-session Drizzle/raw/batch operations, and close the production source boundary. Keep pending only for the parent browser gate.
+---
 <!-- COMMENTS:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Fresh corrective work fixed fake-D1 writable-CTE classification, removed StrongDatabaseAccessOptions and all no-op strong callers, verified the entire production server tree has no public-replica access, and updated the canonical D1 docs to strong-only HTTP access. The exact simplified-claiming INSERT ... WITH ... SELECT shape now advances fake-D1 bookmarks and is visible to bookmark-anchored reads while stale unbookmarked reads remain behind. The real H3 harness confirmed sendRedirect/sendNoContent bypass beforeResponse when handled, so no parallel production hook was added. Focused D1 tests, targeted changed-file ESLint, and full elevated integration (32 files/399 tests) passed. Full lint, typecheck, unit, and BDD were run but retain unrelated concurrent app/media/server failures; task remains In Progress pending shared-worktree validation.
-
-Local corrective commit 963a657f is ready for review; no push, deployment, remote URL, or remote database access was used.
+Removed the public Drizzle $client and raw binding/client/session type exports from the HTTP database boundary. AppDatabase now uses DrizzleD1Database without $client; runtime construction removes the injected property and prevents re-creation while preserving Drizzle query, execute, batch, and request-scoped bookmark/session behavior. Added runtime, type, source-boundary, and session-id regressions. Verified with bun run lint, bun run typecheck, bun run test:unit (130 files/954 tests), bun run test:integration (32 files/399 tests), bun run test:bdd (62 + 2 tests), and git diff --check. No push, deployment, remote URL, or remote D1 access.
 <!-- SECTION:FINAL_SUMMARY:END -->

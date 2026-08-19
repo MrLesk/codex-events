@@ -25,11 +25,14 @@ const forbiddenClientExports = new Set([
   'getDatabaseAccess',
   'getD1Binding',
   'getPublicReplicaDatabase',
+  'D1DatabaseBinding',
+  'D1DatabaseClientBinding',
+  'D1DatabaseSessionBinding',
   'resolveD1Binding',
   'setDatabase'
 ])
 
-const forbiddenIdentifiers = /\b(?:AppDatabaseAccess|DatabaseConsistency|createDatabase|createDatabaseAccess|createNonHttpDatabase|createPublicReplicaDatabaseAccess|getDatabaseAccess|getD1Binding|getPublicReplicaDatabase|getTestDatabase|resolveD1Binding|resolveNonHttpD1Binding|setDatabase|setTestDatabase)\b/u
+const forbiddenIdentifiers = /(?:\$client|\b(?:AppDatabaseAccess|DatabaseConsistency|createDatabase|createDatabaseAccess|createNonHttpDatabase|createPublicReplicaDatabaseAccess|getDatabaseAccess|getD1Binding|getPublicReplicaDatabase|getTestDatabase|resolveD1Binding|resolveNonHttpD1Binding|setDatabase|setTestDatabase)\b)/u
 const forbiddenContextFields = /\b(?:appDb|appDbAccess|databaseAccess|d1Database)\b/u
 const forbiddenReplicaUsage = /\b(?:public-replica|getPublicReplicaDatabase|createPublicReplicaDatabaseAccess)\b|consistency\s*:\s*['"]replica['"]/u
 
@@ -183,6 +186,8 @@ describe('HTTP database boundary', () => {
 
     expect(clientSource).not.toMatch(/export\s+(?:async\s+)?function\s+(?:create|resolve|getD1Binding|setDatabase)/u)
     expect(clientSource).not.toMatch(/export\s+(?:interface|type)\s+(?:AppDatabaseAccess|DatabaseConsistency)/u)
+    expect(clientSource).not.toMatch(/export\s+type\s*\{[^}]*\bD1Database(?:Binding|ClientBinding)\b[^}]*\}/su)
+    expect(clientSource).not.toMatch(/export\s+(?:interface|type)\s+D1DatabaseSessionBinding/u)
   })
 
   test('has exactly one Nitro beforeResponse bookmark owner', () => {

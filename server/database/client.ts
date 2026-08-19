@@ -12,13 +12,13 @@ import {
 } from './non-http'
 import { ApiError } from '#server/http/api-error'
 
-export type { AppDatabase, AppDatabaseBatch, D1DatabaseBinding, D1DatabaseClientBinding } from './non-http'
+export type { AppDatabase, AppDatabaseBatch } from './non-http'
 
 export const d1BookmarkHeader = 'x-d1-bookmark'
 
-export type D1SessionConstraint = 'first-primary' | 'first-unconstrained'
+type D1SessionConstraint = 'first-primary' | 'first-unconstrained'
 
-export interface D1DatabaseSessionBinding {
+interface D1DatabaseSessionBinding {
   prepare: D1DatabaseBinding['prepare']
   batch: D1DatabaseBinding['batch']
   getBookmark: () => string | null

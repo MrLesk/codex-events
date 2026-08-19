@@ -158,6 +158,7 @@ describe('request-scoped D1 sessions', () => {
           handler: defineApiHandler(async (event) => {
             const database = getDatabase(event)
             await database.query.users.findFirst()
+            await database.select().from(users).limit(1).execute()
             await database.batch([database.select().from(users)])
             const session = getDatabaseSession(event)
             await session.prepare('select 1').all()
