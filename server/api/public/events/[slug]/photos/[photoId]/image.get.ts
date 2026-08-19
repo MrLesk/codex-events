@@ -5,7 +5,7 @@ import { getDatabase } from '#server/database/client'
 import { defineApiHandler } from '#server/http/api-handler'
 import { ApiError } from '#server/http/api-error'
 import {
-  createEventPhotoPreviewResponse,
+  createPublicEventPhotoResponse,
   getEventPhotoObject,
   getPublicEventPhotoRecordOrThrow,
   eventPhotoImageQuerySchema
@@ -58,7 +58,7 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  const response = await createEventPhotoPreviewResponse(h3Event, photoObject, {
+  const response = await createPublicEventPhotoResponse(h3Event, photoObject, query.variant, {
     cacheControl: publicEventCacheControl,
     cdnCacheControl: publicEventCdnCacheControl,
     includeCookieVary: false

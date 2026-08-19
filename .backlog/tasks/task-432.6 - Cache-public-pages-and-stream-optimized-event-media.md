@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@luna-media'
 created_date: '2026-08-19 06:22'
-updated_date: '2026-08-19 18:53'
+updated_date: '2026-08-19 19:29'
 labels: []
 dependencies:
   - TASK-432.1
@@ -66,17 +66,18 @@ Make public event delivery and event imagery use Cloudflare-native cache and tra
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-TASK-432.6 implementation and final validation (2026-08-19):
+Corrective media pass (2026-08-19):
 
-- Added event and platform media_revision schema fields with drizzle/0074_public_media_revisions.sql; public media URLs require the exact current revision, and media/visibility/gallery mutations increment it atomically. Originals remain private; public event/platform/photo delivery streams R2 bodies through bounded Images variants with AVIF/WebP/JPEG negotiation and no raw-original fallback.
-- Checked-in wrangler.jsonc and generated deployment config use cache.enabled=true; local wrangler 4.85.0 accepted both config shapes with bunx wrangler types --include-runtime=false.
-- Cache contract is public, max-age=30, stale-if-error=0 for browser and Cloudflare edge; no s-maxage, stale-while-revalidate, or one-year public media freshness. No runtime global purge credential is owned, so the canonical bounded visibility invariant is at most 30 seconds for an already-cached browser/edge response; Cache API deletion is not treated as global purge. AC #8 remains visibly unchecked because strict global purge is not claimed.
-- bun run lint: passed. bun run typecheck: passed. bun run test:unit: passed (129 files, 946 tests). Targeted event integration: passed (57 tests). Full integration: 31 of 32 files passed, 397 of 398 tests passed; the sole failure is local-platform-proxy.test.ts, blocked by sandbox EPERM binding 127.0.0.1. BDD port 3000 was free, but bootstrap local Wrangler D1 migration failed with the same listen EPERM on 127.0.0.1.
-- No push, deployment, remote D1, test environment, or production access used; server/database/client.ts was not modified.
+- The managed public-media scope is event background/banner images, the platform default event background, and public event-gallery photo responses. Newly issued managed URLs carry the exact current event or platform media_revision and use streamed bounded Cloudflare Images transforms. Public gallery preview is 720px; variant=original selects the named full-display transform capped at 2400px and never returns the stored R2 original.
+- Generated certificate PNGs and winner/published-project profile icons are outside this managed cache scope and now remain private, no-store responses. profileIconUpdatedAt remains a request/version guard, not a managed public cache revision.
+- Added objective coverage for generated cache and IMAGES bindings, distinct public photo transforms, stale gallery URLs after visibility and deletion, platform-default replacement/removal, certificate/profile-icon cache isolation, and preserved the BDD upload response mediaRevision plus variant=background transformed-Images assertion.
+- Newly issued managed event/platform/gallery responses use public max-age=30, stale-if-error=0 browser and Cloudflare headers. Cache hits can bypass the Worker; Cache API deletion is not global, and no runtime purge secret is used.
+- Legacy public photo preview/original URLs from older deployments used public max-age=31536000, immutable. A new Worker cannot revoke a browser or edge hit for those URLs, so the 30-second bound does not apply to them. Operators must perform the one-time Cloudflare URL-prefix purge or retire the legacy namespace described in OPERATOR.md, at minimum /api/public/events/ and /api/public/platform/. AC #8 remains unchecked for this legacy boundary.
+- Validation: focused unit 2 files/22 tests passed; focused media integration 3 files/127 tests passed; bun run lint passed; bun run typecheck passed; bun run test:unit passed (130 files/953 tests). Full integration passed 31/32 files and 398/399 tests; local-platform-proxy.test.ts failed only because sandbox Wrangler logging and 127.0.0.1 binding are EPERM. BDD stopped during local Wrangler D1 migration bootstrap for the same sandbox listen restriction. No push, deployment, remote D1/test/prod access, or server/database/client.ts change.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Implemented TASK-432.6 and committed the scoped media/config/docs/test changes. The platform default background route uses strong request-scoped getDatabase(h3Event), not a public-replica accessor. Stale revisions and raw originals are rejected on Worker misses/revalidations. Without a securely owned globally enforceable purge mechanism, browser/Cloudflare cache visibility is bounded to at most 30 seconds; this is the explicit operational tradeoff recorded for AC #8. Full integration and BDD each retain one local sandbox listen-EPERM blocker documented in the task notes.
+Corrective TASK-432.6 pass completed locally. Managed event/platform/gallery media now has explicit scope, bounded named photo transforms, current-revision stale URL tests, and objective config/header coverage; certificates and outcome profile icons are private and outside the managed cache contract. Persistent docs and operator guidance state that legacy immutable public photo URLs can remain edge/browser-cacheable for up to one year and require one-time prefix purge or namespace retirement; strict AC #8 is not claimed for them. Focused tests, lint, typecheck, and unit tests pass. Full integration and BDD retain only the documented sandbox Wrangler/127.0.0.1 restriction. No push or remote access.
 <!-- SECTION:FINAL_SUMMARY:END -->

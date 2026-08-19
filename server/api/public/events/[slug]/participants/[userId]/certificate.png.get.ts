@@ -8,10 +8,7 @@ import {
   getEventCertificatePreview
 } from '#server/domains/events/certificates'
 import { renderEventCertificatePng } from '#server/domains/events/certificate-image'
-import {
-  publicEventCacheControl,
-  publicEventCdnCacheControl
-} from '#server/domains/events/public-cache'
+import { privatePublicEventCacheControl } from '#server/domains/events/public-cache'
 import { defineApiHandler } from '#server/http/api-handler'
 import { parseValidatedParams, parseValidatedQuery } from '#server/http/validation'
 import {
@@ -40,8 +37,7 @@ export default defineApiHandler(async (h3Event) => {
   return new Response(toArrayBuffer(png), {
     headers: {
       'content-type': 'image/png',
-      'cache-control': isPreview ? 'no-store' : publicEventCacheControl,
-      ...(isPreview ? {} : { 'cloudflare-cdn-cache-control': publicEventCdnCacheControl }),
+      'cache-control': privatePublicEventCacheControl,
       'x-content-type-options': 'nosniff',
       ...(getQuery(h3Event).download !== undefined
         ? { 'content-disposition': `attachment; filename="certificate-${certificate.eventSlug}.png"` }

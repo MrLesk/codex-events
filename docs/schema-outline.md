@@ -53,7 +53,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `deleted_at` supports GDPR-compliant account lifecycle handling.
 - `is_platform_admin` replaces a separate platform role entity.
 - `is_event_organizer` grants event creation access without platform-wide or unrelated-event admin visibility.
-- `profile_icon_updated_at` records when the current profile icon object was last replaced.
+- `profile_icon_updated_at` records when the current profile icon object was last replaced. Winner and published-project profile-icon routes use it as a request/version guard but remain private, `no-store` media outside the managed public-media revision and cache scope.
 - Platform actor resolution uses `UserAuthIdentity` records so multiple linked Auth0 subjects can resolve to the same user.
 - `luma_username` is retained only as legacy migration data for users who registered before Luma email became the canonical profile field.
 

@@ -1,5 +1,4 @@
 import { and, eq, isNull } from 'drizzle-orm'
-import { setHeader } from 'h3'
 import { z } from 'zod'
 
 import { getDatabase } from '#server/database/client'
@@ -16,10 +15,7 @@ import {
   parseValidatedParams,
   parseValidatedQuery
 } from '#server/http/validation'
-import {
-  publicEventCacheControl,
-  publicEventCdnCacheControl
-} from '#server/domains/events/public-cache'
+import { privatePublicEventCacheControl } from '#server/domains/events/public-cache'
 
 const winnerProfileIconParamsSchema = routeSlugParamsSchema.extend({
   userId: z.string().trim().min(1)
@@ -95,11 +91,9 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  setHeader(h3Event, 'cache-control', publicEventCacheControl)
-  setHeader(h3Event, 'cloudflare-cdn-cache-control', publicEventCdnCacheControl)
-
   return new Response(await icon.arrayBuffer(), {
     headers: {
+      'cache-control': privatePublicEventCacheControl,
       'content-type': icon.httpMetadata?.contentType ?? 'application/octet-stream',
       'x-content-type-options': 'nosniff'
     }

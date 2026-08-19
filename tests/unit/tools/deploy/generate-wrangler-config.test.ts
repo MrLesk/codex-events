@@ -41,6 +41,7 @@ describe('deploy Wrangler config generator', () => {
     expect(config.main).toBe('../../.output/server/index.mjs')
     expect(config.assets.directory).toBe('../../.output/public')
     expect(config.cache).toEqual({ enabled: true })
+    expect(config.images).toEqual({ binding: 'IMAGES' })
     expect(config.routes).toEqual([
       {
         pattern: 'test.example.com',

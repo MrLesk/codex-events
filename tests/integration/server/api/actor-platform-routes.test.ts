@@ -1451,6 +1451,27 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(versionedImageResponse.headers.get('content-type')).toBe('image/webp')
     expect(versionedImageResponse.headers.get('vary')).toBe('Accept')
 
+    const replacementUploadForm = new FormData()
+    replacementUploadForm.append(
+      'file',
+      new Blob([pngSignatureBytes], { type: 'image/png' }),
+      'replacement-background.png'
+    )
+
+    const replacementUploadResponse = await adminHarness.request('/api/platform-settings/event-default-background-image', {
+      method: 'POST',
+      body: replacementUploadForm
+    })
+    const replacedSettings = await adminHarness.database.query.platformSettings.findFirst({
+      where: eq(platformSettings.id, 'default')
+    })
+
+    expect(replacementUploadResponse.status).toBe(200)
+    expect(replacedSettings?.mediaRevision).toBe(storedSettings!.mediaRevision + 1)
+    expect((await adminHarness.request(
+      `/api/public/platform/event-default-background-image?variant=background&v=${storedSettings!.mediaRevision}`
+    )).status).toBe(404)
+
     const deleteResponse = await adminHarness.request('/api/platform-settings/event-default-background-image', {
       method: 'DELETE'
     })
@@ -1479,12 +1500,21 @@ describe('TASK-3.5 actor-facing API routes', () => {
         code: 'platform_default_event_background_image_not_found'
       }
     })
+    expect((await adminHarness.request(
+      `/api/public/platform/event-default-background-image?variant=background&v=${replacedSettings!.mediaRevision}`
+    )).status).toBe(404)
     expect(auditRows).toEqual([
       expect.objectContaining({
         actorUserId: 'platform_background_admin',
         entityType: 'platform_settings',
         entityId: 'default',
         action: 'platform_settings.created'
+      }),
+      expect.objectContaining({
+        actorUserId: 'platform_background_admin',
+        entityType: 'platform_settings',
+        entityId: 'default',
+        action: 'platform_settings.updated'
       }),
       expect.objectContaining({
         actorUserId: 'platform_background_admin',

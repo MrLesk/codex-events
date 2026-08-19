@@ -18,6 +18,22 @@ BDD scenarios are authored as Gherkin feature files under
 `tests/bdd/steps`, `tests/bdd/bootstrap.ts`, and `tests/bdd/support`.
 Generated Playwright files under `.features-gen/` are not edited by hand.
 
+## Managed public-media validation
+
+Managed event, platform-default, and public-gallery media tests verify the
+exact current `media_revision`, stale URLs after visibility, replacement, and
+removal mutations, the configured Cloudflare Images binding, and the bounded
+transform selected by each named gallery variant. Public gallery `original`
+tests verify the full-display transform and never expect raw R2 bytes.
+
+Local integration tests verify response headers and transform configuration;
+they do not pretend to simulate a Cloudflare edge cache hit. A real edge hit
+can bypass the Worker, so cache-hit behavior and purge behavior require a
+deployed Cloudflare check. Newly issued managed responses have the documented
+30-second freshness window. Legacy immutable public photo URLs retain their
+original browser/edge lifetime until the one-time operator purge or namespace
+retirement documented in `OPERATOR.md`.
+
 ## Validation Surfaces
 
 ### Fast CI Gate

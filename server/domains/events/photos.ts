@@ -67,6 +67,23 @@ export const eventPhotoImageQuerySchema = z.object({
   v: z.string().trim().min(1).optional()
 })
 
+export const publicEventPhotoVariants = {
+  preview: {
+    name: 'preview',
+    width: 720,
+    height: 720,
+    fit: 'scale-down' as const,
+    quality: 82
+  },
+  original: {
+    name: 'full-display',
+    width: 2400,
+    height: 2400,
+    fit: 'scale-down' as const,
+    quality: 88
+  }
+} as const
+
 export const updateEventPhotoPublicVisibilityBodySchema = z.object({
   isPubliclyVisible: z.coerce.boolean()
 })
@@ -907,25 +924,30 @@ export async function requireEventPhotoManageAccess(h3Event: H3Event, eventId: s
   }
 }
 
-export async function createEventPhotoPreviewResponse(
+type EventPhotoResponseOptions = {
+  cacheControl?: string
+  cdnCacheControl?: string
+  includeCookieVary?: boolean
+}
+
+type EventPhotoObject = NonNullable<Awaited<ReturnType<typeof getEventPhotoObject>>>
+
+async function createTransformedEventPhotoResponse(
   event: H3Event,
-  photoObject: NonNullable<Awaited<ReturnType<typeof getEventPhotoObject>>>,
-  options?: {
-    cacheControl?: string
-    cdnCacheControl?: string
-    includeCookieVary?: boolean
-  }
+  photoObject: EventPhotoObject,
+  variant: (typeof publicEventPhotoVariants)[EventPhotoImageVariant],
+  options?: EventPhotoResponseOptions
 ) {
   const transformed = await getImagesBinding(event)
     .input(photoObject.body)
     .transform({
-      width: 720,
-      height: 720,
-      fit: 'scale-down'
+      width: variant.width,
+      height: variant.height,
+      fit: variant.fit
     })
     .output({
       format: 'image/webp',
-      quality: 82
+      quality: variant.quality
     })
 
   const response = transformed.response()
@@ -948,4 +970,31 @@ export async function createEventPhotoPreviewResponse(
     statusText: response.statusText,
     headers
   })
+}
+
+export async function createPublicEventPhotoResponse(
+  event: H3Event,
+  photoObject: EventPhotoObject,
+  variant: EventPhotoImageVariant,
+  options?: EventPhotoResponseOptions
+) {
+  return createTransformedEventPhotoResponse(
+    event,
+    photoObject,
+    publicEventPhotoVariants[variant],
+    options
+  )
+}
+
+export async function createEventPhotoPreviewResponse(
+  event: H3Event,
+  photoObject: EventPhotoObject,
+  options?: EventPhotoResponseOptions
+) {
+  return createTransformedEventPhotoResponse(
+    event,
+    photoObject,
+    publicEventPhotoVariants.preview,
+    options
+  )
 }

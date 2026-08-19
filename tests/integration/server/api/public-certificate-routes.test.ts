@@ -413,6 +413,8 @@ describe('public certificate routes', () => {
 
     expect(response.status).toBe(200)
     expect(response.headers.get('content-type')).toBe('image/png')
+    expect(response.headers.get('cache-control')).toBe('private, no-store')
+    expect(response.headers.get('cloudflare-cdn-cache-control')).toBeNull()
     expect(response.headers.get('content-disposition')).toBeNull()
 
     const downloadResponse = await harness.request(`${certificatePath}.png?download=1`)
@@ -475,7 +477,8 @@ describe('public certificate routes', () => {
     const pngResponse = await harness.request('/api/public/events/codex-build-vienna/participants/preview/certificate.png?name=Blabla')
 
     expect(pngResponse.status).toBe(200)
-    expect(pngResponse.headers.get('cache-control')).toBe('no-store')
+    expect(pngResponse.headers.get('cache-control')).toBe('private, no-store')
+    expect(pngResponse.headers.get('cloudflare-cdn-cache-control')).toBeNull()
   })
 
   test('preview responds not found for unknown event slugs', async () => {

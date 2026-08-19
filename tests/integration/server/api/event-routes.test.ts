@@ -100,6 +100,11 @@ describe('TASK-3.5 event CRUD routes', () => {
     width?: number
     height?: number
     previewBytes?: Uint8Array
+    transformCalls?: Array<{
+      width?: number
+      height?: number
+      fit?: string
+    }>
   }) {
     const width = options?.width ?? 1600
     const height = options?.height ?? 900
@@ -108,14 +113,21 @@ describe('TASK-3.5 event CRUD routes', () => {
     return {
       info: vi.fn(async () => ({ width, height })),
       input: vi.fn(() => ({
-        transform: vi.fn(() => ({
-          output: vi.fn(async () => ({
-            response: () => new Response(previewBytes, {
-              status: 200
-            }),
-            contentType: () => 'image/webp'
-          }))
-        }))
+        transform: vi.fn((transformOptions: {
+          width?: number
+          height?: number
+          fit?: string
+        }) => {
+          options?.transformCalls?.push(transformOptions)
+          return {
+            output: vi.fn(async () => ({
+              response: () => new Response(previewBytes, {
+                status: 200
+              }),
+              contentType: () => 'image/webp'
+            }))
+          }
+        })
       }))
     }
   }
@@ -3270,8 +3282,8 @@ describe('TASK-3.5 event CRUD routes', () => {
     )
 
     expect(iconResponse.status).toBe(200)
-    expect(iconResponse.headers.get('cache-control')).toBe('public, max-age=30, stale-if-error=0')
-    expect(iconResponse.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-if-error=0')
+    expect(iconResponse.headers.get('cache-control')).toBe('private, no-store')
+    expect(iconResponse.headers.get('cloudflare-cdn-cache-control')).toBeNull()
     expect(iconResponse.headers.get('content-type')).toBe('image/png')
 
     const missingIconResponse = await harness.request(
@@ -3285,7 +3297,8 @@ describe('TASK-3.5 event CRUD routes', () => {
     )
 
     expect(publishedIconResponse.status).toBe(200)
-    expect(publishedIconResponse.headers.get('cache-control')).toBe('public, max-age=30, stale-if-error=0')
+    expect(publishedIconResponse.headers.get('cache-control')).toBe('private, no-store')
+    expect(publishedIconResponse.headers.get('cloudflare-cdn-cache-control')).toBeNull()
     expect(publishedIconResponse.headers.get('content-type')).toBe('image/png')
   })
 
@@ -5484,15 +5497,27 @@ describe('TASK-3.5 event CRUD routes', () => {
   test('public event photo routes expose only publicly visible gallery images', async () => {
     const eventImagesBucket = new InMemoryR2Bucket()
     const previewBytes = new Uint8Array([7, 8, 9, 10])
+    const transformCalls: Array<{
+      width?: number
+      height?: number
+      fit?: string
+    }> = []
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/public/events/:slug/photos', handler: publicEventPhotosGetHandler },
-        { method: 'get', path: '/api/public/events/:slug/photos/:photoId/image', handler: publicEventPhotoImageGetHandler }
+        { method: 'get', path: '/api/public/events/:slug/photos/:photoId/image', handler: publicEventPhotoImageGetHandler },
+        { method: 'patch', path: '/api/events/:eventId/photos/:photoId/public-visibility', handler: eventPhotoPublicVisibilityPatchHandler },
+        { method: 'delete', path: '/api/events/:eventId/photos/:photoId', handler: eventPhotoDeleteHandler }
       ],
+      sessionUser: {
+        sub: 'auth0|gallery_admin',
+        email: 'gallery-admin@example.com'
+      },
       cloudflareEnv: {
         [eventImagesBindingName]: eventImagesBucket,
         IMAGES: createImagesBinding({
-          previewBytes
+          previewBytes,
+          transformCalls
         })
       },
       runtimeConfig: {
@@ -5503,12 +5528,21 @@ describe('TASK-3.5 event CRUD routes', () => {
     })
     harnesses.push(harness)
 
-    await harness.database.insert(users).values({
-      id: 'creator_1',
-      auth0Subject: 'auth0|creator_1',
-      email: 'creator@example.com',
-      displayName: 'Creator'
-    })
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'gallery_admin',
+        auth0Subject: 'auth0|gallery_admin',
+        email: 'gallery-admin@example.com',
+        displayName: 'Gallery Admin'
+      }
+    ])
+    await seedCurrentPlatformConsent(harness, 'gallery_admin')
     await harness.database.insert(events).values({
       id: 'event_public_gallery',
       eventType: 'hackathon',
@@ -5525,6 +5559,15 @@ describe('TASK-3.5 event CRUD routes', () => {
       state: 'registration_open',
       maxTeamMembers: 5,
       createdByUserId: 'creator_1'
+    })
+    await harness.database.insert(eventRoleAssignments).values({
+      id: 'role_public_gallery_admin',
+      eventId: 'event_public_gallery',
+      userId: 'gallery_admin',
+      role: 'event_admin',
+      isInJudgePool: false,
+      isStaff: false,
+      createdAt: '2026-04-01T12:00:00.000Z'
     })
 
     await eventImagesBucket.put('events/event_public_gallery/photos/photo_public', pngSignatureBytes, {
@@ -5600,6 +5643,65 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect(originalResponse.headers.get('content-type')).toBe('image/webp')
     expect(originalResponse.headers.get('cache-control')).toBe('public, max-age=30, stale-if-error=0')
     expect(new Uint8Array(await originalResponse.arrayBuffer())).toEqual(previewBytes)
+
+    expect(transformCalls).toEqual([
+      {
+        width: 720,
+        height: 720,
+        fit: 'scale-down'
+      },
+      {
+        width: 2400,
+        height: 2400,
+        fit: 'scale-down'
+      }
+    ])
+
+    const hideResponse = await harness.request('/api/events/event_public_gallery/photos/photo_public/public-visibility', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        isPubliclyVisible: false
+      }),
+      headers: {
+        'content-type': 'application/json'
+      }
+    })
+
+    expect(hideResponse.status).toBe(200)
+    const hiddenEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_public_gallery')
+    })
+    expect(hiddenEvent?.mediaRevision).toBe(1)
+
+    const staleVisibilityResponse = await harness.request('/api/public/events/public-gallery-event/photos/photo_public/image?variant=preview&v=0')
+
+    expect(staleVisibilityResponse.status).toBe(404)
+
+    const restoreResponse = await harness.request('/api/events/event_public_gallery/photos/photo_public/public-visibility', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        isPubliclyVisible: true
+      }),
+      headers: {
+        'content-type': 'application/json'
+      }
+    })
+
+    expect(restoreResponse.status).toBe(200)
+    const restoredEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_public_gallery')
+    })
+    expect(restoredEvent?.mediaRevision).toBe(2)
+
+    const deleteVersionedUrl = '/api/public/events/public-gallery-event/photos/photo_public/image?variant=preview&v=2'
+    expect((await harness.request(deleteVersionedUrl)).status).toBe(200)
+
+    const deleteResponse = await harness.request('/api/events/event_public_gallery/photos/photo_public', {
+      method: 'DELETE'
+    })
+
+    expect(deleteResponse.status).toBe(200)
+    expect((await harness.request(deleteVersionedUrl)).status).toBe(404)
 
     const hiddenPhotoResponse = await harness.request('/api/public/events/public-gallery-event/photos/photo_private/image?variant=original&v=0')
 
