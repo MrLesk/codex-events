@@ -1,5 +1,6 @@
 import type { PublicEventState } from '~/domains/events/presentation'
 import type { EventType } from '~/domains/events/records'
+import type { AccountEventPageName } from '~/domains/events/account-workspace-page'
 
 export const accountEventWorkspaceTabs = [
   'overview',
@@ -22,6 +23,30 @@ export const accountEventWorkspaceTabs = [
 ] as const
 
 export type AccountEventWorkspaceTab = (typeof accountEventWorkspaceTabs)[number]
+
+export const accountEventWorkspacePageByTab: Readonly<Record<AccountEventWorkspaceTab, AccountEventPageName>> = {
+  'overview': 'entry',
+  'credits': 'entry',
+  'prizes': 'prizes',
+  'details': 'entry',
+  'call-for-talks': 'entry',
+  'gallery': 'gallery',
+  'feedback': 'feedback',
+  'judges': 'rosters',
+  'staff': 'rosters',
+  'workspace': 'workspace',
+  'teams': 'teams',
+  'participants': 'participants',
+  'certificates': 'certificates',
+  'submissions': 'submissions',
+  'judging': 'judging',
+  'operations': 'operations',
+  'settings': 'settings'
+}
+
+export function getAccountEventPageForTab(tab: AccountEventWorkspaceTab) {
+  return accountEventWorkspacePageByTab[tab]
+}
 
 export interface AccountEventTabAccessOptions {
   hasApprovedParticipantAccess: boolean

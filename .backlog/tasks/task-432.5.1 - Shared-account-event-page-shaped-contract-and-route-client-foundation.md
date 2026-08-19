@@ -1,10 +1,11 @@
 ---
 id: TASK-432.5.1
 title: Shared account-event page-shaped contract and route/client foundation
-status: To Do
+status: In Progress
 assignee:
   - '@luna-workspace'
 created_date: '2026-08-19 19:51'
+updated_date: '2026-08-19 20:28'
 labels:
   - architecture
   - performance
@@ -76,21 +77,55 @@ Validation
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A shared typed account-event page envelope and request composable exist, with one concrete contract per page and no generic graph/include API.
+- [x] #1 A shared typed account-event page envelope and request composable exist, with one concrete contract per page and no generic graph/include API.
 - [ ] #2 Every child page route can resolve actor and authorization once and use one request-scoped strong D1 database/session without raw binding access or internal HTTP fan-out.
-- [ ] #3 Protected page requests use the existing bootstrap authorization generation and shared signal-aware cancellation; aborted or stale responses never commit.
+- [x] #3 Protected page requests use the existing bootstrap authorization generation and shared signal-aware cancellation; aborted or stale responses never commit.
 - [ ] #4 The shared admin workspace fetch file, route registry integration, and API-surface documentation have one explicit owner and no child write-scope ambiguity.
-- [ ] #5 No changes are made to TASK-432.2 bootstrap/cancellation, TASK-432.4 D1/session, or TASK-432.6 media behavior.
+- [x] #5 No changes are made to TASK-432.2 bootstrap/cancellation, TASK-432.4 D1/session, or TASK-432.6 media behavior.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Canonical docs were updated or confirmed unchanged
-- [ ] #2 Code behavior matches canonical docs
+- [x] #1 Canonical docs were updated or confirmed unchanged
+- [x] #2 Code behavior matches canonical docs
 - [ ] #3 Relevant validation commands pass
-- [ ] #4 Tests were added or updated when behavior changed
-- [ ] #5 Test gaps are documented when automation is not practical
+- [x] #4 Tests were added or updated when behavior changed
+- [x] #5 Test gaps are documented when automation is not practical
 - [ ] #6 Config and developer workflow docs were updated when setup changed
-- [ ] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #7 Auth and permissions changes follow the documented platform model
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Trace the existing account-event tab keys, shared authorization-generation and cancellation composables, server authorization/database accessors, and operation catalog conventions.
+2. Define the named account-event page contract registry and server request context without touching child payload implementations or D1/media internals.
+3. Implement the standalone signal-aware account-event page request with generation-scoped keys and stale-response protection; keep useAdminWorkspace only as the distinct root-admin index boundary and remove its event-tab fan-out.
+4. Add source/contract tests for one actor/authorization/database path, no raw binding/session construction, named route/schema registration, cancellation behavior, and the explicit child migration boundary; update the API-surface docs.
+5. Run lint, typecheck, unit, integration, and focused BDD as applicable; inspect the diff and commit only TASK-432.5.1-owned files.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Started shared-foundation implementation from the committed TASK-432.5 parent. Existing unrelated TASK-432.4/.6 changes remain outside scope and must not be staged.
+
+Design correction recorded: useAdminWorkspace remains the distinct root-admin index boundary used by account/admin.vue and the admin event-creation pages. It no longer owns event settings or operations fan-out. The old useAdminEventSettingsWorkspace and useAdminEventOperationsWorkspace exports are intentionally absent; TASK-432.5.4 and TASK-432.5.3 must migrate AccountEventAdminSettingsPanel.vue and AccountEventAdminOperationsPanel.vue to the typed page request foundation.
+
+Compile boundary validation: bun run typecheck reaches only the unmigrated child settings/operations panels (missing useAdminEventSettingsWorkspace/useAdminEventOperationsWorkspace at line 84, followed by implicit-any/property errors from the absent payload types) plus unrelated existing server/domains/talk-proposals/email-queue.ts errors at lines 447 and 467. Root-admin consumers compile against the preserved boundary. No child panels were edited.
+
+The page context now performs one slug event read, local canonical workspace visibility/access checks using the resolved actor/database/event, and one cached event-authorization resolution. The route executor requires a named page, concrete child Zod schema, validates slug/page params, and parses the child output.
+
+Docs correction: restored docs/api-surface.md managed-media/D1/bootstrap wording to the HEAD baseline; only the account-event page-route convention and foundation ownership were added. Generated operation catalogs remain deferred until child route definitions exist.
+
+Final typecheck rerun after the root-admin boundary and signal-link correction reports only the two intentionally unmigrated child panels: AccountEventAdminOperationsPanel.vue:84 and AccountEventAdminSettingsPanel.vue:84 for removed legacy workspace composables, with their expected payload-driven cascade errors. No root-admin page, page foundation, context, contract, or test file errors were reported. Earlier full validation also exposed unrelated talk-proposal/queue changes in the shared worktree; those are not part of this task and were not staged.
+
+Final validation status: scoped ESLint and all seven foundation test files pass (46 tests). Full lint now reports only unrelated dirty-worktree errors in server/domains/events/index.ts:2279-2293 and tests/integration/server/api/event-routes.test.ts:4731. Full test:unit reports unrelated talk-proposal/index, talk-proposal/email-queue, and HTTP database-boundary failures; full test:integration reports the corresponding unrelated event/application/talk-proposal/MCP failures. No focused BDD was run because this foundation adds no concrete child route or browser page; browser topology remains TASK-432.5.7 scope. Testing guidance is covered by the new api-surface route contract and task notes; docs/testing-strategy.md remains unstaged because its existing diff is TASK-432.6-owned media guidance.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Implemented the shared account-event page foundation: named page contracts and concrete route paths, a request-scoped actor/event-authorization/strong-D1 context with canonical workspace visibility checks, concrete Zod-validated child route definitions, and a signal-linked protected page request composable. The root-admin useAdminWorkspace remains only the manageable-event index boundary; event settings/operations callers are explicitly deferred to TASK-432.5.3/.5.4. Verified with 46 focused unit tests, scoped ESLint, staged diff checks, and the documented full-suite/typecheck results. Child routes and generated operation catalogs remain pending until their disjoint child tasks land.
+<!-- SECTION:FINAL_SUMMARY:END -->

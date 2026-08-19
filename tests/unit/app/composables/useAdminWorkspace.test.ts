@@ -73,14 +73,14 @@ describe('useAdminWorkspace', () => {
     vi.unstubAllGlobals()
   })
 
-  test('refreshes the shared session actor with the admin workspace root data', async () => {
+  test('keeps the root admin index separate from event page reads', async () => {
     const { useAdminWorkspace } = await import('../../../../app/composables/useAdminWorkspace')
 
     const workspace = useAdminWorkspace()
     await workspace.refreshRoot()
 
-    expect(sessionRefresh).toHaveBeenCalledTimes(1)
-    expect(eventsRefresh).toHaveBeenCalledTimes(1)
-    expect(useApiFetch).not.toHaveBeenCalledWith('/api/session', expect.anything())
+    expect(sessionRefresh).toHaveBeenCalledOnce()
+    expect(eventsRefresh).toHaveBeenCalledOnce()
+    expect(useApiFetch).toHaveBeenCalledWith('/api/events?page=1&page_size=100', expect.anything())
   })
 })

@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  accountEventWorkspaceTabs,
   canAccessAccountEventWorkspace,
+  getAccountEventPageForTab,
   getAccountEventWorkspaceBackLink,
   getAccountEventTabAccess,
   getAccountEventTabLabel,
@@ -15,6 +17,28 @@ const hackathonOptions = {
 }
 
 describe('getAccountEventTabAccess', () => {
+  test('maps every workspace tab to one named page contract', () => {
+    expect(Object.fromEntries(accountEventWorkspaceTabs.map(tab => [tab, getAccountEventPageForTab(tab)]))).toEqual({
+      'overview': 'entry',
+      'credits': 'entry',
+      'prizes': 'prizes',
+      'details': 'entry',
+      'call-for-talks': 'entry',
+      'gallery': 'gallery',
+      'feedback': 'feedback',
+      'judges': 'rosters',
+      'staff': 'rosters',
+      'workspace': 'workspace',
+      'teams': 'teams',
+      'participants': 'participants',
+      'certificates': 'certificates',
+      'submissions': 'submissions',
+      'judging': 'judging',
+      'operations': 'operations',
+      'settings': 'settings'
+    })
+  })
+
   test('shows Call for talks only for an eligible applicant, retained owner, or reviewer', () => {
     const base = {
       eventType: 'meetup' as const,
