@@ -54,6 +54,7 @@ const { data: certificateData, error: certificateError } = await useApiResponse<
   () => `public-event-certificate:${slug.value}:${userId.value}:${previewSearch.value}`,
   () => `/api/public/events/${slug.value}/participants/${userId.value}/certificate${previewSearch.value}`,
   {
+    cacheScope: 'public',
     watch: [slug, userId, previewSearch]
   }
 )

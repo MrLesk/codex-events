@@ -2,8 +2,10 @@ import type { MultiWatchSources } from 'vue'
 import type { ApiDataResponse } from '~/lib/api'
 
 import { useApiClient } from './useApiClient'
+import { useAuthorizationCache, type ApiCacheScope } from './useAuthorizationCache'
 
 interface UseApiDataOptions<Data> {
+  cacheScope?: ApiCacheScope
   default?: () => Data
   dedupe?: 'cancel' | 'defer'
   immediate?: boolean
@@ -24,14 +26,20 @@ export function useApiData<Data>(
   options?: UseApiDataOptions<Data>
 ) {
   const apiFetch = useApiClient()
+  const cacheScope = options?.cacheScope ?? 'protected'
+  const asyncDataOptions = { ...options }
+  delete asyncDataOptions.cacheScope
+  const resolvedKey = cacheScope === 'protected'
+    ? useAuthorizationCache().protectedKey(key)
+    : key
 
   return useAsyncData<Data>(
-    key,
+    resolvedKey,
     (_nuxtApp, { signal }) => handler({ apiFetch, signal }),
     {
       deep: false,
       dedupe: 'cancel',
-      ...options
+      ...asyncDataOptions
     }
   )
 }

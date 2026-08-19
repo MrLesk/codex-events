@@ -36,6 +36,7 @@ const {
   data: eventData,
   error: eventError
 } = await useApiResponse<PublicEvent>(() => `public-event-application-terms:${slug.value}`, () => `/api/public/events/${slug.value}`, {
+  cacheScope: 'public',
   watch: [slug]
 })
 

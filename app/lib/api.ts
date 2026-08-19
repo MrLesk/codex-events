@@ -1,3 +1,5 @@
+import { throwIfAborted } from './request-cancellation'
+
 export interface ApiErrorShape {
   code: string
   message: string
@@ -19,15 +21,22 @@ export interface ApiListResponse<T> {
 }
 
 export async function listAllPaginatedItems<T>(
-  fetchPage: (page: number, pageSize: number) => Promise<ApiListResponse<T>>,
-  pageSize: number = 100
+  fetchPage: (page: number, pageSize: number, signal?: AbortSignal) => Promise<ApiListResponse<T>>,
+  pageSize: number = 100,
+  signal?: AbortSignal
 ) {
   const items: T[] = []
   let page = 1
   let total: number | null = null
 
   while (true) {
-    const response = await fetchPage(page, pageSize)
+    if (signal) {
+      throwIfAborted(signal)
+    }
+
+    const response = signal
+      ? await fetchPage(page, pageSize, signal)
+      : await fetchPage(page, pageSize)
     const pageItems = response.data
 
     items.push(...pageItems)

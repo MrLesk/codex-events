@@ -18,6 +18,7 @@ export function useCurrentPlatformDocuments() {
     'current-platform-documents',
     '/api/platform-documents/current',
     {
+      cacheScope: 'public',
       default: () => null
     }
   )

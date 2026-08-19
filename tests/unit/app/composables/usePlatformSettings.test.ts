@@ -44,6 +44,7 @@ describe('usePlatformSettings', () => {
 
     expect(useApiResponse).toHaveBeenCalledTimes(1)
     expect(useApiResponse).toHaveBeenCalledWith('current-platform-settings', '/api/platform-settings/current', {
+      cacheScope: 'public',
       default: expect.any(Function)
     })
     expect(result.settings.value).toEqual(settings)

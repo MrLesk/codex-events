@@ -41,6 +41,7 @@ import { shouldShowApprovedParticipantAttendanceSummary } from '~/domains/applic
 import { buildPitchReviewCoverageEntries } from '~/domains/judging/admin-oversight'
 import { formatTimestamp } from '~/lib/date-formatting'
 import { useApiClient, useApiFetch } from '~/composables/useApiClient'
+import { useApiData } from '~/composables/useApiData'
 
 type AccountEventAdminOperationsSection = 'participants' | 'submissions' | 'operations'
 type LifecycleMetricCard = {
@@ -189,13 +190,13 @@ const {
   status: submissionMonitorStatus,
   error: submissionMonitorError,
   refresh: refreshSubmissionMonitor
-} = useAsyncData<SubmissionMonitorData>(
+} = useApiData<SubmissionMonitorData>(
   () => [
     'admin-event-submission-monitor',
     eventId.value,
     submissionMonitorCacheState.value
   ].join(':'),
-  async () => {
+  async ({ apiFetch, signal }) => {
     if (!submissionMonitorReady.value) {
       return {
         teamDetails: [],
@@ -204,7 +205,8 @@ const {
     }
 
     const response = await apiFetch<ApiDataResponse<SubmissionMonitorData>>(
-      `/api/events/${eventId.value}/teams/submission-monitor`
+      `/api/events/${eventId.value}/teams/submission-monitor`,
+      { signal }
     )
 
     return response.data

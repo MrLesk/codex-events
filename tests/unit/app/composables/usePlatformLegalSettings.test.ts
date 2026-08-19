@@ -45,6 +45,7 @@ describe('usePlatformLegalSettings', () => {
 
     expect(useApiResponse).toHaveBeenCalledTimes(1)
     expect(useApiResponse).toHaveBeenCalledWith('current-platform-legal-settings', '/api/platform-legal-settings/current', {
+      cacheScope: 'public',
       default: expect.any(Function)
     })
     expect(result.settings.value).toEqual(settings)

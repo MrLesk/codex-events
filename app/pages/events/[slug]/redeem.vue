@@ -3,6 +3,7 @@ import type { ApiDataResponse } from '~/lib/api'
 
 import { buildAccountRegisterHref } from '#shared/domains/accounts/auth-navigation'
 import { normalizeApiError } from '~/lib/api'
+import { useApiClient, useApiFetch } from '~/composables/useApiClient'
 
 type SimplifiedClaimState = {
   status: 'claimed'
@@ -42,6 +43,7 @@ if (import.meta.server) {
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
+const apiFetch = useApiClient()
 const returnTo = computed(() => `/events/${slug.value}/redeem`)
 const { actor, status: actorStatus } = await useAccountLifecycleActor()
 const accountReady = computed(() =>
@@ -56,7 +58,7 @@ if (actorStatus.value !== 'pending' && !accountReady.value) {
   await navigateTo(buildAccountRegisterHref(returnTo.value), { replace: true })
 }
 
-const { data, error, status, refresh } = await useFetch<ApiDataResponse<SimplifiedClaimState>>(
+const { data, error, status, refresh } = await useApiFetch<ApiDataResponse<SimplifiedClaimState>>(
   () => `/api/events/slug/${slug.value}/simplified-claim`,
   {
     key: `simplified-claim:${slug.value}`,
@@ -98,7 +100,7 @@ async function redeem() {
   isRedeeming.value = true
   redeemError.value = ''
   try {
-    const response = await $fetch<ApiDataResponse<{
+    const response = await apiFetch<ApiDataResponse<{
       status: 'claimed'
       redirectUrl: string
       claimedAt: string | null

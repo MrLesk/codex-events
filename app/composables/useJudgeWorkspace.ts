@@ -15,12 +15,12 @@ import {
   normalizeJudgeAssignmentDetail,
   sortJudgeAssignments
 } from '~/domains/judging/workspace'
-import { useApiClient, useApiFetch } from '~/composables/useApiClient'
+import { throwIfAborted } from '~/lib/request-cancellation'
+import { useApiFetch } from '~/composables/useApiClient'
+import { useApiData } from '~/composables/useApiData'
 import { useSessionActor } from '~/composables/useSessionActor'
 
 export function useJudgeWorkspace() {
-  const apiFetch = useApiClient()
-
   const session = useSessionActor()
   const actor = session.actor
   const subjectKey = computed(() => getJudgeWorkspaceSubjectKey(
@@ -28,9 +28,9 @@ export function useJudgeWorkspace() {
   ))
   const canLoadEvents = computed(() => Boolean(actor.value?.hasPlatformAccount))
 
-  const events = useAsyncData<EventRecord[]>(
+  const events = useApiData<EventRecord[]>(
     () => buildJudgeWorkspaceCacheKey('judge-workspace-events', subjectKey.value),
-    async () => {
+    async ({ apiFetch, signal }) => {
       if (!canLoadEvents.value) {
         return []
       }
@@ -40,9 +40,11 @@ export function useJudgeWorkspace() {
           query: {
             page,
             page_size: pageSize
-          }
+          },
+          signal
         }),
-        100
+        100,
+        signal
       )
     },
     {
@@ -56,16 +58,17 @@ export function useJudgeWorkspace() {
     filterReviewableEvents(events.data.value ?? [], actor.value)
   )
 
-  const inboxRequest = useAsyncData<JudgeInboxGroup[]>(
+  const inboxRequest = useApiData<JudgeInboxGroup[]>(
     () => buildJudgeWorkspaceCacheKey('judge-workspace-inbox', subjectKey.value),
-    async () => {
+    async ({ apiFetch, signal }) => {
       if (!actor.value?.hasPlatformAccount) {
         return []
       }
 
       const groups = await Promise.all(reviewableEvents.value.map(async (event) => {
         const assignmentsResponse = await apiFetch<ApiListResponse<JudgeAssignmentApiDetail>>(
-          `/api/events/${event.id}/judging/assignments`
+          `/api/events/${event.id}/judging/assignments`,
+          { signal }
         )
         const assignments = assignmentsResponse.data.map(normalizeJudgeAssignmentDetail)
 
@@ -74,6 +77,8 @@ export function useJudgeWorkspace() {
           assignments: sortJudgeAssignments(filterAssignmentsForActor(assignments, actor.value))
         } satisfies JudgeInboxGroup
       }))
+
+      throwIfAborted(signal)
 
       return groups.filter(group => group.assignments.length > 0)
     },
@@ -127,7 +132,6 @@ export function useJudgeAssignmentWorkspace(
   const resolvedEventId = computed(() => String(toValue(eventId)).trim())
   const resolvedAssignmentId = computed(() => String(toValue(assignmentId)).trim())
 
-  const apiFetch = useApiClient()
   const session = useSessionActor()
   const subjectKey = computed(() => getJudgeWorkspaceSubjectKey(
     session.actor.value.isAuthenticated ? session.actor.value.sessionUser.sub : null
@@ -163,20 +167,21 @@ export function useJudgeAssignmentWorkspace(
   })
   const criteriaStage = computed(() => assignment.value?.reviewStage ?? null)
 
-  const criteria = useAsyncData<EvaluationCriterion[]>(
+  const criteria = useApiData<EvaluationCriterion[]>(
     () => buildJudgeWorkspaceCacheKey(
       'judge-assignment-criteria',
       subjectKey.value,
       resolvedEventId.value,
       criteriaStage.value ?? 'none'
     ),
-    async () => {
+    async ({ apiFetch, signal }) => {
       if (criteriaStage.value !== 'blind_review') {
         return []
       }
 
       const response = await apiFetch<ApiListResponse<EvaluationCriterion>>(
-        `/api/events/${resolvedEventId.value}/evaluation-criteria`
+        `/api/events/${resolvedEventId.value}/evaluation-criteria`,
+        { signal }
       )
 
       return response.data

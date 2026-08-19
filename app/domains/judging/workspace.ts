@@ -10,6 +10,7 @@ import { normalizeApiError } from '~/lib/api'
 import { isEventRoleJudgingEnabled } from '~/domains/events/access'
 import { formatEventState } from '~/domains/events/states'
 import { formatTimestamp } from '~/lib/date-formatting'
+import { throwIfAborted } from '~/lib/request-cancellation'
 
 export type JudgeAssignmentStatus = 'assigned' | 'judge_started' | 'judge_completed' | 'skipped'
 export type JudgeIneligibilityStatus = 'eligible' | 'ineligible'
@@ -356,15 +357,22 @@ export function filterAssignmentsForActor(
 }
 
 export async function listAllVisibleEvents(
-  fetchPage: (page: number, pageSize: number) => Promise<ApiListResponse<EventRecord>>,
-  pageSize: number = 100
+  fetchPage: (page: number, pageSize: number, signal?: AbortSignal) => Promise<ApiListResponse<EventRecord>>,
+  pageSize: number = 100,
+  signal?: AbortSignal
 ) {
   const collectedEvents = new Map<string, EventRecord>()
   let page = 1
   let total: number | null = null
 
   while (true) {
-    const response = await fetchPage(page, pageSize)
+    if (signal) {
+      throwIfAborted(signal)
+    }
+
+    const response = signal
+      ? await fetchPage(page, pageSize, signal)
+      : await fetchPage(page, pageSize)
     const pageEvents = response.data
 
     for (const event of pageEvents) {

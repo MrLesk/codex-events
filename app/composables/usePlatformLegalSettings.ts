@@ -11,6 +11,7 @@ export function usePlatformLegalSettings() {
     'current-platform-legal-settings',
     '/api/platform-legal-settings/current',
     {
+      cacheScope: 'public',
       default: () => null
     }
   )

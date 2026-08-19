@@ -31,3 +31,8 @@ Feature: Public event discovery
     Given the saved "platform_admin" local session state exists
     When I open the public event detail page for the fixture event with the saved "platform_admin" session
     Then the public event document should remain publicly cacheable
+
+  Scenario: Signed-in public event detail keeps the signed-out HTML payload
+    Given the saved "platform_admin" local session state exists
+    When I compare the signed-out and signed-in public event documents for the fixture event
+    Then the signed-in public event payload should match the signed-out payload

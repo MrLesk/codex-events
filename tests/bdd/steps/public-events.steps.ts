@@ -8,6 +8,10 @@ import { stablePersonaKeys, storageStatePathForPersona, type StablePersonaKey } 
 const { Given, When, Then } = createBdd()
 
 const publicEventDocumentHeaders = new WeakMap<Page, Record<string, string>>()
+const publicEventDocumentPayloads = new WeakMap<Page, {
+  signedIn: string
+  signedOut: string
+}>()
 
 type StoredState = {
   cookies?: Array<{
@@ -91,6 +95,16 @@ async function ensurePublicDetailSection(page: Page, sectionName: 'Prizes' | 'De
   await expect(tab).toHaveAttribute('aria-selected', 'true')
 }
 
+function extractNuxtPayload(html: string) {
+  const match = html.match(/<script[^>]*id="__NUXT_DATA__"[^>]*>([\s\S]*?)<\/script>/)
+
+  if (!match?.[1]) {
+    throw new Error('The public event document did not contain a Nuxt payload.')
+  }
+
+  return match[1]
+}
+
 Given('I am on the public events page', async ({ page }) => {
   await page.goto('/')
 })
@@ -167,6 +181,25 @@ When('I open the public event detail page for the fixture event with the saved {
   publicEventDocumentHeaders.set(page, response?.headers() ?? {})
 })
 
+When('I compare the signed-out and signed-in public event documents for the fixture event', async ({ page }) => {
+  const signedOutResponse = await page.goto('/events/e2e-fixture-event')
+  const signedOutHtml = await signedOutResponse?.text()
+
+  expect(signedOutResponse?.ok()).toBe(true)
+  expect(signedOutHtml).toBeTruthy()
+
+  await applyStoredStateToPage('platform_admin', page)
+  const signedInResponse = await page.goto('/events/e2e-fixture-event')
+  const signedInHtml = await signedInResponse?.text()
+
+  expect(signedInResponse?.ok()).toBe(true)
+  expect(signedInHtml).toBeTruthy()
+  publicEventDocumentPayloads.set(page, {
+    signedIn: extractNuxtPayload(signedInHtml!),
+    signedOut: extractNuxtPayload(signedOutHtml!)
+  })
+})
+
 Then('the public event document should remain publicly cacheable', async ({ page }) => {
   const headers = publicEventDocumentHeaders.get(page)
 
@@ -181,6 +214,16 @@ Then('the public event document should remain publicly cacheable', async ({ page
   expect(headers['cache-control']).not.toContain('s-maxage')
   expect(headers['cache-control']).not.toContain('stale-while-revalidate')
   expect(headers.vary?.toLowerCase() ?? '').not.toContain('cookie')
+})
+
+Then('the signed-in public event payload should match the signed-out payload', async ({ page }) => {
+  const payloads = publicEventDocumentPayloads.get(page)
+
+  if (!payloads) {
+    throw new Error('The signed-in and signed-out public event payloads were not captured.')
+  }
+
+  expect(payloads.signedIn).toBe(payloads.signedOut)
 })
 
 Then('I should see the public event detail title {string}', async ({ page }, title: string) => {

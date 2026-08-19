@@ -5,6 +5,8 @@ import type {
 } from '~/domains/submissions/team-submission'
 
 import { normalizeTeamSubmissionApiError } from '~/domains/submissions/team-submission'
+import { isAbortError, throwIfAborted } from '~/lib/request-cancellation'
+import { useAbortableRequest } from '~/composables/useAbortableRequest'
 import { useApiClient } from '~/composables/useApiClient'
 
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
@@ -35,6 +37,7 @@ export function useTeamSubmissionWorkspace(
   }
 ) {
   const apiFetch = useApiClient()
+  const requests = useAbortableRequest()
   const resolvedEvent = computed(() => toValue(event))
   const resolvedEventId = computed(() => {
     const eventId = toValue(options.visibleEventId)
@@ -88,14 +91,17 @@ export function useTeamSubmissionWorkspace(
     return true
   }
 
-  async function fetchCurrentSubmission(teamId: string) {
+  async function fetchCurrentSubmission(teamId: string, signal: AbortSignal) {
     if (!resolvedEventId.value) {
       throw new Error('The current event submission route could not be resolved.')
     }
 
     const response = await apiFetch<TeamSubmissionApiDataResponse<TeamSubmissionRecord | null>>(
-      `/api/events/${resolvedEventId.value}/teams/${teamId}/submission`
+      `/api/events/${resolvedEventId.value}/teams/${teamId}/submission`,
+      { signal }
     )
+
+    throwIfAborted(signal)
 
     return response.data
   }
@@ -108,11 +114,17 @@ export function useTeamSubmissionWorkspace(
 
     currentSubmissionStatus.value = 'pending'
     currentSubmissionErrorMessage.value = ''
+    const signal = requests.createSignal('current-submission')
 
     try {
-      currentSubmission.value = await fetchCurrentSubmission(resolvedTeamId.value)
+      currentSubmission.value = await fetchCurrentSubmission(resolvedTeamId.value, signal)
+      throwIfAborted(signal)
       currentSubmissionStatus.value = 'success'
     } catch (error) {
+      if (isAbortError(error, signal)) {
+        return
+      }
+
       currentSubmission.value = null
       currentSubmissionStatus.value = 'error'
       currentSubmissionErrorMessage.value = toSectionErrorMessage(

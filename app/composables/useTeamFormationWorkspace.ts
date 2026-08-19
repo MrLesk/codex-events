@@ -15,7 +15,10 @@ import {
   getOwnTeamMembership,
   normalizeTeamWorkspaceApiError
 } from '~/domains/teams/workspace'
+import { isAbortError, throwIfAborted } from '~/lib/request-cancellation'
+import { useAbortableRequest } from '~/composables/useAbortableRequest'
 import { useApiClient } from '~/composables/useApiClient'
+import { useApiData } from '~/composables/useApiData'
 
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 type VisibleTeamsFilter = {
@@ -67,6 +70,7 @@ export function useTeamFormationWorkspace(
   }
 ) {
   const apiFetch = useApiClient()
+  const requests = useAbortableRequest()
   const { actor, status: actorStatus } = useAccountLifecycleActor()
   const resolvedEvent = computed(() => toValue(event))
   const resolvedTeamId = computed(() => {
@@ -86,15 +90,16 @@ export function useTeamFormationWorkspace(
   const visibleEventId = computed(() => resolvedEvent.value.id)
   const visibleEventErrorMessage = computed(() => '')
 
-  const ownApplicationRequest = useAsyncData<ParticipantApplicationRecord | null>(
+  const ownApplicationRequest = useApiData<ParticipantApplicationRecord | null>(
     () => `team-workspace-own-application:${authSubject.value}:${visibleEventId.value ?? 'none'}`,
-    async () => {
+    async ({ apiFetch, signal }) => {
       if (typedActor.value?.kind !== 'platform_user' || !visibleEventId.value) {
         return null
       }
 
       const response = await apiFetch<TeamWorkspaceApiDataResponse<ParticipantApplicationRecord | null>>(
-        `/api/events/${visibleEventId.value}/applications/me`
+        `/api/events/${visibleEventId.value}/applications/me`,
+        { signal }
       )
 
       return response.data
@@ -197,7 +202,8 @@ export function useTeamFormationWorkspace(
   async function fetchTeamPage(
     page: number,
     pageSize: number = visibleTeamsPageSize,
-    options?: VisibleTeamsFilter
+    options: VisibleTeamsFilter | undefined,
+    signal: AbortSignal
   ) {
     if (!visibleEventId.value) {
       throw new Error('The current event team route could not be resolved.')
@@ -229,7 +235,8 @@ export function useTeamFormationWorkspace(
                 member_count: options.memberCount
               }
             : {})
-        }
+        },
+        signal
       }
     )
   }
@@ -245,6 +252,8 @@ export function useTeamFormationWorkspace(
       return null
     }
 
+    const signal = requests.createSignal('team-slug')
+
     const response = await apiFetch<TeamSummaryListResponse>(
       `/api/events/${visibleEventId.value}/teams`,
       {
@@ -252,21 +261,27 @@ export function useTeamFormationWorkspace(
           page: 1,
           page_size: 1,
           slug: normalizedTeamSlug
-        }
+        },
+        signal
       }
     )
+
+    throwIfAborted(signal)
 
     return response.data.find(team => team.slug === normalizedTeamSlug) ?? null
   }
 
-  async function fetchTeamDetail(teamId: string) {
+  async function fetchTeamDetail(teamId: string, signal: AbortSignal) {
     if (!visibleEventId.value) {
       throw new Error('The current event team route could not be resolved.')
     }
 
     const response = await apiFetch<TeamWorkspaceApiDataResponse<TeamDetailRecord>>(
-      `/api/events/${visibleEventId.value}/teams/${teamId}`
+      `/api/events/${visibleEventId.value}/teams/${teamId}`,
+      { signal }
     )
+
+    throwIfAborted(signal)
 
     return response.data
   }
@@ -298,13 +313,16 @@ export function useTeamFormationWorkspace(
       loadMoreVisibleTeamsErrorMessage.value = ''
     }
 
+    const signal = requests.createSignal('visible-teams')
+
     try {
       const responses = await Promise.all(
         Array.from(
           { length: pageCount },
-          async (_, index) => await fetchTeamPage(index + 1, visibleTeamsPageSize, nextFilter)
+          async (_, index) => await fetchTeamPage(index + 1, visibleTeamsPageSize, nextFilter, signal)
         )
       )
+      throwIfAborted(signal)
       const nextTeams = responses.flatMap(response => response.data)
       const uniqueTeams = nextTeams.filter((team, index, items) =>
         items.findIndex(candidate => candidate.id === team.id) === index
@@ -316,6 +334,10 @@ export function useTeamFormationWorkspace(
       currentVisibleTeamsPage.value = pageCount
       visibleTeamsStatus.value = 'success'
     } catch (error) {
+      if (isAbortError(error, signal)) {
+        return
+      }
+
       if (isLoadMore) {
         loadMoreVisibleTeamsErrorMessage.value = toSectionErrorMessage(
           error,
@@ -334,7 +356,7 @@ export function useTeamFormationWorkspace(
         'Visible teams could not be loaded right now.'
       )
     } finally {
-      if (isLoadMore) {
+      if (isLoadMore && !signal.aborted) {
         isLoadingMoreVisibleTeams.value = false
       }
     }
@@ -359,12 +381,14 @@ export function useTeamFormationWorkspace(
 
     ownTeamStatus.value = 'pending'
     ownTeamErrorMessage.value = ''
+    const signal = requests.createSignal('own-team')
 
     try {
       let page = 1
 
       while (true) {
-        const response = await fetchTeamPage(page, ownTeamLookupPageSize)
+        const response = await fetchTeamPage(page, ownTeamLookupPageSize, undefined, signal)
+        throwIfAborted(signal)
 
         if (response.data.length === 0) {
           ownTeam.value = null
@@ -379,7 +403,8 @@ export function useTeamFormationWorkspace(
         })
 
         for (const team of prioritizedTeams) {
-          const detail = await fetchTeamDetail(team.id)
+          const detail = await fetchTeamDetail(team.id, signal)
+          throwIfAborted(signal)
 
           if (getOwnTeamMembership(detail, actorUserId.value)) {
             ownTeam.value = detail
@@ -408,6 +433,10 @@ export function useTeamFormationWorkspace(
         page += 1
       }
     } catch (error) {
+      if (isAbortError(error, signal)) {
+        return
+      }
+
       ownTeam.value = null
       ownTeamStatus.value = 'error'
       ownTeamErrorMessage.value = toSectionErrorMessage(
@@ -425,9 +454,11 @@ export function useTeamFormationWorkspace(
 
     currentTeamStatus.value = 'pending'
     currentTeamErrorMessage.value = ''
+    const signal = requests.createSignal('current-team')
 
     try {
-      const detail = await fetchTeamDetail(resolvedTeamId.value)
+      const detail = await fetchTeamDetail(resolvedTeamId.value, signal)
+      throwIfAborted(signal)
       currentTeam.value = detail
       currentTeamStatus.value = 'success'
 
@@ -437,6 +468,10 @@ export function useTeamFormationWorkspace(
         ownTeamErrorMessage.value = ''
       }
     } catch (error) {
+      if (isAbortError(error, signal)) {
+        return
+      }
+
       currentTeam.value = null
       currentTeamStatus.value = 'error'
       currentTeamErrorMessage.value = toSectionErrorMessage(
@@ -456,15 +491,23 @@ export function useTeamFormationWorkspace(
 
     teamJoinRequestsStatus.value = 'pending'
     teamJoinRequestsErrorMessage.value = ''
+    const signal = requests.createSignal('team-join-requests')
 
     try {
       const response = await apiFetch<TeamWorkspaceApiListResponse<TeamJoinRequestRecord>>(
-        `/api/events/${visibleEventId.value}/teams/${currentTeam.value.id}/join-requests`
+        `/api/events/${visibleEventId.value}/teams/${currentTeam.value.id}/join-requests`,
+        { signal }
       )
+
+      throwIfAborted(signal)
 
       teamJoinRequests.value = response.data.filter(request => request.status === 'pending')
       teamJoinRequestsStatus.value = 'success'
     } catch (error) {
+      if (isAbortError(error, signal)) {
+        return
+      }
+
       teamJoinRequests.value = []
       teamJoinRequestsStatus.value = 'error'
       teamJoinRequestsErrorMessage.value = toSectionErrorMessage(

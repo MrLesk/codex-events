@@ -1,8 +1,12 @@
 import type { FetchHook, FetchOptions, FetchRequest } from 'ofetch'
 import type { AsyncData, NuxtError, UseFetchOptions } from 'nuxt/app'
 
+import { useAuthorizationCache } from './useAuthorizationCache'
+
 const d1BookmarkHeader = 'x-d1-bookmark'
 const d1BookmarkStateKey = 'account-api:d1-bookmark'
+const d1RequestSequenceStateKey = 'account-api:d1-request-sequence'
+const d1AppliedBookmarkSequenceStateKey = 'account-api:d1-applied-bookmark-sequence'
 
 export type ApiClient = <T = unknown>(
   request: FetchRequest,
@@ -29,30 +33,37 @@ function addBookmarkHeader(headers: HeadersInit | undefined, bookmark: string | 
 
 export function useApiClient() {
   const bookmark = useState<string | null>(d1BookmarkStateKey, () => null)
+  const requestSequence = useState<number>(d1RequestSequenceStateKey, () => 0)
+  const appliedBookmarkSequence = useState<number>(d1AppliedBookmarkSequenceStateKey, () => 0)
   const requestFetch: ApiClient = import.meta.server
     ? useRequestFetch() as unknown as ApiClient
     : $fetch as unknown as ApiClient
 
-  const captureBookmark: FetchHook = ({ response }) => {
-    const nextBookmark = response?.headers.get(d1BookmarkHeader)?.trim()
+  const apiClient = async <T>(request: FetchRequest, options?: FetchOptions) => {
+    const sequence = requestSequence.value + 1
+    requestSequence.value = sequence
+    const captureBookmark: FetchHook = ({ response }) => {
+      const nextBookmark = response?.headers.get(d1BookmarkHeader)?.trim()
 
-    if (nextBookmark) {
-      bookmark.value = nextBookmark
+      if (nextBookmark && sequence >= appliedBookmarkSequence.value) {
+        appliedBookmarkSequence.value = sequence
+        bookmark.value = nextBookmark
+      }
     }
-  }
 
-  const apiClient = async <T>(request: FetchRequest, options?: FetchOptions) => await requestFetch<T>(request, {
-    ...options,
-    headers: addBookmarkHeader(options?.headers, bookmark.value),
-    onResponse: [
-      captureBookmark,
-      ...listHooks(options?.onResponse)
-    ],
-    onResponseError: [
-      captureBookmark,
-      ...listHooks(options?.onResponseError)
-    ]
-  })
+    return await requestFetch<T>(request, {
+      ...options,
+      headers: addBookmarkHeader(options?.headers, bookmark.value),
+      onResponse: [
+        captureBookmark,
+        ...listHooks(options?.onResponse)
+      ],
+      onResponseError: [
+        captureBookmark,
+        ...listHooks(options?.onResponseError)
+      ]
+    })
+  }
 
   return apiClient as ApiClient
 }
@@ -62,11 +73,14 @@ export function useApiFetch<Data>(
   options?: UseFetchOptions<Data, Data, never[], Data>
 ): AsyncData<Data, NuxtError<unknown>> {
   const apiClient = useApiClient()
+  const authorizationCache = useAuthorizationCache()
+  const protectedKey = authorizationCache.protectedKey(options?.key ?? request)
 
   return useFetch(request, {
     deep: false,
     dedupe: 'cancel',
     ...options,
+    key: protectedKey,
     $fetch: apiClient as unknown as typeof $fetch
   } as UseFetchOptions<Data, Data, never[], Data>) as AsyncData<Data, NuxtError<unknown>>
 }

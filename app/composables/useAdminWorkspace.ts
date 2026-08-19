@@ -14,7 +14,8 @@ import type { TeamSummary } from '~/domains/teams/admin-team-record'
 import type { ApiDataResponse, ApiListResponse } from '~/lib/api'
 
 import { buildApiCacheKey, getApiSubjectKey, listAllPaginatedItems } from '~/lib/api'
-import { useApiClient, useApiFetch } from '~/composables/useApiClient'
+import { useApiFetch } from '~/composables/useApiClient'
+import { useApiData } from '~/composables/useApiData'
 import { useSessionActor } from '~/composables/useSessionActor'
 import {
   filterManageableEvents,
@@ -244,7 +245,6 @@ export function useAdminEventOperationsWorkspace(
   options: AdminEventOperationsWorkspaceOptions = {}
 ) {
   const adminEvent = useAdminEventBase(eventId)
-  const apiFetch = useApiClient()
   const loadLifecycleData = resolveLoadFlag(options.loadLifecycleData)
   const loadCompetitionData = computed(() =>
     loadLifecycleData.value && adminEvent.currentEvent.value?.eventType === 'hackathon'
@@ -270,19 +270,21 @@ export function useAdminEventOperationsWorkspace(
   )
   refreshWhenEnabled(roleAssignments, loadCompetitionData)
 
-  const teams = useAsyncData<TeamSummary[]>(
+  const teams = useApiData<TeamSummary[]>(
     () => buildApiCacheKey('admin-event-teams', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),
-    async () => await listAllPaginatedItems(
+    async ({ apiFetch, signal }) => await listAllPaginatedItems(
       async (page, pageSize) => await apiFetch<ApiListResponse<TeamSummary>>(
         `/api/events/${adminEvent.resolvedEventId.value}/teams`,
         {
           query: {
             page,
             page_size: pageSize
-          }
+          },
+          signal
         }
       ),
-      100
+      100,
+      signal
     ),
     {
       watch: [adminEvent.subjectKey, adminEvent.resolvedEventId],

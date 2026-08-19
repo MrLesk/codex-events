@@ -100,6 +100,7 @@ import { normalizeJudgeAssignmentIdQueryValue } from '~/domains/judging/query'
 import { buildAccountEventTeamsTabHref, normalizeTeamSlugQueryValue } from '~/domains/teams/query'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
 import { useApiClient, useApiFetch } from '~/composables/useApiClient'
+import { useAbortableRequest } from '~/composables/useAbortableRequest'
 
 definePageMeta({
   middleware: ['require-platform-account']
@@ -225,6 +226,8 @@ if (!eventResponse.value?.data) {
 }
 
 const apiFetch = useApiClient()
+const accountEventRequests = useAbortableRequest()
+const accountEventBootstrapSignal = accountEventRequests.createSignal('account-event-bootstrap')
 const initialEvent = eventResponse.value.data
 const [
   prizesResponse,
@@ -233,12 +236,20 @@ const [
   ownTalkProposalResponse
 ] = await Promise.all([
   initialEvent.eventType === 'hackathon'
-    ? apiFetch<PublicApiListResponse<AccountPrizeSummary>>(`/api/events/${initialEvent.id}/prizes`)
+    ? apiFetch<PublicApiListResponse<AccountPrizeSummary>>(`/api/events/${initialEvent.id}/prizes`, {
+        signal: accountEventBootstrapSignal
+      })
     : Promise.resolve({ data: [] }),
-  apiFetch<AccountEventsResponse>('/api/account/events'),
-  apiFetch<EventParticipationApiDataResponse<EventParticipationPayload>>('/api/events/participation'),
+  apiFetch<AccountEventsResponse>('/api/account/events', {
+    signal: accountEventBootstrapSignal
+  }),
+  apiFetch<EventParticipationApiDataResponse<EventParticipationPayload>>('/api/events/participation', {
+    signal: accountEventBootstrapSignal
+  }),
   initialEvent.eventType === 'meetup' && initialEvent.talkProposalsEnabled
-    ? apiFetch<PublicApiDataResponse<TalkProposalRecord | null>>(`/api/events/${initialEvent.id}/talk-proposals/me`)
+    ? apiFetch<PublicApiDataResponse<TalkProposalRecord | null>>(`/api/events/${initialEvent.id}/talk-proposals/me`, {
+        signal: accountEventBootstrapSignal
+      })
     : Promise.resolve({ data: null })
 ])
 const initialAccessRecord = [
@@ -256,7 +267,9 @@ const initialHasStaffCreditAccess = actor.value.kind === 'platform_user'
   && actor.value.eventRoles.some(role => role.eventId === initialEvent.id && role.isStaff)
 const initialCanClaimCredits = initialApplicationStatus === 'approved' || initialHasStaffCreditAccess
 const initialParticipantCreditsResponse = initialCanClaimCredits
-  ? await apiFetch<EventCreditApiListResponse<ParticipantEventCreditOffer>>(`/api/events/${initialEvent.id}/credits`)
+  ? await apiFetch<EventCreditApiListResponse<ParticipantEventCreditOffer>>(`/api/events/${initialEvent.id}/credits`, {
+      signal: accountEventBootstrapSignal
+    })
   : { data: [] }
 const toast = useToast()
 const accountEventsData = ref(accountEventsResponse.data)

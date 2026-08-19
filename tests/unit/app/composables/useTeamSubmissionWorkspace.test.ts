@@ -136,7 +136,10 @@ describe('useTeamSubmissionWorkspace', () => {
     await waitFor(() => workspace.currentSubmission.value?.teamId === 'team_2')
 
     expect(workspace.currentSubmissionStatus.value).toBe('success')
-    expect(apiFetch).toHaveBeenCalledWith('/api/events/event_1/teams/team_2/submission')
+    expect(apiFetch).toHaveBeenCalledWith(
+      '/api/events/event_1/teams/team_2/submission',
+      { signal: expect.any(AbortSignal) }
+    )
   })
 
   test('updates submission public visibility through the dedicated route', async () => {

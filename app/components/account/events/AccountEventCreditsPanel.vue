@@ -12,6 +12,7 @@ import {
   normalizeEventCreditApiError
 } from '~/domains/credits'
 import { useApiClient } from '~/composables/useApiClient'
+import { useApiData } from '~/composables/useApiData'
 
 const props = defineProps<{
   eventId: string
@@ -22,15 +23,16 @@ const props = defineProps<{
 const apiFetch = useApiClient()
 const toast = useToast()
 
-const participantCreditsRequest = useAsyncData<ParticipantEventCreditOffer[]>(
+const participantCreditsRequest = useApiData<ParticipantEventCreditOffer[]>(
   () => `event-credits:participant:${props.eventId}:${props.canClaim}`,
-  async () => {
+  async ({ apiFetch, signal }) => {
     if (!props.canClaim) {
       return []
     }
 
     const response = await apiFetch<EventCreditApiListResponse<ParticipantEventCreditOffer>>(
-      `/api/events/${props.eventId}/credits`
+      `/api/events/${props.eventId}/credits`,
+      { signal }
     )
 
     return response.data
@@ -41,15 +43,16 @@ const participantCreditsRequest = useAsyncData<ParticipantEventCreditOffer[]>(
   }
 )
 
-const adminCreditsRequest = useAsyncData<AdminEventCreditOffer[]>(
+const adminCreditsRequest = useApiData<AdminEventCreditOffer[]>(
   () => `event-credits:admin:${props.eventId}:${props.canManage}`,
-  async () => {
+  async ({ apiFetch, signal }) => {
     if (!props.canManage) {
       return []
     }
 
     const response = await apiFetch<EventCreditApiListResponse<AdminEventCreditOffer>>(
-      `/api/events/${props.eventId}/admin/credits`
+      `/api/events/${props.eventId}/admin/credits`,
+      { signal }
     )
 
     return response.data

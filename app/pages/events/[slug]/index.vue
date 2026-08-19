@@ -60,6 +60,7 @@ const { data: eventData, error: eventError } = await useApiResponse<PublicEvent>
   () => `public-event-detail:${slug.value}:${includeFullTrackDetails.value ? 'full-tracks' : 'short-tracks'}`,
   () => publicEventDetailPath.value,
   {
+    cacheScope: 'public',
     watch: [slug, includeFullTrackDetails]
   }
 )
@@ -104,6 +105,7 @@ const { data: prizesData } = await useApiData<PublicPrize[]>(
     return response.data
   },
   {
+    cacheScope: 'public',
     default: () => [],
     watch: [slug, isCompetitionEvent]
   }
@@ -127,6 +129,7 @@ const [
       return response.data
     },
     {
+      cacheScope: 'public',
       default: () => [],
       watch: [slug, eventState]
     }
@@ -148,11 +151,13 @@ const [
       return response.data
     },
     {
+      cacheScope: 'public',
       default: () => [],
       watch: [slug, eventState]
     }
   ),
   useApiResponse<EventPhotoRecord[]>(() => `public-event-gallery:${slug.value}`, () => `/api/public/events/${slug.value}/photos`, {
+    cacheScope: 'public',
     default: () => [],
     watch: [slug]
   })

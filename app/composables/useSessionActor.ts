@@ -12,6 +12,7 @@ import {
   isEventRoleJudgingEnabled,
   isEventRoleStaffEnabled
 } from '~/domains/events/access'
+import { useAuthorizationCache } from '~/composables/useAuthorizationCache'
 
 export type ResolvedSessionActor = SessionActor
 
@@ -63,6 +64,7 @@ export function useSessionActor() {
       }
     },
     {
+      cacheScope: 'bootstrap',
       default: () => buildAnonymousSessionActor(),
       dedupe: 'defer',
       lazy: false,
@@ -84,6 +86,13 @@ export function useSessionActor() {
       && actor.value.eventRoles.some(role => isEventRoleStaffEnabled(role)),
     canCreateEvent: canCreateEvent(actor.value)
   }))
+
+  const { syncAuthorization } = useAuthorizationCache()
+  watch([actor, capabilities], ([nextActor, nextCapabilities]) => {
+    syncAuthorization(nextActor, nextCapabilities)
+  }, {
+    immediate: true
+  })
 
   const bootstrap = computed<SessionActorBootstrap>(() => ({
     actor: actor.value,

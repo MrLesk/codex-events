@@ -28,6 +28,7 @@ const {
   data: eventData,
   error: eventError
 } = await useApiResponse<PublicEvent>(() => `public-event-feedback:${slug.value}`, () => `/api/public/events/${slug.value}`, {
+  cacheScope: 'public',
   watch: [slug]
 })
 

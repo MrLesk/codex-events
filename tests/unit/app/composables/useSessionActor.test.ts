@@ -1,7 +1,15 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 const useApiData = vi.hoisted(() => vi.fn())
+const syncAuthorization = vi.hoisted(() => vi.fn())
+const bootstrapFetch = vi.hoisted(() => vi.fn())
+
+vi.mock('../../../../app/composables/useAuthorizationCache', () => ({
+  useAuthorizationCache: () => ({
+    syncAuthorization
+  })
+}))
 
 describe('useSessionActor', () => {
   const actor = {
@@ -37,24 +45,50 @@ describe('useSessionActor', () => {
   beforeEach(() => {
     vi.resetModules()
     useApiData.mockReset()
+    syncAuthorization.mockReset()
+    bootstrapFetch.mockReset()
 
     const data = ref<typeof actor | null>(null)
     const error = ref<Error | null>(null)
     const status = ref<string>('pending')
+    bootstrapFetch.mockImplementation(async () => ({
+      data: {
+        actor
+      }
+    }))
+    let bootstrapHandler: ((context: { apiFetch: typeof bootstrapFetch, signal: AbortSignal }) => Promise<typeof actor>) | null = null
+    let pendingBootstrap: Promise<void> | null = null
     const refresh = vi.fn(async () => {
-      data.value = actor
-      status.value = 'success'
+      if (status.value === 'success') {
+        return
+      }
+
+      pendingBootstrap ??= (async () => {
+        data.value = await bootstrapHandler!({
+          apiFetch: bootstrapFetch,
+          signal: new AbortController().signal
+        })
+        status.value = 'success'
+      })()
+
+      await pendingBootstrap
+      pendingBootstrap = null
     })
 
-    useApiData.mockReturnValue({
-      data,
-      error,
-      status,
-      refresh,
-      clear: vi.fn()
+    useApiData.mockImplementation((_key, handler) => {
+      bootstrapHandler ??= handler
+
+      return {
+        data,
+        error,
+        status,
+        refresh,
+        clear: vi.fn()
+      }
     })
 
     vi.stubGlobal('computed', computed)
+    vi.stubGlobal('watch', watch)
     vi.stubGlobal('useApiData', useApiData)
   })
 
@@ -84,6 +118,7 @@ describe('useSessionActor', () => {
     await Promise.all([first.ensureLoaded(), second.ensureLoaded()])
 
     expect(first.actor.value).toEqual(actor)
+    expect(bootstrapFetch).toHaveBeenCalledTimes(1)
     expect(first.capabilities.value).toEqual({
       canAccessAdminDashboard: true,
       canAccessJudgeDashboard: true,
@@ -91,6 +126,29 @@ describe('useSessionActor', () => {
       canAccessStaffDashboard: true,
       canCreateEvent: true
     })
+  })
+
+  test('synchronizes authorization changes through the shared cache boundary', async () => {
+    const { useSessionActor } = await import('../../../../app/composables/useSessionActor')
+    const session = useSessionActor()
+
+    await session.ensureLoaded()
+    expect(syncAuthorization).toHaveBeenCalled()
+
+    const changedActor = {
+      ...actor,
+      hasAcceptedCurrentPlatformDocuments: false
+    }
+    const sessionRequest = useApiData.mock.results[0]?.value as { data: typeof session.actor }
+    sessionRequest.data.value = changedActor
+    await nextTick()
+
+    expect(syncAuthorization).toHaveBeenCalledWith(
+      changedActor,
+      expect.objectContaining({
+        canAccessAdminDashboard: true
+      })
+    )
   })
 
   test('keeps the actor bootstrap independent from query-only navigation state', async () => {

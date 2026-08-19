@@ -33,6 +33,7 @@ import {
 } from '~/domains/applications/participant-application'
 import { normalizeParticipantRegistrationProfileForm } from '~/domains/applications/participant-application-form'
 import { normalizeAccountProfileUrl } from '~/domains/accounts/profile'
+import { useApiClient } from '~/composables/useApiClient'
 
 definePageMeta({
   layout: 'event-detail',
@@ -41,6 +42,7 @@ definePageMeta({
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
+const apiFetch = useApiClient()
 const { actor: accountActor, status: accountActorStatus } = await useAccountLifecycleActor()
 
 if (!slug.value) {
@@ -54,6 +56,7 @@ const {
   data: eventData,
   error: eventError
 } = await useApiResponse<PublicEvent>(() => `public-event-register:${slug.value}`, () => `/api/public/events/${slug.value}`, {
+  cacheScope: 'public',
   watch: [slug]
 })
 
@@ -414,7 +417,7 @@ async function submitParticipantApplication() {
       accountPatch.lumaEmail = normalizedProfileForm.lumaEmail
     }
 
-    await $fetch('/api/account', {
+    await apiFetch('/api/account', {
       method: 'PATCH',
       body: accountPatch
     })
@@ -458,7 +461,7 @@ async function submitParticipantApplication() {
       )
     }
 
-    await $fetch(`/api/events/${visibleEventId.value}/applications`, {
+    await apiFetch(`/api/events/${visibleEventId.value}/applications`, {
       method: 'POST',
       body: applicationPayload
     })

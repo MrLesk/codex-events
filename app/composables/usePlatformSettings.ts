@@ -10,6 +10,7 @@ export function usePlatformSettings() {
     'current-platform-settings',
     '/api/platform-settings/current',
     {
+      cacheScope: 'public',
       default: () => null
     }
   )

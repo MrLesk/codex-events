@@ -60,6 +60,7 @@ describe('useCurrentPlatformDocuments', () => {
 
     expect(useApiResponse).toHaveBeenCalledTimes(1)
     expect(useApiResponse).toHaveBeenCalledWith('current-platform-documents', '/api/platform-documents/current', {
+      cacheScope: 'public',
       default: expect.any(Function)
     })
     expect(result.documents.value).toEqual(response.data)
