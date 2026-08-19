@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PublicEventState } from '~/domains/events/presentation'
-import type { ApiDataResponse } from '~/lib/api'
+import type { AccountEventFeedbackPage } from '#shared/domains/events/account-event-feedback-page'
 import type {
   EventFeedbackQuestionSummary,
   EventFeedbackSummary
@@ -10,33 +10,25 @@ import {
   eventFeedbackNotApplicableLabel,
   eventFeedbackRatingValues
 } from '#shared/domains/events/feedback'
-import { useApiFetch } from '~/composables/useApiClient'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   eventId: string
   eventState: PublicEventState
-}>()
+  page: AccountEventFeedbackPage | null
+  isLoading?: boolean
+  loadErrorMessage?: string
+}>(), {
+  isLoading: false,
+  loadErrorMessage: ''
+})
 
-const eventId = computed(() => props.eventId.trim())
 const commentDateFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
   day: 'numeric',
   year: 'numeric'
 })
 
-const {
-  data: summaryResponse,
-  status: summaryStatus,
-  error: summaryError
-} = useApiFetch<ApiDataResponse<EventFeedbackSummary>>(
-  () => `/api/events/${eventId.value}/feedback`,
-  {
-    key: () => `event-feedback:${eventId.value}`,
-    watch: [eventId]
-  }
-)
-
-const summary = computed(() => summaryResponse.value?.data ?? {
+const summary = computed(() => props.page?.summary ?? {
   responseCount: 0,
   questionSummaries: [],
   comments: []
@@ -111,11 +103,19 @@ function getDistributionBarClass(tone: 'rating' | 'not_applicable') {
     />
 
     <AppAlert
-      v-if="summaryStatus === 'error'"
+      v-if="props.isLoading"
+      color="neutral"
+      variant="soft"
+      title="Loading feedback"
+      description="Feedback results are still loading."
+    />
+
+    <AppAlert
+      v-else-if="props.loadErrorMessage"
       color="warning"
       variant="soft"
       title="Feedback unavailable"
-      :description="summaryError?.message ?? 'Event feedback could not be loaded right now.'"
+      :description="props.loadErrorMessage"
     />
 
     <template v-else>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PublicEvent } from '~/domains/events/presentation'
+import type { AccountEventTeamsPage } from '#shared/domains/events/account-event-teams-page'
 import type {
   TeamActionAvailability,
   TeamDirectoryEntry
@@ -30,15 +31,21 @@ const baseDirectoryFilterOptions = [
 ] as const
 
 type TeamsDirectoryFilter = (typeof baseDirectoryFilterOptions)[number]['value']
+type AccountEventTeamEvent = Pick<PublicEvent, 'slug' | 'state' | 'maxTeamMembers'>
 
 const props = withDefaults(defineProps<{
-  event: PublicEvent & {
+  event: AccountEventTeamEvent & {
     id: string
   }
+  page: AccountEventTeamsPage | null
+  isLoading?: boolean
+  loadErrorMessage?: string
   selectedTeamSlug?: string | null
   showOperationalTeamStates?: boolean
 }>(), {
   selectedTeamSlug: null,
+  isLoading: false,
+  loadErrorMessage: '',
   showOperationalTeamStates: false
 })
 
@@ -52,7 +59,8 @@ let selectedTeamRequestVersion = 0
 const workspace = useTeamFormationWorkspace(
   computed(() => props.event),
   {
-    teamId: selectedTeamId
+    teamId: selectedTeamId,
+    initialState: computed(() => props.page)
   }
 )
 
@@ -100,6 +108,14 @@ async function syncSelectedTeamId() {
 
   if (!requestedTeamSlug) {
     selectedTeamId.value = null
+    selectedTeamStatus.value = 'success'
+    return
+  }
+
+  const pageSelectedTeam = props.page?.selectedTeam
+
+  if (pageSelectedTeam?.slug === requestedTeamSlug) {
+    selectedTeamId.value = pageSelectedTeam.id
     selectedTeamStatus.value = 'success'
     return
   }
@@ -153,8 +169,6 @@ watch(directoryFilter, async (nextFilter) => {
   await workspace.loadVisibleTeams(1, {
     filter: mapDirectoryFilter(nextFilter)
   })
-}, {
-  immediate: true
 })
 
 const actor = computed(() => workspace.actor.value)
@@ -216,13 +230,15 @@ const isActorLoading = computed(() =>
   workspace.actorStatus.value === 'idle' || workspace.actorStatus.value === 'pending'
 )
 const isDirectoryLoading = computed(() =>
-  Boolean(actor.value && actor.value.kind === 'platform_user')
-  && (
-    workspace.ownApplicationStatus.value === 'idle'
-    || workspace.ownApplicationStatus.value === 'pending'
-    || workspace.visibleTeamsStatus.value === 'idle'
-    || workspace.visibleTeamsStatus.value === 'pending'
-  )
+  props.isLoading
+  || !props.page
+  || (Boolean(actor.value && actor.value.kind === 'platform_user')
+    && (
+      workspace.ownApplicationStatus.value === 'idle'
+      || workspace.ownApplicationStatus.value === 'pending'
+      || workspace.visibleTeamsStatus.value === 'idle'
+      || workspace.visibleTeamsStatus.value === 'pending'
+    ))
 )
 const selectedTeamJoinAvailability = computed(() => {
   if (!selectedTeam.value) {
@@ -392,11 +408,19 @@ async function copySelectedTeamLink() {
     class="space-y-6"
   >
     <AppAlert
-      v-if="isActorLoading"
+      v-if="props.isLoading || (!props.page && !props.loadErrorMessage) || isActorLoading"
       color="neutral"
       variant="soft"
       title="Loading team access"
       description="Resolving your access to this event workspace."
+    />
+
+    <AppAlert
+      v-else-if="props.loadErrorMessage"
+      color="error"
+      variant="soft"
+      title="Teams unavailable"
+      :description="props.loadErrorMessage"
     />
 
     <template v-else-if="actor?.kind === 'platform_user'">

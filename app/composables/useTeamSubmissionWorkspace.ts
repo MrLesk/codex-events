@@ -20,11 +20,6 @@ type TeamSubmissionWorkspaceTeam = {
   isPersisted?: boolean
 }
 
-function toSectionErrorMessage(error: unknown, fallback: string) {
-  const message = normalizeTeamSubmissionApiError(error).message
-  return message && message.length > 0 ? message : fallback
-}
-
 export function useTeamSubmissionWorkspace(
   event: MaybeRefOrGetter<Pick<PublicEvent, 'state'>>,
   options: {
@@ -91,6 +86,18 @@ export function useTeamSubmissionWorkspace(
     return true
   }
 
+  watch([initialSubmissionStateKey, initialSubmission], () => {
+    if (!initialSubmissionStateKey.value) {
+      appliedInitialSubmissionStateKey.value = null
+      resetSubmissionState()
+      return
+    }
+
+    applyInitialSubmissionState()
+  }, {
+    immediate: true
+  })
+
   async function fetchCurrentSubmission(teamId: string, signal: AbortSignal) {
     if (!resolvedEventId.value) {
       throw new Error('The current event submission route could not be resolved.')
@@ -127,25 +134,9 @@ export function useTeamSubmissionWorkspace(
 
       currentSubmission.value = null
       currentSubmissionStatus.value = 'error'
-      currentSubmissionErrorMessage.value = toSectionErrorMessage(
-        error,
-        'The current team submission could not be loaded right now.'
-      )
+      currentSubmissionErrorMessage.value = normalizeTeamSubmissionApiError(error).message
     }
   }
-
-  watch([initialSubmissionStateKey, initialSubmission], () => {
-    if (!initialSubmissionStateKey.value) {
-      if (!hasInitialSubmissionState.value) {
-        appliedInitialSubmissionStateKey.value = null
-      }
-      return
-    }
-
-    applyInitialSubmissionState()
-  }, {
-    immediate: true
-  })
 
   async function runMutation<T>(
     actionKey: string,
@@ -254,6 +245,30 @@ export function useTeamSubmissionWorkspace(
     return submission
   }
 
+  watch([
+    resolvedEventId,
+    resolvedTeamId,
+    canViewSubmission,
+    initialSubmissionStateKey,
+    hasInitialSubmissionState
+  ], async () => {
+    if (!resolvedEventId.value || !resolvedTeamId.value || !canViewSubmission.value) {
+      resetSubmissionState()
+      return
+    }
+
+    if (
+      initialSubmissionStateKey.value
+      && appliedInitialSubmissionStateKey.value === initialSubmissionStateKey.value
+    ) {
+      return
+    }
+
+    await loadCurrentSubmission()
+  }, {
+    immediate: true
+  })
+
   async function updateCurrentSubmissionPublicVisibility(isPubliclyVisible: boolean) {
     if (!resolvedEventId.value || !resolvedTeamId.value || !currentSubmission.value) {
       mutationError.value = 'The team submission workspace is unavailable for public publishing updates.'
@@ -278,24 +293,6 @@ export function useTeamSubmissionWorkspace(
 
     return submission
   }
-
-  watch([resolvedEventId, resolvedTeamId, canViewSubmission], async ([eventId, teamId, canView]) => {
-    if (!eventId || !teamId || !canView) {
-      resetSubmissionState()
-      return
-    }
-
-    if (
-      initialSubmissionStateKey.value
-      && appliedInitialSubmissionStateKey.value === initialSubmissionStateKey.value
-    ) {
-      return
-    }
-
-    await loadCurrentSubmission()
-  }, {
-    immediate: true
-  })
 
   return {
     canManageSubmission,

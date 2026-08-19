@@ -1,13 +1,7 @@
 <script setup lang="ts">
 import type { PublicEvent } from '~/domains/events/presentation'
-import type {
-  EventParticipationOutcomeSummary,
-  EventParticipationRankSummary
-} from '~/domains/events/participation'
-import type {
-  SubmissionTrackOption,
-  TeamSubmissionRecord
-} from '~/domains/submissions/team-submission'
+import type { AccountEventWorkspacePage } from '#shared/domains/events/account-event-workspace-page'
+import type { SubmissionTrackOption } from '~/domains/submissions/team-submission'
 import type { TeamActionAvailability } from '~/domains/teams/workspace'
 
 import {
@@ -46,16 +40,18 @@ const props = defineProps<{
     id: string
     tracks?: SubmissionTrackOption[]
   }
-  applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null
+  page: AccountEventWorkspacePage | null
+  isLoading?: boolean
+  loadErrorMessage?: string
   selectedTrackId?: string | null
-  initialSubmission: TeamSubmissionRecord | null
-  participationOutcome: EventParticipationOutcomeSummary | null
-  participationRank: EventParticipationRankSummary | null
 }>()
 
 const toast = useToast()
 const workspace = useTeamFormationWorkspace(
-  computed(() => props.event)
+  computed(() => props.event),
+  {
+    initialState: computed(() => props.page)
+  }
 )
 
 const teamSettings = reactive({
@@ -82,7 +78,7 @@ const createTeamErrors = reactive({
 const createTeamSubmitCount = ref(0)
 
 const actor = computed(() => workspace.actor.value)
-const ownApplicationStatus = computed(() => props.applicationStatus)
+const ownApplicationStatus = computed(() => workspace.ownApplication.value?.status ?? null)
 const displayedTeam = computed(() => workspace.currentTeam.value ?? workspace.ownTeam.value)
 const displayedTeamMembership = computed(() =>
   workspace.currentTeamMembership.value ?? workspace.ownTeamMembership.value
@@ -102,7 +98,7 @@ const workspaceOutcomeNotice = computed(() =>
           name: displayedTeam.value.name
         }
       : null,
-    outcome: props.participationOutcome
+    outcome: props.page?.outcome ?? null
   })
 )
 const canManageTeam = computed(() => workspace.isCurrentTeamAdmin.value)
@@ -158,8 +154,8 @@ const submissionWorkspace = useTeamSubmissionWorkspace(
     team: displayedTeam,
     canViewSubmission,
     canManageSubmission: canManageTeam,
-    initialSubmission: computed(() => props.initialSubmission),
-    hasInitialSubmissionState: computed(() => Boolean(props.initialSubmission))
+    initialSubmission: computed(() => props.page?.submission ?? null),
+    hasInitialSubmissionState: computed(() => Boolean(props.page))
   }
 )
 const hasActiveTeamSubmission = computed(() => {
@@ -232,7 +228,7 @@ const publicVisibilityAvailability = computed(() =>
     props.event,
     submissionWorkspace.currentSubmission.value,
     canManageTeam.value,
-    Boolean(props.participationOutcome?.isWinner)
+    Boolean(props.page?.outcome?.isWinner)
   )
 )
 const showPublicVisibilityToggle = computed(() =>
@@ -242,6 +238,14 @@ const submissionUnavailableDescription = computed(() => {
   return 'The current submission surface could not be resolved right now.'
 })
 const isWorkspaceLoading = computed(() => {
+  if (props.loadErrorMessage) {
+    return false
+  }
+
+  if (props.isLoading || !props.page) {
+    return true
+  }
+
   if (workspace.actorStatus.value === 'idle' || workspace.actorStatus.value === 'pending') {
     return true
   }
@@ -251,7 +255,6 @@ const isWorkspaceLoading = computed(() => {
   }
 
   return workspace.ownApplicationStatus.value === 'idle'
-    || workspace.ownApplicationStatus.value === 'pending'
     || workspace.ownTeamStatus.value === 'idle'
     || workspace.ownTeamStatus.value === 'pending'
 })
@@ -587,6 +590,14 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
       description="Checking your team and submission access for this event."
     />
 
+    <AppAlert
+      v-else-if="props.loadErrorMessage"
+      color="error"
+      variant="soft"
+      title="Workspace unavailable"
+      :description="props.loadErrorMessage"
+    />
+
     <template v-else-if="actor?.kind === 'platform_user'">
       <AppAlert
         v-if="workspace.actorErrorMessage.value"
@@ -648,7 +659,7 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
         <LazyAccountEventParticipationRankNotice
           :event-state="props.event.state"
           :team-name="displayedTeam?.name ?? null"
-          :rank-summary="props.participationRank"
+          :rank-summary="props.page?.rank ?? null"
         />
 
         <template v-if="displayedTeam">

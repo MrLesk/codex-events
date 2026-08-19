@@ -1,18 +1,24 @@
 <script setup lang="ts">
 import type { EventPhotoRecord } from '#shared/domains/events/photos'
-import type { ApiListResponse } from '~/lib/api'
+import type { AccountEventGalleryPage } from '#shared/domains/events/account-event-gallery-page'
 
 import EventGalleryPanel from '~/components/events/EventGalleryPanel.vue'
 import { normalizeApiError } from '~/lib/api'
 import { createEventGalleryUploadBatches, createEventGalleryUploadItems } from '~/domains/events/gallery'
-import { useApiClient, useApiFetch } from '~/composables/useApiClient'
+import { useApiClient } from '~/composables/useApiClient'
 
 type AccountEventGalleryFilter = 'all' | 'highlighted' | 'not-highlighted' | 'public'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   eventId: string
   canManage: boolean
-}>()
+  page: AccountEventGalleryPage | null
+  isLoading?: boolean
+  loadErrorMessage?: string
+}>(), {
+  isLoading: false,
+  loadErrorMessage: ''
+})
 
 const apiFetch = useApiClient()
 const toast = useToast()
@@ -24,23 +30,14 @@ const pendingPublicVisibilityPhotoId = ref<string | null>(null)
 const pendingHighlightPhotoId = ref<string | null>(null)
 const isUploading = ref(false)
 const uploadingItems = ref(createEventGalleryUploadItems([]))
+const photos = ref<EventPhotoRecord[]>([])
 const galleryFilter = shallowRef<AccountEventGalleryFilter>('highlighted')
 const hasResolvedInitialFilter = shallowRef(false)
 
-const {
-  data: photosResponse,
-  status: photosStatus,
-  error: photosError,
-  refresh: refreshPhotos
-} = useApiFetch<ApiListResponse<EventPhotoRecord>>(
-  () => `/api/events/${eventId.value}/photos`,
-  {
-    key: () => `event-photos:${eventId.value}`,
-    watch: [eventId]
-  }
-)
+watch(() => props.page, (page) => {
+  photos.value = page?.photos ?? []
+}, { immediate: true })
 
-const photos = computed(() => photosResponse.value?.data ?? [])
 const highlightedPhotoCount = computed(() => photos.value.filter(photo => photo.isHighlighted === true).length)
 const notHighlightedPhotoCount = computed(() => photos.value.length - highlightedPhotoCount.value)
 const publicPhotoCount = computed(() => photos.value.filter(photo => photo.isPubliclyVisible).length)
@@ -84,7 +81,6 @@ const visiblePhotos = computed(() => {
 
   return photos.value
 })
-const loadErrorMessage = computed(() => photosError.value?.message ?? '')
 const panelDescription = computed(() => canManage.value
   ? 'Upload the full event archive, mark the strongest photos as highlights, and choose which images also appear on the public page.'
   : 'Browse the protected gallery for this event. Highlights show the curated set, and all photos keeps the full archive available.'
@@ -94,11 +90,7 @@ const emptyStateDescription = computed(() => canManage.value
   : 'Gallery photos will appear here once the event team adds them.'
 )
 
-watch([photosStatus, canManage, highlightedPhotoCount], () => {
-  if (photosStatus.value !== 'success') {
-    return
-  }
-
+watch([() => props.page, canManage, highlightedPhotoCount], () => {
   if (!hasResolvedInitialFilter.value) {
     galleryFilter.value = canManage.value
       ? 'all'
@@ -132,6 +124,7 @@ async function uploadPhotos(files: File[]) {
   const targetEventId = eventId.value
   const uploadBatches = createEventGalleryUploadBatches(files)
   let uploadedCount = 0
+  let latestPhotos: EventPhotoRecord[] | null = null
 
   try {
     for (const batch of uploadBatches) {
@@ -141,16 +134,17 @@ async function uploadPhotos(files: File[]) {
         formData.append('file', file)
       }
 
-      await apiFetch(`/api/events/${targetEventId}/photos`, {
+      const response = await apiFetch<{ data: EventPhotoRecord[] }>(`/api/events/${targetEventId}/photos`, {
         method: 'POST',
         body: formData
       })
 
+      latestPhotos = response.data
+      photos.value = response.data
       uploadedCount += batch.length
       uploadingItems.value = createEventGalleryUploadItems(files.slice(uploadedCount))
     }
 
-    await refreshPhotos()
     toast.add({
       title: files.length === 1 ? 'Photo added' : 'Photos added',
       description: files.length === 1
@@ -164,8 +158,8 @@ async function uploadPhotos(files: File[]) {
       ? `${uploadedCount} ${uploadedCount === 1 ? 'photo was' : 'photos were'} added before the upload stopped. ${errorMessage}`
       : errorMessage
 
-    if (uploadedCount > 0) {
-      await refreshPhotos()
+    if (uploadedCount > 0 && latestPhotos) {
+      photos.value = latestPhotos
     }
   } finally {
     isUploading.value = false
@@ -192,7 +186,7 @@ async function deletePhoto(photo: EventPhotoRecord) {
       method: 'DELETE'
     })
 
-    await refreshPhotos()
+    photos.value = photos.value.filter(entry => entry.id !== photo.id)
     toast.add({
       title: 'Photo removed',
       description: 'The gallery was updated.',
@@ -214,14 +208,14 @@ async function togglePublicVisibility(payload: { photo: EventPhotoRecord, value:
   pendingPublicVisibilityPhotoId.value = payload.photo.id
 
   try {
-    await apiFetch(`/api/events/${eventId.value}/photos/${payload.photo.id}/public-visibility`, {
+    const response = await apiFetch<{ data: EventPhotoRecord }>(`/api/events/${eventId.value}/photos/${payload.photo.id}/public-visibility`, {
       method: 'PATCH',
       body: {
         isPubliclyVisible: payload.value
       }
     })
 
-    await refreshPhotos()
+    photos.value = photos.value.map(entry => entry.id === payload.photo.id ? response.data : entry)
     toast.add({
       title: payload.value ? 'Added to public gallery' : 'Removed from public gallery',
       description: payload.value
@@ -245,14 +239,14 @@ async function toggleHighlight(payload: { photo: EventPhotoRecord, value: boolea
   pendingHighlightPhotoId.value = payload.photo.id
 
   try {
-    await apiFetch(`/api/events/${eventId.value}/photos/${payload.photo.id}/highlight`, {
+    const response = await apiFetch<{ data: EventPhotoRecord }>(`/api/events/${eventId.value}/photos/${payload.photo.id}/highlight`, {
       method: 'PATCH',
       body: {
         isHighlighted: payload.value
       }
     })
 
-    await refreshPhotos()
+    photos.value = photos.value.map(entry => entry.id === payload.photo.id ? response.data : entry)
     toast.add({
       title: payload.value ? 'Photo highlighted' : 'Highlight removed',
       description: payload.value
@@ -280,8 +274,8 @@ async function toggleHighlight(payload: { photo: EventPhotoRecord, value: boolea
     :can-toggle-highlight="canManage"
     :show-curation-badges="true"
     :show-uploader="true"
-    :is-loading="photosStatus === 'pending'"
-    :load-error-message="photosStatus === 'error' ? loadErrorMessage : ''"
+    :is-loading="props.isLoading"
+    :load-error-message="props.loadErrorMessage"
     :mutation-error-message="mutationErrorMessage"
     :is-uploading="isUploading"
     :uploading-items="uploadingItems"

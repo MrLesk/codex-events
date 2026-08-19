@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { ApiDataResponse, ApiListResponse } from '~/lib/api'
-import { listAllPaginatedItems, normalizeApiError } from '~/lib/api'
+import type { ApiDataResponse } from '~/lib/api'
+import { normalizeApiError } from '~/lib/api'
+import type { AccountEventCertificatesPage } from '#shared/domains/events/account-event-certificates-page'
 import type { AdminApplicationRecord } from '~/domains/applications/admin-application-record'
 import {
   formatApplicationAttendanceSource,
@@ -13,21 +14,23 @@ import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
 import { formatTimestamp } from '~/lib/date-formatting'
 import type { ApplicationCheckInOverrideStatus } from '#shared/domains/applications/check-in'
 import { buildEventCertificatePath } from '#shared/domains/events/certificates'
-import { isAbortError } from '~/lib/request-cancellation'
-import { useAbortableRequest } from '~/composables/useAbortableRequest'
 import { useApiClient } from '~/composables/useApiClient'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   eventId: string
   eventSlug: string
-}>()
+  page: AccountEventCertificatesPage | null
+  isLoading?: boolean
+  loadErrorMessage?: string
+}>(), {
+  isLoading: false,
+  loadErrorMessage: ''
+})
 
 const toast = useToast()
 const apiFetch = useApiClient()
-const requests = useAbortableRequest()
 const eventId = computed(() => props.eventId.trim())
 
-type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 type CertificateEmailResponse = {
   enqueuedCount: number
   failedCount: number
@@ -35,8 +38,6 @@ type CertificateEmailResponse = {
 }
 
 const applications = ref<AdminApplicationRecord[]>([])
-const loadStatus = ref<LoadStatus>('pending')
-const loadErrorMessage = ref('')
 const pendingActionKey = ref('')
 const searchTerm = ref('')
 const certificateEmailActionKey = 'certificate-emails:send'
@@ -102,39 +103,9 @@ const isCertificateEmailActionDisabled = computed(() =>
   || certificateEmailReadyCount.value === 0
 )
 
-async function loadApplications() {
-  loadStatus.value = 'pending'
-  loadErrorMessage.value = ''
-  const signal = requests.createSignal('certificate-applications')
-
-  try {
-    applications.value = await listAllPaginatedItems(
-      async (page, pageSize, requestSignal) => await apiFetch<ApiListResponse<AdminApplicationRecord>>(
-        `/api/events/${eventId.value}/applications`,
-        {
-          query: {
-            page,
-            page_size: pageSize,
-            status: 'approved'
-          },
-          signal: requestSignal
-        }
-      ),
-      100,
-      signal
-    )
-    loadStatus.value = 'success'
-  } catch (error) {
-    if (isAbortError(error, signal)) {
-      return
-    }
-
-    applications.value = []
-    loadStatus.value = 'error'
-    const message = normalizeApiError(error).message
-    loadErrorMessage.value = message && message.length > 0 ? message : 'Participants could not be loaded right now.'
-  }
-}
+watch(() => props.page, (page) => {
+  applications.value = (page?.applications ?? []) as AdminApplicationRecord[]
+}, { immediate: true })
 
 async function overrideCheckIn(application: AdminApplicationRecord, status: ApplicationCheckInOverrideStatus) {
   if (pendingActionKey.value) {
@@ -339,8 +310,6 @@ function formatCheckedInTimestamp(application: AdminApplicationRecord) {
     ? `Checked in ${formatTimestamp(application.checkedInAt, 'recently')}`
     : null
 }
-
-onMounted(loadApplications)
 </script>
 
 <template>
@@ -357,7 +326,7 @@ onMounted(loadApplications)
     </template>
 
     <AppAlert
-      v-if="loadStatus === 'pending'"
+      v-if="props.isLoading"
       color="neutral"
       variant="soft"
       title="Loading participants"
@@ -365,11 +334,11 @@ onMounted(loadApplications)
     />
 
     <AppAlert
-      v-else-if="loadStatus === 'error'"
+      v-else-if="props.loadErrorMessage"
       color="error"
       variant="soft"
       title="Participants could not be loaded"
-      :description="loadErrorMessage"
+      :description="props.loadErrorMessage"
     />
 
     <template v-else>

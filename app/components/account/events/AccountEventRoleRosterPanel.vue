@@ -9,6 +9,7 @@ import type {
   EventRoleRosterRow,
   EventRosterRole
 } from '~/domains/events/role-roster'
+import type { AccountEventRostersPage } from '#shared/domains/events/account-event-rosters-page'
 
 import {
   buildAssignedRoleRosterRows,
@@ -19,17 +20,27 @@ import {
 } from '~/domains/events/role-roster'
 import { useApiClient } from '~/composables/useApiClient'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   eventId: string
   role: EventRosterRole
   title: string
   description: string
   emptyAssignedMessage: string
-}>()
+  page: AccountEventRostersPage | null
+  isLoading?: boolean
+  loadErrorMessage?: string
+  refreshPage?: () => Promise<unknown> | unknown
+}>(), {
+  isLoading: false,
+  loadErrorMessage: ''
+})
 
 const { actor } = useSessionActor()
 const apiFetch = useApiClient()
-const workspace = useEventRoleRosterWorkspace(toRef(props, 'eventId'))
+const workspace = useEventRoleRosterWorkspace(toRef(props, 'eventId'), {
+  initialAssignments: computed(() => props.page?.roleAssignments as EventRoleAssignment[] | undefined),
+  refreshPage: props.refreshPage
+})
 const roleCandidatePageSize = 20
 
 const {
@@ -568,11 +579,11 @@ async function removeRoleAssignment(assignment: EventRoleAssignment) {
       />
 
       <AppAlert
-        v-if="workspace.roleAssignments.error.value"
+        v-if="props.loadErrorMessage || workspace.roleAssignments.error.value"
         color="error"
         variant="soft"
         title="Unable to load role assignments"
-        :description="workspace.roleAssignments.error.value.message"
+        :description="props.loadErrorMessage || workspace.roleAssignments.error.value?.message || 'Role assignments could not be loaded right now.'"
       />
 
       <div class="space-y-4">

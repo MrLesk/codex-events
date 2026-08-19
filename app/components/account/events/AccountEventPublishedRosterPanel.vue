@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ApiListResponse } from '~/lib/api'
+import type { AccountEventRostersPage } from '#shared/domains/events/account-event-rosters-page'
 import type {
   EventRoleAssignment,
   EventRoleUserSummary
@@ -10,13 +11,10 @@ import type {
 } from '~/domains/events/role-roster'
 import type {
   PublishedEventStaffTrack,
-  PublishedEventRosterLoadState,
   PublishedEventRosterMember,
   PublishedEventRosterRole
 } from '~/domains/events/published-roster'
 
-import { buildApiCacheKey, getApiSubjectKey } from '~/lib/api'
-import { isAbortError } from '~/lib/request-cancellation'
 import {
   buildAssignedRoleRosterRows,
   buildRoleRosterRows,
@@ -27,19 +25,20 @@ import {
 import {
   buildPublishedStaffRosterSections,
   formatPublishedStaffRosterSectionCount,
-  getPublishedEventRosterLinks,
-  loadPublishedEventRoster
+  getPublishedEventRosterLinks
 } from '~/domains/events/published-roster'
 import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
-import { useAbortableRequest } from '~/composables/useAbortableRequest'
-import { useApiClient, useApiFetch } from '~/composables/useApiClient'
+import { useApiClient } from '~/composables/useApiClient'
 
 const props = defineProps<{
   eventId: string
   role: PublishedEventRosterRole
-  roster: PublishedEventRosterLoadState
   title: string
   description: string
+  page: AccountEventRostersPage | null
+  isLoading?: boolean
+  loadErrorMessage?: string
+  refreshPage?: () => Promise<unknown> | unknown
   tracks?: PublishedEventStaffTrack[]
   selectedTrackId?: string | null
   managementEventId?: string | null
@@ -47,21 +46,17 @@ const props = defineProps<{
 
 const { actor } = useSessionActor()
 const apiFetch = useApiClient()
-const requests = useAbortableRequest()
 const roleCandidatePageSize = 20
 
-const rosterState = ref(props.roster)
 const {
   mutationError,
   pendingActionKey,
   runRosterMutation
 } = useRosterMutationRunner()
 
-watch(() => props.roster, (value) => {
-  rosterState.value = value
-})
-
-const members = computed(() => rosterState.value.members)
+const members = computed(() => props.role === 'judge'
+  ? props.page?.publishedJudges ?? []
+  : props.page?.publishedStaff ?? [])
 const emptyState = computed(() => props.role === 'judge'
   ? {
       title: 'No judges published yet',
@@ -78,12 +73,9 @@ const errorState = computed(() => props.role === 'judge'
   : {
       title: 'Staff roster unavailable'
     })
-const errorMessage = computed(() => rosterState.value.errorMessage?.trim() ?? '')
+const errorMessage = computed(() => props.loadErrorMessage?.trim() ?? '')
 const managementEventId = computed(() => props.managementEventId?.trim() ?? '')
-const canManageRoster = computed(() => managementEventId.value.length > 0)
-const subjectKey = computed(() => getApiSubjectKey(
-  actor.value.isAuthenticated ? actor.value.sessionUser.sub : null
-))
+const canManageRoster = computed(() => managementEventId.value.length > 0 && props.page?.canManageRoles === true)
 const {
   candidateSearchInput,
   appliedCandidateSearch,
@@ -114,19 +106,7 @@ const {
     }
   )
 })
-const roleAssignmentsResponse = useApiFetch<ApiListResponse<EventRoleAssignment>>(
-  () => `/api/events/${managementEventId.value}/roles`,
-  {
-    key: () => buildApiCacheKey(
-      'event-role-roster-roles',
-      subjectKey.value,
-      managementEventId.value || 'none'
-    ),
-    watch: [subjectKey, managementEventId],
-    immediate: canManageRoster.value
-  }
-)
-const roleAssignments = computed(() => roleAssignmentsResponse.data.value?.data ?? [])
+const roleAssignments = computed(() => props.page?.roleAssignments as EventRoleAssignment[] ?? [])
 const assignedRosterRows = computed(() =>
   canManageRoster.value ? buildAssignedRoleRosterRows(roleAssignments.value, props.role) : []
 )
@@ -234,25 +214,6 @@ function isAdminLikeAssignment(assignment: EventRoleAssignment | null) {
   return isAdminCapableEventUser(assignment, assignment?.user)
 }
 
-async function refreshPublishedRoster() {
-  const signal = requests.createSignal('published-roster')
-
-  try {
-    rosterState.value = await loadPublishedEventRoster(
-      (path, requestSignal) => apiFetch<ApiListResponse<PublishedEventRosterMember>>(path, { signal: requestSignal }),
-      {
-        eventId: props.eventId,
-        role: props.role
-      },
-      signal
-    )
-  } catch (error) {
-    if (!isAbortError(error, signal)) {
-      throw error
-    }
-  }
-}
-
 async function runMutation(
   actionKey: string,
   action: () => Promise<void>,
@@ -265,8 +226,7 @@ async function runMutation(
     successTitle,
     successDescription,
     afterSuccess: async () => {
-      await roleAssignmentsResponse.refresh()
-      await refreshPublishedRoster()
+      await props.refreshPage?.()
     }
   })
 }
@@ -614,7 +574,15 @@ async function removePublishedRosterMember(userId: string) {
       />
 
       <AppAlert
-        v-if="errorMessage"
+        v-if="props.isLoading && !props.page"
+        color="neutral"
+        variant="soft"
+        :title="props.role === 'judge' ? 'Loading judges' : 'Loading staff'"
+        description="The published roster is loading."
+      />
+
+      <AppAlert
+        v-else-if="errorMessage"
         color="error"
         variant="soft"
         :title="errorState.title"
@@ -876,11 +844,11 @@ async function removePublishedRosterMember(userId: string) {
         class="space-y-4 border-t border-black/8 pt-5 dark:border-white/[0.08]"
       >
         <AppAlert
-          v-if="roleAssignmentsResponse.error.value"
+          v-if="props.loadErrorMessage"
           color="error"
           variant="soft"
           title="Unable to load role assignments"
-          :description="roleAssignmentsResponse.error.value.message"
+          :description="props.loadErrorMessage"
         />
 
         <template v-else>

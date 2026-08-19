@@ -3,6 +3,12 @@ import type {
   ParticipantApplicationRecord
 } from '~/domains/applications/participant-application'
 import type {
+  AccountEventTeamsPage
+} from '#shared/domains/events/account-event-teams-page'
+import type {
+  AccountEventWorkspacePage
+} from '#shared/domains/events/account-event-workspace-page'
+import type {
   TeamDetailRecord,
   TeamJoinRequestRecord,
   TeamSummaryRecord,
@@ -18,7 +24,6 @@ import {
 import { isAbortError, throwIfAborted } from '~/lib/request-cancellation'
 import { useAbortableRequest } from '~/composables/useAbortableRequest'
 import { useApiClient } from '~/composables/useApiClient'
-import { useApiData } from '~/composables/useApiData'
 
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 type VisibleTeamsFilter = {
@@ -37,7 +42,11 @@ interface TeamSummaryListResponse extends TeamWorkspaceApiListResponse<TeamSumma
 }
 
 const visibleTeamsPageSize = 6
-const ownTeamLookupPageSize = 100
+
+type TeamFormationInitialState = Pick<
+  AccountEventWorkspacePage,
+  'application' | 'ownTeam' | 'ownMembership' | 'joinRequests'
+> & Partial<Pick<AccountEventTeamsPage, 'selectedTeam' | 'visibleTeams' | 'visibleTeamsMeta'>>
 
 function toSectionErrorMessage(error: unknown, fallback: string) {
   const message = normalizeTeamWorkspaceApiError(error).message
@@ -62,11 +71,12 @@ function normalizeVisibleTeamsFilterCounts(filterCounts?: Partial<VisibleTeamsFi
 }
 
 export function useTeamFormationWorkspace(
-  event: MaybeRefOrGetter<PublicEvent & {
+  event: MaybeRefOrGetter<Pick<PublicEvent, 'slug' | 'state' | 'maxTeamMembers'> & {
     id: string
   }>,
   options?: {
     teamId?: MaybeRefOrGetter<string | null | undefined>
+    initialState?: MaybeRefOrGetter<TeamFormationInitialState | null | undefined>
   }
 ) {
   const apiFetch = useApiClient()
@@ -77,7 +87,6 @@ export function useTeamFormationWorkspace(
     const teamId = toValue(options?.teamId ?? null)
     return typeof teamId === 'string' && teamId.trim().length > 0 ? teamId : null
   })
-  const authSubject = computed(() => actor.value.kind === 'anonymous' ? 'anonymous' : actor.value.sessionUser.sub)
   const rememberedPendingJoinRequestIds = useState<Record<string, string>>(
     'team-workspace-remembered-pending-join-request-ids',
     () => ({})
@@ -90,34 +99,9 @@ export function useTeamFormationWorkspace(
   const visibleEventId = computed(() => resolvedEvent.value.id)
   const visibleEventErrorMessage = computed(() => '')
 
-  const ownApplicationRequest = useApiData<ParticipantApplicationRecord | null>(
-    () => `team-workspace-own-application:${authSubject.value}:${visibleEventId.value ?? 'none'}`,
-    async ({ apiFetch, signal }) => {
-      if (typedActor.value?.kind !== 'platform_user' || !visibleEventId.value) {
-        return null
-      }
-
-      const response = await apiFetch<TeamWorkspaceApiDataResponse<ParticipantApplicationRecord | null>>(
-        `/api/events/${visibleEventId.value}/applications/me`,
-        { signal }
-      )
-
-      return response.data
-    },
-    {
-      default: () => null,
-      watch: [typedActor, visibleEventId]
-    }
-  )
-
-  const ownApplication = computed(() => ownApplicationRequest.data.value)
-  const ownApplicationErrorMessage = computed(() => {
-    if (!ownApplicationRequest.error.value) {
-      return ''
-    }
-
-    return normalizeTeamWorkspaceApiError(ownApplicationRequest.error.value).message
-  })
+  const ownApplication = ref<ParticipantApplicationRecord | null>(null)
+  const ownApplicationStatus = ref<LoadStatus>('idle')
+  const ownApplicationErrorMessage = ref('')
 
   const visibleTeams = ref<TeamSummaryRecord[]>([])
   const visibleTeamsStatus = ref<LoadStatus>('idle')
@@ -143,6 +127,62 @@ export function useTeamFormationWorkspace(
 
   const pendingActionKey = ref<string | null>(null)
   const mutationError = ref('')
+
+  const initialState = computed(() => toValue(options?.initialState ?? null) ?? null)
+
+  function applyInitialState(state: TeamFormationInitialState | null) {
+    if (!state) {
+      ownApplication.value = null
+      ownApplicationStatus.value = 'idle'
+      ownTeam.value = null
+      ownTeamStatus.value = 'idle'
+      currentTeam.value = null
+      currentTeamStatus.value = 'idle'
+      teamJoinRequests.value = []
+      teamJoinRequestsStatus.value = 'idle'
+      visibleTeams.value = []
+      visibleTeamsStatus.value = 'idle'
+      visibleTeamsTotal.value = 0
+      visibleTeamsFilterCounts.value = createEmptyVisibleTeamsFilterCounts()
+      currentVisibleTeamsPage.value = 0
+      return
+    }
+
+    ownApplication.value = state.application as ParticipantApplicationRecord | null
+    ownApplicationStatus.value = 'success'
+    ownApplicationErrorMessage.value = ''
+    ownTeam.value = state.ownTeam as TeamDetailRecord | null
+    ownTeamStatus.value = 'success'
+    ownTeamErrorMessage.value = ''
+    const requestedTeamId = resolvedTeamId.value
+    const initialCurrentTeam = requestedTeamId
+      ? state.selectedTeam?.id === requestedTeamId ? state.selectedTeam : null
+      : state.ownTeam
+    currentTeam.value = initialCurrentTeam as TeamDetailRecord | null
+    currentTeamStatus.value = initialCurrentTeam || !requestedTeamId ? 'success' : 'idle'
+    currentTeamErrorMessage.value = ''
+    teamJoinRequests.value = state.joinRequests as TeamJoinRequestRecord[]
+    teamJoinRequestsStatus.value = 'success'
+    teamJoinRequestsErrorMessage.value = ''
+
+    if (state.visibleTeams && state.visibleTeamsMeta) {
+      visibleTeams.value = state.visibleTeams as TeamSummaryRecord[]
+      visibleTeamsStatus.value = 'success'
+      visibleTeamsTotal.value = state.visibleTeamsMeta.total
+      visibleTeamsFilterCounts.value = normalizeVisibleTeamsFilterCounts(state.visibleTeamsMeta.filterCounts)
+      currentVisibleTeamsPage.value = state.visibleTeamsMeta.page
+    } else {
+      visibleTeams.value = []
+      visibleTeamsStatus.value = 'idle'
+      visibleTeamsTotal.value = 0
+      visibleTeamsFilterCounts.value = createEmptyVisibleTeamsFilterCounts()
+      currentVisibleTeamsPage.value = 0
+    }
+  }
+
+  watch([initialState, resolvedTeamId], ([state]) => {
+    applyInitialState(state)
+  }, { immediate: true })
 
   const currentTeamMembership = computed(() =>
     getOwnTeamMembership(currentTeam.value, actorUserId.value)
@@ -182,12 +222,6 @@ export function useTeamFormationWorkspace(
     isLoadingMoreVisibleTeams.value = false
     loadMoreVisibleTeamsErrorMessage.value = ''
     activeVisibleTeamsFilter.value = {}
-  }
-
-  function resetOwnTeamState() {
-    ownTeam.value = null
-    ownTeamStatus.value = 'idle'
-    ownTeamErrorMessage.value = ''
   }
 
   function resetCurrentTeamState() {
@@ -373,79 +407,6 @@ export function useTeamFormationWorkspace(
     })
   }
 
-  async function loadOwnTeam() {
-    if (!visibleEventId.value || typedActor.value?.kind !== 'platform_user') {
-      resetOwnTeamState()
-      return
-    }
-
-    ownTeamStatus.value = 'pending'
-    ownTeamErrorMessage.value = ''
-    const signal = requests.createSignal('own-team')
-
-    try {
-      let page = 1
-
-      while (true) {
-        const response = await fetchTeamPage(page, ownTeamLookupPageSize, undefined, signal)
-        throwIfAborted(signal)
-
-        if (response.data.length === 0) {
-          ownTeam.value = null
-          ownTeamStatus.value = 'success'
-          return
-        }
-
-        const prioritizedTeams = [...response.data].sort((left, right) => {
-          const leftPriority = left.createdByUserId === actorUserId.value ? 1 : 0
-          const rightPriority = right.createdByUserId === actorUserId.value ? 1 : 0
-          return rightPriority - leftPriority
-        })
-
-        for (const team of prioritizedTeams) {
-          const detail = await fetchTeamDetail(team.id, signal)
-          throwIfAborted(signal)
-
-          if (getOwnTeamMembership(detail, actorUserId.value)) {
-            ownTeam.value = detail
-            ownTeamStatus.value = 'success'
-            ownTeamErrorMessage.value = ''
-
-            if (!resolvedTeamId.value || resolvedTeamId.value === detail.id) {
-              currentTeam.value = detail
-              currentTeamStatus.value = 'success'
-              currentTeamErrorMessage.value = ''
-            }
-
-            return
-          }
-        }
-
-        const total = response.meta?.total ?? response.data.length
-        const loadedItems = page * ownTeamLookupPageSize
-
-        if (loadedItems >= total) {
-          ownTeam.value = null
-          ownTeamStatus.value = 'success'
-          return
-        }
-
-        page += 1
-      }
-    } catch (error) {
-      if (isAbortError(error, signal)) {
-        return
-      }
-
-      ownTeam.value = null
-      ownTeamStatus.value = 'error'
-      ownTeamErrorMessage.value = toSectionErrorMessage(
-        error,
-        'Your current team membership could not be resolved right now.'
-      )
-    }
-  }
-
   async function loadCurrentTeam() {
     if (!visibleEventId.value || !resolvedTeamId.value || typedActor.value?.kind !== 'platform_user') {
       resetCurrentTeamState()
@@ -560,7 +521,8 @@ export function useTeamFormationWorkspace(
       currentTeam.value = response.data
       currentTeamStatus.value = 'success'
       currentTeamErrorMessage.value = ''
-      await loadVisibleTeams(1)
+      visibleTeams.value = [response.data, ...visibleTeams.value.filter(team => team.id !== response.data.id)]
+      visibleTeamsTotal.value += 1
       return response.data
     })
 
@@ -614,10 +576,6 @@ export function useTeamFormationWorkspace(
 
       forgetPendingJoinRequest(teamId)
 
-      if (currentTeam.value?.id === teamId && isCurrentTeamAdmin.value) {
-        await loadCurrentTeamJoinRequests()
-      }
-
       return response.data
     })
 
@@ -647,7 +605,7 @@ export function useTeamFormationWorkspace(
         ownTeam.value = response.data
         ownTeamStatus.value = 'success'
       }
-      void loadVisibleTeams(Math.max(currentVisibleTeamsPage.value, 1))
+      visibleTeams.value = visibleTeams.value.map(team => team.id === response.data.id ? response.data : team)
       return response.data
     })
 
@@ -676,7 +634,7 @@ export function useTeamFormationWorkspace(
         ownTeam.value = response.data
         ownTeamStatus.value = 'success'
       }
-      void loadVisibleTeams(Math.max(currentVisibleTeamsPage.value, 1))
+      visibleTeams.value = visibleTeams.value.map(team => team.id === response.data.id ? response.data : team)
       return response.data
     })
 
@@ -697,11 +655,9 @@ export function useTeamFormationWorkspace(
         }
       )
 
-      await Promise.all([
-        loadCurrentTeam(),
-        loadCurrentTeamJoinRequests()
-      ])
-      void loadVisibleTeams(Math.max(currentVisibleTeamsPage.value, 1))
+      teamJoinRequests.value = teamJoinRequests.value.map(request =>
+        request.id === requestId ? { ...request, ...response.data } : request
+      )
       return response.data
     })
 
@@ -722,7 +678,9 @@ export function useTeamFormationWorkspace(
         }
       )
 
-      await loadCurrentTeamJoinRequests()
+      teamJoinRequests.value = teamJoinRequests.value.map(request =>
+        request.id === requestId ? { ...request, ...response.data } : request
+      )
       return response.data
     })
 
@@ -736,6 +694,7 @@ export function useTeamFormationWorkspace(
     }
 
     const result = await runMutation(`leave-team:${currentTeam.value.id}`, async () => {
+      const leavingTeamId = currentTeam.value!.id
       const response = await apiFetch<TeamWorkspaceApiDataResponse<{
         id: string
         teamId: string
@@ -749,11 +708,12 @@ export function useTeamFormationWorkspace(
         }
       )
 
-      await Promise.all([
-        loadCurrentTeam(),
-        loadOwnTeam(),
-        loadVisibleTeams(Math.max(currentVisibleTeamsPage.value, 1))
-      ])
+      currentTeam.value = null
+      currentTeamStatus.value = 'success'
+      ownTeam.value = null
+      ownTeamStatus.value = 'success'
+      visibleTeams.value = visibleTeams.value.filter(team => team.id !== leavingTeamId)
+      visibleTeamsTotal.value = Math.max(0, visibleTeamsTotal.value - 1)
       return response.data
     })
 
@@ -779,11 +739,11 @@ export function useTeamFormationWorkspace(
         }
       )
 
-      await Promise.all([
-        loadCurrentTeam(),
-        loadOwnTeam(),
-        loadVisibleTeams(Math.max(currentVisibleTeamsPage.value, 1))
-      ])
+      const nextMembers = currentTeam.value!.members.filter(member => member.userId !== userId)
+      currentTeam.value = { ...currentTeam.value!, members: nextMembers }
+      if (ownTeam.value?.id === currentTeam.value.id) {
+        ownTeam.value = currentTeam.value
+      }
       return response.data
     })
 
@@ -809,36 +769,27 @@ export function useTeamFormationWorkspace(
         }
       )
 
-      await Promise.all([
-        loadCurrentTeam(),
-        loadOwnTeam(),
-        loadVisibleTeams(Math.max(currentVisibleTeamsPage.value, 1))
-      ])
+      const nextMembers = currentTeam.value!.members.map(member =>
+        member.userId === userId ? { ...member, role: 'admin' as const } : member
+      )
+      currentTeam.value = { ...currentTeam.value!, members: nextMembers }
+      if (ownTeam.value?.id === currentTeam.value.id) {
+        ownTeam.value = currentTeam.value
+      }
       return response.data
     })
 
     return result
   }
 
-  watch([visibleEventId, actorUserId], async ([eventId, userId]) => {
-    resetVisibleTeamsState()
-    resetOwnTeamState()
-
-    if (!eventId || !userId) {
-      return
-    }
-
-    await Promise.all([
-      loadVisibleTeams(1),
-      loadOwnTeam()
-    ])
-  }, {
-    immediate: true
-  })
-
-  watch([visibleEventId, resolvedTeamId, actorUserId], async ([eventId, teamId, userId]) => {
-    if (!eventId || !teamId || !userId) {
-      resetCurrentTeamState()
+  watch([resolvedTeamId, actorUserId], async ([teamId, userId]) => {
+    if (!teamId || !userId) {
+      if (initialState.value) {
+        currentTeam.value = initialState.value.ownTeam as TeamDetailRecord | null
+        currentTeamStatus.value = 'success'
+      } else {
+        resetCurrentTeamState()
+      }
       return
     }
 
@@ -848,19 +799,6 @@ export function useTeamFormationWorkspace(
 
     resetCurrentTeamState()
     await loadCurrentTeam()
-  }, {
-    immediate: true
-  })
-
-  watch([currentTeam, isCurrentTeamAdmin], async ([team, isAdmin]) => {
-    if (!team || !isAdmin) {
-      teamJoinRequests.value = []
-      teamJoinRequestsStatus.value = 'idle'
-      teamJoinRequestsErrorMessage.value = ''
-      return
-    }
-
-    await loadCurrentTeamJoinRequests()
   }, {
     immediate: true
   })
@@ -883,13 +821,12 @@ export function useTeamFormationWorkspace(
     loadCurrentTeam,
     loadCurrentTeamJoinRequests,
     loadMoreVisibleTeams,
-    loadOwnTeam,
     loadVisibleTeams,
     loadMoreVisibleTeamsErrorMessage,
     mutationError,
     ownApplication,
     ownApplicationErrorMessage,
-    ownApplicationStatus: computed(() => ownApplicationRequest.status.value),
+    ownApplicationStatus,
     ownTeam,
     ownTeamErrorMessage,
     ownTeamMembership,

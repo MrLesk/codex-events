@@ -5,7 +5,6 @@ import type { EventRecord, EventTrack } from '~/domains/events/records'
 
 import { LazyApplicationsAdminApplicationsReviewPanel as LazyAdminApplicationsReviewPanel } from '#components'
 import {
-  formatApprovedParticipantRegistrationSummary,
   getApprovedParticipantAttendanceSummary,
   getParticipantApplicationStatusSummary,
   getParticipantsLimitSummary,
@@ -25,6 +24,12 @@ const props = withDefaults(defineProps<{
   participantsLimit?: number | null
   autoApproveApplications?: boolean
   eventState?: EventRecord['state']
+  statusCounts?: {
+    submitted: number
+    approved: number
+    rejected: number
+    withdrawn: number
+  }
 }>(), {
   isLoading: false,
   errorMessage: '',
@@ -35,7 +40,8 @@ const props = withDefaults(defineProps<{
   tracks: () => [],
   participantsLimit: null,
   autoApproveApplications: false,
-  eventState: 'draft'
+  eventState: 'draft',
+  statusCounts: undefined
 })
 
 const emit = defineEmits<{
@@ -66,7 +72,18 @@ const participantRosterApplications = computed(() =>
 )
 
 const participantStatusSummary = computed(() =>
-  getParticipantApplicationStatusSummary(participantRosterApplications.value)
+  props.statusCounts
+    ? {
+        totalCount: props.statusCounts.submitted
+          + props.statusCounts.approved
+          + props.statusCounts.rejected
+          + props.statusCounts.withdrawn,
+        submittedCount: props.statusCounts.submitted,
+        approvedCount: props.statusCounts.approved,
+        rejectedCount: props.statusCounts.rejected,
+        withdrawnCount: props.statusCounts.withdrawn
+      }
+    : getParticipantApplicationStatusSummary(participantRosterApplications.value)
 )
 
 const submittedParticipantSummaryValue = computed(() =>
@@ -78,7 +95,7 @@ const approvedParticipantSummaryValue = computed(() =>
 )
 
 const approvedParticipantRegistrationSummaryValue = computed(() =>
-  formatParticipantMetricValue(formatApprovedParticipantRegistrationSummary(participantRosterApplications.value))
+  formatParticipantMetricValue(`${participantStatusSummary.value.approvedCount} / ${participantStatusSummary.value.totalCount}`)
 )
 
 const checkedInParticipantSummaryValue = computed(() =>
