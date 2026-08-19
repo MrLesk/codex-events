@@ -163,8 +163,13 @@ describe('TestD1Database', () => {
       `),
       session.prepare(`
         insert into users (id, auth0_subject, email, display_name)
-        values ('session_mixed_owner_user', 'auth0|session_mixed_owner_user', 'session-mixed-owner@example.com', 'Session Mixed Owner User')
-      `)
+        values (?, ?, ?, ?)
+      `).bind(
+        'session_mixed_owner_user',
+        'auth0|session_mixed_owner_user',
+        'session-mixed-owner@example.com',
+        'Session Mixed Owner User'
+      )
     ])).rejects.toThrow(/session-owned/u)
 
     expect(session.getBookmark()).toBeNull()
