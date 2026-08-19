@@ -1,0 +1,55 @@
+import { describe, expect, test } from 'vitest'
+
+import { accountEventSettingsPageSchema } from '../../../../../shared/domains/events/account-event-settings-page'
+
+describe('account-event-settings page contract', () => {
+  test('keeps the page-shaped payload concrete and bounded', () => {
+    expect(Object.keys(accountEventSettingsPageSchema.shape)).toEqual([
+      'event',
+      'criteria',
+      'prizes',
+      'terms',
+      'roles',
+      'builder'
+    ])
+    expect(Object.keys(accountEventSettingsPageSchema.shape.terms.shape)).toEqual([
+      'application',
+      'winner'
+    ])
+    expect(Object.keys(accountEventSettingsPageSchema.shape.roles.shape)).toEqual([
+      'assignments',
+      'counts'
+    ])
+    expect(Object.keys(accountEventSettingsPageSchema.shape.builder.shape)).toEqual([
+      'creationFlow',
+      'agendaBlockCount',
+      'typedAgendaBlockCount',
+      'balanceScore',
+      'balanceBreakdown'
+    ])
+  })
+
+  test('does not make version metadata a second content payload', () => {
+    const versionSchema = accountEventSettingsPageSchema.shape.terms.shape.application.shape.versions.element
+
+    expect(versionSchema.safeParse({
+      id: 'terms-v1',
+      eventId: 'event-1',
+      documentType: 'application_terms',
+      version: 1,
+      title: 'Application Terms v1',
+      publishedAt: '2026-08-19T12:00:00.000Z',
+      createdAt: '2026-08-19T12:00:00.000Z'
+    }).success).toBe(true)
+    expect(versionSchema.safeParse({
+      id: 'terms-v1',
+      eventId: 'event-1',
+      documentType: 'application_terms',
+      version: 1,
+      title: 'Application Terms v1',
+      content: 'This belongs only to the current document.',
+      publishedAt: '2026-08-19T12:00:00.000Z',
+      createdAt: '2026-08-19T12:00:00.000Z'
+    }).data).not.toHaveProperty('content')
+  })
+})

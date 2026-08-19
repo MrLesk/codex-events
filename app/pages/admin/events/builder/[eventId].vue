@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type { ApiDataResponse } from '~/lib/api'
 import type { EventRecord, TermsDocument } from '~/domains/events/records'
+import type { AccountEventSettingsPage } from '#shared/domains/events/account-event-settings-page'
 
 import { normalizeApiError } from '~/lib/api'
 import { getTermsVersionPublishErrorMessage } from '~/domains/events/admin-event'
 import AdminBuilderWorkspace from '~/components/admin/builder/AdminBuilderWorkspace.vue'
 import { useApiClient } from '~/composables/useApiClient'
+import { useAccountEventPageRequest } from '~/composables/useAccountEventPageRequest'
 
 definePageMeta({
   middleware: ['require-platform-account']
@@ -14,29 +16,12 @@ definePageMeta({
 const route = useRoute()
 const apiFetch = useApiClient()
 const toast = useToast()
-const eventId = computed(() => String(route.params.eventId ?? ''))
-
-const {
-  data: eventResponse,
-  error: eventError,
-  refresh: refreshEvent
-} = await useApiResponse<EventRecord>(
-  () => `admin-event-builder-${eventId.value}`,
-  () => `/api/events/${eventId.value}`
-)
-
-const currentEvent = computed(() => eventResponse.value ?? null)
-
-const {
-  data: termsResponse,
-  refresh: refreshTerms
-} = await useApiResponse<{
-  applicationTerms: TermsDocument | null
-  winnerTerms: TermsDocument | null
-}>(
-  () => `admin-event-builder-terms-${eventId.value}`,
-  () => `/api/events/${eventId.value}/terms/current`
-)
+const eventSlug = computed(() => String(route.params.eventId ?? '').trim())
+const settingsRequest = useAccountEventPageRequest<AccountEventSettingsPage>(eventSlug, 'settings')
+const settingsPage = computed(() => settingsRequest.data.value?.page ?? null)
+const currentEvent = computed<EventRecord | null>(() => settingsPage.value?.event ?? null)
+const currentApplicationTerms = computed(() => settingsPage.value?.terms.application.current ?? null)
+const currentWinnerTerms = computed(() => settingsPage.value?.terms.winner.current ?? null)
 
 const builder = useEventBuilder({
   mode: 'edit',
@@ -47,11 +32,17 @@ const isSubmitting = ref(false)
 const submitError = ref('')
 
 async function saveEvent() {
+  const event = currentEvent.value
+
+  if (!event) {
+    return
+  }
+
   submitError.value = ''
   isSubmitting.value = true
 
   try {
-    await apiFetch<ApiDataResponse<EventRecord>>(`/api/events/${eventId.value}`, {
+    await apiFetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}`, {
       method: 'PATCH',
       body: builder.buildPatchBody()
     })
@@ -62,7 +53,7 @@ async function saveEvent() {
       color: 'success'
     })
 
-    await refreshEvent()
+    await settingsRequest.refresh()
     builder.resetBaseline()
   } catch (error) {
     submitError.value = normalizeApiError(error).message
@@ -82,6 +73,12 @@ const imageMutationState = reactive<Record<'background' | 'banner', ImageMutatio
 })
 
 async function uploadEventImage(slot: 'background' | 'banner', file: File) {
+  const event = currentEvent.value
+
+  if (!event) {
+    return
+  }
+
   const state = imageMutationState[slot]
 
   state.pending = true
@@ -92,12 +89,12 @@ async function uploadEventImage(slot: 'background' | 'banner', file: File) {
 
     formData.append('file', file)
 
-    await apiFetch<ApiDataResponse<EventRecord>>(`/api/events/${eventId.value}/images/${slot}`, {
+    await apiFetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}/images/${slot}`, {
       method: 'POST',
       body: formData
     })
 
-    await refreshEvent()
+    await settingsRequest.refresh()
     toast.add({
       title: slot === 'background' ? 'Background image updated' : 'Banner image updated',
       color: 'success'
@@ -110,17 +107,23 @@ async function uploadEventImage(slot: 'background' | 'banner', file: File) {
 }
 
 async function removeEventImage(slot: 'background' | 'banner') {
+  const event = currentEvent.value
+
+  if (!event) {
+    return
+  }
+
   const state = imageMutationState[slot]
 
   state.pending = true
   state.error = ''
 
   try {
-    await apiFetch<ApiDataResponse<EventRecord>>(`/api/events/${eventId.value}/images/${slot}`, {
+    await apiFetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}/images/${slot}`, {
       method: 'DELETE'
     })
 
-    await refreshEvent()
+    await settingsRequest.refresh()
     toast.add({
       title: slot === 'background' ? 'Background image removed' : 'Banner image removed',
       color: 'success'
@@ -135,16 +138,22 @@ async function removeEventImage(slot: 'background' | 'banner') {
 const savingTermsDocumentType = ref<TermsDocument['documentType'] | null>(null)
 
 async function saveTerms(documentType: TermsDocument['documentType'], content: string) {
+  const event = currentEvent.value
+
+  if (!event) {
+    return
+  }
+
   savingTermsDocumentType.value = documentType
   submitError.value = ''
 
   const trimmedContent = content.trim()
 
   try {
-    const versions = await apiFetch<{ data: TermsDocument[] }>(
-      `/api/events/${eventId.value}/terms/${documentType}/versions`
-    )
-    const nextVersion = versions.data.reduce((highest, doc) => Math.max(highest, doc.version), 0) + 1
+    const versions = documentType === 'application_terms'
+      ? settingsPage.value?.terms.application.versions ?? []
+      : settingsPage.value?.terms.winner.versions ?? []
+    const nextVersion = versions.reduce((highest, doc) => Math.max(highest, doc.version), 0) + 1
     const title = `${documentType === 'application_terms' ? 'Application Terms' : 'Winner Terms'} v${nextVersion}`
     const validationError = getTermsVersionPublishErrorMessage(title, trimmedContent)
 
@@ -154,14 +163,14 @@ async function saveTerms(documentType: TermsDocument['documentType'], content: s
     }
 
     const createdDocument = await apiFetch<ApiDataResponse<TermsDocument>>(
-      `/api/events/${eventId.value}/terms/${documentType}/versions`,
+      `/api/events/${event.id}/terms/${documentType}/versions`,
       {
         method: 'POST',
         body: { title, content: trimmedContent }
       }
     )
 
-    await apiFetch(`/api/events/${eventId.value}/terms/${documentType}/actions/set-current`, {
+    await apiFetch(`/api/events/${event.id}/terms/${documentType}/actions/set-current`, {
       method: 'POST',
       body: { eventTermsDocumentId: createdDocument.data.id }
     })
@@ -170,7 +179,7 @@ async function saveTerms(documentType: TermsDocument['documentType'], content: s
       title: documentType === 'application_terms' ? 'Application terms updated' : 'Winner terms updated',
       color: 'success'
     })
-    await Promise.all([refreshEvent(), refreshTerms()])
+    await settingsRequest.refresh()
   } catch (error) {
     submitError.value = normalizeApiError(error).message
   } finally {
@@ -196,6 +205,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  settingsRequest.abort()
   window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 
@@ -213,11 +223,11 @@ useSeoMeta({
     />
 
     <AppAlert
-      v-if="eventError"
+      v-if="settingsRequest.error.value"
       color="error"
       variant="soft"
       title="Unable to load this event"
-      :description="normalizeApiError(eventError).message"
+      :description="normalizeApiError(settingsRequest.error.value).message"
     />
 
     <AdminBuilderWorkspace
@@ -232,8 +242,8 @@ useSeoMeta({
       :banner-image-upload-pending="imageMutationState.banner.pending"
       :banner-image-upload-error="imageMutationState.banner.error"
       :image-version="currentEvent.mediaRevision"
-      :current-application-terms="termsResponse?.applicationTerms ?? null"
-      :current-winner-terms="termsResponse?.winnerTerms ?? null"
+      :current-application-terms="currentApplicationTerms"
+      :current-winner-terms="currentWinnerTerms"
       :saving-terms-document-type="savingTermsDocumentType"
       @submit="saveEvent"
       @upload-background-image="file => uploadEventImage('background', file)"

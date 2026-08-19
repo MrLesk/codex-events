@@ -15,6 +15,7 @@ import type {
 import type { EvaluationCriterion } from '~/domains/judging/criteria-config'
 import type { PrizeDefinition } from '~/domains/outcomes/prizes'
 import type { EventProgramSettingsMode } from '~/domains/events/program-settings'
+import type { AccountEventSettingsPage } from '#shared/domains/events/account-event-settings-page'
 
 import { normalizeApiError } from '~/lib/api'
 import { moveListItemByIndex } from '~/utils/reorder-list'
@@ -25,18 +26,16 @@ import {
   toEventAgendaPayload
 } from '~/domains/events/admin-event'
 import { formatEventTypeLabel } from '~/domains/events/presentation'
-import {
-  isEventRoleJudgingEnabled,
-  isEventRoleStaffEnabled
-} from '~/domains/events/access'
 import { getCriteriaConfigurationValidationIssues } from '~/domains/judging/criteria-config'
 import { getEventProgramSettingsCopy } from '~/domains/events/program-settings'
 import { computeEventBalance } from '#shared/domains/events/builder-scoring'
 import { createBuilderStateFromEvent, toEventBalanceInputFromState } from '~/domains/events/builder'
 import { useApiClient } from '~/composables/useApiClient'
+import { useAccountEventPageRequest } from '~/composables/useAccountEventPageRequest'
 
 const props = withDefaults(defineProps<{
   eventId: string
+  eventSlug?: string
   showProgramSettings?: boolean
   programSettingsMode?: EventProgramSettingsMode
   showTermsManagement?: boolean
@@ -72,6 +71,8 @@ type SortableConstructor = typeof Sortable
 const toast = useToast()
 const apiFetch = useApiClient()
 const eventId = computed(() => props.eventId.trim())
+const route = useRoute()
+const eventSlug = computed(() => props.eventSlug?.trim() || String(route.params.slug ?? '').trim())
 
 if (!eventId.value) {
   throw createError({
@@ -81,12 +82,8 @@ if (!eventId.value) {
 }
 
 const showSettingsOverview = computed(() => props.showProgramSettings && props.programSettingsMode === 'settings')
-const workspace = useAdminEventSettingsWorkspace(eventId, {
-  loadCriteria: computed(() => props.showCriteriaConfiguration),
-  loadPrizes: computed(() => props.showPrizeConfiguration),
-  loadTerms: computed(() => props.showTermsManagement),
-  loadRoleAssignments: showSettingsOverview
-})
+const settingsRequest = useAccountEventPageRequest<AccountEventSettingsPage>(eventSlug, 'settings')
+const settingsPage = computed(() => settingsRequest.data.value?.page ?? null)
 
 const isSavingConfig = ref(false)
 const isRetryingLumaConfiguration = ref(false)
@@ -128,7 +125,7 @@ let criteriaSortable: SortableInstance | null = null
 let prizeSortable: SortableInstance | null = null
 let sortableConstructor: SortableConstructor | null = null
 
-const currentEvent = computed(() => workspace.currentEvent.value)
+const currentEvent = computed(() => settingsPage.value?.event ?? null)
 
 // Builder-created events surface a live balance score and their native editor.
 const builderBalance = computed(() => {
@@ -152,8 +149,8 @@ const settingsOverviewGridClass = computed(() =>
 const eventTypeLabel = computed(() =>
   currentEvent.value ? formatEventTypeLabel(currentEvent.value.eventType) : ''
 )
-const actor = computed(() => workspace.actor.value)
-const canManage = computed(() => workspace.canManageCurrentEvent.value)
+const actor = settingsRequest.actor
+const canManage = computed(() => settingsRequest.data.value?.visibility.canManage ?? false)
 const programSettingsCopy = computed(() => getEventProgramSettingsCopy(props.programSettingsMode))
 const hiddenEventAlertDescription = computed(() => {
   const reason = currentEvent.value?.hiddenReason?.trim()
@@ -168,9 +165,9 @@ const eventVisibilityCardDescription = computed(() =>
     ? 'Public pages and participant event lists are unavailable while admins fix the issue.'
     : 'Hide this event when public access needs to stop while admins fix a serious issue.'
 )
-const criteria = computed(() => workspace.criteria.data.value?.data ?? [])
-const prizes = computed(() => workspace.prizes.data.value?.data ?? [])
-const roleAssignments = computed(() => workspace.roleAssignments.data.value?.data ?? [])
+const criteria = computed(() => settingsPage.value?.criteria ?? [])
+const prizes = computed(() => settingsPage.value?.prizes ?? [])
+const roleAssignments = computed(() => settingsPage.value?.roles.assignments ?? [])
 const orderedCriteria = computed(() =>
   [...criteriaRows.value].sort((left, right) => {
     const leftOrder = getCriterionEdit(left).displayOrder
@@ -243,14 +240,10 @@ const hasPrizeChanges = computed(() => {
       || edit.displayOrder !== prize.displayOrder
   })
 })
-const applicationTerms = computed(() => workspace.applicationTermsVersions.data.value?.data ?? [])
-const winnerTerms = computed(() => workspace.winnerTermsVersions.data.value?.data ?? [])
-const currentApplicationTerms = computed(() =>
-  applicationTerms.value.find(document => document.id === currentEvent.value?.currentApplicationTermsDocumentId) ?? null
-)
-const currentWinnerTerms = computed(() =>
-  winnerTerms.value.find(document => document.id === currentEvent.value?.currentWinnerTermsDocumentId) ?? null
-)
+const applicationTerms = computed(() => settingsPage.value?.terms.application.versions ?? [])
+const winnerTerms = computed(() => settingsPage.value?.terms.winner.versions ?? [])
+const currentApplicationTerms = computed(() => settingsPage.value?.terms.application.current ?? null)
+const currentWinnerTerms = computed(() => settingsPage.value?.terms.winner.current ?? null)
 const creatorAssignment = computed(() =>
   roleAssignments.value.find(assignment => assignment.userId === currentEvent.value?.createdByUserId) ?? null
 )
@@ -269,9 +262,7 @@ const creatorLabel = computed(() => {
   return currentEvent.value?.createdByUserId ?? 'Unknown'
 })
 const creatorMeta = computed(() => creatorAssignment.value?.user?.email ?? 'Platform admin')
-const adminCount = computed(() =>
-  roleAssignments.value.filter(assignment => assignment.role === 'event_admin').length
-)
+const adminCount = computed(() => settingsPage.value?.roles.counts.admins ?? 0)
 const criteriaValidationIssues = computed(() =>
   getCriteriaConfigurationValidationIssues(
     orderedCriteria.value.map((criterion) => {
@@ -300,12 +291,8 @@ const criteriaValidationErrorsByCriterion = computed<Record<string, CriterionVal
 
   return errors
 })
-const staffCount = computed(() =>
-  roleAssignments.value.filter(assignment => isEventRoleStaffEnabled(assignment)).length
-)
-const judgeCount = computed(() =>
-  roleAssignments.value.filter(assignment => isEventRoleJudgingEnabled(assignment)).length
-)
+const staffCount = computed(() => settingsPage.value?.roles.counts.staff ?? 0)
+const judgeCount = computed(() => settingsPage.value?.roles.counts.judges ?? 0)
 
 function nextCriterionDisplayOrder(items: Array<EditableCriterionRow>) {
   return items.reduce((highest, item) => Math.max(highest, item.displayOrder), 0) + 1
@@ -593,6 +580,7 @@ watch(currentWinnerTerms, (document) => {
 })
 
 onBeforeUnmount(() => {
+  settingsRequest.abort()
   destroyCriteriaSortable()
   destroyPrizeSortable()
 })
@@ -649,7 +637,7 @@ async function patchConfiguration(
       color: 'success'
     })
 
-    await workspace.refreshWorkspace()
+    await settingsRequest.refresh()
     emit('updated')
   } catch (error) {
     configMutationError.value = normalizeApiError(error).message
@@ -679,7 +667,7 @@ async function retryLumaConfiguration() {
       color: 'success'
     })
 
-    await workspace.refreshWorkspace()
+    await settingsRequest.refresh()
     emit('updated')
   } catch (error) {
     configMutationError.value = normalizeApiError(error).message
@@ -712,7 +700,7 @@ async function hideEvent() {
       description: 'Public and participant access has been paused.',
       color: 'success'
     })
-    await workspace.refreshWorkspace()
+    await settingsRequest.refresh()
     emit('updated')
   } catch (error) {
     eventVisibilityMutationError.value = normalizeApiError(error).message
@@ -741,7 +729,7 @@ async function unhideEvent() {
       description: 'Public and participant access has been restored.',
       color: 'success'
     })
-    await workspace.refreshWorkspace()
+    await settingsRequest.refresh()
     emit('updated')
   } catch (error) {
     eventVisibilityMutationError.value = normalizeApiError(error).message
@@ -772,7 +760,7 @@ async function uploadEventImage(slot: EventImageSlot, file: File) {
       body: formData
     })
 
-    await workspace.refreshWorkspace()
+    await settingsRequest.refresh()
     emit('updated')
     toast.add({
       title: slot === 'background' ? 'Background image updated' : 'Banner image updated',
@@ -804,7 +792,7 @@ async function removeEventImage(slot: EventImageSlot) {
       method: 'DELETE'
     })
 
-    await workspace.refreshWorkspace()
+    await settingsRequest.refresh()
     emit('updated')
     toast.add({
       title: slot === 'background' ? 'Background image removed' : 'Banner image removed',
@@ -1035,7 +1023,7 @@ async function saveCriteria() {
       color: 'success'
     })
     hasAttemptedCriteriaSave.value = false
-    await workspace.refreshWorkspace()
+    await settingsRequest.refresh()
   } catch (error) {
     criteriaMutationError.value = normalizeApiError(error).message
   } finally {
@@ -1092,7 +1080,7 @@ async function savePrizes() {
       description: 'The prize catalog has been updated.',
       color: 'success'
     })
-    await workspace.refreshWorkspace()
+    await settingsRequest.refresh()
   } catch (error) {
     mutationError.value = normalizeApiError(error).message
   } finally {
@@ -1100,7 +1088,7 @@ async function savePrizes() {
   }
 }
 
-function getNextTermsVersion(documents: TermsDocument[]) {
+function getNextTermsVersion(documents: Array<Pick<TermsDocument, 'version'>>) {
   return documents.reduce((highest, document) => Math.max(highest, document.version), 0) + 1
 }
 
@@ -1164,7 +1152,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
         : 'A new winner terms version is now current for prize redemption.',
       color: 'success'
     })
-    await workspace.refreshWorkspace()
+    await settingsRequest.refresh()
   } catch (error) {
     mutationError.value = normalizeApiError(error).message
   } finally {
@@ -1184,11 +1172,11 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
     />
 
     <AppAlert
-      v-if="workspace.event.error.value"
+      v-if="settingsRequest.error.value"
       color="error"
       variant="soft"
       title="Unable to load event"
-      :description="workspace.event.error.value.message"
+      :description="settingsRequest.error.value.message"
     />
 
     <AppAlert
@@ -1300,7 +1288,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
               color="neutral"
               variant="solid"
               size="sm"
-              :to="`/admin/events/builder/${currentEvent.id}`"
+              :to="`/admin/events/builder/${currentEvent.slug}`"
               data-testid="event-builder-open-in-builder"
             >
               Open in builder
