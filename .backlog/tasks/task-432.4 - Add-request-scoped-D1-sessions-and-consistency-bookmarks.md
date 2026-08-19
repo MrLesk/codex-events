@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@luna-d1'
 created_date: '2026-08-19 06:22'
-updated_date: '2026-08-19 19:12'
+updated_date: '2026-08-19 19:15'
 labels: []
 dependencies:
   - TASK-432.1
@@ -22,7 +22,7 @@ ordinal: 131000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Introduce a shared database access path that can use Cloudflare D1 Sessions API and read replicas while preserving local D1 tests and explicit read-after-write semantics.
+Introduce a shared request-scoped Cloudflare D1 Sessions access path with strong consistency and explicit read-after-write semantics, preserving equivalent local fake-D1 behavior.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -32,12 +32,11 @@ Introduce a shared database access path that can use Cloudflare D1 Sessions API 
 - [x] #3 Local fake-D1 and integration support exercise the same application-facing database abstraction
 - [x] #4 Deployment guidance documents enabling read replication separately from checked-in binding configuration
 - [x] #5 Tests cover session reuse, bookmark propagation, read-only requests, and write-followed-by-read behavior
-- [x] #6 Replica consistency is explicit opt-in for vetted public reads; authenticated actor, consent, permission, and mutation paths default to strong consistency
-- [x] #7 HTTP handlers cannot access the raw D1 binding and all prepared statements or batches participate in the request session and bookmark
-- [x] #8 One global response hook owns bookmark emission for API, raw-route, success, and error responses
-- [x] #9 The local fake-D1 can model a stale replica and proves that an unbookmarked read may be stale while a bookmarked read observes the write
-- [x] #10 Direct database injection is restricted to explicit test or non-HTTP execution paths and cannot silently bypass request sessions
-- [x] #11 Replica access is only available through a non-exported or mechanically allowlisted immutable/cacheable public-read boundary; mutable or private/no-store routes use strong access.
+- [x] #6 HTTP handlers cannot access the raw D1 binding and all prepared statements or batches participate in the request session and bookmark
+- [x] #7 One global response hook owns bookmark emission for API, raw-route, success, and error responses
+- [x] #8 The local fake-D1 can model a stale replica and proves that an unbookmarked read may be stale while a bookmarked read observes the write
+- [x] #9 Direct database injection is restricted to explicit test or non-HTTP execution paths and cannot silently bypass request sessions
+- [x] #10 Strong consistency is the only production HTTP database path; no generic consistency option or public-replica accessor is exposed; actor, consent, permission, lifecycle, mutation, and read-after-write paths use request-scoped primary or bookmarked sessions.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -86,6 +85,8 @@ Adversarial review of 5d6fd339 found two P1 structural gaps: getPublicReplicaDat
 Fresh corrective scope requested after 5d6fd339 and 7858c1fb. Do not touch server/api/public/platform/event-default-background-image.get.ts or client/bootstrap UI. User requires the exact fake-D1 CTE regression, removal of no-op strong options and all direct callers, production-tree verification for public-replica remnants, and handled sendRedirect/sendNoContent bookmark coverage through the actual Nitro hook where possible.
 
 Fresh corrective verification: fake-D1 now parses leading comments/quoted tokens and resolves the top-level statement keyword after CTE bodies; the simplified-claiming INSERT ... WITH ... SELECT regression records isWrite:true, advances to test-bookmark-2, stays invisible to an unbookmarked stale read, and is visible to a bookmark-anchored read. Removed StrongDatabaseAccessOptions and all direct strong option callers. Production server-tree replica search is clean and both canonical D1 docs now describe strong-only HTTP access. The real H3 harness was exercised for handled responses: sendRedirect/sendNoContent mark the event handled before onBeforeResponse, so no coverage was added and no parallel production hook was introduced. Focused D1 integration (2 files/10 tests), targeted changed-file ESLint, and full elevated integration (32 files/399 tests) passed. Full lint has four unrelated concurrent app/test errors; typecheck has one unrelated app error; full unit has 125 passing files/939 tests and 4 unrelated app failures; BDD ran with port 3100 free and reached 38 passed/23 failures, dominated by concurrent media/server state and connection refusal. No remote DB, URL, deployment, or push used.
+
+Independent handoff verification: focused integration for fake-D1, request-scoped sessions, and actor topology passed 3 files/14 tests; targeted ESLint passed; git diff --check and the full production-server replica/no-op symbol scan passed. HEAD is 963a657f and remains unpushed. The task stays In Progress because full lint/typecheck/unit and BDD include unrelated concurrent app/media failures; full integration passed 32 files/399 tests.
 <!-- SECTION:NOTES:END -->
 
 ## Comments
@@ -107,4 +108,6 @@ Fresh corrective pass scoped to fake-D1 writable CTE semantics, no-op strong API
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
 Fresh corrective work fixed fake-D1 writable-CTE classification, removed StrongDatabaseAccessOptions and all no-op strong callers, verified the entire production server tree has no public-replica access, and updated the canonical D1 docs to strong-only HTTP access. The exact simplified-claiming INSERT ... WITH ... SELECT shape now advances fake-D1 bookmarks and is visible to bookmark-anchored reads while stale unbookmarked reads remain behind. The real H3 harness confirmed sendRedirect/sendNoContent bypass beforeResponse when handled, so no parallel production hook was added. Focused D1 tests, targeted changed-file ESLint, and full elevated integration (32 files/399 tests) passed. Full lint, typecheck, unit, and BDD were run but retain unrelated concurrent app/media/server failures; task remains In Progress pending shared-worktree validation.
+
+Local corrective commit 963a657f is ready for review; no push, deployment, remote URL, or remote database access was used.
 <!-- SECTION:FINAL_SUMMARY:END -->
