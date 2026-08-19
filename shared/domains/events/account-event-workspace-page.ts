@@ -30,7 +30,7 @@ const outcomeSchema = z.object({
   prizes: z.array(z.object({
     id: z.string(),
     name: z.string()
-  }).passthrough())
+  }))
 })
 
 const rankSchema = z.object({

@@ -29,7 +29,7 @@ const applicationUserSchema = z.object({
   lumaUsername: z.string().nullable().optional(),
   profileIconUpdatedAt: z.string().nullable().optional(),
   profileIconRevision: z.number().int().nullable().optional()
-}).passthrough()
+})
 
 const adminWithdrawalSchema = z.object({
   isAllowed: z.boolean(),
@@ -68,7 +68,7 @@ const applicationSchema = z.object({
   updatedAt: z.string(),
   user: applicationUserSchema.optional(),
   adminWithdrawal: adminWithdrawalSchema.optional()
-}).passthrough()
+})
 
 const trackSchema = z.object({
   id: z.string(),

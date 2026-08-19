@@ -1,4 +1,6 @@
-import { defineEventHandler, getRouterParam } from 'h3'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
+import { parseValidatedParams } from '#server/http/validation'
+import { routeSlugParamsSchema } from '#server/domains/events'
 
 import { executeAccountEventPageRoute } from '#server/domains/events/account-event-page-contract'
 import {
@@ -7,13 +9,24 @@ import {
 } from '#server/domains/events/account-event-operations-page'
 import { accountEventOperationsPageSchema } from '#shared/domains/events/account-event-operations-page'
 
-export default defineEventHandler(h3Event => executeAccountEventPageRoute(
-  h3Event,
-  getRouterParam(h3Event, 'slug') ?? '',
-  {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.account.events.by-slug.operations',
+  toolName: 'get_account_events_by_slug_operations',
+  description: 'GET /api/account/events/:slug/operations',
+  rest: { method: 'GET', path: '/api/account/events/:slug/operations' },
+  input: { params: routeSlugParamsSchema },
+  output: 'data',
+  capabilities: ['event_admin'],
+  effect: 'read'
+}, async (h3Event) => {
+  const { slug } = parseValidatedParams(h3Event, routeSlugParamsSchema)
+
+  return await executeAccountEventPageRoute(h3Event, slug, {
     page: 'operations',
     schema: accountEventOperationsPageSchema,
     authorize: assertAccountEventOperationsAccess,
     load: loadAccountEventOperationsPage
-  }
-))
+  })
+})
+
+export default defineStructuredOperationApiHandler(applicationOperation)

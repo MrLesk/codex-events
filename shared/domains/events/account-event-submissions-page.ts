@@ -13,9 +13,9 @@ export const accountEventSubmissionsPageSchema = accountEventOperationsPageSchem
   submissionMonitor: true
 }).extend({
   noSubmissionTeams: z.array(z.object({
-    team: z.object({ id: z.string() }).passthrough(),
-    submission: z.object({ id: z.string() }).passthrough().nullable()
-  }).passthrough())
+    team: z.object({ id: z.string() }),
+    submission: z.object({ id: z.string() }).nullable()
+  }))
 })
 
 export type AccountEventSubmissionsPage = z.infer<typeof accountEventSubmissionsPageSchema>

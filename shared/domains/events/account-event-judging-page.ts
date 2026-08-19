@@ -30,7 +30,7 @@ const assignmentSchema = z.object({
   ineligibilityMarkedAt: z.string().nullable(),
   ineligibilityMarkedByUserId: z.string().nullable(),
   createdAt: z.string()
-}).passthrough()
+})
 
 const assignmentSummarySchema = z.object({
   totalAssignmentCount: z.number().int().nonnegative(),

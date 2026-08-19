@@ -40,11 +40,51 @@ describe('MCP application operation registry', () => {
   test('has unique stable IDs, tool names, and REST bindings', async () => {
     await loadApplicationOperationCatalog()
     const operations = listApplicationOperations()
-    expect(operations).toHaveLength(149)
+    expect(operations).toHaveLength(167)
     expect(new Set(operations.map(operation => operation.id)).size).toBe(operations.length)
     expect(new Set(operations.map(operation => operation.toolName)).size).toBe(operations.length)
     expect(new Set(operations.map(operation => `${operation.rest.method} ${operation.rest.path}`)).size).toBe(operations.length)
     expect(operations.every(operation => operation.inputSchema && operation.outputSchema)).toBe(true)
+  })
+
+  test('registers every page-shaped application operation with its canonical REST metadata', async () => {
+    await loadApplicationOperationCatalog()
+
+    const expected = [
+      ['get.account.events.by-slug.entry', 'get_account_events_by_slug_entry', '/api/account/events/:slug/entry', ['platform_user'], true],
+      ['get.account.events.by-slug.prizes', 'get_account_events_by_slug_prizes', '/api/account/events/:slug/prizes', ['platform_user'], true],
+      ['get.account.events.by-slug.operations', 'get_account_events_by_slug_operations', '/api/account/events/:slug/operations', ['event_admin'], true],
+      ['get.account.events.by-slug.submissions', 'get_account_events_by_slug_submissions', '/api/account/events/:slug/submissions', ['event_admin'], true],
+      ['get.account.events.by-slug.judging', 'get_account_events_by_slug_judging', '/api/account/events/:slug/judging', ['event_judge', 'event_admin'], true],
+      ['get.account.judging', 'get_account_judging', '/api/account/judging', ['event_judge'], false],
+      ['get.account.events.by-slug.judging.assignments.by-assignmentId', 'get_account_events_by_slug_judging_assignments_by_assignmentId', '/api/account/events/:slug/judging/assignments/:assignmentId', ['event_judge'], true],
+      ['get.account.events.by-slug.settings', 'get_account_events_by_slug_settings', '/api/account/events/:slug/settings', ['event_admin'], true],
+      ['get.account.events.by-slug.participants', 'get_account_events_by_slug_participants', '/api/account/events/:slug/participants', ['event_staff', 'event_admin'], true],
+      ['get.account.events.by-slug.workspace', 'get_account_events_by_slug_workspace', '/api/account/events/:slug/workspace', ['platform_user'], true],
+      ['get.account.events.by-slug.teams', 'get_account_events_by_slug_teams', '/api/account/events/:slug/teams', ['platform_user'], true],
+      ['get.account.events.by-slug.rosters', 'get_account_events_by_slug_rosters', '/api/account/events/:slug/rosters', ['event_staff', 'event_admin'], true],
+      ['get.account.events.by-slug.gallery', 'get_account_events_by_slug_gallery', '/api/account/events/:slug/gallery', ['platform_user'], true],
+      ['get.account.events.by-slug.feedback', 'get_account_events_by_slug_feedback', '/api/account/events/:slug/feedback', ['event_judge', 'event_staff', 'event_admin'], true],
+      ['get.account.events.by-slug.certificates', 'get_account_events_by_slug_certificates', '/api/account/events/:slug/certificates', ['event_admin'], true],
+      ['get.account.overview', 'get_account_overview', '/api/account/overview', ['platform_user'], false],
+      ['get.account.staff-workspace', 'get_account_staff_workspace', '/api/account/staff-workspace', ['platform_user'], false],
+      ['get.prize-redemptions.workspace', 'get_prize_redemptions_workspace', '/api/prize-redemptions/workspace', ['platform_user'], false]
+    ] as const
+
+    expect(expected.map(([id]) => getApplicationOperation(id)?.id).sort()).toEqual(expected.map(([id]) => id).sort())
+
+    for (const [id, toolName, path, capabilities, hasParams] of expected) {
+      const operation = getApplicationOperation(id)
+      expect(operation?.toolName).toBe(toolName)
+      expect(operation?.rest).toEqual({ method: 'GET', path })
+      expect(operation?.capabilities).toEqual(capabilities)
+      expect(operation?.effect).toBe('read')
+      expect(operation?.output).toBe('data')
+
+      const input = JSON.stringify(z.toJSONSchema(operation!.inputSchema))
+      expect(input.includes('params')).toBe(hasParams)
+      if (id.includes('judging.assignments')) expect(input).toContain('assignmentId')
+    }
   })
 
   test('includes structured discovery and signed-in work while excluding security and binary boundaries', async () => {
@@ -176,7 +216,7 @@ describe('MCP application operation registry', () => {
 
     const included = mcpEligibilityManifest.filter(entry => entry.disposition === 'include')
     const excluded = mcpEligibilityManifest.filter(entry => entry.disposition === 'exclude')
-    expect(included).toHaveLength(149)
+    expect(included).toHaveLength(167)
     expect(excluded).toHaveLength(35)
     expect(excluded.every(entry => entry.reason.length > 0)).toBe(true)
 

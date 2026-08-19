@@ -154,7 +154,7 @@ const eventSettingsEventSchema = z.object({
       publishedAt: z.string()
     }).nullable()
   }).optional()
-}).passthrough()
+})
 
 const termsDocumentSchema = z.object({
   id: z.string(),

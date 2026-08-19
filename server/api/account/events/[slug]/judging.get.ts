@@ -1,4 +1,6 @@
-import { defineEventHandler, getRouterParam } from 'h3'
+import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
+import { parseValidatedParams } from '#server/http/validation'
+import { routeSlugParamsSchema } from '#server/domains/events'
 
 import { executeAccountEventPageRoute } from '#server/domains/events/account-event-page-contract'
 import {
@@ -7,13 +9,24 @@ import {
 } from '#server/domains/events/account-event-judging-page'
 import { accountEventJudgingPageSchema } from '#shared/domains/events/account-event-judging-page'
 
-export default defineEventHandler(h3Event => executeAccountEventPageRoute(
-  h3Event,
-  getRouterParam(h3Event, 'slug') ?? '',
-  {
+export const applicationOperation = defineStructuredRouteOperation({
+  id: 'get.account.events.by-slug.judging',
+  toolName: 'get_account_events_by_slug_judging',
+  description: 'GET /api/account/events/:slug/judging',
+  rest: { method: 'GET', path: '/api/account/events/:slug/judging' },
+  input: { params: routeSlugParamsSchema },
+  output: 'data',
+  capabilities: ['event_judge', 'event_admin'],
+  effect: 'read'
+}, async (h3Event) => {
+  const { slug } = parseValidatedParams(h3Event, routeSlugParamsSchema)
+
+  return await executeAccountEventPageRoute(h3Event, slug, {
     page: 'judging',
     schema: accountEventJudgingPageSchema,
     authorize: assertAccountEventJudgingAccess,
     load: loadAccountEventJudgingPage
-  }
-))
+  })
+})
+
+export default defineStructuredOperationApiHandler(applicationOperation)

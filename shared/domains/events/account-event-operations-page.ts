@@ -1,5 +1,75 @@
 import { z } from 'zod'
 
+const eventAgendaItemSchema = z.object({
+  id: z.string(),
+  startsAt: z.string(),
+  endsAt: z.string().nullable(),
+  title: z.string(),
+  details: z.string().nullable(),
+  displayOrder: z.number().int(),
+  builderBlockType: z.string().optional(),
+  builderFocusCost: z.number().optional(),
+  builderEnergyDelta: z.number().optional()
+})
+
+const eventTrackResourceSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  url: z.string(),
+  description: z.string().nullable(),
+  displayOrder: z.number().int()
+})
+
+const eventTrackSchema = z.object({
+  id: z.string(),
+  eventId: z.string(),
+  name: z.string(),
+  shortDescription: z.string(),
+  fullDescription: z.string(),
+  staffInstructions: z.string().optional(),
+  resources: z.array(eventTrackResourceSchema),
+  displayOrder: z.number().int(),
+  createdAt: z.string()
+})
+
+const teamMemberUserSchema = z.object({
+  id: z.string(),
+  displayName: z.string(),
+  email: z.string().nullable().optional(),
+  xProfileUrl: z.string().nullable().optional(),
+  linkedinProfileUrl: z.string().nullable().optional(),
+  githubProfileUrl: z.string().nullable().optional(),
+  chatgptEmail: z.string().nullable().optional(),
+  openaiOrgId: z.string().nullable().optional(),
+  lumaUsername: z.string().nullable().optional()
+})
+
+const teamMemberSchema = z.object({
+  id: z.string(),
+  teamId: z.string(),
+  userId: z.string(),
+  role: z.enum(['member', 'admin']),
+  joinedAt: z.string(),
+  leftAt: z.string().nullable(),
+  createdAt: z.string(),
+  user: teamMemberUserSchema.optional()
+})
+
+const prizeSchema = z.object({
+  id: z.string(),
+  eventId: z.string(),
+  name: z.string(),
+  description: z.string(),
+  rewardType: z.enum(['api_credits', 'subscription', 'physical', 'other']),
+  rewardValue: z.string(),
+  rewardCurrency: z.string().nullable(),
+  awardScope: z.enum(['team', 'member']),
+  rankStart: z.number().int(),
+  rankEnd: z.number().int(),
+  displayOrder: z.number().int(),
+  createdAt: z.string()
+})
+
 const eventSchema = z.object({
   id: z.string(),
   eventType: z.enum(['hackathon', 'meetup', 'build']),
@@ -19,8 +89,8 @@ const eventSchema = z.object({
     'winners_announced',
     'completed'
   ]),
-  agendaItems: z.array(z.unknown()),
-  tracks: z.array(z.unknown()).optional(),
+  agendaItems: z.array(eventAgendaItemSchema),
+  tracks: z.array(eventTrackSchema).optional(),
   registrationOpensAt: z.string(),
   registrationClosesAt: z.string(),
   submissionOpensAt: z.string().nullable(),
@@ -53,7 +123,7 @@ const eventSchema = z.object({
       publishedAt: z.string()
     }).nullable()
   }).optional()
-}).passthrough()
+})
 
 const roleAssignmentSchema = z.object({
   id: z.string(),
@@ -71,7 +141,7 @@ const roleAssignmentSchema = z.object({
     isPlatformAdmin: z.boolean(),
     isEventOrganizer: z.boolean().optional()
   }).optional()
-}).passthrough()
+})
 
 const assignmentSchema = z.object({
   id: z.string(),
@@ -91,7 +161,7 @@ const assignmentSchema = z.object({
   ineligibilityMarkedAt: z.string().nullable(),
   ineligibilityMarkedByUserId: z.string().nullable(),
   createdAt: z.string()
-}).passthrough()
+})
 
 const applicationSchema = z.object({
   id: z.string(),
@@ -102,7 +172,7 @@ const applicationSchema = z.object({
   submittedAt: z.string(),
   createdAt: z.string(),
   updatedAt: z.string()
-}).passthrough()
+})
 
 const teamSchema = z.object({
   id: z.string(),
@@ -112,11 +182,11 @@ const teamSchema = z.object({
   slug: z.string(),
   isOpenToJoinRequests: z.boolean(),
   activeMemberCount: z.number().int().optional(),
-  members: z.array(z.unknown()).optional(),
+  members: z.array(teamMemberSchema).optional(),
   createdByUserId: z.string(),
   createdAt: z.string(),
   updatedAt: z.string()
-}).passthrough()
+})
 
 const submissionSchema = z.object({
   id: z.string(),
@@ -129,7 +199,7 @@ const submissionSchema = z.object({
   lockedAt: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string()
-}).passthrough()
+})
 
 const judgingSummarySchema = z.object({
   totalAssignmentCount: z.number().int().nonnegative(),
@@ -167,7 +237,7 @@ const leaderboardEntrySchema = z.object({
   ineligibilityStatus: z.enum(['eligible', 'ineligible']).nullable(),
   scoreTotal: z.number().nullable(),
   rank: z.number().int().nullable()
-}).passthrough()
+})
 
 const shortlistEntrySchema = z.object({
   submissionId: z.string(),
@@ -180,7 +250,7 @@ const shortlistEntrySchema = z.object({
   rank: z.number().int().nullable(),
   isPitchFinalist: z.boolean(),
   pitchFinalistRank: z.number().int().nullable()
-}).passthrough()
+})
 
 const finalDeliberationEntrySchema = z.object({
   teamId: z.string(),
@@ -196,7 +266,7 @@ const finalDeliberationEntrySchema = z.object({
   scoreTotal: z.number().nullable(),
   scoreRank: z.number().int().nullable(),
   finalRank: z.number().int().nullable()
-}).passthrough()
+})
 
 const winnerSchema = z.object({
   teamId: z.string(),
@@ -207,7 +277,7 @@ const winnerSchema = z.object({
   repositoryUrl: z.string().nullable(),
   demoUrl: z.string().nullable(),
   finalRank: z.number().int()
-}).passthrough()
+})
 
 const prizeRedemptionSchema = z.object({
   id: z.string(),
@@ -218,7 +288,7 @@ const prizeRedemptionSchema = z.object({
   redeemedAt: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string()
-}).passthrough()
+})
 
 const rankingEntrySchema = z.object({
   teamId: z.string(),
@@ -228,8 +298,18 @@ const rankingEntrySchema = z.object({
   summary: z.string().nullable(),
   repositoryUrl: z.string().nullable(),
   demoUrl: z.string().nullable(),
-  teamMembers: z.array(z.unknown())
-}).passthrough()
+  teamMembers: z.array(z.object({
+    id: z.string(),
+    fullName: z.string(),
+    bio: z.string().nullable(),
+    xProfileUrl: z.string().nullable(),
+    linkedinProfileUrl: z.string().nullable(),
+    githubProfileUrl: z.string().nullable(),
+    chatgptEmail: z.string().nullable(),
+    openaiOrgId: z.string().nullable(),
+    profileIconUrl: z.string().nullable()
+  }))
+})
 
 export const accountEventOperationsPageSchema = z.object({
   event: eventSchema,
@@ -246,7 +326,7 @@ export const accountEventOperationsPageSchema = z.object({
     data: z.array(teamSchema),
     total: z.number().int().nonnegative()
   }),
-  prizes: z.array(z.object({ id: z.string() }).passthrough()),
+  prizes: z.array(prizeSchema),
   applications: z.array(applicationSchema),
   submissionSummary: submissionSummarySchema,
   submissionMonitor: submissionMonitorSchema,
@@ -262,7 +342,7 @@ export const accountEventOperationsPageSchema = z.object({
   prizeRedemptions: z.object({
     redemptions: z.array(prizeRedemptionSchema),
     finalRankingEntries: z.array(rankingEntrySchema),
-    blindRankingEntries: z.array(rankingEntrySchema.extend({ blindRank: z.number().int() }).passthrough())
+    blindRankingEntries: z.array(rankingEntrySchema.extend({ blindRank: z.number().int() }))
   })
 })
 

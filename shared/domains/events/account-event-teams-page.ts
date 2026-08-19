@@ -13,7 +13,7 @@ const teamUserSchema = z.object({
   chatgptEmail: z.string().nullable().optional(),
   openaiOrgId: z.string().nullable().optional(),
   lumaUsername: z.string().nullable().optional()
-}).passthrough()
+})
 
 const teamMemberSchema = z.object({
   id: z.string(),
@@ -38,7 +38,7 @@ const teamSummarySchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   activeMemberCount: z.number().int().nonnegative().optional()
-}).passthrough()
+})
 
 const teamDetailSchema = teamSummarySchema.extend({
   members: z.array(teamMemberSchema)
