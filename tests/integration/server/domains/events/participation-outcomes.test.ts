@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test } from 'vitest'
 
 import { listOwnEventParticipation } from '../../../../../server/domains/events/participation'
+import { requirePlatformActor } from '../../../../../server/auth/actor'
+import { getDatabase } from '../../../../../server/database/client'
 import { apiData } from '../../../../../server/http/api-response'
 import { defineApiHandler } from '../../../../../server/http/api-handler'
 import {
@@ -29,9 +31,13 @@ describe('account participation outcome query plan', () => {
   })
 
   test('keeps outcome query count constant as completed events grow', async () => {
-    const participationHandler = defineApiHandler(async event =>
-      apiData(await listOwnEventParticipation(event))
-    )
+    const participationHandler = defineApiHandler(async (event) => {
+      const actor = await requirePlatformActor(event)
+      return apiData(await listOwnEventParticipation(
+        getDatabase(event),
+        actor.platformUser.id
+      ))
+    })
     const backend = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/test/account/overview', handler: participationHandler }

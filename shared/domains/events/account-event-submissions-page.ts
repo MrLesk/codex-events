@@ -13,8 +13,8 @@ export const accountEventSubmissionsPageSchema = accountEventOperationsPageSchem
   submissionMonitor: true
 }).extend({
   noSubmissionTeams: z.array(z.object({
-    team: z.object({ id: z.string() }),
-    submission: z.object({ id: z.string() }).nullable()
+    team: accountEventOperationsPageSchema.shape.teams.shape.data.element,
+    submission: accountEventOperationsPageSchema.shape.submissionMonitor.shape.teamSubmissions.element
   }))
 })
 

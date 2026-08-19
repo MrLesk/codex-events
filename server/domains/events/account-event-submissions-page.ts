@@ -4,6 +4,7 @@ import type {
   AccountEventSubmissionsPage,
   AccountEventSubmissionsPagePayload
 } from '#shared/domains/events/account-event-submissions-page'
+import { accountEventSubmissionsPageSchema } from '#shared/domains/events/account-event-submissions-page'
 import {
   assertCompetitionEvent,
   getCurrentEventTerms,
@@ -21,6 +22,7 @@ import {
 import type { listTeamsQuerySchema } from '#server/domains/teams'
 import { listVisibleTeams } from '#server/domains/teams'
 import type { AccountEventPageContext } from './account-event-page-context'
+import { defineAccountEventPageRoute } from './account-event-page-contract'
 
 const firstPageQuery = { page: 1, page_size: 100 } as const satisfies z.infer<typeof listTeamsQuerySchema>
 
@@ -58,5 +60,12 @@ export async function loadAccountEventSubmissionsPage(
     noSubmissionTeams
   }
 
-  return payload as AccountEventSubmissionsPage
+  return payload
 }
+
+export const accountEventSubmissionsPageRoute = defineAccountEventPageRoute({
+  page: 'submissions',
+  schema: accountEventSubmissionsPageSchema,
+  authorize: assertAccountEventSubmissionsAccess,
+  load: loadAccountEventSubmissionsPage
+})

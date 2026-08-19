@@ -1,8 +1,6 @@
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
-
-import { loadAccountJudgeInboxPage } from '#server/domains/judging/account-judge-inbox-page'
-import { apiData } from '#server/http/api-response'
-import { accountJudgeInboxPageSchema, type AccountJudgeInboxPage } from '#shared/domains/events/account-event-judging-page'
+import { executeAccountPageRoute } from '#server/domains/accounts/account-page-contract'
+import { accountJudgeInboxPageRoute } from '#server/domains/judging/account-judge-inbox-page'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.account.judging',
@@ -14,7 +12,7 @@ export const applicationOperation = defineStructuredRouteOperation({
   capabilities: ['event_judge'],
   effect: 'read'
 }, async h3Event =>
-  apiData<AccountJudgeInboxPage>(accountJudgeInboxPageSchema.parse(await loadAccountJudgeInboxPage(h3Event)))
+  executeAccountPageRoute(h3Event, accountJudgeInboxPageRoute)
 )
 
 export default defineStructuredOperationApiHandler(applicationOperation)

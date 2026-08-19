@@ -1,6 +1,6 @@
-import { getAccountOverviewPage } from '#server/domains/accounts/account-overview-page'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
-import { apiData } from '#server/http/api-response'
+import { accountOverviewPageRoute } from '#server/domains/accounts/account-overview-page'
+import { executeAccountPageRoute } from '#server/domains/accounts/account-page-contract'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.account.overview',
@@ -12,7 +12,7 @@ export const applicationOperation = defineStructuredRouteOperation({
   capabilities: ['platform_user'],
   effect: 'read'
 }, async event =>
-  apiData(await getAccountOverviewPage(event))
+  executeAccountPageRoute(event, accountOverviewPageRoute)
 )
 
 export default defineStructuredOperationApiHandler(applicationOperation)

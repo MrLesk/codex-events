@@ -1,11 +1,11 @@
 ---
 id: TASK-432.5.3
 title: 'Collapse operations, submissions, and judging workspace reads'
-status: Done
+status: In Progress
 assignee:
   - '@luna-workspace'
 created_date: '2026-08-19 19:52'
-updated_date: '2026-08-19 21:27'
+updated_date: '2026-08-19 22:59'
 labels:
   - architecture
   - performance
@@ -134,6 +134,10 @@ Validation
 3. Replace owned client fan-out with signal-aware page requests, keep mutation routes separate, scope protected data by authorization generation, and prevent stale response commits.
 4. Add contract, permission, query-topology, cancellation, and request-count tests; record exact route metadata for TASK-432.5.1 generated-catalog integration without editing generated or shared foundation files.
 5. Run scoped and required repository checks, inspect the ownership-only diff, and commit locally without push, deploy, or remote D1.
+
+6. Correct the global judge inbox and assignment detail handlers to use named page executors with mandatory authorization before loaders.
+7. Replace contract escape hatches with strict concrete Zod shapes and remove unknown casts from the owned server assemblers.
+8. Add exact authorization ordering, output rejection, actor/database reuse, and route parity coverage; leave generated catalogs for the foundation integrator.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -152,10 +156,12 @@ Ownership handoff: generated operation catalogs and manifests, shared foundation
 Panel boundary handoff: AccountEventAdminOperationsPanel now requires page: AccountEventOperationsPage | AccountEventSubmissionsPage | null plus canManage, isLoading, loadErrorMessage, and refreshPage. AccountEventJudgePanel now requires page: AccountEventJudgingPage | null and assignmentPage: AccountJudgeAssignmentWorkspacePage | null plus the matching loading/error/refresh props. The parent event route must own the operations/submissions/judging page requests, pass these props, abort tab/assignment changes through the shared request helper, and refresh only the active page after mutations. This parent wiring is intentionally not edited in this slice.
 
 Post-refactor typecheck confirms the expected integrator boundary: the untouched parent app/pages/account/events/[slug]/index.vue reports four missing typed page props at lines 1644, 1658, 1714, and 1727 for the new judge/operations/submissions panels. It also retains the unrelated concurrent server/api/events/[eventId]/index.patch.ts talkProposalQuestionsRevision type error.
+
+Server contract checkpoint: judging assignment detail and global judge inbox now use named executors with mandatory authorization before page loaders; global overview/staff/prize workspaces use the same actor/database/authorize/load/parse executor boundary. Owned operations, submissions, judging, entry, and prizes payloads now use concrete Zod schemas with no z.unknown/passthrough output escape hatches or unknown casts in server assemblers. Added exact authorization-order/output-rejection/context-count/route-registry tests and corrected the topology test to assert the new inbox boundary. Focused validation: bun run lint passed; bun run typecheck passed; 5 focused unit files/13 tests passed; 2 focused integration files/8 tests passed. Full unit remains 147 files/1009 tests with only the pre-existing useTeamFormationWorkspace timeout and generated-operation inventory mismatch; full integration retains pre-existing media/profile-revision and API-envelope assertion failures; BDD was blocked by localhost:3100 already being used. Generated catalogs/manifests remain intentionally untouched for TASK-432.5.1 integration. No remote D1, deploy, or push.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Implemented concrete page-shaped reads for operations, submissions, event judging, the global judge inbox, and assignment workspaces. Added typed bounded contracts, server-owned assemblers/routes using the shared request context, protected signal-aware client request helpers, stale-response cancellation, and focused contract/topology/permission/cancellation tests. Existing mutation routes remain unchanged and page refresh hooks are explicit. Parent event-route prop wiring and generated route catalogs/manifests are recorded as integrator handoff and remain untouched. Focused lint and tests pass; broader validation blockers are documented in implementation notes. Local commit only; no push, deploy, or remote D1.
+Corrected protected page execution and concrete output contracts for operations, submissions, judging, assignment, entry, prizes, the global judge inbox, and global account workspaces. Added route/authorization/contract tests and verified lint, typecheck, and focused unit/integration suites; generated operation files remain an explicit integrator handoff.
 <!-- SECTION:FINAL_SUMMARY:END -->

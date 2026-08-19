@@ -408,9 +408,9 @@ describe('account page-shaped workspace reads', () => {
     })
 
     const response = await harness.request('/api/account/staff-workspace')
-    const body = await response.json() as { code: string }
+    const body = await response.json() as { error: { code: string } }
 
     expect(response.status).toBe(403)
-    expect(body.code).toBe('platform_consent_required')
+    expect(body.error.code).toBe('platform_consent_required')
   })
 })

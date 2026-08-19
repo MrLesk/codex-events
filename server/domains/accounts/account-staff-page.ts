@@ -9,6 +9,12 @@ import { eventRoleAssignments, events } from '#server/database/schema'
 import type { AppDatabase } from '#server/database/client'
 import { parseEventAgendaItems } from '#server/domains/events'
 import { resolveEventCertificateDateIso } from '#shared/domains/events/certificates'
+import { accountStaffPageSchema } from '#shared/domains/account/account-staff-page'
+import {
+  assertAccountPageAccess,
+  defineAccountPageRoute,
+  type AccountPageContext
+} from './account-page-contract'
 
 const pastStaffEventStates = new Set<AccountStaffEventState>([
   'winners_announced',
@@ -80,3 +86,13 @@ export async function getAccountStaffPage(
     past: items.filter(item => pastStaffEventStates.has(item.state))
   }
 }
+
+export const accountStaffPageRoute = defineAccountPageRoute({
+  page: 'staff-workspace',
+  schema: accountStaffPageSchema,
+  authorize: assertAccountPageAccess,
+  load: (context: AccountPageContext) => getAccountStaffPage(
+    context.database,
+    context.actor.platformUser.id
+  )
+})

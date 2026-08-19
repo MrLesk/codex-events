@@ -27,7 +27,10 @@ describe('TASK-432.5.3 server request topology', () => {
       expect(source).not.toContain('fetch(')
     }
 
-    expect(judgeInboxSource).toContain('getDatabase(h3Event)')
+    expect(judgeInboxSource).toContain('context.database')
+    expect(judgeInboxSource).toContain('defineAccountPageRoute')
+    expect(judgeInboxSource).toContain('authorizeAccountJudgeInbox')
+    expect(judgeInboxSource).toContain('accountJudgeInboxPageSchema')
     expect(judgeInboxSource).not.toContain('apiFetch')
     expect(judgeInboxSource).not.toContain('$fetch')
     expect(judgeInboxSource).not.toContain('fetch(')

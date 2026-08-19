@@ -1,5 +1,10 @@
 import { z } from 'zod'
 
+import {
+  accountOverviewApplicationStatusSchema,
+  accountOverviewLumaSyncStatusSchema,
+  accountOverviewRecordSchema
+} from '#shared/domains/account/account-overview-page'
 import type {
   AccountOverviewApplicationStatus,
   AccountOverviewEventState,
@@ -29,10 +34,13 @@ export interface AccountEventEntryAgendaItem {
   title: string
   details: string | null
   displayOrder: number
+  builderBlockType?: string
+  builderFocusCost?: number
+  builderEnergyDelta?: number
 }
 
 export interface AccountEventEntryTrackResource {
-  id?: string
+  id: string
   title: string
   url: string
   description: string | null
@@ -66,6 +74,7 @@ export interface AccountEventEntryEvent {
   bannerImageRevision: number
   publicContentRevision: number
   lumaEventUrl: string | null
+  lumaEventApiId: string | null
   city: string
   country: string
   address: string
@@ -265,30 +274,7 @@ export interface AccountEventEntryPage {
   lumaSyncStatus: AccountOverviewLumaSyncStatus
 }
 
-const eventTypeSchema = z.enum(['hackathon', 'meetup', 'build'])
-const eventStateSchema = z.enum([
-  'draft',
-  'registration_open',
-  'submission_open',
-  'judging_preparation',
-  'blind_review',
-  'shortlist',
-  'pitch',
-  'pitch_review',
-  'final_deliberation',
-  'winners_announced',
-  'completed'
-])
-const applicationStatusSchema = z.enum(['submitted', 'approved', 'rejected', 'withdrawn'])
-const lumaSyncStatusSchema = z.enum([
-  'not_synced',
-  'approve_synced',
-  'reject_synced',
-  'approve_failed',
-  'reject_failed'
-]).nullable()
-
-const eventAgendaItemSchema = z.object({
+const accountEventEntryAgendaItemSchema = z.object({
   id: z.string(),
   startsAt: z.string(),
   endsAt: z.string().nullable(),
@@ -300,7 +286,7 @@ const eventAgendaItemSchema = z.object({
   builderEnergyDelta: z.number().optional()
 })
 
-const eventTrackResourceSchema = z.object({
+const accountEventEntryTrackResourceSchema = z.object({
   id: z.string().optional(),
   title: z.string(),
   url: z.string(),
@@ -308,108 +294,25 @@ const eventTrackResourceSchema = z.object({
   displayOrder: z.number().int()
 })
 
-const eventTrackSchema = z.object({
+const accountEventEntryTrackSchema = z.object({
   id: z.string(),
   name: z.string(),
   shortDescription: z.string(),
   fullDescription: z.string(),
   staffInstructions: z.string().optional(),
-  resources: z.array(eventTrackResourceSchema),
+  resources: z.array(accountEventEntryTrackResourceSchema),
   displayOrder: z.number().int()
-})
-
-const overviewEventSummarySchema = z.object({
-  id: z.string(),
-  eventType: eventTypeSchema,
-  name: z.string(),
-  slug: z.string(),
-  city: z.string(),
-  country: z.string(),
-  state: eventStateSchema,
-  startsAt: z.string(),
-  registrationOpensAt: z.string(),
-  registrationClosesAt: z.string(),
-  submissionClosesAt: z.string().nullable(),
-  maxTeamMembers: z.number().int()
-})
-
-const overviewApplicationSummarySchema = z.object({
-  id: z.string(),
-  userId: z.string(),
-  status: applicationStatusSchema,
-  lumaSyncStatus: lumaSyncStatusSchema,
-  submittedAt: z.string(),
-  withdrawnAt: z.string().nullable(),
-  reviewedAt: z.string().nullable(),
-  checkedInAt: z.string().nullable(),
-  isCheckedIn: z.boolean(),
-  certificateHiddenAt: z.string().nullable(),
-  certificateRevokedAt: z.string().nullable(),
-  selectedTrackId: z.string().nullable(),
-  updatedAt: z.string()
-})
-
-const overviewTeamSummarySchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  slug: z.string(),
-  membershipRole: z.enum(['member', 'admin']),
-  joinedAt: z.string(),
-  leftAt: z.string().nullable(),
-  isActiveMembership: z.boolean(),
-  activeMemberCount: z.number().int()
-})
-
-const overviewSubmissionSummarySchema = z.object({
-  id: z.string(),
-  teamId: z.string(),
-  trackId: z.string().nullable(),
-  status: z.enum(['draft', 'submitted', 'withdrawn', 'locked', 'disqualified']),
-  projectName: z.string().nullable(),
-  summary: z.string().nullable(),
-  repositoryUrl: z.string().nullable(),
-  demoUrl: z.string().nullable(),
-  isPubliclyVisible: z.boolean(),
-  submittedAt: z.string().nullable(),
-  lockedAt: z.string().nullable(),
-  withdrawnAt: z.string().nullable(),
-  disqualifiedAt: z.string().nullable(),
-  disqualificationReason: z.string().nullable(),
-  createdAt: z.string(),
-  updatedAt: z.string()
-})
-
-const overviewOutcomeSchema = z.object({
-  isShortlisted: z.boolean(),
-  isWinner: z.boolean(),
-  finalRank: z.number().int().nullable(),
-  rankedTeamCount: z.number().int(),
-  prizes: z.array(z.object({
-    id: z.string(),
-    name: z.string()
-  }))
-})
-
-const participationSchema = z.object({
-  event: overviewEventSummarySchema,
-  isPast: z.boolean(),
-  lastActivityAt: z.string(),
-  application: overviewApplicationSummarySchema.nullable(),
-  activeTeam: overviewTeamSummarySchema.nullable(),
-  latestTeam: overviewTeamSummarySchema.nullable(),
-  latestSubmission: overviewSubmissionSummarySchema.nullable(),
-  outcome: overviewOutcomeSchema.nullable()
 })
 
 const accountEventEntryEventSchema = z.object({
   id: z.string(),
-  eventType: eventTypeSchema,
+  eventType: z.enum(['hackathon', 'meetup', 'build']),
   creationFlow: z.enum(['classic', 'builder']),
   name: z.string(),
   slug: z.string(),
   description: z.string(),
-  agendaItems: z.array(eventAgendaItemSchema),
-  tracks: z.array(eventTrackSchema),
+  agendaItems: z.array(accountEventEntryAgendaItemSchema),
+  tracks: z.array(accountEventEntryTrackSchema),
   backgroundImageUrl: z.string().nullable(),
   backgroundImageRevision: z.number().int(),
   displayBackgroundImageUrl: z.string().nullable(),
@@ -418,6 +321,7 @@ const accountEventEntryEventSchema = z.object({
   bannerImageRevision: z.number().int(),
   publicContentRevision: z.number().int(),
   lumaEventUrl: z.string().nullable(),
+  lumaEventApiId: z.string().nullable(),
   city: z.string(),
   country: z.string(),
   address: z.string(),
@@ -427,7 +331,19 @@ const accountEventEntryEventSchema = z.object({
   registrationClosesAt: z.string(),
   submissionOpensAt: z.string().nullable(),
   submissionClosesAt: z.string().nullable(),
-  state: eventStateSchema,
+  state: z.enum([
+    'draft',
+    'registration_open',
+    'submission_open',
+    'judging_preparation',
+    'blind_review',
+    'shortlist',
+    'pitch',
+    'pitch_review',
+    'final_deliberation',
+    'winners_announced',
+    'completed'
+  ]),
   maxTeamMembers: z.number().int(),
   participantsLimit: z.number().int().nullable(),
   autoApproveApplications: z.boolean(),
@@ -475,10 +391,10 @@ const accountEventEntryEventSchema = z.object({
   hasGallery: z.boolean()
 })
 
-const accessSchema = z.object({
+const accountEventEntryAccessSchema = z.object({
   id: z.string(),
   eventId: z.string(),
-  applicationStatus: applicationStatusSchema.nullable(),
+  applicationStatus: accountOverviewApplicationStatusSchema.nullable(),
   team: z.object({
     id: z.string(),
     name: z.string(),
@@ -489,7 +405,7 @@ const accessSchema = z.object({
   roles: z.array(z.enum(['event_admin', 'judge', 'staff']))
 })
 
-const participantCreditOfferSchema = z.object({
+const accountEventEntryParticipantCreditOfferSchema = z.object({
   id: z.string(),
   eventId: z.string(),
   name: z.string(),
@@ -497,8 +413,8 @@ const participantCreditOfferSchema = z.object({
   displayOrder: z.number().int(),
   createdAt: z.string(),
   updatedAt: z.string(),
-  availableCount: z.number().int(),
-  totalCount: z.number().int(),
+  availableCount: z.number().int().nonnegative(),
+  totalCount: z.number().int().nonnegative(),
   claimedCode: z.object({
     id: z.string(),
     value: z.string(),
@@ -506,7 +422,7 @@ const participantCreditOfferSchema = z.object({
   }).nullable()
 })
 
-const adminCreditOfferSchema = z.object({
+const accountEventEntryAdminCreditOfferSchema = z.object({
   id: z.string(),
   eventId: z.string(),
   name: z.string(),
@@ -514,9 +430,9 @@ const adminCreditOfferSchema = z.object({
   displayOrder: z.number().int(),
   createdAt: z.string(),
   updatedAt: z.string(),
-  availableCount: z.number().int(),
-  claimedCount: z.number().int(),
-  totalCount: z.number().int(),
+  availableCount: z.number().int().nonnegative(),
+  claimedCount: z.number().int().nonnegative(),
+  totalCount: z.number().int().nonnegative(),
   codes: z.array(z.object({
     id: z.string(),
     value: z.string(),
@@ -530,7 +446,7 @@ const adminCreditOfferSchema = z.object({
   }))
 })
 
-const talkProposalSchema = z.object({
+const accountEventEntryTalkProposalSchema = z.object({
   id: z.string(),
   eventId: z.string(),
   userId: z.string(),
@@ -552,8 +468,8 @@ const talkProposalSchema = z.object({
   updatedAt: z.string()
 })
 
-const talkProposalReviewSchema = z.object({
-  proposal: talkProposalSchema,
+const accountEventEntryTalkProposalReviewSchema = z.object({
+  proposal: accountEventEntryTalkProposalSchema,
   owner: z.object({
     id: z.string(),
     displayName: z.string(),
@@ -561,17 +477,17 @@ const talkProposalReviewSchema = z.object({
     familyName: z.string(),
     email: z.string()
   }),
-  applicationStatus: applicationStatusSchema.nullable()
+  applicationStatus: accountOverviewApplicationStatusSchema.nullable()
 })
 
-const participantRankSchema = z.object({
+const accountEventEntryRankSummarySchema = z.object({
   basis: z.enum(['final', 'blind_review']),
   rank: z.number().int(),
-  rankedTeamCount: z.number().int(),
-  totalTeamCount: z.number().int()
+  rankedTeamCount: z.number().int().nonnegative(),
+  totalTeamCount: z.number().int().nonnegative()
 })
 
-const tabVisibilitySchema = z.object({
+const accountEventEntryTabVisibilitySchema = z.object({
   availableTabs: z.array(z.enum(accountEventEntryTabs)),
   showPrizeConfiguration: z.boolean(),
   showAgendaConfigurationInDetails: z.boolean(),
@@ -585,15 +501,15 @@ const tabVisibilitySchema = z.object({
 export const accountEventEntryPageSchema = z.object({
   event: accountEventEntryEventSchema,
   adminSettingsEvent: accountEventSettingsEventSchema.nullable(),
-  access: accessSchema.nullable(),
-  participation: participationSchema.nullable(),
-  participantCredits: z.array(participantCreditOfferSchema),
-  adminCredits: z.array(adminCreditOfferSchema),
-  talkProposal: talkProposalSchema.nullable(),
-  talkProposalReviews: z.array(talkProposalReviewSchema),
+  access: accountEventEntryAccessSchema.nullable(),
+  participation: accountOverviewRecordSchema.nullable(),
+  participantCredits: z.array(accountEventEntryParticipantCreditOfferSchema),
+  adminCredits: z.array(accountEventEntryAdminCreditOfferSchema),
+  talkProposal: accountEventEntryTalkProposalSchema.nullable(),
+  talkProposalReviews: z.array(accountEventEntryTalkProposalReviewSchema),
   talkProposalReviewTotal: z.number().int().nonnegative(),
-  participantRank: participantRankSchema.nullable(),
-  tabVisibility: tabVisibilitySchema,
-  applicationStatus: applicationStatusSchema.nullable(),
-  lumaSyncStatus: lumaSyncStatusSchema
+  participantRank: accountEventEntryRankSummarySchema.nullable(),
+  tabVisibility: accountEventEntryTabVisibilitySchema,
+  applicationStatus: accountOverviewApplicationStatusSchema.nullable(),
+  lumaSyncStatus: accountOverviewLumaSyncStatusSchema
 })

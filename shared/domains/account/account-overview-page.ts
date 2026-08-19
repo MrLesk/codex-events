@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 export const accountOverviewPagePath = '/api/account/overview' as const
 
 export type AccountOverviewEventType = 'hackathon' | 'meetup' | 'build'
@@ -121,6 +123,134 @@ export interface AccountOverviewPage {
   current: AccountOverviewRecord[]
   past: AccountOverviewRecord[]
 }
+
+const accountOverviewEventTypeSchema = z.enum(['hackathon', 'meetup', 'build'])
+const accountOverviewEventStateSchema = z.enum([
+  'draft',
+  'registration_open',
+  'submission_open',
+  'judging_preparation',
+  'blind_review',
+  'shortlist',
+  'pitch',
+  'pitch_review',
+  'final_deliberation',
+  'winners_announced',
+  'completed'
+])
+
+export const accountOverviewApplicationStatusSchema = z.enum([
+  'submitted',
+  'approved',
+  'rejected',
+  'withdrawn'
+])
+
+export const accountOverviewLumaSyncStatusSchema = z.enum([
+  'not_synced',
+  'approve_synced',
+  'reject_synced',
+  'approve_failed',
+  'reject_failed'
+]).nullable()
+
+export const accountOverviewSubmissionStatusSchema = z.enum([
+  'draft',
+  'submitted',
+  'withdrawn',
+  'locked',
+  'disqualified'
+])
+
+export const accountOverviewEventSummarySchema = z.object({
+  id: z.string(),
+  eventType: accountOverviewEventTypeSchema,
+  name: z.string(),
+  slug: z.string(),
+  city: z.string(),
+  country: z.string(),
+  state: accountOverviewEventStateSchema,
+  startsAt: z.string(),
+  registrationOpensAt: z.string(),
+  registrationClosesAt: z.string(),
+  submissionClosesAt: z.string().nullable(),
+  maxTeamMembers: z.number().int()
+})
+
+export const accountOverviewApplicationSummarySchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  status: accountOverviewApplicationStatusSchema,
+  lumaSyncStatus: accountOverviewLumaSyncStatusSchema,
+  submittedAt: z.string(),
+  withdrawnAt: z.string().nullable(),
+  reviewedAt: z.string().nullable(),
+  checkedInAt: z.string().nullable(),
+  isCheckedIn: z.boolean(),
+  certificateHiddenAt: z.string().nullable(),
+  certificateRevokedAt: z.string().nullable(),
+  selectedTrackId: z.string().nullable(),
+  updatedAt: z.string()
+})
+
+export const accountOverviewTeamSummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  membershipRole: z.enum(['member', 'admin']),
+  joinedAt: z.string(),
+  leftAt: z.string().nullable(),
+  isActiveMembership: z.boolean(),
+  activeMemberCount: z.number().int().nonnegative()
+})
+
+export const accountOverviewSubmissionSummarySchema = z.object({
+  id: z.string(),
+  teamId: z.string(),
+  trackId: z.string().nullable(),
+  status: accountOverviewSubmissionStatusSchema,
+  projectName: z.string().nullable(),
+  summary: z.string().nullable(),
+  repositoryUrl: z.string().nullable(),
+  demoUrl: z.string().nullable(),
+  isPubliclyVisible: z.boolean(),
+  submittedAt: z.string().nullable(),
+  lockedAt: z.string().nullable(),
+  withdrawnAt: z.string().nullable(),
+  disqualifiedAt: z.string().nullable(),
+  disqualificationReason: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string()
+})
+
+export const accountOverviewPrizeSummarySchema = z.object({
+  id: z.string(),
+  name: z.string()
+})
+
+export const accountOverviewOutcomeSummarySchema = z.object({
+  isShortlisted: z.boolean(),
+  isWinner: z.boolean(),
+  finalRank: z.number().int().nullable(),
+  rankedTeamCount: z.number().int().nonnegative(),
+  prizes: z.array(accountOverviewPrizeSummarySchema)
+})
+
+export const accountOverviewRecordSchema = z.object({
+  event: accountOverviewEventSummarySchema,
+  isPast: z.boolean(),
+  lastActivityAt: z.string(),
+  application: accountOverviewApplicationSummarySchema.nullable(),
+  activeTeam: accountOverviewTeamSummarySchema.nullable(),
+  latestTeam: accountOverviewTeamSummarySchema.nullable(),
+  latestSubmission: accountOverviewSubmissionSummarySchema.nullable(),
+  outcome: accountOverviewOutcomeSummarySchema.nullable()
+})
+
+export const accountOverviewPageSchema = z.object({
+  current: z.array(accountOverviewRecordSchema),
+  past: z.array(accountOverviewRecordSchema)
+})
 
 export function buildAccountOverviewPageCacheKey() {
   return 'account-overview-page'

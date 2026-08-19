@@ -31,7 +31,7 @@ export interface JudgeAssignmentSummary {
     track: {
       id: string
       name: string
-      description: string
+      shortDescription: string
     } | null
     status: SubmissionRecord['status']
     submittedAt: string | null
@@ -54,7 +54,7 @@ export interface JudgeAssignmentSummary {
     track: {
       id: string
       name: string
-      description: string
+      shortDescription: string
     } | null
     status: SubmissionRecord['status']
     submittedAt: string | null

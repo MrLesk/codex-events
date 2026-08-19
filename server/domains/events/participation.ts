@@ -1,10 +1,7 @@
-import type { H3Event } from 'h3'
-
 import { and, desc, eq, exists, getTableColumns, isNull, or } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
 
-import { requirePlatformActor } from '#server/auth/actor'
-import { getDatabase } from '#server/database/client'
+import type { AppDatabase } from '#server/database/client'
 import {
   events,
   submissions,
@@ -147,11 +144,7 @@ function serializeParticipationOutcome(outcome: ParticipationOutcome | null) {
   }
 }
 
-export async function listOwnEventParticipation(event: H3Event) {
-  const actor = await requirePlatformActor(event)
-  const database = getDatabase(event)
-  const userId = actor.platformUser.id
-
+export async function listOwnEventParticipation(database: AppDatabase, userId: string) {
   const [applicationsResult, membershipsResult] = await Promise.all([
     database.query.userApplications.findMany({
       where: eq(userApplications.userId, userId),

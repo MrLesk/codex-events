@@ -1,8 +1,6 @@
-import { requirePlatformActor } from '#server/auth/actor'
-import { getDatabase } from '#server/database/client'
-import { getAccountPrizeRedemptionsPage } from '#server/domains/prize-redemptions/account-workspace-page'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
-import { apiData } from '#server/http/api-response'
+import { accountPrizeRedemptionsPageRoute } from '#server/domains/prize-redemptions/account-workspace-page'
+import { executeAccountPageRoute } from '#server/domains/accounts/account-page-contract'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.prize-redemptions.workspace',
@@ -13,13 +11,8 @@ export const applicationOperation = defineStructuredRouteOperation({
   output: 'data',
   capabilities: ['platform_user'],
   effect: 'read'
-}, async (event) => {
-  const actor = await requirePlatformActor(event)
-
-  return apiData(await getAccountPrizeRedemptionsPage(
-    getDatabase(event),
-    actor.platformUser.id
-  ))
-})
+}, async event =>
+  executeAccountPageRoute(event, accountPrizeRedemptionsPageRoute)
+)
 
 export default defineStructuredOperationApiHandler(applicationOperation)

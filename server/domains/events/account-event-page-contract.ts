@@ -2,7 +2,11 @@ import { getQuery, type H3Event } from 'h3'
 import { z } from 'zod'
 
 import { apiData } from '#server/http/api-response'
-import type { EventAuthorization } from '#server/auth/authorization'
+import {
+  resolveJudgeAssignmentAuthorization,
+  type EventAuthorization,
+  type JudgeAssignmentAuthorization
+} from '#server/auth/authorization'
 import { routeSlugParamsSchema } from '#server/domains/events'
 import {
   accountEventPageNames,
@@ -146,3 +150,54 @@ export async function executeAccountEventPageRoute<
     page
   })
 }
+
+export interface AccountJudgeAssignmentPageContext extends AccountEventPageContext {
+  assignmentAuthorization: JudgeAssignmentAuthorization
+}
+
+export type AccountJudgeAssignmentPageAuthorizer = (
+  context: AccountJudgeAssignmentPageContext
+) => void | Promise<void>
+
+export type AccountJudgeAssignmentPageLoader<TSchema extends z.ZodTypeAny> = (
+  context: AccountJudgeAssignmentPageContext,
+  assignmentId: string
+) => z.input<TSchema> | Promise<z.input<TSchema>>
+
+export interface AccountJudgeAssignmentPageRouteDefinition<TSchema extends z.ZodTypeAny> {
+  schema: TSchema
+  authorize: AccountJudgeAssignmentPageAuthorizer
+  load: AccountJudgeAssignmentPageLoader<TSchema>
+}
+
+export function defineAccountJudgeAssignmentPageRoute<TSchema extends z.ZodTypeAny>(
+  definition: AccountJudgeAssignmentPageRouteDefinition<TSchema>
+) {
+  return definition
+}
+
+export async function executeAccountJudgeAssignmentPageRoute<TSchema extends z.ZodTypeAny>(
+  h3Event: H3Event,
+  slug: string,
+  assignmentId: string,
+  definition: AccountJudgeAssignmentPageRouteDefinition<TSchema>
+) {
+  const params = accountJudgeAssignmentParamsSchema.parse({ slug, assignmentId })
+  const context = await resolveAccountEventPageContext(h3Event, params.slug)
+  const assignmentAuthorization = await resolveJudgeAssignmentAuthorization(h3Event, params.assignmentId)
+  const assignmentContext: AccountJudgeAssignmentPageContext = {
+    ...context,
+    assignmentAuthorization
+  }
+
+  await definition.authorize(assignmentContext)
+  const page = definition.schema.parse(
+    await definition.load(assignmentContext, params.assignmentId)
+  )
+
+  return apiData<z.output<TSchema>>(page)
+}
+
+export const accountJudgeAssignmentParamsSchema = routeSlugParamsSchema.extend({
+  assignmentId: z.string().trim().min(1)
+})

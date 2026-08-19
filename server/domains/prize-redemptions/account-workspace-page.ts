@@ -1,6 +1,7 @@
 import { and, asc, eq, exists, getTableColumns, isNull, or } from 'drizzle-orm'
 
 import type { AccountPrizeRedemptionsPage } from '#shared/domains/prize-redemptions/account-prize-redemptions-page'
+import { accountPrizeRedemptionsPageSchema } from '#shared/domains/prize-redemptions/account-prize-redemptions-page'
 import {
   eventTermsDocuments,
   events,
@@ -11,6 +12,11 @@ import {
 import type { AppDatabase } from '#server/database/client'
 import { serializeEventTermsDocument, serializePrize } from '#server/domains/events'
 import { serializePrizeRedemption } from '#server/domains/prize-redemptions'
+import {
+  assertAccountPageAccess,
+  defineAccountPageRoute,
+  type AccountPageContext
+} from '#server/domains/accounts/account-page-contract'
 
 export async function getAccountPrizeRedemptionsPage(
   database: AppDatabase,
@@ -73,3 +79,13 @@ export async function getAccountPrizeRedemptionsPage(
     })
   }
 }
+
+export const accountPrizeRedemptionsPageRoute = defineAccountPageRoute({
+  page: 'prize-redemptions-workspace',
+  schema: accountPrizeRedemptionsPageSchema,
+  authorize: assertAccountPageAccess,
+  load: (context: AccountPageContext) => getAccountPrizeRedemptionsPage(
+    context.database,
+    context.actor.platformUser.id
+  )
+})

@@ -1,16 +1,10 @@
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
-import { z } from 'zod'
-
-import { routeSlugParamsSchema } from '#server/domains/events'
 import { parseValidatedParams } from '#server/http/validation'
-import { resolveAccountEventPageContext } from '#server/domains/events/account-event-page-context'
-import { loadAccountJudgeAssignmentWorkspacePage } from '#server/domains/events/account-event-judging-page'
-import { apiData } from '#server/http/api-response'
-import { accountJudgeAssignmentWorkspacePageSchema } from '#shared/domains/events/account-event-judging-page'
-
-const accountJudgeAssignmentParamsSchema = routeSlugParamsSchema.extend({
-  assignmentId: z.string().trim().min(1)
-})
+import {
+  executeAccountJudgeAssignmentPageRoute,
+  accountJudgeAssignmentParamsSchema
+} from '#server/domains/events/account-event-page-contract'
+import { accountJudgeAssignmentWorkspacePageRoute } from '#server/domains/events/account-event-judging-page'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.account.events.by-slug.judging.assignments.by-assignmentId',
@@ -22,13 +16,14 @@ export const applicationOperation = defineStructuredRouteOperation({
   capabilities: ['event_judge'],
   effect: 'read'
 }, async (h3Event) => {
-  const params = parseValidatedParams(h3Event, accountJudgeAssignmentParamsSchema)
-  const context = await resolveAccountEventPageContext(h3Event, params.slug)
-  const page = accountJudgeAssignmentWorkspacePageSchema.parse(
-    await loadAccountJudgeAssignmentWorkspacePage(context, params.assignmentId)
-  )
+  const { slug, assignmentId } = parseValidatedParams(h3Event, accountJudgeAssignmentParamsSchema)
 
-  return apiData(page)
+  return await executeAccountJudgeAssignmentPageRoute(
+    h3Event,
+    slug,
+    assignmentId,
+    accountJudgeAssignmentWorkspacePageRoute
+  )
 })
 
 export default defineStructuredOperationApiHandler(applicationOperation)

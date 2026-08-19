@@ -23,6 +23,15 @@ import {
   listActiveJudgeAssignmentSummaries
 } from '#server/domains/judging'
 import type { AccountEventPageContext } from './account-event-page-context'
+import {
+  defineAccountEventPageRoute,
+  defineAccountJudgeAssignmentPageRoute,
+  type AccountJudgeAssignmentPageContext
+} from './account-event-page-contract'
+import {
+  accountEventJudgingPageSchema,
+  accountJudgeAssignmentWorkspacePageSchema
+} from '#shared/domains/events/account-event-judging-page'
 
 const activeAssignmentWhere = or(
   eq(judgeAssignments.status, 'assigned'),
@@ -44,6 +53,13 @@ export function assertAccountEventJudgingAccess(context: AccountEventPageContext
   )
 }
 
+export const accountEventJudgingPageRoute = defineAccountEventPageRoute({
+  page: 'judging',
+  schema: accountEventJudgingPageSchema,
+  authorize: assertAccountEventJudgingAccess,
+  load: loadAccountEventJudgingPage
+})
+
 async function loadEventCriteria(context: AccountEventPageContext) {
   const criteria = await context.database.query.evaluationCriteria.findMany({
     where: eq(evaluationCriteria.eventId, context.event.id),
@@ -56,7 +72,6 @@ async function loadEventCriteria(context: AccountEventPageContext) {
 export async function loadAccountEventJudgingPage(
   context: AccountEventPageContext
 ): Promise<AccountEventJudgingPage> {
-  assertAccountEventJudgingAccess(context)
   const [tracks, currentTerms, imageOptions, summary, criteria] = await Promise.all([
     listEventTracks(context.database, context.event.id),
     getCurrentEventTerms(context.database, context.event),
@@ -89,11 +104,27 @@ export async function loadAccountEventJudgingPage(
     assignments,
     criteria,
     summary
-  } as unknown as AccountEventJudgingPage
+  }
+}
+
+export function assertAccountJudgeAssignmentPageAccess(
+  context: AccountJudgeAssignmentPageContext
+) {
+  assertCompetitionEvent(context.event)
+  assertGuard(context.assignmentAuthorization.eventId === context.event.id, {
+    statusCode: 404,
+    code: 'judge_assignment_not_found',
+    message: 'The requested judge assignment was not found for this event.',
+    details: {
+      assignmentId: context.assignmentAuthorization.assignmentId,
+      eventId: context.event.id
+    }
+  })
+  assertJudgeAssignmentAccess(context.assignmentAuthorization)
 }
 
 export async function loadAccountJudgeAssignmentWorkspacePage(
-  context: AccountEventPageContext,
+  context: AccountJudgeAssignmentPageContext,
   assignmentId: string
 ): Promise<AccountJudgeAssignmentWorkspacePage> {
   assertCompetitionEvent(context.event)
@@ -116,20 +147,6 @@ export async function loadAccountJudgeAssignmentWorkspacePage(
     message: 'The requested judge assignment was not found for this event.',
     details: { assignmentId, eventId: context.event.id }
   })
-  const assignmentAuthorization = {
-    assignmentId,
-    eventId: assignment.eventId,
-    assignedJudgeUserId: assignment.judgeUserId,
-    actingRole: assignment.judgeUserId === context.actor.platformUser.id
-      ? 'assigned_judge' as const
-      : null,
-    canAccess: assignment.judgeUserId === context.actor.platformUser.id,
-    visibility: assignment.judgeUserId === context.actor.platformUser.id
-      ? assignment.reviewStage === 'pitch_review' ? 'pitch' as const : 'blind' as const
-      : 'forbidden' as const
-  }
-  assertJudgeAssignmentAccess(assignmentAuthorization)
-
   const [tracks, currentTerms, imageOptions, criteria] = await Promise.all([
     listEventTracks(context.database, context.event.id),
     getCurrentEventTerms(context.database, context.event),
@@ -143,5 +160,11 @@ export async function loadAccountJudgeAssignmentWorkspacePage(
     event: serializeEvent(context.event, currentTerms, tracks, imageOptions),
     assignment: await getJudgeAssignmentDetail(context.database, assignment),
     criteria
-  } as unknown as AccountJudgeAssignmentWorkspacePage
+  }
 }
+
+export const accountJudgeAssignmentWorkspacePageRoute = defineAccountJudgeAssignmentPageRoute({
+  schema: accountJudgeAssignmentWorkspacePageSchema,
+  authorize: assertAccountJudgeAssignmentPageAccess,
+  load: loadAccountJudgeAssignmentWorkspacePage
+})

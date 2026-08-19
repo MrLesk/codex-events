@@ -2,6 +2,7 @@ import { asc, eq, getTableColumns } from 'drizzle-orm'
 import type { z } from 'zod'
 
 import type { AccountEventOperationsPage } from '#shared/domains/events/account-event-operations-page'
+import { accountEventOperationsPageSchema } from '#shared/domains/events/account-event-operations-page'
 import {
   getCurrentEventTerms,
   listEventTracks,
@@ -40,6 +41,7 @@ import {
   listOperationalPrizeRedemptionTeamMembersByTeamId
 } from '#server/domains/prize-redemptions'
 import type { AccountEventPageContext } from './account-event-page-context'
+import { defineAccountEventPageRoute } from './account-event-page-contract'
 
 const firstPageQuery = { page: 1, page_size: 100 } as const satisfies z.infer<typeof listTeamsQuerySchema>
 
@@ -198,7 +200,6 @@ export async function loadAccountEventOperationsPage(
       : Promise.resolve([]),
     loadPrizeRedemptionData(context, event.state)
   ])
-
   return {
     event: serializeAdminEvent(event, currentTerms, tracks, { appBaseUrl: '', ...imageOptions }),
     roles: {
@@ -227,5 +228,12 @@ export async function loadAccountEventOperationsPage(
     finalDeliberation,
     winners,
     prizeRedemptions
-  } as AccountEventOperationsPage
+  }
 }
+
+export const accountEventOperationsPageRoute = defineAccountEventPageRoute({
+  page: 'operations',
+  schema: accountEventOperationsPageSchema,
+  authorize: assertAccountEventOperationsAccess,
+  load: loadAccountEventOperationsPage
+})

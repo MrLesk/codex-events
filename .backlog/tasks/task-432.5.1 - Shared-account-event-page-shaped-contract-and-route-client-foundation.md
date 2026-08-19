@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@luna-workspace'
 created_date: '2026-08-19 19:51'
-updated_date: '2026-08-19 21:54'
+updated_date: '2026-08-19 22:59'
 labels:
   - architecture
   - performance
@@ -104,6 +104,10 @@ Validation
 3. Wire the account-event route composition surface to concrete operations, submissions, judging, assignment, settings, and existing page-shaped panel props while preserving props-down/events-up.
 4. Add exact route/registry parity and actor/authorization/session/query-topology tests; record child operation metadata without editing generated catalogs or media files.
 5. Run scoped lint, focused unit, typecheck, and broader checks as the shared D1/media worktree permits; inspect git diff HEAD and commit only owned integration paths.
+
+6. Add the global non-event page executor and named route registry with one actor/database context and runtime output schemas.
+7. Reconcile event judging assignment execution and concrete entry/prizes/operations/judging schemas without touching generated operation files.
+8. Add authorization-order, output-rejection, actor/session-count, and route/registry parity tests; run scoped then full validation.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -143,10 +147,12 @@ Unresolved generated application-operation registry handoff (generated files int
 - id get.account.judging; tool get_account_judging; path /api/account/judging; no params; capability event_judge.
 - id get.account.events.by-slug.judging.assignments.by-assignmentId; tool get_account_events_by_slug_judging_assignments_by_assignmentId; path /api/account/events/:slug/judging/assignments/:assignmentId; params slug and assignmentId; capability event_judge.
 No duplicate compatibility adapters are to be added; reconcile the generated source later.
+
+Server contract checkpoint: added the global account-page executor/context and registry for overview, judging inbox, staff workspace, and prize-redemption workspace; added concrete runtime schemas for global and owned event page payloads; registered all 13 event page definitions without editing generated operation catalogs. Added route/registry parity coverage and preserved the generated-catalog integrator handoff. Validation in this slice: bun run lint passed; bun run typecheck passed; focused Vitest passed (5 files, 13 tests); focused page integration passed (2 files, 8 tests). Full unit remains blocked by the intentionally stale generated-operation inventory and an unrelated useTeamFormationWorkspace timeout; full integration has pre-existing media/profile-revision and API-envelope assertion failures; BDD could not start because localhost:3100 is already in use. No remote D1, deploy, or push.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Implemented the shared account-event page foundation: named page contracts and concrete route paths, a request-scoped actor/event-authorization/strong-D1 context with canonical workspace visibility checks, concrete Zod-validated child route definitions, and a signal-linked protected page request composable. The root-admin useAdminWorkspace remains only the manageable-event index boundary; event settings/operations callers are explicitly deferred to TASK-432.5.3/.5.4. Verified with 46 focused unit tests, scoped ESLint, staged diff checks, and the documented full-suite/typecheck results. Child routes and generated operation catalogs remain pending until their disjoint child tasks land.
+Added the global named page executor/route registry and concrete runtime page contracts while preserving generated operation files for the foundation integrator. Verified lint, typecheck, focused contract/topology tests, and focused page integrations; broader pre-existing/generated handoff failures remain documented.
 <!-- SECTION:FINAL_SUMMARY:END -->
