@@ -1,11 +1,11 @@
 ---
 id: TASK-432.4
 title: Add request-scoped D1 sessions and consistency bookmarks
-status: Done
+status: In Progress
 assignee:
   - '@luna-d1'
 created_date: '2026-08-19 06:22'
-updated_date: '2026-08-19 19:54'
+updated_date: '2026-08-19 20:39'
 labels: []
 dependencies:
   - TASK-432.1
@@ -38,13 +38,15 @@ Introduce a shared request-scoped Cloudflare D1 Sessions access path with strong
 - [x] #9 Direct database injection is restricted to explicit test or non-HTTP execution paths and cannot silently bypass request sessions
 - [x] #10 Strong consistency is the only production HTTP database path; no generic consistency option or public-replica accessor is exposed; actor, consent, permission, lifecycle, mutation, and read-after-write paths use request-scoped primary or bookmarked sessions.
 - [x] #11 The returned application database does not expose a public Drizzle $client or raw binding/session capabilities; raw prepare and batch access is available only through the request-scoped session accessor.
+- [x] #12 The returned Drizzle application database and every runtime object reachable from it do not expose session/client/prepare/batch capabilities; only getDatabaseSession(event) exposes raw request-session operations.
+- [x] #13 HTTP-triggered queue, startup, and recovery paths cannot construct a standalone non-HTTP database; they receive the request-scoped AppDatabase or use an explicit non-HTTP execution entrypoint.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [x] #1 Canonical docs were updated or confirmed unchanged
 - [x] #2 Code behavior matches canonical docs
-- [x] #3 Relevant validation commands pass
+- [ ] #3 Relevant validation commands pass
 - [x] #4 Tests were added or updated when behavior changed
 - [x] #5 Test gaps are documented when automation is not practical
 - [x] #6 Config and developer workflow docs were updated when setup changed
@@ -55,19 +57,17 @@ Introduce a shared request-scoped Cloudflare D1 Sessions access path with strong
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Preserve the strong-only request-scoped D1 session and single Nitro bookmark owner from 5d6fd339/7858c1fb.
-2. Correct fake-D1 SQL write classification for writable CTEs, including the simplified-claiming import INSERT ... WITH ... SELECT shape; record writes, advance bookmarks, and prove bookmarked reads observe the write.
-3. Remove StrongDatabaseAccessOptions and all no-op consistency arguments so getDatabase(event) and getDatabaseSession(event) are the only production strong APIs.
-4. Verify the production server tree contains no public-replica option/accessor/path; leave the media-owned platform image route untouched and report any removed-symbol import.
-5. Exercise the actual Nitro bookmark hook for sendRedirect and sendNoContent when locally possible, preserving one production hook owner.
-6. Run lint, typecheck, unit, integration, and BDD only when the local port is free; commit only the scoped D1/task files, with no push, deployment, or remote database.
+1. Build a private Drizzle target with an application facade and runtime membrane that hides nested session/client/prepare capabilities while preserving public query builders, execute, and batch behavior.
+2. Add runtime, type, and same-session integration regressions for nested capability paths, operations, and failed mutation attempts.
+3. Remove non-HTTP database construction from queue domains; pass request databases from startup middleware and construct databases only in queue/scheduled plugins.
+4. Strengthen the production source-boundary test and update concise D1 guardrails if needed.
+5. Run scoped and required validation, inspect the isolated diff, and create one local TASK-432.4 commit without pushing.
 
-7. Hide the raw D1 binding from the returned Drizzle client so database internals cannot create a second session; extend the source-boundary test and validate the public shape.
+6. Replace the current Drizzle membrane with an explicit closed AppDatabase facade whose public and reachable runtime graph contains only supported application query operations; keep raw prepare/batch exclusively on getDatabaseSession(event) and prove same-session Drizzle/raw/batch behavior.
 
-8. Remove the public Drizzle $client from the application database surface while preserving Drizzle query and batch behavior through its internal request session; add a runtime/type regression.
+7. Split HTTP-triggered startup/recovery entrypoints from non-HTTP database adapters; pass the request-scoped database/session into waitUntil work and remove mixed-module source-test exemptions.
 
-9. Remove the public AppDatabase `$client` surface at both the TypeScript and runtime levels; keep Drizzle query/select/insert/update/delete/batch/execute on the single request session.
-10. Add type/runtime/session-id regressions and strengthen the full production source boundary so only getDatabaseSession(event) and explicit non-HTTP infrastructure can reach raw prepare/batch.
+8. Add structural reachability/source tests, writable-CTE and mixed batch rollback/bookmark coverage, and actual Nitro success/error/handled-response hook coverage where the local harness permits.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -103,6 +103,12 @@ Follow-up review of 9c86ae87: the raw binding and withSession leak is closed, bu
 Final corrective scope after 9c86ae87: the public AppDatabase type and runtime must not expose Drizzle `$client` at all. The only raw request-session capability is getDatabaseSession(event); AppDatabase query/select/insert/update/delete/batch/execute must continue to use the same request session and bookmark. No media or app client/page files are in scope. Commit only scoped D1/task/docs files; no remote database, deployment, or push.
 
 Final corrective verification: AppDatabase uses DrizzleD1Database without a public $client, runtime construction removes and prevents recreating the Drizzle property, and raw binding/client/session types are not re-exported from the HTTP database module. Runtime/type/source-boundary regressions and same-session Drizzle query/execute/batch coverage pass. bun run lint, bun run typecheck, bun run test:unit (130 files/954 tests), bun run test:integration (32 files/399 tests with elevated local Wrangler permissions), bun run test:bdd (62 non-destructive plus 2 destructive tests), and git diff --check pass. No push, deployment, remote URL, or remote D1 access.
+
+Adversarial review of 42ff9c86 found two P1s: deleting the top-level Drizzle `$client` leaves database.session.client and query-builder session objects reachable, and allowlisted queue/recovery helpers can construct standalone non-HTTP databases from HTTP-triggered paths. The next corrective pass must close both structurally, preserve request-session/bookmark behavior, and expand regressions beyond top-level `$client`.
+
+Fresh corrective findings after independent review of 3abb881a/42ff9c86: top-level $client removal still leaves database.session/client, query-builder session objects, and mutable Drizzle internals reachable; HTTP startup recovery middleware 98/99 can still construct standalone databases through talk-proposal/email-queue and application/luma-sync fallbacks; mixed-module allowlists hide this path; source checks need production-tree reachability rather than literal route regexes. The implementation must be fail-closed, preserve real query/select/mutation/relational/batch/bookmark behavior, and keep raw request-session operations exclusive to getDatabaseSession(event). User-provided deployed evidence confirms authenticated /api/session returned HTTP 200 with X-D1-Bookmark; retain this as transport evidence, while local Nitro success/error/handled-response behavior remains to be verified.
+
+Corrective implementation 2026-08-19: replaced the public Drizzle object with a private-target AppDatabase facade and capability membrane. Nested session/client/prepare/_prepare/stmt paths fail closed, Drizzle entity identity remains compatible with external helpers such as exists(), builder execute and database.batch remain usable, and ordinary arrays and rows remain transparent. Queue domain modules now require an explicit AppDatabase; HTTP recovery middleware passes getDatabase(event), while queue and scheduled plugins explicitly construct createNonHttpDatabase. The source-boundary test removes mixed queue-domain exemptions and mechanically verifies both call paths. Validation: focused unit 45 tests and focused D1 integration 11 tests passed; event-route integration 68 tests passed; bun run lint passed; bun run test:unit passed 136 files and 970 tests; bun run test:integration passed 32 files and 400 tests with elevated local Wrangler permissions; git diff --check passed. bun run typecheck reports only concurrent dirty app/components/account/events errors; BDD was skipped because port 3100 was occupied. No remote D1, URL, deployment, or push was used; DOD #3 remains unchecked for the unrelated typecheck errors and skipped BDD.
 <!-- SECTION:NOTES:END -->
 
 ## Comments
@@ -136,10 +142,22 @@ created: 2026-08-19 19:42
 ---
 Final corrective implementation requested: remove the public Drizzle $client surface, prove fail-closed runtime/type behavior and same-session Drizzle/raw/batch operations, and close the production source boundary. Keep pending only for the parent browser gate.
 ---
+
+author: @codex
+created: 2026-08-19 20:08
+---
+Reopened after independent review: 42ff9c86 is not final because nested Drizzle session/client capabilities and HTTP-triggered non-HTTP fallback construction remain reachable. Fresh Luna pass must update the implementation and tests without touching media or app client/page files.
+---
+
+author: @codex
+created: 2026-08-19 20:36
+---
+Fresh corrective implementation requested after review of 3abb881a/42ff9c86. Scope is D1 facade, HTTP recovery boundaries, source/runtime tests, and terse guardrails only; do not touch media or TASK-432.5.1 files. Worker must commit locally without pushing; parent coordinates CI snapshots.
+---
 <!-- COMMENTS:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Removed the public Drizzle $client and raw binding/client/session type exports from the HTTP database boundary. AppDatabase now uses DrizzleD1Database without $client; runtime construction removes the injected property and prevents re-creation while preserving Drizzle query, execute, batch, and request-scoped bookmark/session behavior. Added runtime, type, source-boundary, and session-id regressions. Verified with bun run lint, bun run typecheck, bun run test:unit (130 files/954 tests), bun run test:integration (32 files/399 tests), bun run test:bdd (62 + 2 tests), and git diff --check. No push, deployment, remote URL, or remote D1 access.
+Closed TASK-432.4 nested D1 capability and HTTP queue-recovery boundaries. AppDatabase is a private Drizzle facade with fail-closed nested capability paths, safe Drizzle helper identity, transparent result shapes, builder execute, and same-session batch/query behavior; HTTP recovery receives getDatabase(event), and non-HTTP construction is limited to explicit queue or scheduled plugins with source-boundary coverage. Verified with lint, 136 unit files and 970 tests, 32 integration files and 400 tests, focused capability/result/session regressions, and git diff --check. Task remains In Progress because concurrent dirty app typecheck errors remain and BDD was skipped due port 3100 occupancy. No push or remote access.
 <!-- SECTION:FINAL_SUMMARY:END -->

@@ -1,14 +1,23 @@
 import type { H3Event } from 'h3'
 
+import { exists } from 'drizzle-orm'
 import { describe, expect, test, vi } from 'vitest'
 
 import { ApiError } from '../../../../server/http/api-error'
 import { getDatabase, getDatabaseSession, withDatabaseBatch, type AppDatabase } from '../../../../server/database/client'
+import { users } from '../../../../server/database/schema'
 import { resolveNonHttpD1Binding, setTestDatabase } from '../../../../server/database/non-http'
 
 function assertApplicationDatabaseType(database: AppDatabase) {
   void database.query
   void database.batch
+  void database.select().from(users).execute
+  // @ts-expect-error Application databases must not expose the internal database session.
+  void database.session
+  // @ts-expect-error Relational query builders must not expose the internal database session.
+  void database.query.users.session
+  // @ts-expect-error Select builders must not expose the internal database session.
+  void database.select().from(users).session
   // @ts-expect-error Application databases must not expose Drizzle's provider client.
   void database.$client
 }
@@ -102,6 +111,64 @@ describe('resolveNonHttpD1Binding', () => {
     expect(requestSession).toBe(session)
     expect(session.prepare).toHaveBeenCalledWith('select 1')
     expect(session.batch).toHaveBeenCalledTimes(1)
+  })
+
+  test('hides nested Drizzle capabilities and fails closed on mutation attempts', () => {
+    const session = {
+      prepare: vi.fn(),
+      batch: vi.fn(),
+      getBookmark: vi.fn(() => null)
+    }
+    const binding = {
+      prepare: vi.fn(),
+      batch: vi.fn(),
+      withSession: vi.fn(() => session)
+    }
+    const database = getDatabase(createEvent(binding))
+    const relationalQuery = database.query.users
+    const relationalExecution = relationalQuery.findFirst()
+    const selectBuilder = database.select().from(users)
+    const insertBuilder = database.insert(users).values({
+      id: 'mutation_probe',
+      auth0Subject: 'local|mutation_probe',
+      email: 'mutation-probe@example.com',
+      displayName: 'Mutation Probe'
+    })
+    const updateBuilder = database.update(users).set({ displayName: 'Updated Mutation Probe' })
+    const deleteBuilder = database.delete(users)
+    const capabilityObjects = [
+      relationalQuery,
+      relationalExecution,
+      selectBuilder,
+      insertBuilder,
+      updateBuilder,
+      deleteBuilder
+    ]
+
+    expect(() => exists(selectBuilder)).not.toThrow()
+    expect(Reflect.get(database, 'session')).toBeUndefined()
+    for (const capability of capabilityObjects) {
+      expect(Reflect.get(capability, 'session')).toBeUndefined()
+      expect(Reflect.get(capability, 'client')).toBeUndefined()
+      expect(Reflect.get(capability, 'prepare')).toBeUndefined()
+      expect(Reflect.get(capability, '_prepare')).toBeUndefined()
+      expect(Reflect.get(capability, 'stmt')).toBeUndefined()
+      expect(Object.getOwnPropertyNames(capability)).toEqual([])
+      const compatibilityPrototype = Object.getPrototypeOf(capability)
+      expect(compatibilityPrototype).not.toBeNull()
+      expect(Object.getPrototypeOf(compatibilityPrototype)).toBeNull()
+      expect(Object.getOwnPropertyNames(compatibilityPrototype)).toEqual(['constructor'])
+      expect(Reflect.get(compatibilityPrototype, 'session')).toBeUndefined()
+      expect(Object.prototype.hasOwnProperty.call(capability, 'session')).toBe(false)
+      expect('session' in capability).toBe(false)
+      expect(Reflect.set(capability, 'session', session)).toBe(false)
+      expect(Reflect.defineProperty(capability, 'session', {
+        configurable: true,
+        value: session
+      })).toBe(false)
+      expect(Reflect.deleteProperty(capability, 'session')).toBe(false)
+      expect(Reflect.get(capability, 'session')).toBeUndefined()
+    }
   })
 
   test('allows direct database injection only on non-HTTP events', () => {

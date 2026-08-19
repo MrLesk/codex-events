@@ -3,12 +3,7 @@ import type { H3Event } from 'h3'
 import { and, asc, eq, getTableColumns, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
-import {
-  createNonHttpDatabase,
-  resolveNonHttpD1Binding,
-  type AppDatabase,
-  type D1DatabaseBinding
-} from '#server/database/non-http'
+import type { AppDatabase } from '#server/database/client'
 import { writeAuditLog } from '#server/database/audit-log'
 import { events, prizeEligibilitySnapshots, userApplications, users } from '#server/database/schema'
 import { getFinalDeliberationView } from '#server/domains/outcomes'
@@ -250,10 +245,6 @@ function getRetryDelaySeconds(config: EventOutcomeEmailQueueRuntimeConfig) {
   return config.eventOutcomeEmails?.retryDelaySeconds ?? defaultEventOutcomeEmailRetryDelaySeconds
 }
 
-function getDatabaseBindingName(config: EventOutcomeEmailQueueRuntimeConfig) {
-  return config.database?.binding?.trim() || 'DB'
-}
-
 function isQueueProducerLike(value: unknown): value is QueueProducerLike {
   if (!value || typeof value !== 'object') {
     return false
@@ -405,38 +396,12 @@ async function resolveCertificateEmailDeliveryState(
   return 'ready' as const
 }
 
-async function resolveProcessingDatabase(options: {
-  database?: AppDatabase
-  cloudflareEnv?: Record<string, unknown>
-  runtimeConfig?: unknown
-  d1Database?: D1DatabaseBinding
-}) {
-  if (options.database) {
-    return options.database
-  }
-
-  const config = resolveQueueRuntimeConfigFromUnknown(options.runtimeConfig ?? {})
-
-  if (options.d1Database) {
-    return createNonHttpDatabase(options.d1Database)
-  }
-
-  const bindingName = getDatabaseBindingName(config)
-
-  if (!options.cloudflareEnv?.[bindingName]) {
-    return null
-  }
-
-  return createNonHttpDatabase(resolveNonHttpD1Binding(bindingName, options.cloudflareEnv))
-}
-
 export async function processEventOutcomeEmailQueueMessage(
   message: QueueMessageLike,
-  options?: {
+  options: {
     runtimeConfig?: unknown
     cloudflareEnv?: Record<string, unknown>
-    d1Database?: D1DatabaseBinding
-    database?: AppDatabase
+    database: AppDatabase
     sendOutcomeEmail?: typeof sendEventOutcomeEmail
   }
 ): Promise<EventOutcomeEmailQueueMessageOutcome> {
@@ -455,59 +420,37 @@ export async function processEventOutcomeEmailQueueMessage(
 
   const config = resolveQueueRuntimeConfigFromUnknown(options?.runtimeConfig ?? {})
   const sendOutcomeEmail = options?.sendOutcomeEmail ?? sendEventOutcomeEmail
-  const database = await resolveProcessingDatabase({
-    database: options?.database,
-    runtimeConfig: options?.runtimeConfig,
-    cloudflareEnv: options?.cloudflareEnv,
-    d1Database: options?.d1Database
+  const event = await options.database.query.events.findFirst({
+    columns: {
+      hiddenAt: true
+    },
+    where: eq(events.id, parsedMessage.data.eventId)
   })
 
-  if (parsedMessage.data.notificationType === 'certificate' && !database) {
-    message.retry({
-      delaySeconds: getRetryDelaySeconds(config)
-    })
+  if (!event) {
+    message.ack()
 
     return {
       messageId: message.id,
-      action: 'retry',
-      reason: 'database_missing',
+      action: 'ack',
+      reason: 'event_missing',
       delivery: null
     }
   }
 
-  if (database) {
-    const event = await database.query.events.findFirst({
-      columns: {
-        hiddenAt: true
-      },
-      where: eq(events.id, parsedMessage.data.eventId)
-    })
+  if (event.hiddenAt) {
+    message.ack()
 
-    if (!event) {
-      message.ack()
-
-      return {
-        messageId: message.id,
-        action: 'ack',
-        reason: 'event_missing',
-        delivery: null
-      }
-    }
-
-    if (event.hiddenAt) {
-      message.ack()
-
-      return {
-        messageId: message.id,
-        action: 'ack',
-        reason: 'event_hidden',
-        delivery: null
-      }
+    return {
+      messageId: message.id,
+      action: 'ack',
+      reason: 'event_hidden',
+      delivery: null
     }
   }
 
-  if (database && parsedMessage.data.notificationType === 'certificate') {
-    const certificateState = await resolveCertificateEmailDeliveryState(database, parsedMessage.data)
+  if (parsedMessage.data.notificationType === 'certificate') {
+    const certificateState = await resolveCertificateEmailDeliveryState(options.database, parsedMessage.data)
 
     if (certificateState !== 'ready') {
       message.ack()
@@ -531,11 +474,11 @@ export async function processEventOutcomeEmailQueueMessage(
   )
 
   if (delivery.status === 'sent' || delivery.status === 'skipped') {
-    if (database && parsedMessage.data.notificationType === 'certificate') {
+    if (parsedMessage.data.notificationType === 'certificate') {
       if (delivery.status === 'sent') {
-        await markCertificateEmailSent(database, parsedMessage.data.applicationId)
+        await markCertificateEmailSent(options.database, parsedMessage.data.applicationId)
       } else {
-        await clearCertificateEmailReservation(database, parsedMessage.data.applicationId)
+        await clearCertificateEmailReservation(options.database, parsedMessage.data.applicationId)
       }
     }
 
@@ -564,8 +507,8 @@ export async function processEventOutcomeEmailQueueMessage(
 
   message.ack()
 
-  if (database && parsedMessage.data.notificationType === 'certificate') {
-    await clearCertificateEmailReservation(database, parsedMessage.data.applicationId)
+  if (parsedMessage.data.notificationType === 'certificate') {
+    await clearCertificateEmailReservation(options.database, parsedMessage.data.applicationId)
   }
 
   return {
@@ -578,17 +521,16 @@ export async function processEventOutcomeEmailQueueMessage(
 
 export async function processEventOutcomeEmailQueueBatch(
   batch: QueueBatchLike,
-  options?: {
+  options: {
     runtimeConfig?: unknown
     cloudflareEnv?: Record<string, unknown>
-    d1Database?: D1DatabaseBinding
-    database?: AppDatabase
+    database: AppDatabase
     queueName?: string
     sendOutcomeEmail?: typeof sendEventOutcomeEmail
   }
 ) {
-  const config = resolveQueueRuntimeConfigFromUnknown(options?.runtimeConfig ?? {})
-  const expectedQueueName = options?.queueName ?? getQueueName(config)
+  const config = resolveQueueRuntimeConfigFromUnknown(options.runtimeConfig ?? {})
+  const expectedQueueName = options.queueName ?? getQueueName(config)
 
   if (batch.queue !== expectedQueueName) {
     return {
@@ -602,11 +544,10 @@ export async function processEventOutcomeEmailQueueBatch(
 
   for (const message of batch.messages) {
     outcomes.push(await processEventOutcomeEmailQueueMessage(message, {
-      runtimeConfig: options?.runtimeConfig,
-      cloudflareEnv: options?.cloudflareEnv,
-      d1Database: options?.d1Database,
-      database: options?.database,
-      sendOutcomeEmail: options?.sendOutcomeEmail
+      runtimeConfig: options.runtimeConfig,
+      cloudflareEnv: options.cloudflareEnv,
+      database: options.database,
+      sendOutcomeEmail: options.sendOutcomeEmail
     }))
   }
 

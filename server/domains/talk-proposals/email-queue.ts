@@ -3,12 +3,7 @@ import type { H3Event } from 'h3'
 import { and, asc, eq, isNull, lt, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
-import {
-  createNonHttpDatabase,
-  resolveNonHttpD1Binding,
-  type AppDatabase,
-  type D1DatabaseBinding
-} from '#server/database/non-http'
+import type { AppDatabase } from '#server/database/client'
 import { writeAuditLog } from '#server/database/audit-log'
 import { events, talkProposals } from '#server/database/schema'
 import { isRetryableOutboundEmailProviderError } from '#server/utils/outbound-email'
@@ -437,32 +432,19 @@ export async function processTalkProposalDecisionEmailQueueBatch(
   return { queue: batch.queue, skipped: false, outcomes }
 }
 
-async function resolveRecoveryDatabase(options: {
-  database?: AppDatabase
-  runtimeConfig?: unknown
-  cloudflareEnv?: Record<string, unknown>
-  d1Database?: D1DatabaseBinding
-}) {
-  if (options.database) return options.database
-  const binding = configValue(options.runtimeConfig).database?.binding?.trim() || 'DB'
-  return createNonHttpDatabase(resolveNonHttpD1Binding(binding, options.cloudflareEnv, options.d1Database))
-}
-
 export async function reconcilePendingTalkProposalDecisionEmails(options: {
-  database?: AppDatabase
+  database: AppDatabase
   runtimeConfig?: unknown
   cloudflareEnv?: Record<string, unknown>
-  d1Database?: D1DatabaseBinding
   trigger: 'startup' | 'scheduled'
   now?: Date
 }) {
-  const database = await resolveRecoveryDatabase(options)
   const now = options.now ?? new Date()
   const timestamp = now.toISOString()
   const retryableBefore = new Date(
     now.getTime() - defaultTalkProposalDecisionEmailLeaseSeconds * 1000
   ).toISOString()
-  const pending = await database.query.talkProposals.findMany({
+  const pending = await options.database.query.talkProposals.findMany({
     where: and(
       or(
         eq(talkProposals.decisionEmailState, 'pending'),
@@ -482,7 +464,7 @@ export async function reconcilePendingTalkProposalDecisionEmails(options: {
   const outcomes = []
   for (const proposal of pending) {
     outcomes.push(await enqueuePendingTalkProposalDecisionEmail({
-      database,
+      database: options.database,
       proposalId: proposal.id,
       runtimeConfig: options.runtimeConfig,
       cloudflareEnv: options.cloudflareEnv,
@@ -499,10 +481,9 @@ export async function reconcilePendingTalkProposalDecisionEmails(options: {
 }
 
 export function scheduleTalkProposalDecisionEmailStartupRecovery(options: {
-  database?: AppDatabase
+  database: AppDatabase
   runtimeConfig?: unknown
   cloudflareEnv?: Record<string, unknown>
-  d1Database?: D1DatabaseBinding
 }) {
   startupRecoveryPromise ??= reconcilePendingTalkProposalDecisionEmails({ ...options, trigger: 'startup' })
   return startupRecoveryPromise

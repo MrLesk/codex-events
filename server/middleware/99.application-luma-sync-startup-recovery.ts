@@ -1,6 +1,7 @@
 import {
   scheduleApplicationLumaSyncStartupRecovery
 } from '#server/domains/applications/luma-sync-queue'
+import { getDatabase } from '#server/database/client'
 
 type CloudflareContextWithWaitUntil = {
   waitUntil?: (promise: Promise<unknown>) => void
@@ -18,6 +19,7 @@ export default defineEventHandler((event) => {
   }
 
   const recoveryPromise = scheduleApplicationLumaSyncStartupRecovery({
+    database: getDatabase(event),
     runtimeConfig,
     cloudflareEnv
   }).catch((error) => {

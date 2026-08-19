@@ -11,10 +11,9 @@ const serverRoot = join(repositoryRoot, 'server')
 const nonHttpAllowlist = new Set([
   'server/database/client.ts',
   'server/database/non-http.ts',
-  'server/domains/applications/luma-sync-queue.ts',
-  'server/domains/outcomes/email-queue.ts',
-  'server/domains/talk-proposals/email-queue.ts',
   'server/middleware/local-d1-binding.ts',
+  'server/plugins/application-luma-sync-queue.ts',
+  'server/plugins/event-outcome-email-queue.ts',
   'server/plugins/talk-proposal-decision-email-queue.ts'
 ])
 
@@ -188,6 +187,20 @@ describe('HTTP database boundary', () => {
     expect(clientSource).not.toMatch(/export\s+(?:interface|type)\s+(?:AppDatabaseAccess|DatabaseConsistency)/u)
     expect(clientSource).not.toMatch(/export\s+type\s*\{[^}]*\bD1Database(?:Binding|ClientBinding)\b[^}]*\}/su)
     expect(clientSource).not.toMatch(/export\s+(?:interface|type)\s+D1DatabaseSessionBinding/u)
+  })
+
+  test('keeps HTTP recovery request-scoped and non-HTTP construction in entrypoints', () => {
+    const talkMiddlewareSource = readFileSync(join(serverRoot, 'middleware/98.talk-proposal-decision-email-startup-recovery.ts'), 'utf8')
+    const lumaMiddlewareSource = readFileSync(join(serverRoot, 'middleware/99.application-luma-sync-startup-recovery.ts'), 'utf8')
+    const talkPluginSource = readFileSync(join(serverRoot, 'plugins/talk-proposal-decision-email-queue.ts'), 'utf8')
+    const lumaPluginSource = readFileSync(join(serverRoot, 'plugins/application-luma-sync-queue.ts'), 'utf8')
+    const outcomePluginSource = readFileSync(join(serverRoot, 'plugins/event-outcome-email-queue.ts'), 'utf8')
+
+    expect(talkMiddlewareSource).toMatch(/scheduleTalkProposalDecisionEmailStartupRecovery\(\{\s*database:\s*getDatabase\(event\)/su)
+    expect(lumaMiddlewareSource).toMatch(/scheduleApplicationLumaSyncStartupRecovery\(\{\s*database:\s*getDatabase\(event\)/su)
+    expect(talkPluginSource).toMatch(/const database = createNonHttpDatabase\([\s\S]*?\)\s*await reconcilePendingTalkProposalDecisionEmails\(\{\s*database,/u)
+    expect(lumaPluginSource).toMatch(/const database = createNonHttpDatabase\([\s\S]*?\)\s*await processApplicationLumaSyncQueueBatch\([^,]+,\s*\{\s*database,/u)
+    expect(outcomePluginSource).toMatch(/const database = createNonHttpDatabase\([\s\S]*?\)\s*await processEventOutcomeEmailQueueBatch\([^,]+,\s*\{\s*database,/u)
   })
 
   test('has exactly one Nitro beforeResponse bookmark owner', () => {

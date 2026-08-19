@@ -798,7 +798,8 @@ describe('application luma sync queue utilities', () => {
         luma: {
           queueName: 'codex-events-dev-application-luma-sync'
         }
-      }
+      },
+      database: {} as never
     })
 
     expect(result).toEqual({

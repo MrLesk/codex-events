@@ -121,6 +121,15 @@ describe('event outcome email queue utilities', () => {
 
   test('queue message processing retries retryable failures', async () => {
     const message = createQueueMessage()
+    const database = {
+      query: {
+        events: {
+          findFirst: vi.fn(async () => ({
+            hiddenAt: null
+          }))
+        }
+      }
+    }
     const sendOutcomeEmail = vi.fn(async () => ({
       status: 'failed' as const,
       reason: 'provider_error',
@@ -137,6 +146,7 @@ describe('event outcome email queue utilities', () => {
           retryDelaySeconds: 90
         }
       },
+      database: database as never,
       sendOutcomeEmail
     })
 
@@ -274,7 +284,8 @@ describe('event outcome email queue utilities', () => {
         eventOutcomeEmails: {
           queueName: 'codex-events-dev-event-outcome-email-delivery'
         }
-      }
+      },
+      database: {} as never
     })
 
     expect(result).toEqual({

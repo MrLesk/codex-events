@@ -1,4 +1,5 @@
 import { scheduleTalkProposalDecisionEmailStartupRecovery } from '#server/domains/talk-proposals/email-queue'
+import { getDatabase } from '#server/database/client'
 
 type CloudflareContextWithWaitUntil = {
   waitUntil?: (promise: Promise<unknown>) => void
@@ -16,6 +17,7 @@ export default defineEventHandler((event) => {
   }
 
   const recoveryPromise = scheduleTalkProposalDecisionEmailStartupRecovery({
+    database: getDatabase(event),
     runtimeConfig,
     cloudflareEnv
   }).catch((error) => {

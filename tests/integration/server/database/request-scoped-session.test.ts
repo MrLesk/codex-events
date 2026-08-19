@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from 'vitest'
 import { eventHandler } from 'h3'
+import { eq } from 'drizzle-orm'
 
 import {
   d1BookmarkHeader,
@@ -159,6 +160,14 @@ describe('request-scoped D1 sessions', () => {
             const database = getDatabase(event)
             await database.query.users.findFirst()
             await database.select().from(users).limit(1).execute()
+            await database.insert(users).values({
+              id: 'session_operation_user',
+              auth0Subject: 'local|session_operation_user',
+              email: 'session-operation@example.com',
+              displayName: 'Session Operation User'
+            })
+            await database.update(users).set({ displayName: 'Updated Session Operation User' }).where(eq(users.id, 'session_operation_user'))
+            await database.delete(users).where(eq(users.id, 'session_operation_user'))
             await database.batch([database.select().from(users)])
             const session = getDatabaseSession(event)
             await session.prepare('select 1').all()
@@ -187,6 +196,63 @@ describe('request-scoped D1 sessions', () => {
     const recordedSessionId = harness.d1Database.sessions[0]?.id
     expect(recordedSessionId).toBeDefined()
     expect(new Set(harness.d1Database.queries.map(query => query.sessionId))).toEqual(new Set([recordedSessionId]))
+  })
+
+  test('preserves ordinary query result arrays and rows', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'get',
+          path: '/api/database/result-shapes',
+          handler: defineApiHandler(async (event) => {
+            const database = getDatabase(event)
+            const selectedRows = await database.select({ id: users.id }).from(users).execute()
+            const relationalRows = await database.query.users.findMany({
+              columns: { id: true }
+            })
+            const relationalRow = await database.query.users.findFirst({
+              columns: { id: true }
+            })
+            const firstRow = selectedRows[0] ?? {}
+
+            return apiData({
+              selectedIsArray: Array.isArray(selectedRows),
+              selectedKeys: Object.keys(firstRow),
+              selectedJson: JSON.stringify(selectedRows),
+              selectedIterationCount: [...selectedRows].length,
+              relationalIsArray: Array.isArray(relationalRows),
+              relationalKeys: Object.keys(relationalRows[0] ?? {}),
+              relationalRowKeys: Object.keys(relationalRow ?? {}),
+              relationalRowJson: JSON.stringify(relationalRow)
+            })
+          })
+        }
+      ]
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'result_shape_user',
+      auth0Subject: 'local|result_shape_user',
+      email: 'result-shape@example.com',
+      displayName: 'Result Shape User'
+    })
+
+    const response = await harness.request('/api/database/result-shapes')
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      data: {
+        selectedIsArray: true,
+        selectedKeys: ['id'],
+        selectedJson: '[{"id":"result_shape_user"}]',
+        selectedIterationCount: 1,
+        relationalIsArray: true,
+        relationalKeys: ['id'],
+        relationalRowKeys: ['id'],
+        relationalRowJson: '{"id":"result_shape_user"}'
+      }
+    })
   })
 
   test('emits one bookmark for API and raw-route success and error responses', async () => {

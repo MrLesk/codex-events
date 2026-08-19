@@ -4,12 +4,7 @@ import { and, asc, eq, isNotNull, isNull, or } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { writeAuditLog } from '#server/database/audit-log'
-import {
-  createNonHttpDatabase,
-  resolveNonHttpD1Binding,
-  type AppDatabase,
-  type D1DatabaseBinding
-} from '#server/database/non-http'
+import type { AppDatabase } from '#server/database/client'
 import {
   events,
   type AuditMetadata,
@@ -260,10 +255,6 @@ function getLumaApiBaseUrl(config: ApplicationLumaSyncRuntimeConfig) {
 
 function getLumaProfileBaseUrl(config: ApplicationLumaSyncRuntimeConfig) {
   return config.luma?.profileBaseUrl?.trim() || defaultLumaProfileBaseUrl
-}
-
-function getDatabaseBindingName(config: ApplicationLumaSyncRuntimeConfig) {
-  return config.database?.binding?.trim() || 'DB'
 }
 
 async function readResponseBody(response: Response) {
@@ -769,26 +760,6 @@ async function setApplicationLumaSyncStatus(
   return updatedAt
 }
 
-async function resolveProcessingDatabase(options: {
-  database?: AppDatabase
-  cloudflareEnv?: Record<string, unknown>
-  runtimeConfig?: unknown
-  d1Database?: D1DatabaseBinding
-}) {
-  if (options.database) {
-    return options.database
-  }
-
-  const config = resolveQueueRuntimeConfigFromUnknown(options.runtimeConfig ?? {})
-  const binding = resolveNonHttpD1Binding(
-    getDatabaseBindingName(config),
-    options.cloudflareEnv,
-    options.d1Database
-  )
-
-  return createNonHttpDatabase(binding)
-}
-
 async function recordTerminalLumaSyncOutcome(
   database: AppDatabase,
   input: {
@@ -984,11 +955,10 @@ export async function enqueueMissingEventApplicationLumaSyncMessages(options: {
 
 export async function processApplicationLumaSyncQueueMessage(
   message: QueueMessageLike,
-  options?: {
+  options: {
     runtimeConfig?: unknown
     cloudflareEnv?: Record<string, unknown>
-    d1Database?: D1DatabaseBinding
-    database?: AppDatabase
+    database: AppDatabase
     fetchImpl?: FetchLike
   }
 ): Promise<ApplicationLumaSyncQueueMessageOutcome> {
@@ -1004,15 +974,9 @@ export async function processApplicationLumaSyncQueueMessage(
     }
   }
 
-  const config = resolveQueueRuntimeConfigFromUnknown(options?.runtimeConfig ?? {})
-  const database = await resolveProcessingDatabase({
-    database: options?.database,
-    runtimeConfig: options?.runtimeConfig,
-    cloudflareEnv: options?.cloudflareEnv,
-    d1Database: options?.d1Database
-  })
-  const fetchImpl = resolveFetchImpl(options?.fetchImpl)
-  const queueRecord = await getQueueRecord(database, parsedMessage.data.applicationId)
+  const config = resolveQueueRuntimeConfigFromUnknown(options.runtimeConfig ?? {})
+  const fetchImpl = resolveFetchImpl(options.fetchImpl)
+  const queueRecord = await getQueueRecord(options.database, parsedMessage.data.applicationId)
 
   if (!queueRecord) {
     message.ack()
@@ -1029,7 +993,7 @@ export async function processApplicationLumaSyncQueueMessage(
   const successStatus = getApplicationLumaSyncSuccessStatus(parsedMessage.data.decision)
 
   if (!event || !user) {
-    await recordTerminalLumaSyncOutcome(database, {
+    await recordTerminalLumaSyncOutcome(options.database, {
       applicationId: application.id,
       status: failureStatus,
       action: 'user_application.luma_sync_failed',
@@ -1048,7 +1012,7 @@ export async function processApplicationLumaSyncQueueMessage(
   }
 
   if (!isEventLumaSyncEnabled(event)) {
-    await setApplicationLumaSyncStatus(database, application.id, null)
+    await setApplicationLumaSyncStatus(options.database, application.id, null)
     message.ack()
 
     return {
@@ -1061,7 +1025,7 @@ export async function processApplicationLumaSyncQueueMessage(
   const lumaEmail = user.lumaEmail?.trim()
 
   if (!lumaEmail) {
-    await recordTerminalLumaSyncOutcome(database, {
+    await recordTerminalLumaSyncOutcome(options.database, {
       applicationId: application.id,
       status: failureStatus,
       action: 'user_application.luma_sync_failed',
@@ -1098,7 +1062,7 @@ export async function processApplicationLumaSyncQueueMessage(
       fetchImpl
     })
 
-    await recordTerminalLumaSyncOutcome(database, {
+    await recordTerminalLumaSyncOutcome(options.database, {
       applicationId: application.id,
       status: successStatus,
       action: 'user_application.luma_sync_completed',
@@ -1147,7 +1111,7 @@ export async function processApplicationLumaSyncQueueMessage(
           message: error instanceof Error ? error.message : 'Unexpected Luma sync error'
         }
 
-    await recordTerminalLumaSyncOutcome(database, {
+    await recordTerminalLumaSyncOutcome(options.database, {
       applicationId: application.id,
       status: failureStatus,
       action: 'user_application.luma_sync_failed',
@@ -1170,11 +1134,10 @@ export async function processApplicationLumaSyncQueueMessage(
 
 export async function processApplicationLumaSyncQueueBatch(
   batch: QueueBatchLike,
-  options?: {
+  options: {
     runtimeConfig?: unknown
     cloudflareEnv?: Record<string, unknown>
-    d1Database?: D1DatabaseBinding
-    database?: AppDatabase
+    database: AppDatabase
     fetchImpl?: FetchLike
   }
 ) {
@@ -1236,11 +1199,10 @@ function getRecoverableApplicationLumaSyncDecision(application: RecoverableAppli
   return getApplicationLumaSyncDecisionForStatus(application.status)
 }
 
-export async function recoverStaleApplicationLumaSyncMessages(options?: {
+export async function recoverStaleApplicationLumaSyncMessages(options: {
+  database: AppDatabase
   runtimeConfig?: unknown
   cloudflareEnv?: Record<string, unknown>
-  d1Database?: D1DatabaseBinding
-  database?: AppDatabase
 }) {
   const config = resolveQueueRuntimeConfigFromUnknown(options?.runtimeConfig ?? {})
   const { producer, bindingName } = resolveQueueProducerFromCloudflareEnv(config, options?.cloudflareEnv)
@@ -1254,14 +1216,8 @@ export async function recoverStaleApplicationLumaSyncMessages(options?: {
     } satisfies ApplicationLumaSyncStartupRecoveryResult
   }
 
-  const database = await resolveProcessingDatabase({
-    database: options?.database,
-    runtimeConfig: options?.runtimeConfig,
-    cloudflareEnv: options?.cloudflareEnv,
-    d1Database: options?.d1Database
-  })
   const staleBefore = getStartupRecoveryStaleBefore(config)
-  const staleApplications = await listRecoverableLumaSyncApplications(database, staleBefore)
+  const staleApplications = await listRecoverableLumaSyncApplications(options.database, staleBefore)
 
   if (staleApplications.length === 0) {
     return {
@@ -1272,7 +1228,7 @@ export async function recoverStaleApplicationLumaSyncMessages(options?: {
     } satisfies ApplicationLumaSyncStartupRecoveryResult
   }
 
-  const relatedEvents = await database.query.events.findMany({
+  const relatedEvents = await options.database.query.events.findMany({
     where: isNotNull(events.lumaEventApiId)
   })
   const eventsById = new Map(relatedEvents.map(event => [event.id, event]))
@@ -1293,14 +1249,14 @@ export async function recoverStaleApplicationLumaSyncMessages(options?: {
     }), {
       contentType: 'json'
     })
-    await database
+    await options.database
       .update(userApplications)
       .set({
         updatedAt: recoveredAt
       })
       .where(eq(userApplications.id, application.id))
 
-    await writeAuditLog(database, {
+    await writeAuditLog(options.database, {
       entityType: 'user_application',
       entityId: application.id,
       action: 'user_application.luma_sync_recovery_enqueued',
@@ -1333,11 +1289,10 @@ export async function recoverStaleApplicationLumaSyncMessages(options?: {
   } satisfies ApplicationLumaSyncStartupRecoveryResult
 }
 
-export function scheduleApplicationLumaSyncStartupRecovery(options?: {
+export function scheduleApplicationLumaSyncStartupRecovery(options: {
   runtimeConfig?: unknown
   cloudflareEnv?: Record<string, unknown>
-  d1Database?: D1DatabaseBinding
-  database?: AppDatabase
+  database: AppDatabase
 }) {
   applicationLumaSyncStartupRecoveryPromise ??= recoverStaleApplicationLumaSyncMessages(options)
   return applicationLumaSyncStartupRecoveryPromise

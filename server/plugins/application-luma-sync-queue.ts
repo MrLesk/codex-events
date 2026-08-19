@@ -1,3 +1,4 @@
+import { createNonHttpDatabase, resolveNonHttpD1Binding } from '#server/database/non-http'
 import {
   defaultApplicationLumaSyncQueueName,
   defaultApplicationLumaSyncRetryDelaySeconds,
@@ -33,9 +34,12 @@ export default defineNitroPlugin((nitroApp) => {
       return
     }
 
+    const cloudflareEnv = env as Record<string, unknown> | undefined
+    const database = createNonHttpDatabase(resolveNonHttpD1Binding(runtimeConfig.database?.binding ?? 'DB', cloudflareEnv))
     await processApplicationLumaSyncQueueBatch(batch, {
-      runtimeConfig: useRuntimeConfig(),
-      cloudflareEnv: env as Record<string, unknown> | undefined
+      database,
+      runtimeConfig,
+      cloudflareEnv
     })
   })
 })

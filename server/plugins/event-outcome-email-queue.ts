@@ -1,3 +1,4 @@
+import { createNonHttpDatabase, resolveNonHttpD1Binding } from '#server/database/non-http'
 import {
   defaultEventOutcomeEmailQueueName,
   defaultEventOutcomeEmailRetryDelaySeconds,
@@ -33,9 +34,12 @@ export default defineNitroPlugin((nitroApp) => {
       return
     }
 
+    const cloudflareEnv = env as Record<string, unknown> | undefined
+    const database = createNonHttpDatabase(resolveNonHttpD1Binding(runtimeConfig.database?.binding ?? 'DB', cloudflareEnv))
     await processEventOutcomeEmailQueueBatch(batch, {
+      database,
       runtimeConfig,
-      cloudflareEnv: env as Record<string, unknown> | undefined
+      cloudflareEnv
     })
   })
 })

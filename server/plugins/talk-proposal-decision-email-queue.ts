@@ -14,7 +14,9 @@ export default defineNitroPlugin((nitroApp) => {
   nitroApp.hooks.hook('cloudflare:scheduled', async ({ env }) => {
     const runtimeConfig = useRuntimeConfig()
     const cloudflareEnv = env as Record<string, unknown> | undefined
+    const database = createNonHttpDatabase(resolveNonHttpD1Binding(runtimeConfig.database?.binding ?? 'DB', cloudflareEnv))
     await reconcilePendingTalkProposalDecisionEmails({
+      database,
       runtimeConfig,
       cloudflareEnv,
       trigger: 'scheduled'
