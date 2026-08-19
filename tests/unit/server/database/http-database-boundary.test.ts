@@ -315,6 +315,15 @@ function unexpectedForbiddenIdentifiers(file: string, source: string) {
 }
 
 describe('HTTP database boundary', () => {
+  test('keeps the application facade deny-only instead of adding a Drizzle method allowlist', () => {
+    const source = readFileSync(join(repositoryRoot, nonHttpImplementation), 'utf8')
+
+    expect(source).toMatch(/const deniedCapabilities/u)
+    expect(source).toMatch(/new Proxy/u)
+    expect(source).not.toMatch(/\b(?:BuilderMethodKey|PublicBuilder|RuntimeBuilderKind|selectBuilderMethods|mutationBuilderMethods|createSafePrototype)\b/u)
+    expect(source.split('\n').length).toBeLessThan(220)
+  })
+
   test('covers every production server module with exact database import and call-site boundaries', () => {
     const violations = sourceFiles(serverRoot).flatMap((file) => {
       const source = readFileSync(file, 'utf8')

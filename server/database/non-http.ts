@@ -6,233 +6,49 @@ import * as schema from './schema'
 import { ApiError } from '#server/http/api-error'
 
 export type D1DatabaseBinding = Parameters<typeof drizzle>[0]
-
 export type D1DatabaseClientBinding = Pick<D1DatabaseBinding, 'prepare' | 'batch'>
 
 type DrizzleDatabase = DrizzleD1Database<typeof schema>
 
-type InternalRuntimeKey
-  = | '$cache'
-    | '$client'
-    | '_'
-    | '_prepare'
+type DeniedRootCapability
+  = | '$client'
     | 'client'
     | 'constructor'
-    | 'dialect'
     | 'getBookmark'
     | 'prepare'
+    | '_prepare'
     | 'session'
     | 'stmt'
     | 'withSession'
 
-type BuilderMethodKey
-  = | 'all'
-    | 'as'
-    | 'catch'
-    | 'crossJoin'
-    | 'delete'
-    | 'execute'
-    | 'except'
-    | 'finally'
-    | 'for'
-    | 'from'
-    | 'fullJoin'
-    | 'get'
-    | 'getSQL'
-    | 'groupBy'
-    | 'having'
-    | 'innerJoin'
-    | 'leftJoin'
-    | 'leftJoinLateral'
-    | 'limit'
-    | 'offset'
-    | 'onConflictDoNothing'
-    | 'onConflictDoUpdate'
-    | 'orderBy'
-    | 'returning'
-    | 'rightJoin'
-    | 'rightJoinLateral'
-    | 'run'
-    | 'select'
-    | 'set'
-    | 'then'
-    | 'union'
-    | 'unionAll'
-    | 'values'
-    | 'where'
+// Runtime denies capabilities; Drizzle chain methods remain inferred.
+export type AppDatabase = Omit<DrizzleDatabase, DeniedRootCapability>
+export type AppDatabaseBatch = Parameters<AppDatabase['batch']>[0]
 
-type RelationalBuilderMethodKey = 'findFirst' | 'findMany'
-
-type QueryBuilderMethodKey = 'catch' | 'execute' | 'finally' | 'getSQL' | 'then'
-
-type PublicQueryBuilder<T> = {
-  [K in keyof T & QueryBuilderMethodKey]: T[K] extends (...args: infer Arguments) => infer Result
-    ? (...args: Arguments) => K extends 'execute' ? Promise<Awaited<Result>> : Result
-    : never
-}
-
-type PublicBuilderResult<K extends BuilderMethodKey, Result, Allowed extends BuilderMethodKey>
-  = K extends 'execute'
-    ? Promise<Awaited<Result>>
-    : K extends 'all' | 'get' | 'run' | 'then' | 'catch' | 'finally' | 'getSQL'
-      ? Result
-      : K extends 'as'
-        ? PublicSubquery<Result>
-        : Result extends object
-          ? PublicBuilder<Result, Allowed>
-          : Result
-
-type PublicBuilder<T, Allowed extends BuilderMethodKey = BuilderMethodKey> = {
-  [K in keyof T & Allowed]: T[K] extends (...args: infer Arguments) => infer Result
-    ? (...args: Arguments) => PublicBuilderResult<K, Result, Allowed>
-    : never
-}
-
-type PublicSubquery<T> = Omit<T, InternalRuntimeKey>
-
-type PublicRelationalBuilder<T> = {
-  [K in keyof T & RelationalBuilderMethodKey]: T[K] extends (...args: infer Arguments) => infer Result
-    ? (...args: Arguments) => PublicQueryBuilder<Result>
-    : never
-}
-
-type PublicDatabaseQuery = {
-  [K in keyof DrizzleDatabase['query']]: PublicRelationalBuilder<DrizzleDatabase['query'][K]>
-}
-
-export type AppDatabaseBatch = ReadonlyArray<unknown>
-
-export type AppDatabase = {
-  readonly query: PublicDatabaseQuery
-  readonly select: DrizzleDatabase['select']
-  readonly get: DrizzleDatabase['get']
-  readonly insert: DrizzleDatabase['insert']
-  readonly update: DrizzleDatabase['update']
-  readonly delete: DrizzleDatabase['delete']
-  readonly batch: <TBatch extends AppDatabaseBatch>(batch: TBatch) => Promise<ReadonlyArray<unknown>>
-}
-
-type RuntimeBuilderKind = 'mutation' | 'query' | 'relational' | 'select' | 'subquery'
-type RuntimeResultKind = RuntimeBuilderKind | 'value'
+const deniedCapabilities = new Set<PropertyKey>([
+  '$client',
+  'client',
+  'constructor',
+  'getBookmark',
+  'prepare',
+  '_prepare',
+  'session',
+  'stmt',
+  'withSession'
+])
 
 const facadeByTarget = new WeakMap<object, object>()
 const targetByFacade = new WeakMap<object, object>()
-const drizzleEntityKind = Symbol.for('drizzle:entityKind')
-
-const selectBuilderMethods: Readonly<Record<string, RuntimeResultKind>> = {
-  all: 'value',
-  as: 'subquery',
-  catch: 'value',
-  crossJoin: 'select',
-  except: 'select',
-  execute: 'value',
-  finally: 'value',
-  for: 'select',
-  from: 'select',
-  fullJoin: 'select',
-  get: 'value',
-  getSQL: 'value',
-  groupBy: 'select',
-  having: 'select',
-  innerJoin: 'select',
-  leftJoin: 'select',
-  leftJoinLateral: 'select',
-  limit: 'select',
-  offset: 'select',
-  orderBy: 'select',
-  rightJoin: 'select',
-  rightJoinLateral: 'select',
-  run: 'value',
-  then: 'value',
-  union: 'select',
-  unionAll: 'select',
-  where: 'select'
-}
-
-const mutationBuilderMethods: Readonly<Record<string, RuntimeResultKind>> = {
-  all: 'value',
-  catch: 'value',
-  execute: 'value',
-  finally: 'value',
-  from: 'mutation',
-  fullJoin: 'mutation',
-  get: 'value',
-  getSQL: 'value',
-  innerJoin: 'mutation',
-  leftJoin: 'mutation',
-  limit: 'mutation',
-  onConflictDoNothing: 'mutation',
-  onConflictDoUpdate: 'mutation',
-  orderBy: 'mutation',
-  returning: 'mutation',
-  rightJoin: 'mutation',
-  run: 'value',
-  select: 'mutation',
-  set: 'mutation',
-  then: 'value',
-  values: 'mutation',
-  where: 'mutation'
-}
-
-const relationalBuilderMethods: Readonly<Record<string, RuntimeResultKind>> = {
-  findFirst: 'query',
-  findMany: 'query'
-}
-
-const queryBuilderMethods: Readonly<Record<string, RuntimeResultKind>> = {
-  all: 'value',
-  catch: 'value',
-  execute: 'value',
-  finally: 'value',
-  get: 'value',
-  getSQL: 'value',
-  run: 'value',
-  then: 'value'
-}
+const safePrototypeByTarget = new WeakMap<object, object>()
 
 function isObjectLike(value: unknown): value is object {
-  return (typeof value === 'object' && value !== null) || typeof value === 'function'
+  return typeof value === 'object' && value !== null
 }
 
-function createSafePrototype(target: object) {
-  const rawPrototype = Object.getPrototypeOf(target)
-  const rawConstructor = rawPrototype ? Reflect.get(rawPrototype, 'constructor') : undefined
-  const entityKinds: unknown[] = []
-  let currentConstructor = isObjectLike(rawConstructor) ? rawConstructor : undefined
-  const visitedConstructors = new Set<object>()
-
-  while (currentConstructor && !visitedConstructors.has(currentConstructor)) {
-    visitedConstructors.add(currentConstructor)
-    const kind = Reflect.get(currentConstructor, drizzleEntityKind)
-    if (kind !== undefined) {
-      entityKinds.push(kind)
-    }
-    const parentConstructor = Object.getPrototypeOf(currentConstructor)
-    currentConstructor = parentConstructor && isObjectLike(parentConstructor)
-      ? parentConstructor
-      : undefined
-  }
-
-  let safeConstructor: object | null = null
-  for (let index = entityKinds.length - 1; index >= 0; index -= 1) {
-    const nextConstructor: object = Object.create(safeConstructor)
-    Object.defineProperty(nextConstructor, drizzleEntityKind, {
-      configurable: false,
-      enumerable: false,
-      value: entityKinds[index],
-      writable: false
-    })
-    safeConstructor = Object.freeze(nextConstructor)
-  }
-
-  return Object.freeze(Object.create(null, {
-    constructor: {
-      configurable: false,
-      enumerable: false,
-      value: safeConstructor,
-      writable: false
-    }
-  }))
+function getSafePrototype(target: object) {
+  const safePrototype = safePrototypeByTarget.get(target) ?? (Object.create(null) as object)
+  safePrototypeByTarget.set(target, safePrototype)
+  return safePrototype
 }
 
 function unwrapRuntimeValue(value: unknown): unknown {
@@ -247,135 +63,93 @@ function unwrapRuntimeValue(value: unknown): unknown {
     return value.map(unwrapRuntimeValue)
   }
 
-  if (value && typeof value === 'object' && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)) {
-    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, unwrapRuntimeValue(entry)]))
+  if (isObjectLike(value)) {
+    const prototype = Object.getPrototypeOf(value)
+    if (prototype === Object.prototype || prototype === null) {
+      return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, unwrapRuntimeValue(entry)]))
+    }
   }
 
   return value
 }
 
-function wrapRuntimeResult(value: unknown, kind: RuntimeResultKind): unknown {
-  if (!isObjectLike(value) || kind === 'value') {
+function wrapRuntimeValue<T>(value: T): T {
+  if (!isObjectLike(value) || value instanceof Promise || Array.isArray(value)) {
     return value
   }
 
   const existingFacade = facadeByTarget.get(value)
   if (existingFacade) {
-    return existingFacade
+    return existingFacade as T
   }
 
-  if (kind === 'subquery') {
-    return createSubqueryFacade(value)
-  }
+  const facade = new Proxy(value, {
+    get(target, property) {
+      if (deniedCapabilities.has(property)) {
+        return undefined
+      }
 
-  const methodMap = kind === 'select'
-    ? selectBuilderMethods
-    : kind === 'mutation'
-      ? mutationBuilderMethods
-      : kind === 'relational'
-        ? relationalBuilderMethods
-        : queryBuilderMethods
+      const propertyValue = Reflect.get(target, property, target)
+      if (typeof propertyValue !== 'function') {
+        return wrapRuntimeValue(propertyValue)
+      }
 
-  return createBuilderFacade(value, methodMap)
-}
+      const method = propertyValue as (...args: unknown[]) => unknown
+      return (...args: unknown[]) => {
+        if (property === 'transaction') {
+          const callback = args[0]
+          const wrappedCallback = typeof callback === 'function'
+            ? (transaction: object) => unwrapRuntimeValue(Reflect.apply(
+                callback as (...callbackArgs: unknown[]) => unknown,
+                undefined,
+                [wrapRuntimeValue(transaction)]
+              ))
+            : callback
 
-function createBuilderFacade<T extends object>(target: T, methodMap: Readonly<Record<string, RuntimeResultKind>>): object {
-  const existingFacade = facadeByTarget.get(target)
-  if (existingFacade) {
-    return existingFacade
-  }
+          return wrapRuntimeValue(Reflect.apply(method, target, [
+            wrappedCallback,
+            ...args.slice(1).map(unwrapRuntimeValue)
+          ]))
+        }
 
-  const facade = Object.create(createSafePrototype(target)) as Record<PropertyKey, unknown>
+        return wrapRuntimeValue(Reflect.apply(method, target, args.map(unwrapRuntimeValue)))
+      }
+    },
+    has(target, property) {
+      return !deniedCapabilities.has(property) && Reflect.has(target, property)
+    },
+    ownKeys(target) {
+      return Reflect.ownKeys(target).filter(property => !deniedCapabilities.has(property))
+    },
+    getOwnPropertyDescriptor(target, property) {
+      if (deniedCapabilities.has(property)) {
+        return undefined
+      }
 
-  for (const [property, resultKind] of Object.entries(methodMap)) {
-    const method = Reflect.get(target, property, target)
-    if (typeof method !== 'function') {
-      continue
-    }
+      return Reflect.getOwnPropertyDescriptor(target, property)
+    },
+    set(target, property, nextValue) {
+      return !deniedCapabilities.has(property)
+        && Reflect.set(target, property, unwrapRuntimeValue(nextValue), target)
+    },
+    defineProperty(target, property, descriptor) {
+      return !deniedCapabilities.has(property) && Reflect.defineProperty(target, property, descriptor)
+    },
+    deleteProperty(target, property) {
+      return !deniedCapabilities.has(property) && Reflect.deleteProperty(target, property)
+    },
+    getPrototypeOf: target => getSafePrototype(target),
+    setPrototypeOf: () => false,
+    preventExtensions: () => false
+  })
 
-    Object.defineProperty(facade, property, {
-      configurable: true,
-      enumerable: false,
-      value: (...args: unknown[]) => wrapRuntimeResult(
-        Reflect.apply(method, target, args.map(unwrapRuntimeValue)),
-        resultKind
-      ),
-      writable: true
-    })
-  }
-
-  Object.preventExtensions(facade)
-  facadeByTarget.set(target, facade)
-  targetByFacade.set(facade, target)
-  return facade
-}
-
-function createSubqueryFacade(target: object) {
-  const facade = Object.create(createSafePrototype(target)) as Record<PropertyKey, unknown>
-  const rawInternalState = Reflect.get(target, '_', target) as { selectedFields?: object } | undefined
-  const selectedFields = rawInternalState?.selectedFields
-
-  for (const property of selectedFields ? Object.keys(selectedFields) : []) {
-    Object.defineProperty(facade, property, {
-      configurable: true,
-      enumerable: false,
-      value: Reflect.get(target, property, target),
-      writable: true
-    })
-  }
-
-  const getSQL = Reflect.get(target, 'getSQL', target)
-  if (typeof getSQL === 'function') {
-    Object.defineProperty(facade, 'getSQL', {
-      configurable: true,
-      enumerable: false,
-      value: () => Reflect.apply(getSQL, target, []),
-      writable: true
-    })
-  }
-
-  Object.preventExtensions(facade)
-  facadeByTarget.set(target, facade)
-  targetByFacade.set(facade, target)
-  return facade
-}
-
-function createRelationalQueryFacade(databaseQuery: object) {
-  const facade = Object.create(null) as Record<string, object>
-
-  for (const tableName of Object.keys(databaseQuery)) {
-    const relationalBuilder = Reflect.get(databaseQuery, tableName, databaseQuery)
-    if (isObjectLike(relationalBuilder)) {
-      facade[tableName] = createBuilderFacade(relationalBuilder, relationalBuilderMethods)
-    }
-  }
-
-  return Object.freeze(facade)
-}
-
-function createForwardedDatabaseMethod<T extends (...args: never[]) => unknown>(
-  target: object,
-  method: T,
-  resultKind: RuntimeResultKind
-): T {
-  return ((...args: Parameters<T>) => wrapRuntimeResult(
-    Reflect.apply(method, target, args.map(unwrapRuntimeValue)),
-    resultKind
-  )) as T
+  facadeByTarget.set(value, facade)
+  targetByFacade.set(facade, value)
+  return facade as T
 }
 
 function createApplicationDatabase(database: DrizzleDatabase): AppDatabase {
-  const facade: AppDatabase = {
-    query: createRelationalQueryFacade(database.query) as PublicDatabaseQuery,
-    select: createForwardedDatabaseMethod(database, database.select, 'select') as DrizzleDatabase['select'],
-    get: createForwardedDatabaseMethod(database, database.get, 'value') as DrizzleDatabase['get'],
-    insert: createForwardedDatabaseMethod(database, database.insert, 'mutation') as DrizzleDatabase['insert'],
-    update: createForwardedDatabaseMethod(database, database.update, 'mutation') as DrizzleDatabase['update'],
-    delete: createForwardedDatabaseMethod(database, database.delete, 'mutation') as DrizzleDatabase['delete'],
-    batch: async batch => await database.batch(unwrapRuntimeValue(batch) as never)
-  }
-
-  return Object.freeze(facade)
+  return wrapRuntimeValue(database)
 }
 
 function createD1DatabaseClientBinding(
@@ -387,17 +161,16 @@ function createD1DatabaseClientBinding(
   }
 }
 
-function createDrizzleDatabase(binding: D1DatabaseBinding) {
-  return drizzle<typeof schema, D1DatabaseBinding>(binding, { schema })
+function createDrizzleDatabase(binding: D1DatabaseClientBinding) {
+  return drizzle<typeof schema, D1DatabaseBinding>(binding as D1DatabaseBinding, { schema })
 }
 
 export function createRequestDatabase(binding: D1DatabaseClientBinding): AppDatabase {
-  return createApplicationDatabase(createDrizzleDatabase(binding as D1DatabaseBinding))
+  return createApplicationDatabase(createDrizzleDatabase(binding))
 }
 
 export function createNonHttpDatabase(binding: D1DatabaseBinding | D1DatabaseClientBinding): AppDatabase {
-  const client = createD1DatabaseClientBinding(binding)
-  return createRequestDatabase(client)
+  return createRequestDatabase(createD1DatabaseClientBinding(binding))
 }
 
 type CloudflareEnv = Record<string, unknown> | undefined

@@ -14,6 +14,10 @@ function assertApplicationDatabaseType(database: AppDatabase) {
   void database.select().from(users).execute
   // @ts-expect-error Application databases must not expose the internal database session.
   void database.session
+  // @ts-expect-error Application databases must not expose raw session preparation.
+  void database.prepare
+  // @ts-expect-error Application databases must not expose session construction.
+  void database.withSession
   // @ts-expect-error Relational query builders must not expose the internal database session.
   void database.query.users.session
   // @ts-expect-error Select builders must not expose the internal database session.
@@ -105,7 +109,7 @@ describe('resolveNonHttpD1Binding', () => {
     expect(Object.prototype.hasOwnProperty.call(database, '$client')).toBe(false)
     expect('$client' in database).toBe(false)
     expect(Reflect.get(database, '$client')).toBeUndefined()
-    expect(Object.isExtensible(database)).toBe(false)
+    expect(Object.isExtensible(database)).toBe(true)
     expect(Reflect.set(database, '$client', session)).toBe(false)
     expect(Reflect.get(database, '$client')).toBeUndefined()
     expect(requestSession).toBe(session)
@@ -152,6 +156,12 @@ describe('resolveNonHttpD1Binding', () => {
     expect(Reflect.get(database, 'prepare')).toBeUndefined()
     expect(Reflect.get(database, '$client')).toBeUndefined()
     expect(typeof database.batch).toBe('function')
+    const rootPrototype = Object.getPrototypeOf(database)
+    expect(Object.getPrototypeOf(rootPrototype)).toBeNull()
+    for (const key of ['constructor', 'session', 'client']) {
+      expect(Reflect.get(rootPrototype, key)).toBeUndefined()
+      expect(key in rootPrototype).toBe(false)
+    }
 
     const dangerousCapabilityKeys = [
       'session',
@@ -177,19 +187,18 @@ describe('resolveNonHttpD1Binding', () => {
         expect(key in capability).toBe(false)
       }
 
-      const compatibilityPrototype = Object.getPrototypeOf(capability)
-      expect(compatibilityPrototype).not.toBeNull()
-      expect(Object.getPrototypeOf(compatibilityPrototype)).toBeNull()
-      expect(Object.getOwnPropertyNames(compatibilityPrototype)).toEqual(['constructor'])
-      expect(Reflect.get(compatibilityPrototype, 'session')).toBeUndefined()
+      const safePrototype = Object.getPrototypeOf(capability)
+      expect(Object.getPrototypeOf(safePrototype)).toBeNull()
+      for (const key of ['constructor', 'session', 'client']) {
+        expect(Reflect.get(safePrototype, key)).toBeUndefined()
+        expect(key in safePrototype).toBe(false)
+      }
       expect(Reflect.set(capability, 'session', session)).toBe(false)
       expect(Reflect.defineProperty(capability, 'session', {
         configurable: true,
         value: session
       })).toBe(false)
-      // Deleting an absent property is a harmless no-op and may return true;
-      // the capability remains unavailable.
-      expect(Reflect.deleteProperty(capability, 'session')).toBe(true)
+      expect(Reflect.deleteProperty(capability, 'session')).toBe(false)
       expect(Reflect.get(capability, 'session')).toBeUndefined()
     }
   })

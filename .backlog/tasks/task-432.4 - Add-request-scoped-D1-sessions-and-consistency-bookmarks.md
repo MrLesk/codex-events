@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@luna-d1'
 created_date: '2026-08-19 06:22'
-updated_date: '2026-08-19 20:39'
+updated_date: '2026-08-19 21:56'
 labels: []
 dependencies:
   - TASK-432.1
@@ -38,8 +38,8 @@ Introduce a shared request-scoped Cloudflare D1 Sessions access path with strong
 - [x] #9 Direct database injection is restricted to explicit test or non-HTTP execution paths and cannot silently bypass request sessions
 - [x] #10 Strong consistency is the only production HTTP database path; no generic consistency option or public-replica accessor is exposed; actor, consent, permission, lifecycle, mutation, and read-after-write paths use request-scoped primary or bookmarked sessions.
 - [x] #11 The returned application database does not expose a public Drizzle $client or raw binding/session capabilities; raw prepare and batch access is available only through the request-scoped session accessor.
-- [x] #12 The returned Drizzle application database and every runtime object reachable from it do not expose session/client/prepare/batch capabilities; only getDatabaseSession(event) exposes raw request-session operations.
-- [x] #13 HTTP-triggered queue, startup, and recovery paths cannot construct a standalone non-HTTP database; they receive the request-scoped AppDatabase or use an explicit non-HTTP execution entrypoint.
+- [x] #12 HTTP-triggered queue, startup, and recovery paths cannot construct a standalone non-HTTP database; they receive the request-scoped AppDatabase or use an explicit non-HTTP execution entrypoint.
+- [ ] #13 AppDatabase blocks raw D1 binding/client/session construction and any capability that can create, replace, or bypass the request session/bookmark; harmless Drizzle builder metadata such as dialect, $dynamic, and toSQL may remain reachable when it cannot reach those capabilities.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -57,17 +57,10 @@ Introduce a shared request-scoped Cloudflare D1 Sessions access path with strong
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Build a private Drizzle target with an application facade and runtime membrane that hides nested session/client/prepare capabilities while preserving public query builders, execute, and batch behavior.
-2. Add runtime, type, and same-session integration regressions for nested capability paths, operations, and failed mutation attempts.
-3. Remove non-HTTP database construction from queue domains; pass request databases from startup middleware and construct databases only in queue/scheduled plugins.
-4. Strengthen the production source-boundary test and update concise D1 guardrails if needed.
-5. Run scoped and required validation, inspect the isolated diff, and create one local TASK-432.4 commit without pushing.
-
-6. Replace the current Drizzle membrane with an explicit closed AppDatabase facade whose public and reachable runtime graph contains only supported application query operations; keep raw prepare/batch exclusively on getDatabaseSession(event) and prove same-session Drizzle/raw/batch behavior.
-
-7. Split HTTP-triggered startup/recovery entrypoints from non-HTTP database adapters; pass the request-scoped database/session into waitUntil work and remove mixed-module source-test exemptions.
-
-8. Add structural reachability/source tests, writable-CTE and mixed batch rollback/bookmark coverage, and actual Nitro success/error/handled-response hook coverage where the local harness permits.
+1. Preserve the committed capability-based AppDatabase facade and recovery/source-boundary changes from 968edcda; harmless Drizzle metadata is allowed and no recursive membrane expansion is required.
+2. Close the fake-D1 mixed-owner boundary: a direct database batch must not leave a live session pointing at rolled-back state. Either snapshot/restore every live session state or explicitly reject session-prepared statements passed to the direct binding batch; prefer the smallest behavior that matches the request-session boundary.
+3. Add a regression for a failing direct batch containing a live-session-prepared statement, plus mixed write/read success and existing session/direct rollback coverage.
+4. Run focused D1 tests and lint/typecheck/integration as available; record unrelated concurrent failures. Inspect the exact diff and commit only TASK-432.4 fake-D1/tests/task notes. Do not touch media or TASK-432.5 client/page/route files; do not push.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -109,6 +102,18 @@ Adversarial review of 42ff9c86 found two P1s: deleting the top-level Drizzle `$c
 Fresh corrective findings after independent review of 3abb881a/42ff9c86: top-level $client removal still leaves database.session/client, query-builder session objects, and mutable Drizzle internals reachable; HTTP startup recovery middleware 98/99 can still construct standalone databases through talk-proposal/email-queue and application/luma-sync fallbacks; mixed-module allowlists hide this path; source checks need production-tree reachability rather than literal route regexes. The implementation must be fail-closed, preserve real query/select/mutation/relational/batch/bookmark behavior, and keep raw request-session operations exclusive to getDatabaseSession(event). User-provided deployed evidence confirms authenticated /api/session returned HTTP 200 with X-D1-Bookmark; retain this as transport evidence, while local Nitro success/error/handled-response behavior remains to be verified.
 
 Corrective implementation 2026-08-19: replaced the public Drizzle object with a private-target AppDatabase facade and capability membrane. Nested session/client/prepare/_prepare/stmt paths fail closed, Drizzle entity identity remains compatible with external helpers such as exists(), builder execute and database.batch remain usable, and ordinary arrays and rows remain transparent. Queue domain modules now require an explicit AppDatabase; HTTP recovery middleware passes getDatabase(event), while queue and scheduled plugins explicitly construct createNonHttpDatabase. The source-boundary test removes mixed queue-domain exemptions and mechanically verifies both call paths. Validation: focused unit 45 tests and focused D1 integration 11 tests passed; event-route integration 68 tests passed; bun run lint passed; bun run test:unit passed 136 files and 970 tests; bun run test:integration passed 32 files and 400 tests with elevated local Wrangler permissions; git diff --check passed. bun run typecheck reports only concurrent dirty app/components/account/events errors; BDD was skipped because port 3100 was occupied. No remote D1, URL, deployment, or push was used; DOD #3 remains unchecked for the unrelated typecheck errors and skipped BDD.
+
+Fresh corrective pass after review of fb1a8318. Persistent invariant now distinguishes dangerous D1 capabilities from harmless Drizzle builder metadata; no recursive membrane is required. User-provided deployed evidence: /api/session returned HTTP 200 with X-D1-Bookmark. Remote systems remain out of scope for this worker.
+
+Fresh corrective implementation requested from committed 968edcda. The existing staged non-http facade is treated as polluted prior work; preserve the committed fake-D1 atomicity and non-HTTP recovery behavior while replacing only the facade and its boundary regressions.
+
+Independent review of 968edcda found one P1: a direct fake-D1 batch can execute a statement prepared by a live session, restore database bytes/bookmarks/query history on failure, but leave that session's in-memory bookmark/minimumVersion/hasWritten state advanced. The next corrective pass must snapshot/restore live session state or explicitly reject mixed-owner statements, with a regression. Reviewer found no other P0/P1; handled redirect/no-content bookmark coverage remains a P2 validation gap only if the real Nitro hook can support it.
+
+The capability-based facade and scheduled recovery boundaries from 968edcda passed independent review. Only the fake-D1 mixed-owner batch/session-state rollback remains actionable; keep the next change minimal and do not rewrite the facade merely to hide harmless builder metadata.
+
+Corrective fake-D1 fix: direct TestD1Database.batch now preflight-rejects session-owned prepared statements before execution, preserving live session state; regression covers mixed-owner input and confirms no rows or session/database bookkeeping advance. Focused fake-D1/session/local-proxy integration passed 3 files and 17 tests; targeted ESLint passed. Full lint, typecheck, unit, and integration remain affected by unrelated concurrent worktree failures recorded in handoff.
+
+Local handoff commit: 4bb46ff6. Task remains In Progress for parent review; no push or remote access.
 <!-- SECTION:NOTES:END -->
 
 ## Comments
@@ -153,6 +158,24 @@ author: @codex
 created: 2026-08-19 20:36
 ---
 Fresh corrective implementation requested after review of 3abb881a/42ff9c86. Scope is D1 facade, HTTP recovery boundaries, source/runtime tests, and terse guardrails only; do not touch media or TASK-432.5.1 files. Worker must commit locally without pushing; parent coordinates CI snapshots.
+---
+
+author: @codex
+created: 2026-08-19 21:02
+---
+Fresh corrective pass requested after fb1a8318. Fix fake-D1 batch rollback, remove request-scoped startup globals and middleware triggers, split non-HTTP adapters, and preserve the capability-based facade invariant. Do not touch media or TASK-432.5 client/page/route files; do not push.
+---
+
+author: @codex
+created: 2026-08-19 21:47
+---
+Reopened after read-only Luna review of 968edcda: fix fake-D1 mixed-owner direct batch/session state rollback. Preserve exact commit scope and no push/remote access.
+---
+
+author: @codex
+created: 2026-08-19 21:47
+---
+Corrected the plan of record after concurrent metadata edits: fresh Luna pass is limited to the reviewed mixed-owner fake-D1 rollback P1; preserve 968edcda facade/recovery behavior.
 ---
 <!-- COMMENTS:END -->
 
