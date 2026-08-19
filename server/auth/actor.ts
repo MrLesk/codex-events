@@ -5,10 +5,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { getDatabase } from '#server/database/client'
 import { ApiError } from '#server/http/api-error'
 import { findPlatformUserByAuth0Subject } from '#server/domains/accounts/auth-identities'
-import {
-  canCreateFirstPlatformAdminSetupAccount,
-  grantConfiguredFirstPlatformAdminAccess
-} from '#server/domains/platform/admins'
+import { canCreateFirstPlatformAdminSetupAccount } from '#server/domains/platform/admins'
 import { hasAcceptedCurrentPlatformDocuments } from '#server/domains/platform/documents'
 
 interface SessionUserProfile {
@@ -205,8 +202,11 @@ async function getAuth0Session(event: H3Event): Promise<SessionLike | null> {
   return session as SessionLike | null
 }
 
-async function findPlatformUserBySubject(event: H3Event, auth0Subject: string) {
-  return await findPlatformUserByAuth0Subject(getDatabase(event), auth0Subject)
+async function findPlatformUserBySubject(
+  database: ReturnType<typeof getDatabase>,
+  auth0Subject: string
+) {
+  return await findPlatformUserByAuth0Subject(database, auth0Subject)
 }
 
 async function buildAuthenticatedIdentityActor(
@@ -252,7 +252,7 @@ export function setRequestActor(event: H3Event, actor: RequestActor | Promise<Re
 
 export async function resolveRequestActor(event: H3Event): Promise<RequestActor> {
   const sessionUser = readSessionUser(await getAuth0Session(event))
-  const database = getDatabase(event)
+  const database = getDatabase(event, { consistency: 'strong' })
 
   if (!sessionUser) {
     return {
@@ -265,15 +265,10 @@ export async function resolveRequestActor(event: H3Event): Promise<RequestActor>
     }
   }
 
-  const platformUser = await findPlatformUserBySubject(event, sessionUser.sub)
+  const platformUser = await findPlatformUserBySubject(database, sessionUser.sub)
 
   if (platformUser) {
-    const effectivePlatformUser = await grantConfiguredFirstPlatformAdminAccess(database, {
-      user: platformUser,
-      configuredEmail: useRuntimeConfig(event).firstPlatformAdminEmail
-    })
-
-    return await buildPlatformActor(database, sessionUser, effectivePlatformUser)
+    return await buildPlatformActor(database, sessionUser, platformUser)
   }
 
   const refreshedSessionUser = await refreshAuthenticatedIdentitySessionUser(event, sessionUser)
@@ -291,7 +286,7 @@ export async function getRequestActor(event: H3Event): Promise<RequestActor> {
 }
 
 export async function resolveMcpPlatformActor(event: H3Event, userId: string): Promise<PlatformActor> {
-  const database = getDatabase(event)
+  const database = getDatabase(event, { consistency: 'strong' })
   const platformUser = await database.select().from(users)
     .where(and(eq(users.id, userId), isNull(users.deletedAt)))
     .get()

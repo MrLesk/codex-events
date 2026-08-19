@@ -17,7 +17,12 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { deleteCookie, getCookie, getQuery, getRequestURL, parseCookies, setCookie } from 'h3'
 
 import { buildAccountRegisterHref } from '#shared/domains/accounts/auth-navigation'
+import { getDatabase } from '#server/database/client'
 import { users } from '#server/database/schema'
+import {
+  ensurePlatformUserAuthIdentities,
+  findPlatformUserByAuth0Subject
+} from '#server/domains/accounts/auth-identities'
 import { ApiError } from '#server/http/api-error'
 
 const challengeCookieName = 'codex_platform_account_link'
@@ -624,6 +629,30 @@ export async function readPlatformAccountLinkAuthenticatedSubject(event: H3Event
   const session = await client.getSession({ event }) as PlatformAccountLinkSessionLike | undefined
 
   return session?.user?.sub?.trim() ?? ''
+}
+
+export async function persistPlatformAccountLinkIdentities(
+  event: H3Event,
+  challenge: Pick<PlatformAccountLinkChallenge, 'primaryAuth0Subject' | 'secondaryAuth0Subject'>
+) {
+  const database = getDatabase(event, { consistency: 'strong' })
+  const platformUser = await findPlatformUserByAuth0Subject(database, challenge.primaryAuth0Subject)
+
+  if (!platformUser) {
+    throw new ApiError({
+      statusCode: 409,
+      code: 'platform_account_link_target_not_found',
+      message: 'The platform account for this link could not be found.'
+    })
+  }
+
+  await ensurePlatformUserAuthIdentities(database, {
+    userId: platformUser.id,
+    auth0Subjects: [
+      challenge.primaryAuth0Subject,
+      challenge.secondaryAuth0Subject
+    ]
+  })
 }
 
 export async function clearPlatformAccountLinkAuthentication(event: H3Event) {

@@ -751,7 +751,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(auditEntries).toHaveLength(0)
   })
 
-  test('GET /api/session promotes the configured first platform admin when no active admin exists', async () => {
+  test('GET /api/session does not promote the configured first platform admin during actor resolution', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/session', handler: sessionHandler }
@@ -775,7 +775,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
 
     const response = await harness.request('/api/session')
-    const promotedUser = await harness.database.query.users.findFirst({
+    const configuredUser = await harness.database.query.users.findFirst({
       where: eq(users.id, 'first_admin')
     })
     const auditEntries = await harness.database.select().from(auditLogs)
@@ -785,23 +785,16 @@ describe('TASK-3.5 actor-facing API routes', () => {
       data: {
         actor: {
           kind: 'platform_user',
-          isPlatformAdmin: true,
+          isPlatformAdmin: false,
           platformUser: {
             id: 'first_admin',
-            isPlatformAdmin: true
+            isPlatformAdmin: false
           }
         }
       }
     })
-    expect(promotedUser?.isPlatformAdmin).toBe(true)
-    expect(auditEntries).toEqual([
-      expect.objectContaining({
-        actorUserId: null,
-        entityType: 'user',
-        entityId: 'first_admin',
-        action: 'platform_admin.first_bootstrap_granted'
-      })
-    ])
+    expect(configuredUser?.isPlatformAdmin).toBe(false)
+    expect(auditEntries).toHaveLength(0)
   })
 
   test('GET /api/session leaves the configured email unchanged when another platform admin exists', async () => {

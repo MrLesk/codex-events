@@ -31,6 +31,19 @@ interface D1RunResult {
   success: true
 }
 
+export interface TestD1QueryRecord {
+  sessionId: number
+  sql: string
+  parameters: unknown[]
+  isWrite: boolean
+}
+
+export interface TestD1SessionRecord {
+  id: number
+  start: string | undefined
+  minimumVersion: number
+}
+
 const require = createRequire(import.meta.url)
 const sqlJsReady = initSqlJs({
   locateFile: file => require.resolve(`sql.js/dist/${file}`)
@@ -90,9 +103,9 @@ function createResultMeta(options: {
   } satisfies D1ResultMeta
 }
 
-async function createSqlJsDatabase() {
+async function createSqlJsDatabase(data?: Uint8Array) {
   const SQL = await sqlJsReady
-  return new SQL.Database()
+  return new SQL.Database(data)
 }
 
 function readLastInsertRowId(database: SqlJsDatabase) {
@@ -108,24 +121,32 @@ function isReadQuery(sql: string) {
     || normalizedSql.startsWith('pragma')
 }
 
+interface TestD1QueryTarget {
+  database: SqlJsDatabase
+  version: number
+}
+
 class TestD1PreparedStatement {
   constructor(
-    private readonly getDatabase: () => Promise<SqlJsDatabase>,
+    private readonly getTarget: (isRead: boolean) => Promise<TestD1QueryTarget>,
     private readonly sql: string,
     private readonly parameters: unknown[] = [],
-    private readonly onQuery?: (isWrite: boolean) => void
+    private readonly onQuery?: (query: Omit<TestD1QueryRecord, 'sessionId'>, servedVersion: number) => void
   ) {}
 
   bind(...parameters: unknown[]) {
-    return new TestD1PreparedStatement(this.getDatabase, this.sql, parameters, this.onQuery)
+    return new TestD1PreparedStatement(this.getTarget, this.sql, parameters, this.onQuery)
   }
 
   async run(...parameters: unknown[]) {
-    const database = await this.getDatabase()
+    const isWrite = !isReadQuery(this.sql)
+    const target = await this.getTarget(!isWrite)
+    const database = target.database
     const statement = database.prepare(this.sql)
 
     try {
-      bindStatement(statement, this.resolveParameters(parameters))
+      const resolvedParameters = this.resolveParameters(parameters)
+      bindStatement(statement, resolvedParameters)
       statement.step()
 
       const normalizedSql = this.sql.trimStart().toLowerCase()
@@ -138,7 +159,11 @@ class TestD1PreparedStatement {
         })
       } satisfies D1RunResult
 
-      this.onQuery?.(!isReadQuery(this.sql))
+      this.onQuery?.({
+        sql: this.sql,
+        parameters: resolvedParameters,
+        isWrite: !isReadQuery(this.sql)
+      }, target.version)
       return result
     } finally {
       statement.free()
@@ -146,11 +171,13 @@ class TestD1PreparedStatement {
   }
 
   async all<TResult = Record<string, unknown>>(...parameters: unknown[]) {
-    const database = await this.getDatabase()
+    const target = await this.getTarget(true)
+    const database = target.database
     const statement = database.prepare(this.sql)
 
     try {
-      bindStatement(statement, this.resolveParameters(parameters))
+      const resolvedParameters = this.resolveParameters(parameters)
+      bindStatement(statement, resolvedParameters)
 
       const results: TResult[] = []
 
@@ -158,7 +185,11 @@ class TestD1PreparedStatement {
         results.push(statement.getAsObject() as TResult)
       }
 
-      this.onQuery?.(false)
+      this.onQuery?.({
+        sql: this.sql,
+        parameters: resolvedParameters,
+        isWrite: false
+      }, target.version)
 
       return {
         success: true,
@@ -171,11 +202,13 @@ class TestD1PreparedStatement {
   }
 
   async raw(...parameters: unknown[]) {
-    const database = await this.getDatabase()
+    const target = await this.getTarget(true)
+    const database = target.database
     const statement = database.prepare(this.sql)
 
     try {
-      bindStatement(statement, this.resolveParameters(parameters))
+      const resolvedParameters = this.resolveParameters(parameters)
+      bindStatement(statement, resolvedParameters)
 
       const results: unknown[][] = []
 
@@ -183,7 +216,11 @@ class TestD1PreparedStatement {
         results.push(statement.get())
       }
 
-      this.onQuery?.(false)
+      this.onQuery?.({
+        sql: this.sql,
+        parameters: resolvedParameters,
+        isWrite: false
+      }, target.version)
 
       return results
     } finally {
@@ -218,19 +255,29 @@ class TestD1PreparedStatement {
   }
 
   private async readFirstRow(parameters: unknown[]) {
-    const database = await this.getDatabase()
+    const target = await this.getTarget(true)
+    const database = target.database
     const statement = database.prepare(this.sql)
 
     try {
-      bindStatement(statement, this.resolveParameters(parameters))
+      const resolvedParameters = this.resolveParameters(parameters)
+      bindStatement(statement, resolvedParameters)
 
       if (!statement.step()) {
-        this.onQuery?.(false)
+        this.onQuery?.({
+          sql: this.sql,
+          parameters: resolvedParameters,
+          isWrite: false
+        }, target.version)
         return null
       }
 
       const row = statement.getAsObject() as Record<string, unknown>
-      this.onQuery?.(false)
+      this.onQuery?.({
+        sql: this.sql,
+        parameters: resolvedParameters,
+        isWrite: false
+      }, target.version)
       return row
     } finally {
       statement.free()
@@ -245,18 +292,35 @@ class TestD1PreparedStatement {
 class TestD1DatabaseSession {
   private bookmark: string | null = null
 
+  private hasWritten = false
+
   constructor(
     private readonly database: TestD1Database,
-    private readonly minimumVersion: number
+    private readonly sessionId: number,
+    private minimumVersion: number,
+    private readonly useReplica: boolean
   ) {}
 
   prepare(sql: string) {
     return new TestD1PreparedStatement(
-      () => this.database.getDatabase(),
+      isRead => this.database.getSessionQueryTarget(
+        this.minimumVersion,
+        isRead && this.useReplica && !this.hasWritten
+      ),
       sql,
       [],
-      (isWrite) => {
-        this.bookmark = this.database.recordSessionQuery(this.minimumVersion, isWrite)
+      (query, servedVersion) => {
+        const bookmark = this.database.recordSessionQuery(
+          this.sessionId,
+          this.minimumVersion,
+          query,
+          servedVersion
+        )
+        this.bookmark = bookmark
+        if (query.isWrite) {
+          this.minimumVersion = this.database.resolveBookmarkVersion(bookmark)
+          this.hasWritten = true
+        }
       }
     )
   }
@@ -281,28 +345,48 @@ export class TestD1Database {
 
   private readonly ready: Promise<void>
 
+  private replicaDatabase!: Promise<SqlJsDatabase>
+
+  private readonly replicaStale: boolean
+
+  private replicaVersion = 0
+
   private databaseVersion = 0
 
   private readonly knownBookmarks = new Map<string, number>()
 
+  private readonly sessionHistory: TestD1SessionRecord[] = []
+
+  private readonly queryHistory: TestD1QueryRecord[] = []
+
   private readonly sessionStartHistory: Array<string | undefined> = []
+
+  private nextSessionId = 1
 
   private closed = false
 
-  constructor(options?: { applyMigrations?: boolean }) {
+  constructor(options?: { applyMigrations?: boolean, replicaStale?: boolean }) {
+    this.replicaStale = options?.replicaStale ?? false
     this.ready = (async () => {
       const database = await this.database
 
-      if (options?.applyMigrations === false) {
-        return
+      if (options?.applyMigrations !== false) {
+        database.run(readMigrationSql())
       }
 
-      database.run(readMigrationSql())
+      this.replicaDatabase = createSqlJsDatabase(database.export())
+      await this.replicaDatabase
     })()
   }
 
   prepare(sql: string) {
-    return new TestD1PreparedStatement(() => this.getDatabase(), sql)
+    return new TestD1PreparedStatement(
+      async () => ({
+        database: await this.getDatabase(),
+        version: this.databaseVersion
+      }),
+      sql
+    )
   }
 
   async batch(statements: TestD1PreparedStatement[]) {
@@ -317,15 +401,35 @@ export class TestD1Database {
 
   withSession(constraintOrBookmark?: string) {
     this.sessionStartHistory.push(constraintOrBookmark)
+    const sessionId = this.nextSessionId++
+    const minimumVersion = this.resolveSessionStart(constraintOrBookmark)
+    this.sessionHistory.push({
+      id: sessionId,
+      start: constraintOrBookmark,
+      minimumVersion
+    })
 
     return new TestD1DatabaseSession(
       this,
-      this.resolveSessionStart(constraintOrBookmark)
+      sessionId,
+      minimumVersion,
+      constraintOrBookmark !== 'first-primary'
     )
   }
 
   get sessionStarts() {
     return [...this.sessionStartHistory]
+  }
+
+  get sessions() {
+    return this.sessionHistory.map(session => ({ ...session }))
+  }
+
+  get queries() {
+    return this.queryHistory.map(query => ({
+      ...query,
+      parameters: [...query.parameters]
+    }))
   }
 
   async exec(sql: string) {
@@ -342,6 +446,8 @@ export class TestD1Database {
     this.closed = true
     const database = await this.getDatabase()
     database.close()
+    const replica = await this.replicaDatabase
+    replica.close()
   }
 
   async first<TResult = unknown>(sql: string, ...parameters: unknown[]) {
@@ -352,6 +458,39 @@ export class TestD1Database {
     const database = await this.database
     await this.ready
     return database
+  }
+
+  async getSessionQueryTarget(minimumVersion: number, useReplica: boolean): Promise<TestD1QueryTarget> {
+    if (!useReplica || !this.replicaStale) {
+      return await this.getPrimaryQueryTarget()
+    }
+
+    await this.getDatabase()
+
+    if (this.replicaVersion < minimumVersion) {
+      await this.syncReplica()
+    }
+
+    return {
+      database: await this.replicaDatabase,
+      version: this.replicaVersion
+    }
+  }
+
+  private async getPrimaryQueryTarget(): Promise<TestD1QueryTarget> {
+    return {
+      database: await this.getDatabase(),
+      version: this.databaseVersion
+    }
+  }
+
+  private async syncReplica() {
+    const primary = await this.getDatabase()
+    const previousReplica = await this.replicaDatabase
+    previousReplica.close()
+    this.replicaDatabase = createSqlJsDatabase(primary.export())
+    await this.replicaDatabase
+    this.replicaVersion = this.databaseVersion
   }
 
   resolveSessionStart(constraintOrBookmark?: string) {
@@ -368,18 +507,39 @@ export class TestD1Database {
     return version
   }
 
-  recordSessionQuery(minimumVersion: number, isWrite: boolean) {
-    if (isWrite) {
+  recordSessionQuery(
+    sessionId: number,
+    minimumVersion: number,
+    query: Omit<TestD1QueryRecord, 'sessionId'>,
+    servedVersion: number
+  ) {
+    if (query.isWrite) {
       this.databaseVersion += 1
     }
 
-    const version = Math.max(this.databaseVersion, minimumVersion)
+    const version = Math.max(query.isWrite ? this.databaseVersion : servedVersion, minimumVersion)
     const bookmark = `test-bookmark-${version}`
     this.knownBookmarks.set(bookmark, version)
+    this.queryHistory.push({
+      sessionId,
+      sql: query.sql,
+      parameters: [...query.parameters],
+      isWrite: query.isWrite
+    })
     return bookmark
+  }
+
+  resolveBookmarkVersion(bookmark: string) {
+    const version = this.knownBookmarks.get(bookmark)
+
+    if (version === undefined) {
+      throw new Error(`Unknown local D1 bookmark: ${bookmark}`)
+    }
+
+    return version
   }
 }
 
-export function createTestD1Database(options?: { applyMigrations?: boolean }) {
+export function createTestD1Database(options?: { applyMigrations?: boolean, replicaStale?: boolean }) {
   return new TestD1Database(options)
 }

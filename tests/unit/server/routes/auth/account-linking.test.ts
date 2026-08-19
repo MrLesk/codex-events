@@ -6,11 +6,13 @@ import { createApiRouteTestHarness } from '../../../../support/backend/api-route
 const {
   clearPlatformAccountLinkAuthentication,
   completePlatformAccountLinkAuthentication,
+  persistPlatformAccountLinkIdentities,
   readPlatformAccountLinkAuthenticatedSubject,
   startPlatformAccountLinkAuthentication
 } = vi.hoisted(() => ({
   startPlatformAccountLinkAuthentication: vi.fn(),
   completePlatformAccountLinkAuthentication: vi.fn(),
+  persistPlatformAccountLinkIdentities: vi.fn(),
   readPlatformAccountLinkAuthenticatedSubject: vi.fn(),
   clearPlatformAccountLinkAuthentication: vi.fn(async () => {})
 }))
@@ -45,6 +47,7 @@ vi.mock('../../../../../server/domains/accounts/linking', async () => {
     ...actual,
     startPlatformAccountLinkAuthentication,
     completePlatformAccountLinkAuthentication,
+    persistPlatformAccountLinkIdentities,
     readPlatformAccountLinkAuthenticatedSubject,
     clearPlatformAccountLinkAuthentication
   }
@@ -76,6 +79,7 @@ describe('Auth0 account-link routes', () => {
     vi.resetModules()
     startPlatformAccountLinkAuthentication.mockReset()
     completePlatformAccountLinkAuthentication.mockReset()
+    persistPlatformAccountLinkIdentities.mockReset()
     readPlatformAccountLinkAuthenticatedSubject.mockReset()
     clearPlatformAccountLinkAuthentication.mockReset()
     clearPlatformAccountLinkAuthentication.mockResolvedValue(undefined)
@@ -186,6 +190,7 @@ describe('Auth0 account-link routes', () => {
       }))
     })))
     readPlatformAccountLinkAuthenticatedSubject.mockResolvedValue('auth0|existing-password-user')
+    persistPlatformAccountLinkIdentities.mockResolvedValue(undefined)
 
     const cookie = await createLinkChallengeCookie(harness)
     const response = await harness.request('/auth/link/complete', {
@@ -195,6 +200,13 @@ describe('Auth0 account-link routes', () => {
     })
 
     expect(readPlatformAccountLinkAuthenticatedSubject).toHaveBeenCalledWith(expect.any(Object))
+    expect(persistPlatformAccountLinkIdentities).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        primaryAuth0Subject: 'auth0|existing-password-user',
+        secondaryAuth0Subject: 'google-oauth2|existing-google-user'
+      })
+    )
     expect(clearPlatformAccountLinkAuthentication).toHaveBeenCalledWith(expect.any(Object))
     expect(response.status).toBe(200)
     await expect(response.text()).resolves.toContain('action="https://codex-events-test.eu.auth0.com/continue"')

@@ -5,6 +5,7 @@ import {
   buildPlatformAccountLinkRedirect,
   clearPlatformAccountLinkAuthentication,
   clearPlatformAccountLinkChallenge,
+  persistPlatformAccountLinkIdentities,
   readPlatformAccountLinkAuthenticatedSubject,
   readPlatformAccountLinkChallenge
 } from '#server/domains/accounts/linking'
@@ -27,6 +28,18 @@ export default defineEventHandler(async (event) => {
     return await buildPlatformAccountLinkActionContinueResponse(event, challengeResult.challenge, {
       ok: false,
       reason: 'mismatch'
+    })
+  }
+
+  try {
+    await persistPlatformAccountLinkIdentities(event, challengeResult.challenge)
+  } catch {
+    await clearPlatformAccountLinkAuthentication(event)
+    clearPlatformAccountLinkChallenge(event)
+    setResponseHeader(event, 'content-type', 'text/html; charset=utf-8')
+    return await buildPlatformAccountLinkActionContinueResponse(event, challengeResult.challenge, {
+      ok: false,
+      reason: 'failed'
     })
   }
 

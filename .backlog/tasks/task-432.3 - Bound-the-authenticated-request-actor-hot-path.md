@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@luna-auth'
 created_date: '2026-08-19 06:22'
-updated_date: '2026-08-19 06:53'
+updated_date: '2026-08-19 17:45'
 labels: []
 dependencies:
   - TASK-432.1
@@ -32,6 +32,10 @@ Refactor request actor construction so authenticated endpoints do not repeat ide
 - [x] #3 The session/bootstrap response includes the actor capabilities required by account navigation without exposing internal authorization mechanics
 - [x] #4 Mutating endpoints still authorize against canonical platform and event data
 - [x] #5 Unit and integration tests assert actor behavior, consent gating, linked identities, and query-path boundaries
+- [x] #6 The validated account-link completion lifecycle persists every linked Auth0 subject in canonical user_auth_identities before a secondary identity can resolve the platform account
+- [x] #7 Actor, consent, and permission reads explicitly use strong D1 consistency while reusing the request-scoped session
+- [x] #8 First-platform-admin promotion occurs only in registration or setup lifecycle work and never during an ordinary actor read
+- [x] #9 Fake-D1 query instrumentation enforces the bounded identity and consent read path
 <!-- AC:END -->
 
 ## Definition of Done
@@ -49,25 +53,24 @@ Refactor request actor construction so authenticated endpoints do not repeat ide
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Keep the canonical Auth0 login/account-link lifecycle as the owner of identity reconciliation; remove linked-identity writes and claim plumbing from ordinary request actor resolution while retaining canonical linked-identity reads.
-2. Replace the sequential auth-identity then user lookup with one explicit joined D1 read for the active platform user, preserving request-context memoization and the existing first-admin promotion path.
-3. Bound current platform-document resolution to the fixed platform document types and latest row per type, then preserve current-consent evaluation and mutation authorization semantics.
-4. Update focused unit and local-D1 integration coverage for anonymous, authenticated, linked-identity, consent-blocked, first-admin, session-capability, actor memoization, and no-identity-maintenance-on-ordinary-read behavior.
-5. Run targeted tests plus lint, typecheck, unit, and integration validation; inspect the scoped diff and commit only TASK-432.3 files and its Backlog task file.
+1. Preserve the joined identity/user read and bounded consent reads from the existing commit.
+2. Persist validated linked subjects in the explicit account-link completion lifecycle and update its canonical API note.
+3. Make actor construction start or reuse a strong request-scoped D1 session.
+4. Move first-platform-admin promotion out of ordinary actor resolution into registration/setup lifecycle code.
+5. Add fake-D1 query instrumentation and lifecycle tests for linked identities, strong consistency, consent, and first-admin setup.
+6. Run local lint, typecheck, unit, integration, and relevant BDD validation; finalize and commit without pushing.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Implementation and verification completed:
-- Ordinary request actor resolution now performs a read-only lookup: one indexed user_auth_identities-to-active-users join, with request-context memoization and first-admin promotion preserved. Auth0 account-link claim parsing and identity writes were removed from the ordinary actor path; existing linked identity rows remain resolvable.
-- Current platform documents are resolved with one latest-row query per the two fixed document types, so consent evaluation has fixed query cardinality.
-- Focused verification passed: bunx eslint on all TASK-432.3 source/tests; 26 focused unit tests; 13 selected local-D1 session/authorization integration tests.
-- Repository-wide checks were run locally: lint, typecheck, full unit, full integration, and BDD. They remain non-green only on unrelated shared-worker changes (media style/cache expectations, app bootstrap/defineRouteRules, request-scoped database test, and BDD persona/browser setup). No remote database or test environment was used.
+Corrective implementation completed. Actor resolution keeps the joined user_auth_identities-to-active-users lookup and bounded fixed-document consent reads, but now starts strong D1 consistency and reuses the request-scoped session for actor, consent, session roles, and authorization reads. Account-link completion validates the existing primary subject and persists both primary and secondary Auth0 subjects in user_auth_identities before returning the signed Auth0 continuation. First-platform-admin promotion remains in registration/setup only; ordinary actor reads are read-only. Fake-D1 now records session IDs, session starts, SQL, bound parameters, writes, and served versions.
+
+Verification evidence: actor-hot-path integration tests cover one first-primary session, one joined identity read, fixed consent cardinality, permission-session reuse, linked-subject persistence and secondary resolution, and first-admin registration. Auth0 account-link route unit tests cover the completion continuation. Full lint, typecheck, unit (129 files / 942 tests), focused Auth0 and actor integration tests, and full integration (31 files / 397 tests) pass. Local BDD was attempted with an isolated state directory but could not start because another worker already owns the repository Nuxt dev lock (PID 18761 on localhost:3100); no remote host or database was contacted.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Bound the authenticated actor hot path by removing ordinary-request Auth0 identity reconciliation, using one joined active-user identity read, and bounding current-document reads to the fixed document types. Preserved linked identity lookup, consent, first-admin promotion, session capabilities, memoization, and canonical authorization. Focused lint/unit/local-D1 integration checks pass; broader shared-worktree checks are documented as blocked by unrelated worker changes.
+Corrected TASK-432.3 structural regressions: durable linked-identity persistence now occurs in account-link completion, actor/consent/permission reads use one strong request-scoped D1 session, first-admin promotion is confined to registration/setup, and fake-D1 topology instrumentation enforces bounded reads. Verified with full lint, typecheck, 942 unit tests, 397 integration tests, and focused Auth0/link tests; local BDD startup remained blocked by another worker's Nuxt lock.
 <!-- SECTION:FINAL_SUMMARY:END -->
