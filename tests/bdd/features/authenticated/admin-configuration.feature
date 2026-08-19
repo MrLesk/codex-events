@@ -6,6 +6,7 @@ Feature: TASK-3.9 authenticated admin configuration coverage
     When the saved "platform_admin" session creates a managed event named "BDD Managed Event"
     Then the remembered managed event should be created in state "draft"
     When the saved "platform_admin" session uploads a background image for the remembered managed event
+    And the saved "platform_admin" session opens registration for the remembered managed event
     Then the remembered managed event should expose a managed background image URL
     And the remembered managed event background image endpoint should return the uploaded image
     When the saved "platform_admin" session adds evaluation criterion "Execution" with weight 30 and display order 1 to the remembered managed event

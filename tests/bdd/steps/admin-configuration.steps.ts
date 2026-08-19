@@ -7,7 +7,10 @@ import { createAuthenticatedApiClient } from '../support/api-client'
 import { stablePersonaKeys, type StablePersonaKey } from '../support/personas'
 
 const { When, Then } = createBdd()
-const pngSignatureBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+const pngFixtureBytes = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9pzyY5kAAAAASUVORK5CYII=',
+  'base64'
+)
 
 type ScenarioState = {
   response?: APIResponse
@@ -17,6 +20,7 @@ type ScenarioState = {
   criterionId?: string
   eventTermsDocumentId?: string
   backgroundImageUrl?: string
+  backgroundImageRevision?: number
 }
 
 const scenarioState = new WeakMap<Page, ScenarioState>()
@@ -82,11 +86,13 @@ When('the saved {string} session creates a managed event named {string}', async 
 })
 
 Then('the remembered managed event should be created in state {string}', async ({ page }, expectedState: string) => {
-  expect(getScenarioState(page).response?.ok()).toBe(true)
-  expect(getScenarioState(page).eventId).toBeTruthy()
-  expect(getScenarioState(page).json).toMatchObject({
+  const state = getScenarioState(page)
+
+  expect(state.response?.ok(), `Expected event creation to succeed, received HTTP ${state.response?.status()} with ${JSON.stringify(state.json)}`).toBe(true)
+  expect(state.eventId).toBeTruthy()
+  expect(state.json).toMatchObject({
     data: {
-      id: getScenarioState(page).eventId,
+      id: state.eventId,
       state: expectedState
     }
   })
@@ -107,26 +113,63 @@ When('the saved {string} session uploads a background image for the remembered m
         file: {
           name: 'background.png',
           mimeType: 'image/png',
-          buffer: pngSignatureBytes
+          buffer: pngFixtureBytes
         }
       }
     })
     const json = await response.json() as {
       data?: {
         backgroundImageUrl?: string
+        mediaRevision?: number
       }
     }
+    const backgroundImageUrl = json.data?.backgroundImageUrl
+    const mediaRevision = json.data?.mediaRevision
+
+    if (!backgroundImageUrl || !Number.isInteger(mediaRevision) || mediaRevision < 0) {
+      throw new Error('The background image upload did not return a managed URL and media revision.')
+    }
+
+    const versionedBackgroundImageUrl = new URL(backgroundImageUrl)
+    versionedBackgroundImageUrl.searchParams.set('variant', 'background')
+    versionedBackgroundImageUrl.searchParams.set('v', String(mediaRevision))
+
     state.response = response
     state.json = json
-    state.backgroundImageUrl = json.data?.backgroundImageUrl
+    state.backgroundImageUrl = versionedBackgroundImageUrl.toString()
+    state.backgroundImageRevision = mediaRevision
+  } finally {
+    await apiClient.dispose()
+  }
+})
+
+When('the saved {string} session opens registration for the remembered managed event', async ({ page }, personaKey: string) => {
+  const state = getScenarioState(page)
+
+  if (!state.eventId) {
+    throw new Error('No remembered managed event is available to open registration.')
+  }
+
+  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+
+  try {
+    const response = await apiClient.post(`/api/events/${state.eventId}/actions/open-registration`)
+    state.response = response
+    state.json = await response.json()
   } finally {
     await apiClient.dispose()
   }
 })
 
 Then('the remembered managed event should expose a managed background image URL', async ({ page }) => {
-  expect(getScenarioState(page).response?.ok()).toBe(true)
-  expect(getScenarioState(page).backgroundImageUrl).toMatch(/^https?:\/\/.+\/api\/public\/events\/.+\/images\/background$/)
+  const state = getScenarioState(page)
+
+  expect(state.response?.ok()).toBe(true)
+  expect(state.backgroundImageUrl).toMatch(/^https?:\/\/.+\/api\/public\/events\/.+\/images\/background\?variant=background&v=\d+$/)
+
+  const imageUrl = new URL(state.backgroundImageUrl!)
+  expect(imageUrl.searchParams.get('variant')).toBe('background')
+  expect(imageUrl.searchParams.get('v')).toBe(String(state.backgroundImageRevision))
 })
 
 Then('the remembered managed event background image endpoint should return the uploaded image', async ({ page }) => {
@@ -140,12 +183,21 @@ Then('the remembered managed event background image endpoint should return the u
 
   try {
     const imageUrl = new URL(state.backgroundImageUrl)
-    const response = await apiClient.get(`${imageUrl.pathname}${imageUrl.search}`)
+    const response = await apiClient.get(`${imageUrl.pathname}${imageUrl.search}`, {
+      headers: {
+        accept: 'image/webp'
+      }
+    })
 
-    expect(response.ok()).toBe(true)
-    expect(response.headers()['content-type']).toContain('image/png')
+    expect(response.ok(), `Expected transformed public background delivery, received HTTP ${response.status()}`).toBe(true)
+    expect(response.headers()['content-type']).toBe('image/webp')
     expect(response.headers()['x-content-type-options']).toBe('nosniff')
-    expect(new Uint8Array(await response.body())).toEqual(new Uint8Array(pngSignatureBytes))
+    expect(response.headers()['cache-control']).toBe('public, max-age=30, stale-if-error=0')
+    expect(response.headers()['cloudflare-cdn-cache-control']).toBe('public, max-age=30, stale-if-error=0')
+    expect(response.headers()['vary']).toBe('Accept')
+
+    const responseBody = await response.body()
+    expect(responseBody.equals(pngFixtureBytes)).toBe(false)
   } finally {
     await apiClient.dispose()
   }
