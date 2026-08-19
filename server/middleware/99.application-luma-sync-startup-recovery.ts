@@ -13,14 +13,13 @@ export default defineEventHandler((event) => {
 
   // Local-dev asset and tooling requests carry no D1 binding; skip and let the
   // first request that has one run the recovery instead of logging an error.
-  if (!event.context.d1Database && !cloudflareEnv?.[bindingName]) {
+  if (!cloudflareEnv?.[bindingName]) {
     return
   }
 
   const recoveryPromise = scheduleApplicationLumaSyncStartupRecovery({
     runtimeConfig,
-    cloudflareEnv,
-    d1Database: event.context.d1Database
+    cloudflareEnv
   }).catch((error) => {
     console.error('Application Luma sync startup recovery failed.', {
       message: error instanceof Error ? error.message : 'Unexpected startup recovery error'

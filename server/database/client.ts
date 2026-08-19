@@ -12,7 +12,7 @@ export type AppDatabaseBatch = Parameters<AppDatabase['batch']>[0]
 
 export const d1BookmarkHeader = 'x-d1-bookmark'
 
-export type DatabaseConsistency = 'replica' | 'strong'
+export type DatabaseConsistency = 'strong' | 'public-replica'
 export type D1SessionConstraint = 'first-primary' | 'first-unconstrained'
 
 export interface D1DatabaseSessionBinding {
@@ -28,8 +28,8 @@ export interface AppDatabaseAccess {
   sessionStart: D1SessionConstraint | string
 }
 
-export interface DatabaseAccessOptions {
-  consistency?: DatabaseConsistency
+export interface StrongDatabaseAccessOptions {
+  consistency?: 'strong'
 }
 
 type CloudflareEnv = Record<string, unknown> | undefined
@@ -46,6 +46,10 @@ type SessionCapableD1DatabaseBinding = D1DatabaseBinding & {
 export function createDatabase(binding: D1DatabaseBinding) {
   return drizzle(binding, { schema })
 }
+
+const requestDatabaseAccess = new WeakMap<H3Event, AppDatabaseAccess>()
+const injectedTestDatabases = new WeakMap<H3Event, AppDatabase>()
+const emittedBookmarks = new WeakSet<H3Event>()
 
 function isSessionCapableD1DatabaseBinding(binding: D1DatabaseBinding): binding is SessionCapableD1DatabaseBinding {
   return typeof binding === 'object'
@@ -74,20 +78,14 @@ function resolveIncomingBookmark(event: H3Event) {
   return bookmark || undefined
 }
 
-function resolveDefaultConsistency(): DatabaseConsistency {
-  return 'strong'
-}
-
 function resolveSessionStart(consistency: DatabaseConsistency, incomingBookmark?: string) {
   return incomingBookmark ?? (consistency === 'strong' ? 'first-primary' : 'first-unconstrained')
 }
 
-export function createDatabaseAccess(
+function createDatabaseAccessForConsistency(
   binding: D1DatabaseBinding,
-  options: {
-    consistency: DatabaseConsistency
-    incomingBookmark?: string
-  }
+  consistency: DatabaseConsistency,
+  incomingBookmark?: string
 ): AppDatabaseAccess {
   if (!isSessionCapableD1DatabaseBinding(binding)) {
     throw new ApiError({
@@ -98,15 +96,33 @@ export function createDatabaseAccess(
     })
   }
 
-  const sessionStart = resolveSessionStart(options.consistency, options.incomingBookmark)
+  const sessionStart = resolveSessionStart(consistency, incomingBookmark)
   const session = binding.withSession(sessionStart)
 
   return {
     database: createDatabase(createSessionDatabaseBinding(binding, session)),
     session,
-    consistency: options.consistency,
+    consistency,
     sessionStart
   }
+}
+
+export function createDatabaseAccess(
+  binding: D1DatabaseBinding,
+  options: {
+    incomingBookmark?: string
+  } = {}
+): AppDatabaseAccess {
+  return createDatabaseAccessForConsistency(binding, 'strong', options.incomingBookmark)
+}
+
+export function createPublicReplicaDatabaseAccess(
+  binding: D1DatabaseBinding,
+  options: {
+    incomingBookmark?: string
+  } = {}
+): AppDatabaseAccess {
+  return createDatabaseAccessForConsistency(binding, 'public-replica', options.incomingBookmark)
 }
 
 export function resolveD1Binding(bindingName: string, cloudflareEnv?: CloudflareEnv, injectedBinding?: D1DatabaseBinding) {
@@ -137,20 +153,24 @@ function getConfiguredBindingName(event: H3Event) {
 
 export function getD1Binding(event: H3Event) {
   const cloudflareEnv = event.context.cloudflare?.env as CloudflareEnv
-  return resolveD1Binding(getConfiguredBindingName(event), cloudflareEnv, event.context.d1Database)
+  return resolveD1Binding(getConfiguredBindingName(event), cloudflareEnv)
 }
 
-export function getDatabaseAccess(event: H3Event, options?: DatabaseAccessOptions) {
-  const existingAccess = event.context.appDbAccess
+function isHttpRequest(event: H3Event) {
+  return Boolean(event.node?.req || event.node?.res)
+}
+
+function getDatabaseAccessForConsistency(event: H3Event, consistency: DatabaseConsistency) {
+  const existingAccess = requestDatabaseAccess.get(event)
 
   if (existingAccess) {
-    if (options?.consistency && options.consistency !== existingAccess.consistency) {
+    if (consistency !== existingAccess.consistency) {
       throw new ApiError({
         statusCode: 500,
         code: 'database_consistency_conflict',
         message: 'A request cannot use more than one D1 consistency constraint.',
         details: {
-          requested: options.consistency,
+          requested: consistency,
           active: existingAccess.consistency
         }
       })
@@ -159,36 +179,55 @@ export function getDatabaseAccess(event: H3Event, options?: DatabaseAccessOption
     return existingAccess
   }
 
-  const access = createDatabaseAccess(getD1Binding(event), {
-    consistency: options?.consistency ?? resolveDefaultConsistency(),
-    incomingBookmark: resolveIncomingBookmark(event)
-  })
-  event.context.appDbAccess = access
-  event.context.appDb = access.database
+  const access = consistency === 'public-replica'
+    ? createPublicReplicaDatabaseAccess(getD1Binding(event), {
+        incomingBookmark: resolveIncomingBookmark(event)
+      })
+    : createDatabaseAccess(getD1Binding(event), {
+        incomingBookmark: resolveIncomingBookmark(event)
+      })
+  requestDatabaseAccess.set(event, access)
   return access
 }
 
-export function getDatabaseSession(event: H3Event, options?: DatabaseAccessOptions) {
+export function getDatabaseAccess(event: H3Event, options?: StrongDatabaseAccessOptions) {
+  return getDatabaseAccessForConsistency(event, options?.consistency ?? 'strong')
+}
+
+export function getPublicReplicaDatabase(event: H3Event) {
+  return getDatabaseAccessForConsistency(event, 'public-replica').database
+}
+
+export function getDatabaseSession(event: H3Event, options?: StrongDatabaseAccessOptions) {
   return getDatabaseAccess(event, options).session
 }
 
-export function getDatabase(event: H3Event, options?: DatabaseAccessOptions) {
-  if (!event.node?.req && !event.node?.res && event.context.appDb && !event.context.appDbAccess) {
-    return event.context.appDb
+export function getDatabase(event: H3Event, options?: StrongDatabaseAccessOptions) {
+  if (!isHttpRequest(event)) {
+    const injectedDatabase = injectedTestDatabases.get(event)
+
+    if (injectedDatabase) {
+      return injectedDatabase
+    }
   }
 
   return getDatabaseAccess(event, options).database
 }
 
 export function getDatabaseBookmark(event: H3Event) {
-  return event.context.appDbAccess?.session.getBookmark() ?? null
+  return requestDatabaseAccess.get(event)?.session.getBookmark() ?? null
 }
 
 export function emitD1Bookmark(event: H3Event) {
+  if (emittedBookmarks.has(event)) {
+    return
+  }
+
   const bookmark = getDatabaseBookmark(event)
 
   if (bookmark) {
     setResponseHeader(event, d1BookmarkHeader, bookmark)
+    emittedBookmarks.add(event)
   }
 }
 
@@ -201,8 +240,7 @@ export function setDatabase(event: H3Event, database: AppDatabase) {
     })
   }
 
-  event.context.appDbAccess = undefined
-  event.context.appDb = database
+  injectedTestDatabases.set(event, database)
 }
 
 export async function withDatabaseBatch<T extends AppDatabaseBatch>(

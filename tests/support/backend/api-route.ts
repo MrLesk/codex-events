@@ -4,7 +4,7 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { createApp, createRouter, eventHandler, toWebHandler } from 'h3'
 import { vi } from 'vitest'
 
-import { createDatabase, emitD1Bookmark } from '../../../server/database/client'
+import { createDatabase } from '../../../server/database/client'
 import { platformDocuments, userAuthIdentities, userPlatformDocumentAcceptances } from '../../../server/database/schema'
 import { getCurrentPlatformDocuments } from '../../../server/domains/platform/documents'
 import { createTestD1Database } from './fake-d1'
@@ -23,6 +23,14 @@ interface RouteDefinition {
   method: 'get' | 'post' | 'patch' | 'put' | 'delete'
   path: string
   handler: EventHandler
+}
+
+interface NitroTestPlugin {
+  (nitroApp: {
+    hooks: {
+      hook: (name: string, handler: (event: H3Event, response?: { body?: unknown }) => void | Promise<void>) => void
+    }
+  }): void
 }
 
 export function createApiRouteTestHarness(options: {
@@ -77,12 +85,40 @@ export function createApiRouteTestHarness(options: {
     }
   }
   autoAcceptCurrentPlatformDocuments?: boolean
+  nitroPlugins?: readonly NitroTestPlugin[]
 }) {
   const d1Database = createTestD1Database()
   const database = createDatabase(d1Database as never)
-  const app = createApp()
+  const beforeResponseHooks: Array<(event: H3Event, response?: { body?: unknown }) => void | Promise<void>> = []
+  let beforeResponseHookInvocations = 0
+  const invokeBeforeResponseHooks = async (event: H3Event, response?: { body?: unknown }) => {
+    for (const hook of beforeResponseHooks) {
+      beforeResponseHookInvocations += 1
+      await hook(event, response)
+    }
+  }
+  const app = createApp({
+    onBeforeResponse: invokeBeforeResponseHooks,
+    onError: async (_error, event) => {
+      await invokeBeforeResponseHooks(event, { body: _error })
+    }
+  })
   const router = createRouter()
   const autoAcceptCurrentPlatformDocuments = options.autoAcceptCurrentPlatformDocuments ?? true
+
+  const nitroApp = {
+    hooks: {
+      hook(name: string, handler: (event: H3Event, response?: { body?: unknown }) => void | Promise<void>) {
+        if (name === 'beforeResponse') {
+          beforeResponseHooks.push(handler)
+        }
+      }
+    }
+  }
+
+  for (const plugin of options.nitroPlugins ?? []) {
+    plugin(nitroApp)
+  }
 
   async function readCurrentSessionUser() {
     const auth0 = useAuth0({ context: {} } as H3Event)
@@ -255,21 +291,10 @@ export function createApiRouteTestHarness(options: {
       }
     }
     event.context.auth0ClientOptions = {}
-    event.context.d1Database = d1Database as never
   }))
 
-  function withDatabaseBookmarkHook(handler: EventHandler) {
-    return eventHandler(async (event) => {
-      try {
-        return await handler(event)
-      } finally {
-        emitD1Bookmark(event)
-      }
-    })
-  }
-
   for (const route of options.routes) {
-    router[route.method](route.path, withDatabaseBookmarkHook(route.handler))
+    router[route.method](route.path, route.handler)
   }
 
   app.use(router)
@@ -279,6 +304,9 @@ export function createApiRouteTestHarness(options: {
   return {
     database,
     d1Database,
+    get beforeResponseHookInvocations() {
+      return beforeResponseHookInvocations
+    },
     async request(path: string, init: RequestInit = {}) {
       await ensureCurrentPlatformDocumentAcceptanceForSession()
 

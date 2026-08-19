@@ -34,11 +34,11 @@ This document defines the canonical technology stack for the Codex event platfor
 ## D1 Access and Consistency
 
 - D1 access uses one shared request-scoped client and one logical session. Domain functions receive that access and do not create separate bindings, Drizzle clients, or session handles.
-- Strong consistency is the default for HTTP database requests. Vetted public reads opt into replica consistency explicitly when bounded staleness is acceptable. Actor, consent, permission, lifecycle, mutation-result, and read-after-write paths use primary or otherwise strong consistency.
+- Strong consistency is the default for HTTP database requests. Only the named `getPublicReplicaDatabase` accessor opts into replica consistency, and source-boundary tests allow it only for vetted immutable/cacheable public reads. Actor, consent, permission, lifecycle, mutation-result, and read-after-write paths use primary or otherwise strong consistency.
 - D1 Sessions bookmarks carry the causal position from a write or earlier session into a later read. A mutation/read sequence passes the latest bookmark or remains on primary; an unbookmarked replica read must not serve read-after-write data.
 - The latest D1 Sessions bookmark is transported as the `X-D1-Bookmark` request and response header. It is request metadata and never appears in a domain response or request payload.
 - Strong HTTP requests start with `first-primary`; explicitly replica-eligible reads start with `first-unconstrained`, unless an incoming `X-D1-Bookmark` anchors the session. A request uses one consistency constraint and one shared Drizzle client for all domain work. Raw SQL uses the same request session's `prepare` and `batch` methods.
-- HTTP handlers cannot resolve or use the raw D1 binding. Direct database injection is limited to explicit non-HTTP test or infrastructure execution, and one Nitro `beforeResponse` hook emits the bookmark for both API and raw routes.
+- HTTP handlers cannot resolve or use the raw D1 binding or inject database access through H3 context. Direct database injection is limited to explicit non-HTTP test or infrastructure execution and is held outside public request context. One Nitro `beforeResponse` hook emits the bookmark for both API and raw routes.
 - The local fake-D1 and Worker D1 adapters expose equivalent client, session, bookmark, and consistency behavior. Tests exercise shared request reuse and read-after-write paths without test-only bypasses.
 
 ## Media Delivery

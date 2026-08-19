@@ -88,7 +88,16 @@ describe('resolveD1Binding', () => {
     const event = createEvent(binding)
     event.node = { req: {} as never, res: {} as never } as never
     const injectedDatabase = { query: {} } as never
-    event.context.appDb = injectedDatabase
+    Object.defineProperty(event.context, 'appDbAccess', {
+      configurable: true,
+      enumerable: true,
+      value: { database: injectedDatabase }
+    })
+    Object.defineProperty(event.context, 'appDb', {
+      configurable: true,
+      enumerable: true,
+      value: injectedDatabase
+    })
 
     expect(() => setDatabase(event, injectedDatabase)).toThrow(ApiError)
     expect(getDatabase(event)).not.toBe(injectedDatabase)

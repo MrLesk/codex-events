@@ -1,7 +1,12 @@
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from 'vitest'
 import { eventHandler } from 'h3'
 
-import { d1BookmarkHeader, getDatabase, getDatabaseSession } from '../../../../server/database/client'
+import {
+  d1BookmarkHeader,
+  getDatabase,
+  getDatabaseSession,
+  getPublicReplicaDatabase
+} from '../../../../server/database/client'
 import { ApiError } from '../../../../server/http/api-error'
 import { defineApiHandler } from '../../../../server/http/api-handler'
 import { apiData } from '../../../../server/http/api-response'
@@ -10,6 +15,16 @@ import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
 describe('request-scoped D1 sessions', () => {
   const harnesses: Array<ReturnType<typeof createApiRouteTestHarness>> = []
+  let databaseBookmarkPlugin: unknown
+
+  beforeAll(async () => {
+    vi.stubGlobal('defineNitroPlugin', (plugin: unknown) => plugin)
+    databaseBookmarkPlugin = (await import('../../../../server/plugins/database-bookmark')).default
+  })
+
+  afterAll(() => {
+    vi.unstubAllGlobals()
+  })
 
   afterEach(async () => {
     while (harnesses.length > 0) {
@@ -34,7 +49,8 @@ describe('request-scoped D1 sessions', () => {
             })
           })
         }
-      ]
+      ],
+      nitroPlugins: [databaseBookmarkPlugin as never]
     })
     harnesses.push(harness)
 
@@ -54,7 +70,7 @@ describe('request-scoped D1 sessions', () => {
         userId: 'read_user'
       }
     })
-    expect(response.headers.get(d1BookmarkHeader)).toBe('test-bookmark-0')
+    expect(response.headers.get(d1BookmarkHeader)).toBe('test-bookmark-1')
     expect(harness.d1Database.sessionStarts).toEqual(['first-primary'])
   })
 
@@ -91,7 +107,8 @@ describe('request-scoped D1 sessions', () => {
             return apiData({ userId: user?.id ?? null })
           })
         }
-      ]
+      ],
+      nitroPlugins: [databaseBookmarkPlugin as never]
     })
     harnesses.push(harness)
 
@@ -140,7 +157,7 @@ describe('request-scoped D1 sessions', () => {
           method: 'get',
           path: '/api/public/database/read',
           handler: defineApiHandler(async (event) => {
-            await getDatabase(event, { consistency: 'replica' }).query.users.findFirst()
+            await getPublicReplicaDatabase(event).query.users.findFirst()
             return apiData({ ok: true })
           })
         }
@@ -152,6 +169,31 @@ describe('request-scoped D1 sessions', () => {
 
     expect(response.status).toBe(200)
     expect(harness.d1Database.sessionStarts).toEqual(['first-unconstrained'])
+  })
+
+  test('uses one recorded session id for Drizzle, raw prepare, and batch operations', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'get',
+          path: '/api/database/session-operations',
+          handler: defineApiHandler(async (event) => {
+            await getDatabase(event).query.users.findFirst()
+            const session = getDatabaseSession(event)
+            await session.prepare('select 1').all()
+            await session.batch([session.prepare('select 1')])
+            return apiData({ ok: true })
+          })
+        }
+      ]
+    })
+    harnesses.push(harness)
+
+    const response = await harness.request('/api/database/session-operations')
+
+    expect(response.status).toBe(200)
+    expect(harness.d1Database.queries.length).toBeGreaterThanOrEqual(3)
+    expect(new Set(harness.d1Database.queries.map(query => query.sessionId)).size).toBe(1)
   })
 
   test('emits one bookmark for API and raw-route success and error responses', async () => {
@@ -193,7 +235,8 @@ describe('request-scoped D1 sessions', () => {
             throw new Error('raw route failed')
           })
         }
-      ]
+      ],
+      nitroPlugins: [databaseBookmarkPlugin as never]
     })
     harnesses.push(harness)
 
@@ -209,6 +252,7 @@ describe('request-scoped D1 sessions', () => {
     expect(rawSuccessResponse.headers.get(d1BookmarkHeader)).toBe('test-bookmark-0')
     expect(rawErrorResponse.status).toBe(500)
     expect(rawErrorResponse.headers.get(d1BookmarkHeader)).toBe('test-bookmark-0')
+    expect(harness.beforeResponseHookInvocations).toBe(4)
   })
 
   test('rejects changing consistency constraints after a request session starts', async () => {
@@ -219,7 +263,7 @@ describe('request-scoped D1 sessions', () => {
           path: '/api/database/conflict',
           handler: defineApiHandler(async (event) => {
             getDatabase(event, { consistency: 'strong' })
-            getDatabase(event, { consistency: 'replica' })
+            getPublicReplicaDatabase(event)
             return apiData({ ok: true })
           })
         }

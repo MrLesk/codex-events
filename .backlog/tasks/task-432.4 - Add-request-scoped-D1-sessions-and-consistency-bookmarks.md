@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@luna-d1'
 created_date: '2026-08-19 06:22'
-updated_date: '2026-08-19 17:52'
+updated_date: '2026-08-19 18:24'
 labels: []
 dependencies:
   - TASK-432.1
@@ -73,6 +73,12 @@ Final verification: focused request-scoped integration, related database/API int
 Independent Luna review found that commit c5b5665c defaulted all GET requests to replica consistency, left six HTTP handlers using the raw D1 binding outside the request session, did not model stale replica visibility, retained a session-bypassing appDb escape hatch, and emitted bookmarks through two owners. The task is reopened until these structural issues are corrected.
 
 Corrective verification 2026-08-19: strong HTTP default and explicit replica opt-in are covered by request-scoped integration/unit tests; all server/api and server/routes raw binding calls are removed and the source boundary test is green; the Nitro bookmark hook covers API/raw success/error; stale-replica and bookmark visibility are proven; HTTP injection is rejected. bun run lint passed; bun run typecheck passed; bun run test:unit passed 129 files/942 tests; bun run test:integration passed 31 files/397 tests. Targeted BDD public event-discovery and authenticated-session run had 4 passes and 6 failures at the saved-session artifact precondition because concurrent uncommitted BDD/session-state work left only one persona artifact; no D1-session assertion failed. DOD #3 remains unchecked pending that concurrent fixture state. No remote database, test environment, deployment, or push was used.
+
+Corrective pass requested: make HTTP database access structurally non-injectable, replace generic replica options with a narrowly allowlisted public-replica helper, test the actual Nitro bookmark hook once across API/raw success/error paths, assert one session id across Drizzle/raw/batch operations, and account for fake-D1 infrastructure writes. Keep the task In Progress until full local validation.
+
+Implementation research complete: current escape hatches are public H3 appDb/appDbAccess state, generic replica options, a test-harness finally wrapper, and untracked fake-D1 direct binding writes. Corrective implementation is scoped to the database client/types, local binding middleware, test harness/fake-D1, boundary/session tests, and terse D1 docs; auth/bootstrap work remains untouched.
+
+Final local validation 2026-08-19: bun run lint, bun run typecheck, bun run test:unit (129 files/946 tests), bun run test:integration (32 files/400 tests), and bun run test:bdd (all suites) passed. No remote database, test/prod URL, deployment, or push was used. Task remains In Progress pending parent review.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

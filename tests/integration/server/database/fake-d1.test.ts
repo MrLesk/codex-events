@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { eq } from 'drizzle-orm'
 
-import { createDatabase, createDatabaseAccess } from '../../../../server/database/client'
+import {
+  createDatabase,
+  createDatabaseAccess,
+  createPublicReplicaDatabaseAccess
+} from '../../../../server/database/client'
 import { users } from '../../../../server/database/schema'
 import { createTestD1Database } from '../../../support/backend/fake-d1'
 
@@ -89,9 +93,7 @@ describe('TestD1Database', () => {
     const d1Database = createTestD1Database({ replicaStale: true })
     databases.push(d1Database)
 
-    const writer = createDatabaseAccess(d1Database as never, {
-      consistency: 'strong'
-    })
+    const writer = createDatabaseAccess(d1Database as never)
     await writer.database.insert(users).values({
       id: 'bookmark_user',
       auth0Subject: 'auth0|bookmark_user',
@@ -102,16 +104,13 @@ describe('TestD1Database', () => {
     const writeBookmark = writer.session.getBookmark()
     expect(writeBookmark).toBe('test-bookmark-1')
 
-    const unbookmarkedRead = createDatabaseAccess(d1Database as never, {
-      consistency: 'replica'
-    })
+    const unbookmarkedRead = createPublicReplicaDatabaseAccess(d1Database as never)
     await expect(unbookmarkedRead.database.query.users.findFirst({
       where: eq(users.id, 'bookmark_user')
     })).resolves.toBeUndefined()
     expect(unbookmarkedRead.session.getBookmark()).toBe('test-bookmark-0')
 
-    const bookmarkedRead = createDatabaseAccess(d1Database as never, {
-      consistency: 'replica',
+    const bookmarkedRead = createPublicReplicaDatabaseAccess(d1Database as never, {
       incomingBookmark: writeBookmark ?? undefined
     })
     await expect(bookmarkedRead.database.query.users.findFirst({
@@ -120,5 +119,43 @@ describe('TestD1Database', () => {
       id: 'bookmark_user'
     })
     expect(bookmarkedRead.session.getBookmark()).toBe(writeBookmark)
+  })
+
+  test('accounts direct infrastructure writes in fake-D1 bookmark state', async () => {
+    const d1Database = createTestD1Database({ replicaStale: true })
+    databases.push(d1Database)
+
+    await d1Database.prepare(`
+      insert into users (id, auth0_subject, email, display_name)
+      values (?, ?, ?, ?)
+    `).bind(
+      'infrastructure_user',
+      'auth0|infrastructure_user',
+      'infrastructure@example.com',
+      'Infrastructure User'
+    ).run()
+
+    const infrastructureBookmark = d1Database.getLatestBookmark()
+    expect(infrastructureBookmark).toBe('test-bookmark-1')
+    expect(d1Database.infrastructureQueries).toEqual([
+      expect.objectContaining({
+        sessionId: 0,
+        isWrite: true
+      })
+    ])
+
+    const unbookmarkedRead = createPublicReplicaDatabaseAccess(d1Database as never)
+    await expect(unbookmarkedRead.database.query.users.findFirst({
+      where: eq(users.id, 'infrastructure_user')
+    })).resolves.toBeUndefined()
+
+    const bookmarkedRead = createPublicReplicaDatabaseAccess(d1Database as never, {
+      incomingBookmark: infrastructureBookmark ?? undefined
+    })
+    await expect(bookmarkedRead.database.query.users.findFirst({
+      where: eq(users.id, 'infrastructure_user')
+    })).resolves.toMatchObject({
+      id: 'infrastructure_user'
+    })
   })
 })

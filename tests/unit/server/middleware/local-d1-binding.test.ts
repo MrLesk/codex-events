@@ -18,7 +18,6 @@ vi.mock('../../../../server/database/local-platform-proxy', () => ({
 
 function createEvent(options?: {
   cloudflareEnv?: Record<string, unknown>
-  d1Database?: unknown
 }) {
   return {
     context: {
@@ -52,8 +51,7 @@ function createEvent(options?: {
         luma: {
           queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE'
         }
-      },
-      d1Database: options?.d1Database
+      }
     }
   } as H3Event
 }
@@ -101,7 +99,7 @@ describe('local D1 binding middleware', () => {
     await middleware(event)
 
     expect(createLocalPlatformProxy).not.toHaveBeenCalled()
-    expect(event.context.d1Database).toBeUndefined()
+    expect(event.context.cloudflare?.env.DB).toBeUndefined()
   })
 
   test('loads the local Wrangler proxy when the request has no database binding', async () => {
@@ -177,7 +175,6 @@ describe('local D1 binding middleware', () => {
     await middleware(event)
 
     expect(createLocalPlatformProxy).toHaveBeenCalledTimes(1)
-    expect(event.context.d1Database).toBe(d1Database)
     expect(event.context.cloudflare?.env.DB).toBe(d1Database)
     expect(event.context.cloudflare?.env.PROFILE_ICONS).toBe(profileIconsBucket)
     expect(event.context.cloudflare?.env.EVENT_IMAGES).toBe(eventImagesBucket)

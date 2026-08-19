@@ -359,9 +359,13 @@ export class TestD1Database {
 
   private readonly queryHistory: TestD1QueryRecord[] = []
 
+  private readonly infrastructureQueryHistory: TestD1QueryRecord[] = []
+
   private readonly sessionStartHistory: Array<string | undefined> = []
 
   private nextSessionId = 1
+
+  private latestBookmark: string | null = null
 
   private closed = false
 
@@ -385,7 +389,11 @@ export class TestD1Database {
         database: await this.getDatabase(),
         version: this.databaseVersion
       }),
-      sql
+      sql,
+      [],
+      (query, servedVersion) => {
+        this.recordInfrastructureQuery(query, servedVersion)
+      }
     )
   }
 
@@ -432,10 +440,25 @@ export class TestD1Database {
     }))
   }
 
+  get infrastructureQueries() {
+    return this.infrastructureQueryHistory.map(query => ({
+      ...query,
+      parameters: [...query.parameters]
+    }))
+  }
+
+  getLatestBookmark() {
+    return this.latestBookmark
+  }
+
   async exec(sql: string) {
     const database = await this.getDatabase()
     database.run(sql)
-    this.databaseVersion += 1
+    this.recordInfrastructureQuery({
+      sql,
+      parameters: [],
+      isWrite: !isReadQuery(sql)
+    }, this.databaseVersion)
   }
 
   async close() {
@@ -520,6 +543,7 @@ export class TestD1Database {
     const version = Math.max(query.isWrite ? this.databaseVersion : servedVersion, minimumVersion)
     const bookmark = `test-bookmark-${version}`
     this.knownBookmarks.set(bookmark, version)
+    this.latestBookmark = bookmark
     this.queryHistory.push({
       sessionId,
       sql: query.sql,
@@ -527,6 +551,26 @@ export class TestD1Database {
       isWrite: query.isWrite
     })
     return bookmark
+  }
+
+  private recordInfrastructureQuery(
+    query: Omit<TestD1QueryRecord, 'sessionId'>,
+    servedVersion: number
+  ) {
+    if (query.isWrite) {
+      this.databaseVersion += 1
+    }
+
+    const version = Math.max(query.isWrite ? this.databaseVersion : servedVersion, 0)
+    const bookmark = `test-bookmark-${version}`
+    this.knownBookmarks.set(bookmark, version)
+    this.latestBookmark = bookmark
+    this.infrastructureQueryHistory.push({
+      sessionId: 0,
+      sql: query.sql,
+      parameters: [...query.parameters],
+      isWrite: query.isWrite
+    })
   }
 
   resolveBookmarkVersion(bookmark: string) {

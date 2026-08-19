@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 
 import { vi } from 'vitest'
 
-import { createDatabase, setDatabase } from '../../../server/database/client'
+import { createDatabase, getDatabase, setDatabase } from '../../../server/database/client'
 import { createTestD1Database, type TestD1Database } from './fake-d1'
 
 interface TestSessionUser {
@@ -82,13 +82,12 @@ export function createBackendTestEvent(options?: {
     } satisfies EventContext
   } as H3Event
 
-  event.context.d1Database = d1Database as never
   setDatabase(event, createDatabase(d1Database as never))
 
   return {
     event,
     d1Database,
-    database: event.context.appDb
+    database: getDatabase(event)
   }
 }
 

@@ -1,6 +1,6 @@
 import { getRequestHeader, setHeader } from 'h3'
 
-import { getDatabase } from '#server/database/client'
+import { getPublicReplicaDatabase } from '#server/database/client'
 import {
   createPublicEventImageResponse,
   getPlatformDefaultEventBackgroundImageObject,
@@ -16,7 +16,7 @@ export default defineApiHandler(async (h3Event) => {
   setHeader(h3Event, 'cache-control', privateEventImageCacheControl)
 
   const query = parseValidatedQuery(h3Event, publicEventImageQuerySchema)
-  const settings = await getPlatformSettings(getDatabase(h3Event, { consistency: 'replica' }))
+  const settings = await getPlatformSettings(getPublicReplicaDatabase(h3Event))
 
   if (!settings?.defaultEventBackgroundImageUrl) {
     throw new ApiError({

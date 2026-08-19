@@ -19,12 +19,36 @@ function sourceFiles(directory: string): string[] {
 
 describe('HTTP database boundary', () => {
   test('does not expose raw D1 or injected database access to HTTP handlers', () => {
-    const forbidden = /\b(?:getD1Binding|resolveD1Binding|createDatabase|setDatabase)\b|context\.appDb\b/u
+    const forbidden = /\b(?:getD1Binding|resolveD1Binding|createDatabase|createDatabaseAccess|createPublicReplicaDatabaseAccess|setDatabase)\b|\b(?:event|h3Event)\.context\.(?:appDb|appDbAccess|d1Database|cloudflare)\b|context\.(?:appDb|appDbAccess|d1Database|cloudflare)\b/u
     const files = [
       ...sourceFiles(join(repositoryRoot, 'server/api')),
       ...sourceFiles(join(repositoryRoot, 'server/routes'))
     ]
     const violations = files.filter(file => forbidden.test(readFileSync(file, 'utf8')))
+
+    expect(violations.map(file => basename(file))).toEqual([])
+  })
+
+  test('allows public replica access only from the immutable platform-default image route', () => {
+    const files = [
+      ...sourceFiles(join(repositoryRoot, 'server/api')),
+      ...sourceFiles(join(repositoryRoot, 'server/routes'))
+    ]
+    const allowlistedFile = join(repositoryRoot, 'server/api/public/platform/event-default-background-image.get.ts')
+    const violations = files.filter((file) => {
+      const source = readFileSync(file, 'utf8')
+      return source.includes('getPublicReplicaDatabase') && file !== allowlistedFile
+    })
+
+    expect(violations.map(file => basename(file))).toEqual([])
+  })
+
+  test('does not expose a generic replica consistency option to HTTP handlers', () => {
+    const files = [
+      ...sourceFiles(join(repositoryRoot, 'server/api')),
+      ...sourceFiles(join(repositoryRoot, 'server/routes'))
+    ]
+    const violations = files.filter(file => /consistency\s*:\s*['"]replica['"]/u.test(readFileSync(file, 'utf8')))
 
     expect(violations.map(file => basename(file))).toEqual([])
   })

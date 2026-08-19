@@ -110,7 +110,7 @@ export default defineEventHandler(async (event) => {
   const applicationLumaSyncQueueBindingName = runtimeConfig.luma?.queueBinding ?? 'APPLICATION_LUMA_SYNC_QUEUE'
   const cloudflareEnv = event.context.cloudflare?.env as Record<string, unknown> | undefined
 
-  const hasDatabaseBinding = Boolean(event.context.d1Database || cloudflareEnv?.[databaseBindingName])
+  const hasDatabaseBinding = Boolean(cloudflareEnv?.[databaseBindingName])
   // The local Wrangler platform proxy is only valid for Bun/Vitest execution in this
   // repository. Deployed Workers requests must never try to load the `wrangler` package.
   if (hasDatabaseBinding || !shouldUseLocalPlatformProxy()) {
@@ -263,5 +263,4 @@ export default defineEventHandler(async (event) => {
   eventImageContext.eventImagesBucket = isR2BucketLike(eventImagesBucket)
     ? eventImagesBucket
     : undefined
-  event.context.d1Database = d1Database as D1DatabaseBinding as never
 })
