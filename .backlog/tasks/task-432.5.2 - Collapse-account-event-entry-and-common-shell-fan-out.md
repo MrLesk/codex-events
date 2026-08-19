@@ -1,11 +1,11 @@
 ---
 id: TASK-432.5.2
 title: Collapse account-event entry and common-shell fan-out
-status: In Progress
+status: Done
 assignee:
   - '@luna-workspace'
 created_date: '2026-08-19 19:52'
-updated_date: '2026-08-19 21:24'
+updated_date: '2026-08-19 21:25'
 labels:
   - architecture
   - performance
@@ -123,4 +123,12 @@ Validation
 Started TASK-432.5.2 in the shared worktree. This task owns only the entry/prizes routes, entry/prizes shared/server contracts, account-event entry page, and listed common panels/tests. Foundation files, generated registries, media/D1 internals, and sibling task files remain excluded. Local-only validation and commit are required; no remote D1, deployment, or push.
 
 Implemented local entry/prizes page contracts and removed the account-event entry/prizes fan-out from the owned page, credits panel, and talk panels. Entry navigation is one shared bootstrap plus GET /api/account/events/:slug/entry; prizes is one lazy GET /api/account/events/:slug/prizes. Integrator metadata for TASK-432.5.1: id=get.account.events.by-slug.entry, toolName=get_account_events_by_slug_entry, description=GET /api/account/events/:slug/entry, rest={method:'GET',path:'/api/account/events/:slug/entry'}, input={params:routeSlugParamsSchema}, output=data, capabilities=[platform_user], effect=read; id=get.account.events.by-slug.prizes, toolName=get_account_events_by_slug_prizes, description=GET /api/account/events/:slug/prizes, rest={method:'GET',path:'/api/account/events/:slug/prizes'}, input={params:routeSlugParamsSchema}, output=data, capabilities=[platform_user], effect=read. Validation: owned eslint passed; git diff --check passed; focused unit contracts passed 2 files/6 tests. Full typecheck is blocked by concurrent server/database/non-http.ts TS7022 and AppDatabase.get errors in server/domains/mcp/tokens.ts and server/domains/talk-proposals/index.ts. Full unit is 985 passed/8 failed; full integration is 90 passed/328 failed; focused integration is 4 failed before route resolution at auth-identities.ts because the concurrent local AppDatabase facade has no terminal .get(). BDD is 7 passed/56 failed, with authenticated session/app initialization blocked by the same local actor/database transition. No remote D1, deploy, or push used.
+
+Local commit: 8f88a36b. No push, deploy, remote D1, generated catalog, media, foundation, or sibling files were changed by this task. The page and panels use concrete entry/prizes types; simplified claiming files and rank notice remain unchanged because their reads are outside this entry/prizes fan-out and their settings/workspace hosts are owned by sibling tasks.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Implemented TASK-432.5.2 in local commit 8f88a36b. Account-event entry now uses one shared bootstrap plus one /api/account/events/:slug/entry read; prizes is one lazy /api/account/events/:slug/prizes read; credits and talk panels consume typed props and emit mutation refreshes. Owned lint and focused contract/topology unit tests pass. Full typecheck, unit, integration, and authenticated BDD remain blocked by concurrent TASK-432.5.1 local AppDatabase facade errors at legacy terminal .get() call sites; exact totals are recorded in the implementation notes.
+<!-- SECTION:FINAL_SUMMARY:END -->
