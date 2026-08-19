@@ -7,11 +7,12 @@ import {
   resolveNonHttpD1Binding,
   type AppDatabase,
   type AppDatabaseBatch,
-  type D1DatabaseBinding
+  type D1DatabaseBinding,
+  type D1DatabaseClientBinding
 } from './non-http'
 import { ApiError } from '#server/http/api-error'
 
-export type { AppDatabase, AppDatabaseBatch, D1DatabaseBinding } from './non-http'
+export type { AppDatabase, AppDatabaseBatch, D1DatabaseBinding, D1DatabaseClientBinding } from './non-http'
 
 export const d1BookmarkHeader = 'x-d1-bookmark'
 
@@ -51,14 +52,12 @@ function isSessionCapableD1DatabaseBinding(binding: D1DatabaseBinding): binding 
 }
 
 function createSessionDatabaseBinding(
-  binding: D1DatabaseBinding,
   session: D1DatabaseSessionBinding
-) {
+): D1DatabaseClientBinding {
   return {
-    ...binding,
     prepare: (query: string) => session.prepare(query),
     batch: <T>(statements: Parameters<D1DatabaseBinding['batch']>[0]) => session.batch<T>(statements)
-  } satisfies D1DatabaseBinding
+  }
 }
 
 function resolveIncomingBookmark(event: H3Event) {
@@ -91,7 +90,7 @@ function createStrongDatabaseAccess(
   const session = binding.withSession(sessionStart)
 
   return {
-    database: createNonHttpDatabase(createSessionDatabaseBinding(binding, session)),
+    database: createNonHttpDatabase(createSessionDatabaseBinding(session)),
     session,
     consistency: 'strong',
     sessionStart

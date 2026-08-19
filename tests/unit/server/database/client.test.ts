@@ -3,8 +3,17 @@ import type { H3Event } from 'h3'
 import { describe, expect, test, vi } from 'vitest'
 
 import { ApiError } from '../../../../server/http/api-error'
-import { getDatabase, withDatabaseBatch } from '../../../../server/database/client'
+import { getDatabase, withDatabaseBatch, type AppDatabase } from '../../../../server/database/client'
 import { resolveNonHttpD1Binding, setTestDatabase } from '../../../../server/database/non-http'
+
+function assertApplicationDatabaseClientType(client: AppDatabase['$client']) {
+  void client.prepare
+  void client.batch
+  // @ts-expect-error Application database clients must not expose raw D1 session construction.
+  void client.withSession
+  // @ts-expect-error Application database clients must not expose raw D1 execution.
+  void client.exec
+}
 
 function createEvent(binding?: unknown): H3Event {
   return {
@@ -65,6 +74,32 @@ describe('resolveNonHttpD1Binding', () => {
     getDatabase(event)
 
     expect(withSession).toHaveBeenCalledWith('first-primary')
+  })
+
+  test('keeps raw D1 capabilities out of the returned application database client', async () => {
+    const session = {
+      prepare: vi.fn(),
+      batch: vi.fn(),
+      getBookmark: vi.fn(() => null)
+    }
+    const binding = {
+      prepare: vi.fn(),
+      batch: vi.fn(),
+      withSession: vi.fn(() => session)
+    }
+    const database = getDatabase(createEvent(binding))
+
+    assertApplicationDatabaseClientType(database.$client)
+    database.$client.prepare('select 1')
+    await database.$client.batch([])
+
+    expect(Object.keys(database.$client).sort()).toEqual(['batch', 'prepare'])
+    expect(database.$client).not.toBe(binding)
+    expect('withSession' in database.$client).toBe(false)
+    expect('getBookmark' in database.$client).toBe(false)
+    expect('exec' in database.$client).toBe(false)
+    expect(session.prepare).toHaveBeenCalledWith('select 1')
+    expect(session.batch).toHaveBeenCalledTimes(1)
   })
 
   test('allows direct database injection only on non-HTTP events', () => {

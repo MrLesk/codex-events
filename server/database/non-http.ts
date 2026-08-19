@@ -7,11 +7,34 @@ import { ApiError } from '#server/http/api-error'
 
 export type D1DatabaseBinding = Parameters<typeof drizzle>[0]
 
-export function createNonHttpDatabase(binding: D1DatabaseBinding) {
+export type D1DatabaseClientBinding = Pick<D1DatabaseBinding, 'prepare' | 'batch'>
+
+function createD1DatabaseClientBinding(
+  binding: D1DatabaseBinding | D1DatabaseClientBinding
+): D1DatabaseClientBinding {
+  return {
+    prepare: (query: string) => binding.prepare(query),
+    batch: <T>(statements: Parameters<D1DatabaseBinding['batch']>[0]) => binding.batch<T>(statements)
+  }
+}
+
+function createDrizzleDatabase(binding: D1DatabaseBinding) {
   return drizzle(binding, { schema })
 }
 
-export type AppDatabase = ReturnType<typeof createNonHttpDatabase>
+type DrizzleAppDatabase = ReturnType<typeof createDrizzleDatabase>
+
+export type AppDatabase = Omit<DrizzleAppDatabase, '$client'> & {
+  $client: D1DatabaseClientBinding
+}
+
+export function createNonHttpDatabase(binding: D1DatabaseBinding | D1DatabaseClientBinding): AppDatabase {
+  const client = createD1DatabaseClientBinding(binding)
+  const database = createDrizzleDatabase(client as D1DatabaseBinding)
+
+  return Object.assign(database, { $client: client }) as AppDatabase
+}
+
 export type AppDatabaseBatch = Parameters<AppDatabase['batch']>[0]
 
 type CloudflareEnv = Record<string, unknown> | undefined
