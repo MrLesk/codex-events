@@ -8,32 +8,66 @@ import { describe, expect, test } from 'vitest'
 const repositoryRoot = fileURLToPath(new URL('../../../../', import.meta.url))
 const serverRoot = join(repositoryRoot, 'server')
 
-const nonHttpAllowlist = new Set([
+const explicitNonHttpImporters = new Map<string, Set<string>>([
+  ['server/database/client.ts', new Set([
+    'createRequestDatabase',
+    'getTestDatabase',
+    'AppDatabase',
+    'AppDatabaseBatch',
+    'D1DatabaseBinding',
+    'D1DatabaseClientBinding'
+  ])],
+  ['server/middleware/local-d1-binding.ts', new Set(['D1DatabaseBinding'])],
+  ['server/plugins/application-luma-sync-queue.ts', new Set(['createNonHttpDatabase', 'resolveNonHttpD1Binding'])],
+  ['server/plugins/event-outcome-email-queue.ts', new Set(['createNonHttpDatabase', 'resolveNonHttpD1Binding'])],
+  ['server/plugins/talk-proposal-decision-email-queue.ts', new Set(['createNonHttpDatabase', 'resolveNonHttpD1Binding'])]
+])
+
+const infrastructureBoundaryFiles = new Set([
   'server/database/client.ts',
   'server/database/non-http.ts',
-  'server/middleware/local-d1-binding.ts',
-  'server/plugins/application-luma-sync-queue.ts',
-  'server/plugins/event-outcome-email-queue.ts',
-  'server/plugins/talk-proposal-decision-email-queue.ts'
+  'server/middleware/local-d1-binding.ts'
 ])
+
+const httpSourceRoots = [
+  'server/api/',
+  'server/routes/',
+  'server/middleware/',
+  'server/domains/',
+  'server/application/',
+  'server/http/'
+]
+
+const nonHttpImplementation = 'server/database/non-http.ts'
 
 const forbiddenClientExports = new Set([
   'createDatabase',
   'createDatabaseAccess',
+  'createNonHttpDatabase',
   'createPublicReplicaDatabaseAccess',
+  'createRequestDatabase',
   'getDatabaseAccess',
   'getD1Binding',
   'getPublicReplicaDatabase',
+  'getTestDatabase',
   'D1DatabaseBinding',
   'D1DatabaseClientBinding',
   'D1DatabaseSessionBinding',
   'resolveD1Binding',
-  'setDatabase'
+  'resolveNonHttpD1Binding',
+  'setDatabase',
+  'setTestDatabase'
 ])
 
-const forbiddenIdentifiers = /(?:\$client|\b(?:AppDatabaseAccess|DatabaseConsistency|createDatabase|createDatabaseAccess|createNonHttpDatabase|createPublicReplicaDatabaseAccess|getDatabaseAccess|getD1Binding|getPublicReplicaDatabase|getTestDatabase|resolveD1Binding|resolveNonHttpD1Binding|setDatabase|setTestDatabase)\b)/u
+const forbiddenIdentifiers = /(?:\$client|\b(?:AppDatabaseAccess|DatabaseConsistency|createDatabase|createDatabaseAccess|createNonHttpDatabase|createPublicReplicaDatabaseAccess|getDatabaseAccess|getD1Binding|getPublicReplicaDatabase|getTestDatabase|resolveD1Binding|resolveNonHttpD1Binding|setDatabase|setTestDatabase)\b)/gu
 const forbiddenContextFields = /\b(?:appDb|appDbAccess|databaseAccess|d1Database)\b/u
 const forbiddenReplicaUsage = /\b(?:public-replica|getPublicReplicaDatabase|createPublicReplicaDatabaseAccess)\b|consistency\s*:\s*['"]replica['"]/u
+const dangerousCallNames = new Set([
+  'createNonHttpDatabase',
+  'getTestDatabase',
+  'resolveNonHttpD1Binding',
+  'setTestDatabase'
+])
 
 function sourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -48,10 +82,6 @@ function sourceFiles(directory: string): string[] {
 
 function relativePath(file: string) {
   return relative(repositoryRoot, file).split(sep).join('/')
-}
-
-function isAllowlisted(file: string) {
-  return nonHttpAllowlist.has(relativePath(file))
 }
 
 function databaseModuleKind(file: string, moduleSpecifier: string) {
@@ -87,54 +117,93 @@ function databaseModuleKind(file: string, moduleSpecifier: string) {
   return undefined
 }
 
+function namedModuleBindings(node: ts.Node) {
+  if (ts.isImportDeclaration(node)) {
+    const bindings = node.importClause?.namedBindings
+    if (!bindings || ts.isNamespaceImport(bindings) || node.importClause?.name) {
+      return undefined
+    }
+
+    return bindings.elements.map(element => element.propertyName?.text ?? element.name.text)
+  }
+
+  if (ts.isExportDeclaration(node)) {
+    if (!node.exportClause || !ts.isNamedExports(node.exportClause)) {
+      return undefined
+    }
+
+    return node.exportClause.elements.map(element => element.propertyName?.text ?? element.name.text)
+  }
+
+  return undefined
+}
+
+function inspectImportedModule(
+  file: string,
+  moduleSpecifier: string,
+  node: ts.Node,
+  violations: string[]
+) {
+  const kind = databaseModuleKind(file, moduleSpecifier)
+  const path = relativePath(file)
+
+  if (kind === 'non-http') {
+    const allowedNames = explicitNonHttpImporters.get(path)
+    const names = namedModuleBindings(node)
+
+    if (!allowedNames) {
+      violations.push(`${path} imports the non-HTTP database API`)
+      return
+    }
+
+    if (!names) {
+      violations.push(`${path} uses a broad non-HTTP database import`)
+      return
+    }
+
+    for (const name of names) {
+      if (!allowedNames.has(name)) {
+        violations.push(`${path} imports non-HTTP database API ${name}`)
+      }
+    }
+    return
+  }
+
+  if (kind === 'drizzle-d1') {
+    if (path !== nonHttpImplementation) {
+      violations.push(`${path} creates a raw Drizzle D1 client`)
+    }
+    return
+  }
+
+  if (kind !== 'client') {
+    return
+  }
+
+  const names = namedModuleBindings(node)
+  if (!names) {
+    violations.push(`${path} uses a broad database client import`)
+    return
+  }
+
+  for (const name of names) {
+    if (forbiddenClientExports.has(name)) {
+      violations.push(`${path} imports forbidden client API ${name}`)
+    }
+  }
+}
+
 function importBoundaryViolations(file: string, source: string) {
   const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.getScriptKindFromFileName(file))
   const violations: string[] = []
 
-  const inspectModule = (moduleSpecifier: string, node: ts.Node) => {
-    const kind = databaseModuleKind(file, moduleSpecifier)
-
-    if (kind === 'non-http' && !isAllowlisted(file)) {
-      violations.push(`${relativePath(file)} imports the non-HTTP database API`)
-      return
-    }
-
-    if (kind === 'drizzle-d1' && !isAllowlisted(file)) {
-      violations.push(`${relativePath(file)} creates a raw Drizzle D1 client`)
-      return
-    }
-
-    if (kind !== 'client' || isAllowlisted(file)) {
-      return
-    }
-
-    if (ts.isImportDeclaration(node)) {
-      const bindings = node.importClause?.namedBindings
-
-      if (node.importClause?.name || !bindings || ts.isNamespaceImport(bindings)) {
-        violations.push(`${relativePath(file)} uses a broad database client import`)
-        return
-      }
-
-      for (const element of bindings.elements) {
-        if (forbiddenClientExports.has(element.propertyName?.text ?? element.name.text)) {
-          violations.push(`${relativePath(file)} imports forbidden client API ${element.propertyName?.text ?? element.name.text}`)
-        }
-      }
-    } else if (ts.isExportDeclaration(node)) {
-      violations.push(`${relativePath(file)} re-exports the database client`)
-    } else {
-      violations.push(`${relativePath(file)} dynamically accesses the database client`)
-    }
-  }
-
   const visit = (node: ts.Node) => {
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
-      inspectModule(node.moduleSpecifier.text, node)
+      inspectImportedModule(file, node.moduleSpecifier.text, node, violations)
     }
 
     if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
-      inspectModule(node.moduleSpecifier.text, node)
+      inspectImportedModule(file, node.moduleSpecifier.text, node, violations)
     }
 
     if (ts.isCallExpression(node) && node.arguments.length > 0) {
@@ -143,7 +212,7 @@ function importBoundaryViolations(file: string, source: string) {
         const isDynamicImport = node.expression.kind === ts.SyntaxKind.ImportKeyword
         const isRequire = ts.isIdentifier(node.expression) && node.expression.text === 'require'
         if (isDynamicImport || isRequire) {
-          inspectModule(moduleArgument.text, node)
+          inspectImportedModule(file, moduleArgument.text, node, violations)
         }
       }
     }
@@ -155,18 +224,138 @@ function importBoundaryViolations(file: string, source: string) {
   return violations
 }
 
+function moduleImportsKind(file: string, source: string, expectedKind: 'client' | 'non-http' | 'drizzle-d1') {
+  const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.getScriptKindFromFileName(file))
+  let found = false
+
+  const visit = (node: ts.Node) => {
+    if (found) {
+      return
+    }
+
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+      found = databaseModuleKind(file, node.moduleSpecifier.text) === expectedKind
+    } else if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+      found = databaseModuleKind(file, node.moduleSpecifier.text) === expectedKind
+    }
+
+    ts.forEachChild(node, visit)
+  }
+
+  visit(sourceFile)
+  return found
+}
+
+function isBackgroundHookCall(node: ts.Node) {
+  let current: ts.Node | undefined = node.parent
+
+  while (current) {
+    if (ts.isCallExpression(current)
+      && ts.isPropertyAccessExpression(current.expression)
+      && current.expression.name.text === 'hook'
+      && current.arguments[0]
+      && ts.isStringLiteral(current.arguments[0])
+      && /^cloudflare:(?:queue|scheduled)$/u.test(current.arguments[0].text)) {
+      return true
+    }
+    current = current.parent
+  }
+
+  return false
+}
+
+function callSiteViolations(file: string, source: string) {
+  const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.getScriptKindFromFileName(file))
+  const path = relativePath(file)
+  const violations: string[] = []
+
+  const visit = (node: ts.Node) => {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+      const name = node.expression.text
+      if (dangerousCallNames.has(name)) {
+        if (name === 'getTestDatabase' && path === 'server/database/client.ts') {
+          // The HTTP accessor only consults this map inside its explicit
+          // non-HTTP test/infrastructure branch; the source assertion below
+          // keeps that guard visible.
+        } else if ((name === 'createNonHttpDatabase' || name === 'resolveNonHttpD1Binding')
+          && explicitNonHttpImporters.has(path)
+          && path !== 'server/database/client.ts'
+          && isBackgroundHookCall(node)) {
+          // Queue and scheduler plugins are the only production construction
+          // boundaries and each call must remain inside its Cloudflare hook.
+        } else {
+          violations.push(`${path} calls forbidden database API ${name}`)
+        }
+      }
+    }
+
+    ts.forEachChild(node, visit)
+  }
+
+  visit(sourceFile)
+  return violations
+}
+
+function unexpectedForbiddenIdentifiers(file: string, source: string) {
+  const path = relativePath(file)
+  if (path === nonHttpImplementation) {
+    return []
+  }
+
+  const allowed = path === 'server/database/client.ts'
+    ? new Set(['getTestDatabase'])
+    : explicitNonHttpImporters.has(path)
+      ? new Set(['createNonHttpDatabase', 'resolveNonHttpD1Binding'])
+      : new Set<string>()
+
+  return [...source.matchAll(forbiddenIdentifiers)]
+    .map(match => match[0])
+    .filter(identifier => !allowed.has(identifier))
+    .map(identifier => `${path} uses a forbidden database API ${identifier}`)
+}
+
 describe('HTTP database boundary', () => {
-  test('covers every production server module and keeps raw database APIs allowlisted', () => {
+  test('covers every production server module with exact database import and call-site boundaries', () => {
     const violations = sourceFiles(serverRoot).flatMap((file) => {
       const source = readFileSync(file, 'utf8')
-      const fileViolations = isAllowlisted(file)
-        ? []
-        : [
-            ...(forbiddenIdentifiers.test(source) ? [`${relativePath(file)} uses a forbidden database API`] : []),
-            ...(forbiddenContextFields.test(source) ? [`${relativePath(file)} exposes database state through context`] : [])
-          ]
+      const path = relativePath(file)
+      const isInfrastructureBoundary = infrastructureBoundaryFiles.has(path)
+      return [
+        ...(isInfrastructureBoundary ? [] : unexpectedForbiddenIdentifiers(file, source)),
+        ...(isInfrastructureBoundary || !forbiddenContextFields.test(source)
+          ? []
+          : [`${path} exposes database state through context`]),
+        ...importBoundaryViolations(file, source),
+        ...callSiteViolations(file, source)
+      ]
+    })
 
-      return [...fileViolations, ...importBoundaryViolations(file, source)]
+    expect(violations).toEqual([])
+  })
+
+  test('covers the whole production import graph with only explicit construction boundaries', () => {
+    const nonHttpImporters = sourceFiles(serverRoot)
+      .filter(file => moduleImportsKind(file, readFileSync(file, 'utf8'), 'non-http'))
+      .map(relativePath)
+      .sort()
+
+    expect(nonHttpImporters).toEqual([
+      ...explicitNonHttpImporters.keys()
+    ].sort())
+  })
+
+  test('keeps non-HTTP construction out of HTTP-facing source roots', () => {
+    const violations = sourceFiles(serverRoot).flatMap((file) => {
+      const path = relativePath(file)
+      if (infrastructureBoundaryFiles.has(path)
+        || !httpSourceRoots.some(root => path.startsWith(root))) {
+        return []
+      }
+
+      const source = readFileSync(file, 'utf8')
+      return moduleImportsKind(file, source, 'non-http')
+        ? [`${path} reaches the non-HTTP database construction module`]
+        : []
     })
 
     expect(violations).toEqual([])
@@ -187,20 +376,24 @@ describe('HTTP database boundary', () => {
     expect(clientSource).not.toMatch(/export\s+(?:interface|type)\s+(?:AppDatabaseAccess|DatabaseConsistency)/u)
     expect(clientSource).not.toMatch(/export\s+type\s*\{[^}]*\bD1Database(?:Binding|ClientBinding)\b[^}]*\}/su)
     expect(clientSource).not.toMatch(/export\s+(?:interface|type)\s+D1DatabaseSessionBinding/u)
+    expect(clientSource).toMatch(/if\s*\(!isHttpRequest\(event\)\)\s*\{[\s\S]*?getTestDatabase\(event\)/u)
   })
 
-  test('keeps HTTP recovery request-scoped and non-HTTP construction in entrypoints', () => {
-    const talkMiddlewareSource = readFileSync(join(serverRoot, 'middleware/98.talk-proposal-decision-email-startup-recovery.ts'), 'utf8')
-    const lumaMiddlewareSource = readFileSync(join(serverRoot, 'middleware/99.application-luma-sync-startup-recovery.ts'), 'utf8')
+  test('runs recovery only from explicit background entrypoints', () => {
+    const middlewareRecoveryFiles = sourceFiles(join(serverRoot, 'middleware'))
+      .filter(file => /startup-recovery/u.test(basename(file)))
+    expect(middlewareRecoveryFiles).toEqual([])
+
+    const talkDomainSource = readFileSync(join(serverRoot, 'domains/talk-proposals/email-queue.ts'), 'utf8')
+    const lumaDomainSource = readFileSync(join(serverRoot, 'domains/applications/luma-sync-queue.ts'), 'utf8')
+    expect(`${talkDomainSource}\n${lumaDomainSource}`).not.toMatch(/(?:startupRecoveryPromise|schedule.*StartupRecovery|trigger:\s*['"]startup['"])/u)
+
     const talkPluginSource = readFileSync(join(serverRoot, 'plugins/talk-proposal-decision-email-queue.ts'), 'utf8')
     const lumaPluginSource = readFileSync(join(serverRoot, 'plugins/application-luma-sync-queue.ts'), 'utf8')
-    const outcomePluginSource = readFileSync(join(serverRoot, 'plugins/event-outcome-email-queue.ts'), 'utf8')
-
-    expect(talkMiddlewareSource).toMatch(/scheduleTalkProposalDecisionEmailStartupRecovery\(\{\s*database:\s*getDatabase\(event\)/su)
-    expect(lumaMiddlewareSource).toMatch(/scheduleApplicationLumaSyncStartupRecovery\(\{\s*database:\s*getDatabase\(event\)/su)
-    expect(talkPluginSource).toMatch(/const database = createNonHttpDatabase\([\s\S]*?\)\s*await reconcilePendingTalkProposalDecisionEmails\(\{\s*database,/u)
-    expect(lumaPluginSource).toMatch(/const database = createNonHttpDatabase\([\s\S]*?\)\s*await processApplicationLumaSyncQueueBatch\([^,]+,\s*\{\s*database,/u)
-    expect(outcomePluginSource).toMatch(/const database = createNonHttpDatabase\([\s\S]*?\)\s*await processEventOutcomeEmailQueueBatch\([^,]+,\s*\{\s*database,/u)
+    expect(talkPluginSource).toMatch(/hooks\.hook\(['"]cloudflare:scheduled['"][\s\S]*?createNonHttpDatabase\([\s\S]*?reconcilePendingTalkProposalDecisionEmails\([\s\S]*?trigger:\s*['"]scheduled['"]/u)
+    expect(lumaPluginSource).toMatch(/hooks\.hook\(['"]cloudflare:scheduled['"][\s\S]*?createNonHttpDatabase\([\s\S]*?recoverStaleApplicationLumaSyncMessages\(/u)
+    expect(talkPluginSource).not.toMatch(/defineEventHandler|eventHandler/u)
+    expect(lumaPluginSource).not.toMatch(/defineEventHandler|eventHandler/u)
   })
 
   test('has exactly one Nitro beforeResponse bookmark owner', () => {

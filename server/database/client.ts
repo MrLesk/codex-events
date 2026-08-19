@@ -2,9 +2,8 @@ import type { H3Event } from 'h3'
 import { getRequestHeader, setResponseHeader } from 'h3'
 
 import {
-  createNonHttpDatabase,
+  createRequestDatabase,
   getTestDatabase,
-  resolveNonHttpD1Binding,
   type AppDatabase,
   type AppDatabaseBatch,
   type D1DatabaseBinding,
@@ -90,7 +89,7 @@ function createStrongDatabaseAccess(
   const session = binding.withSession(sessionStart)
 
   return {
-    database: createNonHttpDatabase(createSessionDatabaseBinding(session)),
+    database: createRequestDatabase(createSessionDatabaseBinding(session)),
     session,
     consistency: 'strong',
     sessionStart
@@ -106,7 +105,19 @@ function getConfiguredBindingName(event: H3Event) {
 
 function getD1Binding(event: H3Event) {
   const cloudflareEnv = event.context.cloudflare?.env as Record<string, unknown> | undefined
-  return resolveNonHttpD1Binding(getConfiguredBindingName(event), cloudflareEnv)
+  const bindingName = getConfiguredBindingName(event)
+  const binding = cloudflareEnv?.[bindingName]
+
+  if (!binding) {
+    throw new ApiError({
+      statusCode: 500,
+      code: 'database_binding_missing',
+      message: `The Cloudflare D1 binding "${bindingName}" is not available on this request.`,
+      details: { binding: bindingName }
+    })
+  }
+
+  return binding as D1DatabaseBinding
 }
 
 function isHttpRequest(event: H3Event) {

@@ -116,6 +116,144 @@ describe('TestD1Database', () => {
     expect(d1Database.getLatestBookmark()).toBe(writeBookmark)
   })
 
+  test('executes mixed write/read statements atomically on one request session', async () => {
+    const d1Database = createTestD1Database()
+    databases.push(d1Database)
+    const session = d1Database.withSession('first-primary')
+
+    const results = await session.batch([
+      session.prepare(`
+        insert into users (id, auth0_subject, email, display_name)
+        values (?, ?, ?, ?)
+      `).bind(
+        'batch_user',
+        'auth0|batch_user',
+        'batch@example.com',
+        'Batch User'
+      ),
+      session.prepare('select id from users where id = ?').bind('batch_user')
+    ])
+
+    const readResult = results[1] as { results: Array<{ id: string }> }
+    expect(results[0]?.meta.changes).toBe(1)
+    expect(readResult.results).toEqual([{ id: 'batch_user' }])
+    expect(session.getBookmark()).toBe('test-bookmark-1')
+    expect(d1Database.queries).toEqual([
+      expect.objectContaining({ sessionId: d1Database.sessions[0]?.id, isWrite: true }),
+      expect.objectContaining({ sessionId: d1Database.sessions[0]?.id, isWrite: false })
+    ])
+  })
+
+  test('rolls back a failed session batch, including its bookmark and query accounting', async () => {
+    const d1Database = createTestD1Database()
+    databases.push(d1Database)
+    await d1Database.exec(`
+      insert into users (id, auth0_subject, email, display_name)
+      values ('existing_batch_user', 'auth0|existing_batch_user', 'existing-batch@example.com', 'Existing Batch User')
+    `)
+
+    const session = d1Database.withSession('first-primary')
+    await expect(session.batch([
+      session.prepare(`
+        insert into users (id, auth0_subject, email, display_name)
+        values ('rolled_back_batch_user', 'auth0|rolled_back_batch_user', 'rolled-back@example.com', 'Rolled Back User')
+      `),
+      session.prepare(`
+        insert into users (id, auth0_subject, email, display_name)
+        values ('existing_batch_user', 'auth0|duplicate_batch_user', 'duplicate-batch@example.com', 'Duplicate Batch User')
+      `)
+    ])).rejects.toThrow(/UNIQUE constraint failed/u)
+
+    expect(session.getBookmark()).toBeNull()
+    expect(d1Database.getLatestBookmark()).toBe('test-bookmark-1')
+    expect(d1Database.queries).toEqual([])
+    expect(d1Database.infrastructureQueries).toHaveLength(1)
+
+    const verification = createNonHttpDatabase(d1Database.withSession('first-primary') as never)
+    await expect(verification.query.users.findFirst({
+      where: eq(users.id, 'rolled_back_batch_user')
+    })).resolves.toBeUndefined()
+    await expect(verification.query.users.findFirst({
+      where: eq(users.id, 'existing_batch_user')
+    })).resolves.toMatchObject({ id: 'existing_batch_user' })
+  })
+
+  test('rolls back a failed direct binding batch and its infrastructure bookmark state', async () => {
+    const d1Database = createTestD1Database()
+    databases.push(d1Database)
+    await d1Database.exec(`
+      insert into users (id, auth0_subject, email, display_name)
+      values ('direct_existing_user', 'auth0|direct_existing_user', 'direct-existing@example.com', 'Direct Existing User')
+    `)
+
+    await expect(d1Database.batch([
+      d1Database.prepare(`
+        insert into users (id, auth0_subject, email, display_name)
+        values ('direct_rolled_back_user', 'auth0|direct_rolled_back_user', 'direct-rolled-back@example.com', 'Direct Rolled Back User')
+      `),
+      d1Database.prepare(`
+        insert into users (id, auth0_subject, email, display_name)
+        values ('direct_existing_user', 'auth0|direct_duplicate_user', 'direct-duplicate@example.com', 'Direct Duplicate User')
+      `)
+    ])).rejects.toThrow(/UNIQUE constraint failed/u)
+
+    expect(d1Database.getLatestBookmark()).toBe('test-bookmark-1')
+    expect(d1Database.infrastructureQueries).toEqual([
+      expect.objectContaining({
+        isWrite: true,
+        sql: expect.stringContaining('insert into users')
+      })
+    ])
+
+    const verification = createNonHttpDatabase(d1Database.withSession('first-primary') as never)
+    await expect(verification.query.users.findFirst({
+      where: eq(users.id, 'direct_rolled_back_user')
+    })).resolves.toBeUndefined()
+  })
+
+  test('restores the pre-batch replica rows and version-visible accounting after failure', async () => {
+    const d1Database = createTestD1Database({ replicaStale: true })
+    databases.push(d1Database)
+    await d1Database.exec(`
+      insert into users (id, auth0_subject, email, display_name)
+      values ('replica_existing_user', 'auth0|replica_existing_user', 'replica-existing@example.com', 'Replica Existing User')
+    `)
+
+    const existingBookmark = d1Database.getLatestBookmark()
+    const replicaAnchor = d1Database.withSession(existingBookmark ?? undefined)
+    await expect(replicaAnchor.prepare('select id from users where id = ?').bind('replica_existing_user').all())
+      .resolves.toMatchObject({ results: [{ id: 'replica_existing_user' }] })
+
+    const beforeFailure = {
+      queries: d1Database.queries,
+      infrastructureQueries: d1Database.infrastructureQueries,
+      sessions: d1Database.sessions,
+      sessionStarts: d1Database.sessionStarts,
+      bookmark: d1Database.getLatestBookmark()
+    }
+
+    await expect(d1Database.batch([
+      d1Database.prepare(`
+        insert into users (id, auth0_subject, email, display_name)
+        values ('replica_rolled_back_user', 'auth0|replica_rolled_back_user', 'replica-rolled-back@example.com', 'Replica Rolled Back User')
+      `),
+      d1Database.prepare(`
+        insert into users (id, auth0_subject, email, display_name)
+        values ('replica_existing_user', 'auth0|replica_duplicate_user', 'replica-duplicate@example.com', 'Replica Duplicate User')
+      `)
+    ])).rejects.toThrow(/UNIQUE constraint failed/u)
+
+    expect(d1Database.queries).toEqual(beforeFailure.queries)
+    expect(d1Database.infrastructureQueries).toEqual(beforeFailure.infrastructureQueries)
+    expect(d1Database.sessions).toEqual(beforeFailure.sessions)
+    expect(d1Database.sessionStarts).toEqual(beforeFailure.sessionStarts)
+    expect(d1Database.getLatestBookmark()).toBe(beforeFailure.bookmark)
+
+    const unbookmarkedReplicaRead = d1Database.withSession('first-unconstrained')
+    await expect(unbookmarkedReplicaRead.prepare('select id from users order by id').all())
+      .resolves.toMatchObject({ results: [{ id: 'replica_existing_user' }] })
+  })
+
   test('classifies the simplified-claiming writable CTE as a primary write', async () => {
     const d1Database = createTestD1Database({ replicaStale: true })
     databases.push(d1Database)

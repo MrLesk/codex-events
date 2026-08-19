@@ -2,7 +2,8 @@ import { createNonHttpDatabase, resolveNonHttpD1Binding } from '#server/database
 import {
   defaultApplicationLumaSyncQueueName,
   defaultApplicationLumaSyncRetryDelaySeconds,
-  processApplicationLumaSyncQueueBatch
+  processApplicationLumaSyncQueueBatch,
+  recoverStaleApplicationLumaSyncMessages
 } from '#server/domains/applications/luma-sync-queue'
 import { defaultApplicationReviewEmailQueueName } from '#server/domains/applications/review-email-queue'
 import { defaultEventOutcomeEmailQueueName } from '#server/domains/outcomes/email-queue'
@@ -10,6 +11,17 @@ import { defaultTalkProposalDecisionEmailQueueName } from '#server/domains/talk-
 import { classifyCloudflareQueueBatch, retryCloudflareQueueBatch } from '#server/utils/cloudflare-queue-routing'
 
 export default defineNitroPlugin((nitroApp) => {
+  nitroApp.hooks.hook('cloudflare:scheduled', async ({ env }) => {
+    const runtimeConfig = useRuntimeConfig()
+    const cloudflareEnv = env as Record<string, unknown> | undefined
+    const database = createNonHttpDatabase(resolveNonHttpD1Binding(runtimeConfig.database?.binding ?? 'DB', cloudflareEnv))
+    await recoverStaleApplicationLumaSyncMessages({
+      database,
+      runtimeConfig,
+      cloudflareEnv
+    })
+  })
+
   nitroApp.hooks.hook('cloudflare:queue', async ({ batch, env }) => {
     const runtimeConfig = useRuntimeConfig()
     const expectedQueueName = runtimeConfig.luma?.queueName?.trim() || defaultApplicationLumaSyncQueueName

@@ -19,9 +19,7 @@ import {
   processApplicationLumaSyncQueueBatch,
   processApplicationLumaSyncQueueMessage,
   recoverStaleApplicationLumaSyncMessages,
-  resetApplicationLumaSyncStartupRecoveryForTest,
-  resolveLumaEmailFromUsername,
-  scheduleApplicationLumaSyncStartupRecovery
+  resolveLumaEmailFromUsername
 } from '../../../../../server/domains/applications/luma-sync-queue'
 import { createTestD1Database } from '../../../../support/backend/fake-d1'
 
@@ -193,7 +191,6 @@ describe('application luma sync queue utilities', () => {
       await d1Databases.pop()?.close()
     }
 
-    resetApplicationLumaSyncStartupRecoveryForTest()
     vi.unstubAllGlobals()
   })
 
@@ -653,7 +650,7 @@ describe('application luma sync queue utilities', () => {
     consoleError.mockRestore()
   })
 
-  test('startup recovery re-enqueues stale not_synced Luma applications', async () => {
+  test('scheduled recovery re-enqueues stale not_synced Luma applications', async () => {
     const { d1Database, database } = await seedLumaSyncContext()
     d1Databases.push(d1Database)
     const send = vi.fn(async () => undefined)
@@ -700,14 +697,14 @@ describe('application luma sync queue utilities', () => {
         action: 'user_application.luma_sync_recovery_enqueued',
         metadata: expect.objectContaining({
           decision: 'approved',
-          recoveryTrigger: 'startup',
+          recoveryTrigger: 'scheduled',
           queueName: 'codex-events-dev-application-luma-sync'
         })
       })
     ]))
   })
 
-  test('startup recovery re-enqueues stale withdrawn applications as rejected Luma syncs', async () => {
+  test('scheduled recovery re-enqueues stale withdrawn applications as rejected Luma syncs', async () => {
     const { d1Database, database } = await seedLumaSyncContext({
       applicationStatus: 'withdrawn'
     })
@@ -750,42 +747,11 @@ describe('application luma sync queue utilities', () => {
         action: 'user_application.luma_sync_recovery_enqueued',
         metadata: expect.objectContaining({
           decision: 'rejected',
-          recoveryTrigger: 'startup',
+          recoveryTrigger: 'scheduled',
           queueName: 'codex-events-dev-application-luma-sync'
         })
       })
     ]))
-  })
-
-  test('startup recovery only schedules one re-enqueue pass per isolate', async () => {
-    const { d1Database, database } = await seedLumaSyncContext()
-    d1Databases.push(d1Database)
-    const send = vi.fn(async () => undefined)
-    const options = {
-      database,
-      cloudflareEnv: {
-        APPLICATION_LUMA_SYNC_QUEUE: { send }
-      },
-      runtimeConfig: {
-        luma: {
-          queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
-          queueName: 'codex-events-dev-application-luma-sync',
-          retryDelaySeconds: 90
-        }
-      }
-    }
-
-    const firstPass = scheduleApplicationLumaSyncStartupRecovery(options)
-    const secondPass = scheduleApplicationLumaSyncStartupRecovery(options)
-
-    expect(firstPass).toBe(secondPass)
-    await expect(firstPass).resolves.toEqual({
-      status: 'recovered',
-      reason: 'stale_applications_reenqueued',
-      recoveredCount: 1,
-      applicationIds: ['application_1']
-    })
-    expect(send).toHaveBeenCalledTimes(1)
   })
 
   test('queue batch processing skips unrelated queues', async () => {

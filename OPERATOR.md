@@ -245,16 +245,17 @@ The Meetup Call for talks rollout is additive. Migration
 `0072_talk_proposals.sql` and the Talk proposal decision-email Queue must exist
 before the Worker is deployed. The workflow creates the queue, applies D1
 migrations, deploys the Worker producer, and then reconciles the consumer with
-a 120-second retry delay and up to 10 retries. The generated Worker also runs
-the pending-delivery reconciler every five minutes; each new Worker isolate
-runs the same bounded recovery once at startup.
+a 120-second retry delay and up to 10 retries. The generated Worker runs the
+pending-delivery reconciler and stale application/Luma recovery from its
+scheduled entrypoint every five minutes; ordinary HTTP requests do not trigger
+recovery.
 
 Monitor this queue and its durable delivery state by proposal ID, event ID,
 deterministic delivery ID, decision, attempt timestamp, lease expiry, and
 delivery outcome. Do not log or export proposal titles, abstracts, links,
 recipient details, or decision messages. A final decision and pending delivery
-remain stored when enqueue fails; startup and scheduled reconciliation publish
-the same delivery without repeating the decision.
+remain stored when enqueue fails; scheduled reconciliation publishes the same
+delivery without repeating the decision.
 
 Cloudflare Queues delivers at least once. The consumer uses an expiring database
 claim so concurrent or already completed duplicate messages do not send again,

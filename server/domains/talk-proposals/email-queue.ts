@@ -44,8 +44,6 @@ type ProcessingOptions = {
   now?: Date
 }
 
-let startupRecoveryPromise: Promise<unknown> | null = null
-
 function configValue(candidate: unknown) {
   const parsed = runtimeConfigSchema.safeParse(candidate)
   return parsed.success ? parsed.data : {}
@@ -99,7 +97,7 @@ async function recordEnqueueAudit(
   database: AppDatabase,
   proposal: typeof talkProposals.$inferSelect,
   outcome: 'enqueued' | 'failed' | 'skipped',
-  trigger: 'decision' | 'startup' | 'scheduled',
+  trigger: 'decision' | 'scheduled',
   reason?: string
 ) {
   await writeAuditLog(database, {
@@ -122,7 +120,7 @@ export async function enqueuePendingTalkProposalDecisionEmail(options: {
   proposalId: string
   runtimeConfig?: unknown
   cloudflareEnv?: Record<string, unknown>
-  trigger: 'decision' | 'startup' | 'scheduled'
+  trigger: 'decision' | 'scheduled'
   now?: Date
 }) {
   const now = options.now ?? new Date()
@@ -436,7 +434,7 @@ export async function reconcilePendingTalkProposalDecisionEmails(options: {
   database: AppDatabase
   runtimeConfig?: unknown
   cloudflareEnv?: Record<string, unknown>
-  trigger: 'startup' | 'scheduled'
+  trigger: 'scheduled'
   now?: Date
 }) {
   const now = options.now ?? new Date()
@@ -478,17 +476,4 @@ export async function reconcilePendingTalkProposalDecisionEmails(options: {
     recoveredCount: outcomes.filter(outcome => outcome.status === 'enqueued').length,
     outcomes
   }
-}
-
-export function scheduleTalkProposalDecisionEmailStartupRecovery(options: {
-  database: AppDatabase
-  runtimeConfig?: unknown
-  cloudflareEnv?: Record<string, unknown>
-}) {
-  startupRecoveryPromise ??= reconcilePendingTalkProposalDecisionEmails({ ...options, trigger: 'startup' })
-  return startupRecoveryPromise
-}
-
-export function resetTalkProposalDecisionEmailStartupRecoveryForTest() {
-  startupRecoveryPromise = null
 }

@@ -16,7 +16,7 @@ import { isEventLumaSyncEnabled } from '#server/domains/applications/luma-config
 export const defaultApplicationLumaSyncQueueBinding = 'APPLICATION_LUMA_SYNC_QUEUE'
 export const defaultApplicationLumaSyncQueueName = 'codex-events-dev-application-luma-sync'
 export const defaultApplicationLumaSyncRetryDelaySeconds = 120
-export const defaultApplicationLumaSyncStartupRecoveryBatchSize = 10
+export const defaultApplicationLumaSyncRecoveryBatchSize = 10
 export const defaultLumaApiBaseUrl = 'https://public-api.luma.com'
 export const defaultLumaProfileBaseUrl = 'https://luma.com'
 export const defaultLumaRequestUserAgent
@@ -77,7 +77,7 @@ export type ApplicationLumaSyncQueueMessageOutcome = {
   reason: string
 }
 
-export type ApplicationLumaSyncStartupRecoveryResult = {
+export type ApplicationLumaSyncRecoveryResult = {
   status: 'recovered' | 'skipped'
   reason: string
   recoveredCount: number
@@ -143,8 +143,6 @@ type RecoverableApplicationRecord
 type DecidedApplicationRecord = typeof userApplications.$inferSelect & {
   status: 'approved' | 'rejected' | 'withdrawn'
 }
-
-let applicationLumaSyncStartupRecoveryPromise: Promise<ApplicationLumaSyncStartupRecoveryResult> | null = null
 
 class RetryableLumaSyncError extends Error {
   constructor(
@@ -1164,7 +1162,7 @@ export async function processApplicationLumaSyncQueueBatch(
   }
 }
 
-function getStartupRecoveryStaleBefore(config: ApplicationLumaSyncRuntimeConfig, now = new Date()) {
+function getRecoveryStaleBefore(config: ApplicationLumaSyncRuntimeConfig, now = new Date()) {
   return new Date(now.getTime() - (getRetryDelaySeconds(config) * 1000)).toISOString()
 }
 
@@ -1175,7 +1173,7 @@ async function listRecoverableLumaSyncApplications(
   const candidates = await database.query.userApplications.findMany({
     where: eq(userApplications.lumaSyncStatus, 'not_synced'),
     orderBy: [asc(userApplications.updatedAt)],
-    limit: defaultApplicationLumaSyncStartupRecoveryBatchSize
+    limit: defaultApplicationLumaSyncRecoveryBatchSize
   })
 
   return candidates.filter((application): application is RecoverableApplicationRecord => {
@@ -1213,10 +1211,10 @@ export async function recoverStaleApplicationLumaSyncMessages(options: {
       reason: `queue_binding_missing:${bindingName}`,
       recoveredCount: 0,
       applicationIds: []
-    } satisfies ApplicationLumaSyncStartupRecoveryResult
+    } satisfies ApplicationLumaSyncRecoveryResult
   }
 
-  const staleBefore = getStartupRecoveryStaleBefore(config)
+  const staleBefore = getRecoveryStaleBefore(config)
   const staleApplications = await listRecoverableLumaSyncApplications(options.database, staleBefore)
 
   if (staleApplications.length === 0) {
@@ -1225,7 +1223,7 @@ export async function recoverStaleApplicationLumaSyncMessages(options: {
       reason: 'no_stale_applications',
       recoveredCount: 0,
       applicationIds: []
-    } satisfies ApplicationLumaSyncStartupRecoveryResult
+    } satisfies ApplicationLumaSyncRecoveryResult
   }
 
   const relatedEvents = await options.database.query.events.findMany({
@@ -1263,7 +1261,7 @@ export async function recoverStaleApplicationLumaSyncMessages(options: {
       createdAt: recoveredAt,
       metadata: {
         decision,
-        recoveryTrigger: 'startup',
+        recoveryTrigger: 'scheduled',
         queueName: getQueueName(config),
         staleBefore
       }
@@ -1278,7 +1276,7 @@ export async function recoverStaleApplicationLumaSyncMessages(options: {
       reason: 'no_recoverable_stale_applications',
       recoveredCount: 0,
       applicationIds: []
-    } satisfies ApplicationLumaSyncStartupRecoveryResult
+    } satisfies ApplicationLumaSyncRecoveryResult
   }
 
   return {
@@ -1286,18 +1284,5 @@ export async function recoverStaleApplicationLumaSyncMessages(options: {
     reason: 'stale_applications_reenqueued',
     recoveredCount: recoveredApplicationIds.length,
     applicationIds: recoveredApplicationIds
-  } satisfies ApplicationLumaSyncStartupRecoveryResult
-}
-
-export function scheduleApplicationLumaSyncStartupRecovery(options: {
-  runtimeConfig?: unknown
-  cloudflareEnv?: Record<string, unknown>
-  database: AppDatabase
-}) {
-  applicationLumaSyncStartupRecoveryPromise ??= recoverStaleApplicationLumaSyncMessages(options)
-  return applicationLumaSyncStartupRecoveryPromise
-}
-
-export function resetApplicationLumaSyncStartupRecoveryForTest() {
-  applicationLumaSyncStartupRecoveryPromise = null
+  } satisfies ApplicationLumaSyncRecoveryResult
 }

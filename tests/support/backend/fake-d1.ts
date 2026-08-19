@@ -252,6 +252,20 @@ interface TestD1QueryTarget {
   version: number
 }
 
+interface TestD1DatabaseSnapshot {
+  primary: Uint8Array
+  replica: Uint8Array
+  replicaVersion: number
+  databaseVersion: number
+  knownBookmarks: Map<string, number>
+  sessionHistory: TestD1SessionRecord[]
+  queryHistory: TestD1QueryRecord[]
+  infrastructureQueryHistory: TestD1QueryRecord[]
+  sessionStartHistory: Array<string | undefined>
+  nextSessionId: number
+  latestBookmark: string | null
+}
+
 class TestD1PreparedStatement {
   constructor(
     private readonly getTarget: (isRead: boolean) => Promise<TestD1QueryTarget>,
@@ -454,13 +468,28 @@ class TestD1DatabaseSession {
   }
 
   async batch(statements: TestD1PreparedStatement[]) {
-    const results: Array<D1QueryResult<Record<string, unknown>> | D1RunResult> = []
-
-    for (const statement of statements) {
-      results.push(await statement.executeForBatch())
+    const previousState = {
+      bookmark: this.bookmark,
+      minimumVersion: this.minimumVersion,
+      hasWritten: this.hasWritten
     }
 
-    return results
+    try {
+      return await this.database.runAtomicBatch(async () => {
+        const results: Array<D1QueryResult<Record<string, unknown>> | D1RunResult> = []
+
+        for (const statement of statements) {
+          results.push(await statement.executeForBatch())
+        }
+
+        return results
+      })
+    } catch (error) {
+      this.bookmark = previousState.bookmark
+      this.minimumVersion = previousState.minimumVersion
+      this.hasWritten = previousState.hasWritten
+      throw error
+    }
   }
 
   getBookmark() {
@@ -469,7 +498,7 @@ class TestD1DatabaseSession {
 }
 
 export class TestD1Database {
-  private readonly database = createSqlJsDatabase()
+  private database = createSqlJsDatabase()
 
   private readonly ready: Promise<void>
 
@@ -526,13 +555,15 @@ export class TestD1Database {
   }
 
   async batch(statements: TestD1PreparedStatement[]) {
-    const results: Array<D1QueryResult<Record<string, unknown>> | D1RunResult> = []
+    return await this.runAtomicBatch(async () => {
+      const results: Array<D1QueryResult<Record<string, unknown>> | D1RunResult> = []
 
-    for (const statement of statements) {
-      results.push(await statement.executeForBatch())
-    }
+      for (const statement of statements) {
+        results.push(await statement.executeForBatch())
+      }
 
-    return results
+      return results
+    })
   }
 
   withSession(constraintOrBookmark?: string) {
@@ -609,6 +640,20 @@ export class TestD1Database {
     const database = await this.database
     await this.ready
     return database
+  }
+
+  async runAtomicBatch<T>(execute: () => Promise<T>) {
+    // D1 batch() executes statements sequentially but commits them as one
+    // transaction. The fake must restore both SQLite replicas and all
+    // bookmark/query accounting when a later statement fails.
+    const snapshot = await this.snapshotState()
+
+    try {
+      return await execute()
+    } catch (error) {
+      await this.restoreState(snapshot)
+      throw error
+    }
   }
 
   async getSessionQueryTarget(minimumVersion: number, useReplica: boolean): Promise<TestD1QueryTarget> {
@@ -709,6 +754,66 @@ export class TestD1Database {
     }
 
     return version
+  }
+
+  private async snapshotState(): Promise<TestD1DatabaseSnapshot> {
+    const primary = await this.getDatabase()
+    const replica = await this.replicaDatabase
+
+    return {
+      primary: new Uint8Array(primary.export()),
+      replica: new Uint8Array(replica.export()),
+      replicaVersion: this.replicaVersion,
+      databaseVersion: this.databaseVersion,
+      knownBookmarks: new Map(this.knownBookmarks),
+      sessionHistory: this.sessionHistory.map(session => ({ ...session })),
+      queryHistory: this.queryHistory.map(query => ({
+        ...query,
+        parameters: [...query.parameters]
+      })),
+      infrastructureQueryHistory: this.infrastructureQueryHistory.map(query => ({
+        ...query,
+        parameters: [...query.parameters]
+      })),
+      sessionStartHistory: [...this.sessionStartHistory],
+      nextSessionId: this.nextSessionId,
+      latestBookmark: this.latestBookmark
+    }
+  }
+
+  private async restoreState(snapshot: TestD1DatabaseSnapshot) {
+    const primary = await this.getDatabase()
+    const replica = await this.replicaDatabase
+    primary.close()
+    replica.close()
+
+    this.database = createSqlJsDatabase(snapshot.primary)
+    this.replicaDatabase = createSqlJsDatabase(snapshot.replica)
+    await Promise.all([this.database, this.replicaDatabase])
+
+    this.replicaVersion = snapshot.replicaVersion
+    this.databaseVersion = snapshot.databaseVersion
+    this.knownBookmarks.clear()
+    for (const [bookmark, version] of snapshot.knownBookmarks) {
+      this.knownBookmarks.set(bookmark, version)
+    }
+
+    this.sessionHistory.length = 0
+    this.sessionHistory.push(...snapshot.sessionHistory.map(session => ({ ...session })))
+    this.queryHistory.length = 0
+    this.queryHistory.push(...snapshot.queryHistory.map(query => ({
+      ...query,
+      parameters: [...query.parameters]
+    })))
+    this.infrastructureQueryHistory.length = 0
+    this.infrastructureQueryHistory.push(...snapshot.infrastructureQueryHistory.map(query => ({
+      ...query,
+      parameters: [...query.parameters]
+    })))
+    this.sessionStartHistory.length = 0
+    this.sessionStartHistory.push(...snapshot.sessionStartHistory)
+    this.nextSessionId = snapshot.nextSessionId
+    this.latestBookmark = snapshot.latestBookmark
   }
 }
 
