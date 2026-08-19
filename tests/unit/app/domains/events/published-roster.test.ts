@@ -14,6 +14,8 @@ import {
 } from '../../../../../app/domains/events/published-roster'
 
 describe('published event roster helpers', () => {
+  const signal = new AbortController().signal
+
   test('returns public social links in the published card order', () => {
     expect(getPublishedEventRosterLinks({
       id: 'user_1',
@@ -127,8 +129,9 @@ describe('published event roster helpers', () => {
   })
 
   test('loads the published roster members through the provided request function', async () => {
-    const request = async (path: string) => {
+    const request = async (path: string, requestSignal: AbortSignal) => {
       expect(path).toBe('/api/events/event_1/judges')
+      expect(requestSignal).toBe(signal)
 
       return {
         data: [
@@ -149,7 +152,7 @@ describe('published event roster helpers', () => {
     await expect(loadPublishedEventRoster(request, {
       eventId: 'event_1',
       role: 'judge'
-    })).resolves.toEqual({
+    }, signal)).resolves.toEqual({
       members: [
         {
           id: 'user_1',
@@ -167,7 +170,7 @@ describe('published event roster helpers', () => {
   })
 
   test('returns an empty roster state when the published roster request fails', async () => {
-    const request = async () => {
+    const request = async (_path: string, _requestSignal: AbortSignal) => {
       throw {
         data: {
           error: {
@@ -181,7 +184,7 @@ describe('published event roster helpers', () => {
     await expect(loadPublishedEventRoster(request, {
       eventId: 'event_1',
       role: 'judge'
-    })).resolves.toEqual({
+    }, signal)).resolves.toEqual({
       members: [],
       errorMessage: 'Judge roster unavailable right now.'
     })

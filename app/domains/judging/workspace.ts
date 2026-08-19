@@ -385,11 +385,17 @@ export async function listAllVisibleEvents(
     const reachedLastPage = pageEvents.length < pageSize
 
     if (pageEvents.length === 0 || reachedKnownTotal || reachedLastPage) {
-      return [...collectedEvents.values()]
+      break
     }
 
     page += 1
   }
+
+  if (signal) {
+    throwIfAborted(signal)
+  }
+
+  return [...collectedEvents.values()]
 }
 
 export function sortJudgeAssignments(assignments: JudgeAssignmentDetail[]) {

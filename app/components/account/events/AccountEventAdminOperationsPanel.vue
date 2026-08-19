@@ -40,6 +40,8 @@ import { getCurrentLifecycleControl } from '~/domains/events/lifecycle-controls'
 import { shouldShowApprovedParticipantAttendanceSummary } from '~/domains/applications/admin-application-record'
 import { buildPitchReviewCoverageEntries } from '~/domains/judging/admin-oversight'
 import { formatTimestamp } from '~/lib/date-formatting'
+import { isAbortError, throwIfAborted } from '~/lib/request-cancellation'
+import { useAbortableRequest } from '~/composables/useAbortableRequest'
 import { useApiClient, useApiFetch } from '~/composables/useApiClient'
 import { useApiData } from '~/composables/useApiData'
 
@@ -83,6 +85,7 @@ const workspace = useAdminEventOperationsWorkspace(eventId, {
   loadLifecycleData: showLifecycleSection
 })
 const apiFetch = useApiClient()
+const requests = useAbortableRequest()
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 type ApplyStagedApplicationDecisionsResponse = ApiDataResponse<{
   appliedCount: number
@@ -236,22 +239,29 @@ async function loadApplications() {
 
   applicationsStatus.value = 'pending'
   applicationsErrorMessage.value = ''
+  const signal = requests.createSignal('applications')
 
   try {
     applications.value = await listAllPaginatedItems(
-      async (page, pageSize) => await apiFetch<ApiListResponse<AdminApplicationRecord>>(
+      async (page, pageSize, requestSignal) => await apiFetch<ApiListResponse<AdminApplicationRecord>>(
         `/api/events/${eventId.value}/applications`,
         {
           query: {
             page,
             page_size: pageSize
-          }
+          },
+          signal: requestSignal
         }
       ),
-      100
+      100,
+      signal
     )
     applicationsStatus.value = 'success'
   } catch (error) {
+    if (isAbortError(error, signal)) {
+      return
+    }
+
     applications.value = []
     applicationsStatus.value = 'error'
     applicationsErrorMessage.value = toSectionErrorMessage(
@@ -1499,15 +1509,22 @@ async function loadShortlist() {
 
   shortlistStatus.value = 'pending'
   shortlistErrorMessage.value = ''
+  const signal = requests.createSignal('shortlist')
 
   try {
     const response = await apiFetch<ApiListResponse<ShortlistEntry>>(
-      `/api/events/${eventId.value}/shortlist`
+      `/api/events/${eventId.value}/shortlist`,
+      { signal }
     )
+    throwIfAborted(signal)
     shortlistEntries.value = response.data
     shortlistHasSavedSelection.value = response.meta?.hasSavedShortlistSelection === true
     shortlistStatus.value = 'success'
   } catch (error) {
+    if (isAbortError(error, signal)) {
+      return
+    }
+
     shortlistEntries.value = []
     shortlistHasSavedSelection.value = false
     shortlistStatus.value = 'error'
@@ -1603,14 +1620,21 @@ async function loadFinalDeliberation() {
   finalDeliberationErrorMessage.value = ''
   finalDeliberationDraftOrderedSubmissionIds.value = []
   finalDeliberationHasDraftChanges.value = false
+  const signal = requests.createSignal('final-deliberation')
 
   try {
     const response = await apiFetch<ApiDataResponse<FinalDeliberationView>>(
-      `/api/events/${eventId.value}/final-deliberation`
+      `/api/events/${eventId.value}/final-deliberation`,
+      { signal }
     )
+    throwIfAborted(signal)
     finalDeliberation.value = response.data
     finalDeliberationStatus.value = 'success'
   } catch (error) {
+    if (isAbortError(error, signal)) {
+      return
+    }
+
     finalDeliberation.value = null
     finalDeliberationStatus.value = 'error'
     finalDeliberationErrorMessage.value = toSectionErrorMessage(
@@ -1638,14 +1662,21 @@ async function loadWinners() {
 
   winnersStatus.value = 'pending'
   winnersErrorMessage.value = ''
+  const signal = requests.createSignal('winners')
 
   try {
     const response = await apiFetch<ApiListResponse<WinnerEntry>>(
-      `/api/events/${eventId.value}/winners`
+      `/api/events/${eventId.value}/winners`,
+      { signal }
     )
+    throwIfAborted(signal)
     winners.value = response.data
     winnersStatus.value = 'success'
   } catch (error) {
+    if (isAbortError(error, signal)) {
+      return
+    }
+
     winners.value = []
     winnersStatus.value = 'error'
     winnersErrorMessage.value = toSectionErrorMessage(
@@ -1667,17 +1698,24 @@ async function loadPrizeRedemptions() {
 
   redemptionsStatus.value = 'pending'
   redemptionsErrorMessage.value = ''
+  const signal = requests.createSignal('prize-redemptions')
 
   try {
     const response = await apiFetch<ApiDataResponse<PrizeRedemptionAdminView>>(
-      `/api/events/${eventId.value}/prize-redemptions`
+      `/api/events/${eventId.value}/prize-redemptions`,
+      { signal }
     )
+    throwIfAborted(signal)
     winners.value = response.data.winners
     redemptions.value = response.data.redemptions
     prizeRedemptionBlindRankingEntries.value = response.data.blindRankingEntries
     prizeRedemptionFinalRankingEntries.value = response.data.finalRankingEntries
     redemptionsStatus.value = 'success'
   } catch (error) {
+    if (isAbortError(error, signal)) {
+      return
+    }
+
     redemptions.value = []
     prizeRedemptionBlindRankingEntries.value = []
     prizeRedemptionFinalRankingEntries.value = []

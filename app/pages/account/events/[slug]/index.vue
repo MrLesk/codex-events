@@ -482,11 +482,12 @@ const publishedStaffRosterRequest = await useApiData<PublishedEventRosterLoadSta
     }
 
     return await loadPublishedEventRoster(
-      path => apiFetch<PublicApiListResponse<PublishedEventRosterMember>>(path, { signal }),
+      (path, requestSignal) => apiFetch<PublicApiListResponse<PublishedEventRosterMember>>(path, { signal: requestSignal }),
       {
         eventId: workspaceEventId.value,
         role: 'staff'
-      }
+      },
+      signal
     )
   },
   {
@@ -581,11 +582,12 @@ const [
       }
 
       return await loadPublishedEventRoster(
-        path => apiFetch<PublicApiListResponse<PublishedEventRosterMember>>(path, { signal }),
+        (path, requestSignal) => apiFetch<PublicApiListResponse<PublishedEventRosterMember>>(path, { signal: requestSignal }),
         {
           eventId: workspaceEventId.value,
           role: 'judge'
-        }
+        },
+        signal
       )
     },
     {

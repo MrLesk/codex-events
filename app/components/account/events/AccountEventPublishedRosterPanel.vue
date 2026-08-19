@@ -16,6 +16,7 @@ import type {
 } from '~/domains/events/published-roster'
 
 import { buildApiCacheKey, getApiSubjectKey } from '~/lib/api'
+import { isAbortError } from '~/lib/request-cancellation'
 import {
   buildAssignedRoleRosterRows,
   buildRoleRosterRows,
@@ -30,6 +31,7 @@ import {
   loadPublishedEventRoster
 } from '~/domains/events/published-roster'
 import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
+import { useAbortableRequest } from '~/composables/useAbortableRequest'
 import { useApiClient, useApiFetch } from '~/composables/useApiClient'
 
 const props = defineProps<{
@@ -45,6 +47,7 @@ const props = defineProps<{
 
 const { actor } = useSessionActor()
 const apiFetch = useApiClient()
+const requests = useAbortableRequest()
 const roleCandidatePageSize = 20
 
 const rosterState = ref(props.roster)
@@ -95,7 +98,7 @@ const {
   pageSize: roleCandidatePageSize,
   resetKey: managementEventId,
   enabled: canManageRoster,
-  loadPage: async ({ page, pageSize, search }) => await apiFetch<ApiListResponse<EventRoleUserSummary>>(
+  loadPage: async ({ page, pageSize, search, signal }) => await apiFetch<ApiListResponse<EventRoleUserSummary>>(
     `/api/events/${managementEventId.value}/roles/candidates`,
     {
       query: {
@@ -106,7 +109,8 @@ const {
               search
             }
           : {})
-      }
+      },
+      signal
     }
   )
 })
@@ -231,13 +235,22 @@ function isAdminLikeAssignment(assignment: EventRoleAssignment | null) {
 }
 
 async function refreshPublishedRoster() {
-  rosterState.value = await loadPublishedEventRoster(
-    path => apiFetch<ApiListResponse<PublishedEventRosterMember>>(path),
-    {
-      eventId: props.eventId,
-      role: props.role
+  const signal = requests.createSignal('published-roster')
+
+  try {
+    rosterState.value = await loadPublishedEventRoster(
+      (path, requestSignal) => apiFetch<ApiListResponse<PublishedEventRosterMember>>(path, { signal: requestSignal }),
+      {
+        eventId: props.eventId,
+        role: props.role
+      },
+      signal
+    )
+  } catch (error) {
+    if (!isAbortError(error, signal)) {
+      throw error
     }
-  )
+  }
 }
 
 async function runMutation(

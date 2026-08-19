@@ -10,6 +10,8 @@ import {
 import {
   shouldShowApprovedParticipantAttendanceSummary
 } from '~/domains/applications/admin-application-record'
+import { isAbortError } from '~/lib/request-cancellation'
+import { useAbortableRequest } from '~/composables/useAbortableRequest'
 import { useApiClient, useApiFetch } from '~/composables/useApiClient'
 
 const props = defineProps<{
@@ -20,6 +22,7 @@ type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 
 const eventId = computed(() => props.eventId.trim())
 const apiFetch = useApiClient()
+const requests = useAbortableRequest()
 const applications = ref<AdminApplicationRecord[]>([])
 const applicationsStatus = ref<LoadStatus>('pending')
 const applicationsErrorMessage = ref('')
@@ -42,22 +45,29 @@ const showAttendance = computed(() =>
 async function loadApplications() {
   applicationsStatus.value = 'pending'
   applicationsErrorMessage.value = ''
+  const signal = requests.createSignal('participant-applications')
 
   try {
     applications.value = await listAllPaginatedItems(
-      async (page, pageSize) => await apiFetch<ApiListResponse<AdminApplicationRecord>>(
+      async (page, pageSize, requestSignal) => await apiFetch<ApiListResponse<AdminApplicationRecord>>(
         `/api/events/${eventId.value}/applications`,
         {
           query: {
             page,
             page_size: pageSize
-          }
+          },
+          signal: requestSignal
         }
       ),
-      100
+      100,
+      signal
     )
     applicationsStatus.value = 'success'
   } catch (error) {
+    if (isAbortError(error, signal)) {
+      return
+    }
+
     applications.value = []
     applicationsStatus.value = 'error'
     const message = normalizeApiError(error).message

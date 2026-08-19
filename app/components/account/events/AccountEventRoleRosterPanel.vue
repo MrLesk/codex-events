@@ -50,7 +50,7 @@ const {
 } = useRosterCandidateSearch<EventRoleUserSummary>({
   pageSize: roleCandidatePageSize,
   resetKey: () => `${props.eventId}:${props.role}`,
-  loadPage: async ({ page, pageSize, search }) => await apiFetch<ApiListResponse<EventRoleUserSummary>>(
+  loadPage: async ({ page, pageSize, search, signal }) => await apiFetch<ApiListResponse<EventRoleUserSummary>>(
     `/api/events/${props.eventId}/roles/candidates`,
     {
       query: {
@@ -61,7 +61,8 @@ const {
               search
             }
           : {})
-      }
+      },
+      signal
     }
   )
 })

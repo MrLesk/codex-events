@@ -46,11 +46,17 @@ export async function listAllPaginatedItems<T>(
     const reachedLastPage = pageItems.length < pageSize
 
     if (pageItems.length === 0 || reachedKnownTotal || reachedLastPage) {
-      return items
+      break
     }
 
     page += 1
   }
+
+  if (signal) {
+    throwIfAborted(signal)
+  }
+
+  return items
 }
 
 export function getApiSubjectKey(subject: string | null | undefined) {

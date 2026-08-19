@@ -1,4 +1,5 @@
 import { normalizeApiError } from '~/lib/api'
+import { isAbortError, throwIfAborted } from '~/lib/request-cancellation'
 
 export type PublishedEventRosterRole = 'judge' | 'staff'
 
@@ -52,22 +53,30 @@ export function createEmptyPublishedEventRosterLoadState(): PublishedEventRoster
 }
 
 export async function loadPublishedEventRoster(
-  request: (path: string) => Promise<{ data: PublishedEventRosterMember[] }>,
+  request: (path: string, signal: AbortSignal) => Promise<{ data: PublishedEventRosterMember[] }>,
   input: {
     eventId: string
     role: PublishedEventRosterRole
-  }
+  },
+  signal: AbortSignal
 ): Promise<PublishedEventRosterLoadState> {
   try {
+    throwIfAborted(signal)
     const response = await request(
-      `/api/events/${input.eventId}/${getPublishedEventRosterEndpoint(input.role)}`
+      `/api/events/${input.eventId}/${getPublishedEventRosterEndpoint(input.role)}`,
+      signal
     )
+    throwIfAborted(signal)
 
     return {
       members: response.data,
       errorMessage: null
     }
   } catch (error) {
+    if (isAbortError(error, signal)) {
+      throw error
+    }
+
     return {
       members: [],
       errorMessage: normalizeApiError(error).message

@@ -10,6 +10,8 @@ import {
   talkProposalFormSchema,
   talkProposalStatusLabels
 } from '~/domains/talk-proposals'
+import { isAbortError, throwIfAborted } from '~/lib/request-cancellation'
+import { useAbortableRequest } from '~/composables/useAbortableRequest'
 import { useApiClient } from '~/composables/useApiClient'
 
 const props = defineProps<{
@@ -23,6 +25,7 @@ const emit = defineEmits<{
 }>()
 
 const apiFetch = useApiClient()
+const requests = useAbortableRequest()
 const proposal = ref<TalkProposalRecord | null>(null)
 const pending = ref(true)
 const actionPending = ref(false)
@@ -62,13 +65,24 @@ function applyProposal(nextProposal: TalkProposalRecord | null) {
 async function loadProposal() {
   pending.value = true
   errorMessage.value = ''
+  const signal = requests.createSignal('talk-proposal')
+
   try {
-    const response = await apiFetch<ApiDataResponse<TalkProposalRecord | null>>(`/api/events/${props.eventId}/talk-proposals/me`)
+    const response = await apiFetch<ApiDataResponse<TalkProposalRecord | null>>(`/api/events/${props.eventId}/talk-proposals/me`, {
+      signal
+    })
+    throwIfAborted(signal)
     applyProposal(response.data)
   } catch (error) {
+    if (isAbortError(error, signal)) {
+      return
+    }
+
     errorMessage.value = normalizeApiError(error).message
   } finally {
-    pending.value = false
+    if (!signal.aborted) {
+      pending.value = false
+    }
   }
 }
 

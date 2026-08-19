@@ -4,6 +4,8 @@ import type { PublicEventState } from '~/domains/events/presentation'
 import type { TalkProposalReviewEntry, TalkProposalStatus } from '~/domains/talk-proposals'
 import { normalizeApiError } from '~/lib/api'
 import { talkProposalStatusLabels } from '~/domains/talk-proposals'
+import { isAbortError, throwIfAborted } from '~/lib/request-cancellation'
+import { useAbortableRequest } from '~/composables/useAbortableRequest'
 import { useApiClient } from '~/composables/useApiClient'
 
 const props = defineProps<{
@@ -23,6 +25,7 @@ const actionPending = ref(false)
 const errorMessage = ref('')
 const toast = useToast()
 const apiFetch = useApiClient()
+const requests = useAbortableRequest()
 
 const selectedEntry = computed(() => entries.value.find(entry => entry.proposal.id === selectedId.value) ?? null)
 
@@ -35,23 +38,33 @@ function ownerName(entry: TalkProposalReviewEntry) {
 async function loadProposals() {
   pending.value = true
   errorMessage.value = ''
+  const signal = requests.createSignal('talk-proposals')
+
   try {
     const response = await apiFetch<ApiListResponse<TalkProposalReviewEntry>>(`/api/events/${props.eventId}/talk-proposals`, {
       query: {
         page: page.value,
         page_size: 20,
         ...(statusFilter.value === 'all' ? {} : { status: statusFilter.value })
-      }
+      },
+      signal
     })
+    throwIfAborted(signal)
     entries.value = response.data
     totalPages.value = Number(response.meta?.totalPages ?? 1)
     if (!entries.value.some(entry => entry.proposal.id === selectedId.value)) {
       selectedId.value = entries.value[0]?.proposal.id ?? ''
     }
   } catch (error) {
+    if (isAbortError(error, signal)) {
+      return
+    }
+
     errorMessage.value = normalizeApiError(error).message
   } finally {
-    pending.value = false
+    if (!signal.aborted) {
+      pending.value = false
+    }
   }
 }
 
