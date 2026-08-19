@@ -15,7 +15,7 @@ definePageMeta({
   middleware: ['require-event-creator']
 })
 
-const workspace = useAdminWorkspace()
+const workspace = useAdminWorkspace({ loadEvents: false })
 const apiFetch = useApiClient()
 const toast = useToast()
 

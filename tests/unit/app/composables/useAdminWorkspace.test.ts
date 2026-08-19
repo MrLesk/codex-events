@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   computed,
@@ -8,6 +10,10 @@ import {
 
 const useApiFetch = vi.hoisted(() => vi.fn())
 const useSessionActor = vi.hoisted(() => vi.fn())
+const creationPageSources = [
+  '../../../../app/pages/admin/events/new.vue',
+  '../../../../app/pages/admin/events/builder/new.vue'
+].map(path => readFileSync(new URL(path, import.meta.url), 'utf8'))
 
 vi.mock('~/composables/useApiClient', () => ({
   useApiClient: vi.fn(),
@@ -82,5 +88,20 @@ describe('useAdminWorkspace', () => {
     expect(sessionRefresh).toHaveBeenCalledOnce()
     expect(eventsRefresh).toHaveBeenCalledOnce()
     expect(useApiFetch).toHaveBeenCalledWith('/api/events?page=1&page_size=100', expect.anything())
+  })
+
+  test('keeps creation workspaces lazy until an event list is requested', async () => {
+    const { useAdminWorkspace } = await import('../../../../app/composables/useAdminWorkspace')
+
+    const workspace = useAdminWorkspace({ loadEvents: false })
+    await workspace.refreshRoot()
+
+    expect(sessionRefresh).toHaveBeenCalledOnce()
+    expect(eventsRefresh).not.toHaveBeenCalled()
+    expect(useApiFetch).toHaveBeenCalledWith('/api/events?page=1&page_size=100', expect.objectContaining({
+      immediate: false
+    }))
+    expect(creationPageSources).toHaveLength(2)
+    expect(creationPageSources.every(source => source.includes('useAdminWorkspace({ loadEvents: false })'))).toBe(true)
   })
 })

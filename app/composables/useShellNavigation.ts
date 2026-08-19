@@ -1,5 +1,5 @@
 import type { ResolvedSessionActor } from '~/composables/useSessionActor'
-import type { PublicApiDataResponse } from '~/domains/events/presentation'
+import type { AccountEventPageResponse } from '~/domains/events/account-workspace-page'
 
 import { accountDashboardHref, buildAuthLoginHref } from '#shared/domains/accounts/auth-navigation'
 import {
@@ -10,14 +10,13 @@ import {
   isAccountEventDetailPath,
   resolveShellAccountEventNavigationMode
 } from '~/domains/accounts/shell-navigation'
-
-interface ShellPrizeRedemptionsResponse {
-  data: Array<{
-    id: string
-  }>
-}
+import { buildAccountEventPageCacheKey } from '~/domains/events/account-workspace-page'
 
 export type ShellActor = ResolvedSessionActor
+
+export interface ShellNavigationOptions {
+  currentAccountEventId?: MaybeRefOrGetter<string | null | undefined>
+}
 
 export interface ShellNavigationItem {
   id: string
@@ -34,85 +33,42 @@ export interface ShellNavigationGroup {
   items: ShellNavigationItem[]
 }
 
-export function useShellNavigation() {
+export function useShellAccountEventPageContext() {
+  const route = useRoute()
+  const nuxtApp = useNuxtApp()
+  const authorizationCache = useAuthorizationCache()
+  const slug = computed(() =>
+    isAccountEventDetailPath(route.path) ? String(route.params.slug ?? '').trim() : ''
+  )
+  const entryPageKey = authorizationCache.protectedKey(computed(() =>
+    buildAccountEventPageCacheKey(slug.value, 'entry')
+  ))
+  const currentAccountEventId = computed(() => {
+    if (!slug.value) {
+      return null
+    }
+
+    const entryPage = nuxtApp.payload.data[entryPageKey.value] as AccountEventPageResponse<unknown> | undefined
+    return entryPage?.event.id ?? null
+  })
+
+  return {
+    currentAccountEventId
+  }
+}
+
+export function useShellNavigation(options: ShellNavigationOptions = {}) {
   const route = useRoute()
 
   const returnTo = computed(() => route.fullPath || accountDashboardHref)
   const authEntryHref = computed(() => buildAuthLoginHref(returnTo.value))
   const { actor, capabilities, status, refresh } = useSessionActor()
-  const authSubject = computed(() => actor.value.isAuthenticated
-    ? actor.value.sessionUser.sub
-    : null)
-  const currentAccountEventSlug = computed(() =>
-    isAccountEventDetailPath(route.path) ? String(route.params.slug ?? '').trim() : ''
-  )
-  const {
-    data: currentAccountEvent
-  } = useApiData<{ id: string } | null>(
-    () => `shell-account-event:${currentAccountEventSlug.value || 'none'}`,
-    async ({ apiFetch, signal }) => {
-      if (!currentAccountEventSlug.value) {
-        return null
-      }
+  const currentAccountEventId = computed(() => {
+    const eventId = options.currentAccountEventId === undefined
+      ? ''
+      : String(toValue(options.currentAccountEventId) ?? '').trim()
 
-      const response = await apiFetch<PublicApiDataResponse<{ id: string }>>(
-        `/api/events/slug/${currentAccountEventSlug.value}`,
-        {
-          signal
-        }
-      )
-
-      return response.data
-    },
-    {
-      default: () => null,
-      watch: [currentAccountEventSlug]
-    }
-  )
-
-  const {
-    data: pendingPrizeRedemptions,
-    error: pendingPrizeRedemptionsError,
-    clear: clearPrizeRedemptions
-  } = useApiData<Array<{ id: string }>>(
-    computed(() => `shell-prize-redemptions-${authSubject.value ?? 'anonymous'}`),
-    async ({ apiFetch, signal }) => {
-      if (actor.value.kind !== 'platform_user') {
-        return []
-      }
-
-      const response = await apiFetch<ShellPrizeRedemptionsResponse>('/api/prize-redemptions/me', {
-        signal
-      })
-
-      return response.data
-    },
-    {
-      default: () => [],
-      watch: [computed(() => actor.value.kind === 'platform_user' ? actor.value.platformUser.id : null)]
-    }
-  )
-
-  watch(authSubject, (sub, previousSub) => {
-    if (sub !== previousSub) {
-      clearPrizeRedemptions()
-    }
-  })
-
-  watch(() => route.path, async (nextPath, previousPath) => {
-    if (!import.meta.client || !authSubject.value || !previousPath) {
-      return
-    }
-
-    const leftAccountSettings = previousPath.startsWith('/account/settings')
-      && !nextPath.startsWith('/account/settings')
-
-    if (!leftAccountSettings) {
-      return
-    }
-
-    await refresh()
-    await refreshNuxtData(`shell-prize-redemptions-${authSubject.value}`)
+    return eventId || null
   })
 
   const isResolvingActor = computed(() => status.value === 'pending')
@@ -123,20 +79,10 @@ export function useShellNavigation() {
   const accountEventNavigationMode = computed(() =>
     resolveShellAccountEventNavigationMode({
       actor: actor.value,
-      currentEventId: currentAccountEvent.value?.id ?? null,
+      currentEventId: currentAccountEventId.value,
       currentPath: route.path
     })
   )
-  const hasPrizeRecipientAccess = computed(() => pendingPrizeRedemptions.value.length > 0)
-  const prizeRedemptionsErrorMessage = computed(() => {
-    if (actor.value.kind !== 'platform_user' || !pendingPrizeRedemptionsError.value) {
-      return ''
-    }
-
-    return pendingPrizeRedemptionsError.value.statusMessage
-      ?? pendingPrizeRedemptionsError.value.message
-      ?? 'Winner-facing prize redemption status could not be loaded right now.'
-  })
 
   const roleChips = computed(() => {
     if (actor.value.kind === 'anonymous') {
@@ -245,11 +191,9 @@ export function useShellNavigation() {
     hasJudgeAccess,
     hasStaffAccess,
     hasPlatformAccount,
-    hasPrizeRecipientAccess,
     isResolvingActor,
     authEntryHref,
     accountEventNavigationMode,
-    prizeRedemptionsErrorMessage,
     refresh,
     roleChips,
     sidebarGroups

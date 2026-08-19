@@ -4,8 +4,11 @@ import AppShellHeader from '~/components/shell/AppShellHeader.vue'
 import AppShellSidebar from '~/components/shell/AppShellSidebar.vue'
 import { accountRegisterHref } from '#shared/domains/accounts/auth-navigation'
 
-const { actor, accountEventNavigationMode, hasPlatformAccount, sidebarGroups } = useShellNavigation()
 const route = useRoute()
+const { currentAccountEventId } = useShellAccountEventPageContext()
+const { actor, accountEventNavigationMode, hasPlatformAccount, sidebarGroups } = useShellNavigation({
+  currentAccountEventId
+})
 
 const showWorkspaceSidebar = computed(() =>
   hasPlatformAccount.value
