@@ -83,7 +83,7 @@ export async function resolveEventAuthorization(
         } satisfies EventAuthorization
       }
 
-      const database = getDatabase(event, { consistency: 'strong' })
+      const database = getDatabase(event)
       const assignment = await database.query.eventRoleAssignments.findFirst({
         where: and(
           eq(eventRoleAssignments.eventId, eventId),
@@ -179,7 +179,7 @@ export async function resolveTeamAuthorization(
   if (!cache.has(teamId)) {
     cache.set(teamId, (async () => {
       const actor = requireResolvedPlatformActor(await getRequestActor(event))
-      const database = getDatabase(event, { consistency: 'strong' })
+      const database = getDatabase(event)
 
       const membership = await database.query.teamMembers.findFirst({
         where: and(
@@ -223,7 +223,7 @@ export async function resolveJudgeAssignmentAuthorization(
   if (!cache.has(assignmentId)) {
     cache.set(assignmentId, (async () => {
       const actor = requireResolvedPlatformActor(await getRequestActor(event))
-      const database = getDatabase(event, { consistency: 'strong' })
+      const database = getDatabase(event)
 
       const assignment = await database.query.judgeAssignments.findFirst({
         where: eq(judgeAssignments.id, assignmentId)

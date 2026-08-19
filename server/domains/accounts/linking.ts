@@ -698,7 +698,7 @@ export async function persistPlatformAccountLinkIdentities(
   event: H3Event,
   challenge: Pick<PlatformAccountLinkChallenge, 'primaryAuth0Subject' | 'secondaryAuth0Subject'>
 ) {
-  const database = getDatabase(event, { consistency: 'strong' })
+  const database = getDatabase(event)
   const platformUser = await findPlatformUserByAuth0Subject(database, challenge.primaryAuth0Subject)
 
   if (!platformUser) {

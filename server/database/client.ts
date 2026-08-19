@@ -30,10 +30,6 @@ interface AppDatabaseAccess {
   sessionStart: D1SessionConstraint | string
 }
 
-interface StrongDatabaseAccessOptions {
-  consistency?: 'strong'
-}
-
 type RuntimeConfigShape = {
   database?: {
     binding?: string
@@ -130,16 +126,15 @@ function getRequestDatabaseAccess(event: H3Event) {
   return access
 }
 
-function getDatabaseAccess(event: H3Event, options?: StrongDatabaseAccessOptions) {
-  void options
+function getDatabaseAccess(event: H3Event) {
   return getRequestDatabaseAccess(event)
 }
 
-export function getDatabaseSession(event: H3Event, options?: StrongDatabaseAccessOptions) {
-  return getDatabaseAccess(event, options).session
+export function getDatabaseSession(event: H3Event) {
+  return getDatabaseAccess(event).session
 }
 
-export function getDatabase(event: H3Event, options?: StrongDatabaseAccessOptions) {
+export function getDatabase(event: H3Event) {
   if (!isHttpRequest(event)) {
     const injectedDatabase = getTestDatabase(event)
 
@@ -148,7 +143,7 @@ export function getDatabase(event: H3Event, options?: StrongDatabaseAccessOption
     }
   }
 
-  return getDatabaseAccess(event, options).database
+  return getDatabaseAccess(event).database
 }
 
 function getDatabaseBookmark(event: H3Event) {

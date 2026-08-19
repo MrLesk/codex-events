@@ -119,7 +119,7 @@ describe('authenticated actor request topology', () => {
     }
     const completeLinkHandler = defineApiHandler(async (event) => {
       await persistPlatformAccountLinkIdentities(event, challenge)
-      const database = getDatabase(event, { consistency: 'strong' })
+      const database = getDatabase(event)
       const resolvedUser = await findPlatformUserByAuth0Subject(database, challenge.secondaryAuth0Subject)
 
       return apiData({

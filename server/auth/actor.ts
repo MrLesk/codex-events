@@ -163,7 +163,7 @@ export function setRequestActor(event: H3Event, actor: RequestActor | Promise<Re
 
 export async function resolveRequestActor(event: H3Event): Promise<RequestActor> {
   const sessionUser = readSessionUser(await getAuth0Session(event))
-  const database = getDatabase(event, { consistency: 'strong' })
+  const database = getDatabase(event)
 
   if (!sessionUser) {
     return {
@@ -195,7 +195,7 @@ export async function getRequestActor(event: H3Event): Promise<RequestActor> {
 }
 
 export async function resolveMcpPlatformActor(event: H3Event, userId: string): Promise<PlatformActor> {
-  const database = getDatabase(event, { consistency: 'strong' })
+  const database = getDatabase(event)
   const platformUser = await database.select().from(users)
     .where(and(eq(users.id, userId), isNull(users.deletedAt)))
     .get()

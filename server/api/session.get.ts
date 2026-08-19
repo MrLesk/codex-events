@@ -28,7 +28,7 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  const database = getDatabase(h3Event, { consistency: 'strong' })
+  const database = getDatabase(h3Event)
   const roleAssignments = await database.query.eventRoleAssignments.findMany({
     where: eq(eventRoleAssignments.userId, actor.platformUser.id),
     orderBy: [desc(eventRoleAssignments.createdAt)]

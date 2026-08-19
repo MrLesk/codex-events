@@ -113,12 +113,138 @@ function readLastInsertRowId(database: SqlJsDatabase) {
   return Number(result?.values?.[0]?.[0] ?? 0)
 }
 
-function isReadQuery(sql: string) {
-  const normalizedSql = sql.trimStart().toLowerCase()
+type SqlToken = {
+  kind: 'word' | 'open-paren' | 'close-paren'
+  value: string
+  end: number
+}
 
-  return normalizedSql.startsWith('select')
-    || normalizedSql.startsWith('with')
-    || normalizedSql.startsWith('pragma')
+function skipSqlQuotedValue(sql: string, start: number, quote: string) {
+  let cursor = start + 1
+
+  while (cursor < sql.length) {
+    if (sql[cursor] !== quote) {
+      cursor += 1
+      continue
+    }
+
+    if (sql[cursor + 1] === quote) {
+      cursor += 2
+      continue
+    }
+
+    return cursor + 1
+  }
+
+  return sql.length
+}
+
+function readSqlToken(sql: string, start: number): SqlToken | undefined {
+  let cursor = start
+
+  while (cursor < sql.length) {
+    const character = sql[cursor]
+
+    if (/\s/u.test(character)) {
+      cursor += 1
+      continue
+    }
+
+    if (character === '-' && sql[cursor + 1] === '-') {
+      const lineEnd = sql.indexOf('\n', cursor + 2)
+      cursor = lineEnd === -1 ? sql.length : lineEnd + 1
+      continue
+    }
+
+    if (character === '/' && sql[cursor + 1] === '*') {
+      const commentEnd = sql.indexOf('*/', cursor + 2)
+      cursor = commentEnd === -1 ? sql.length : commentEnd + 2
+      continue
+    }
+
+    if (character === '\'' || character === '"' || character === '`') {
+      cursor = skipSqlQuotedValue(sql, cursor, character)
+      continue
+    }
+
+    if (character === '[') {
+      const quotedIdentifierEnd = sql.indexOf(']', cursor + 1)
+      cursor = quotedIdentifierEnd === -1 ? sql.length : quotedIdentifierEnd + 1
+      continue
+    }
+
+    if (character === '(') {
+      return { kind: 'open-paren', value: '', end: cursor + 1 }
+    }
+
+    if (character === ')') {
+      return { kind: 'close-paren', value: '', end: cursor + 1 }
+    }
+
+    if (/[A-Za-z_]/u.test(character)) {
+      const wordStart = cursor
+      cursor += 1
+
+      while (cursor < sql.length && /[A-Za-z0-9_$]/u.test(sql[cursor])) {
+        cursor += 1
+      }
+
+      return {
+        kind: 'word',
+        value: sql.slice(wordStart, cursor).toLowerCase(),
+        end: cursor
+      }
+    }
+
+    cursor += 1
+  }
+
+  return undefined
+}
+
+function getSqlStatementKeyword(sql: string) {
+  const firstToken = readSqlToken(sql, 0)
+
+  if (!firstToken || firstToken.kind !== 'word') {
+    return undefined
+  }
+
+  if (firstToken.value !== 'with') {
+    return firstToken.value
+  }
+
+  let cursor = firstToken.end
+  let parenthesisDepth = 0
+
+  while (true) {
+    const token = readSqlToken(sql, cursor)
+
+    if (!token) {
+      return undefined
+    }
+
+    cursor = token.end
+
+    if (token.kind === 'open-paren') {
+      parenthesisDepth += 1
+      continue
+    }
+
+    if (token.kind === 'close-paren') {
+      parenthesisDepth = Math.max(0, parenthesisDepth - 1)
+      continue
+    }
+
+    if (parenthesisDepth === 0 && ['select', 'insert', 'update', 'delete', 'replace', 'pragma'].includes(token.value)) {
+      return token.value
+    }
+  }
+}
+
+function isReadQuery(sql: string) {
+  const statementKeyword = getSqlStatementKeyword(sql)
+
+  return statementKeyword === 'select' || statementKeyword === 'pragma'
 }
 
 interface TestD1QueryTarget {
@@ -149,8 +275,7 @@ class TestD1PreparedStatement {
       bindStatement(statement, resolvedParameters)
       statement.step()
 
-      const normalizedSql = this.sql.trimStart().toLowerCase()
-      const isInsert = normalizedSql.startsWith('insert')
+      const isInsert = getSqlStatementKeyword(this.sql) === 'insert'
       const result = {
         success: true,
         meta: createResultMeta({
@@ -162,7 +287,7 @@ class TestD1PreparedStatement {
       this.onQuery?.({
         sql: this.sql,
         parameters: resolvedParameters,
-        isWrite: !isReadQuery(this.sql)
+        isWrite
       }, target.version)
       return result
     } finally {
@@ -171,7 +296,8 @@ class TestD1PreparedStatement {
   }
 
   async all<TResult = Record<string, unknown>>(...parameters: unknown[]) {
-    const target = await this.getTarget(true)
+    const isWrite = !isReadQuery(this.sql)
+    const target = await this.getTarget(!isWrite)
     const database = target.database
     const statement = database.prepare(this.sql)
 
@@ -188,7 +314,7 @@ class TestD1PreparedStatement {
       this.onQuery?.({
         sql: this.sql,
         parameters: resolvedParameters,
-        isWrite: false
+        isWrite
       }, target.version)
 
       return {
@@ -202,7 +328,8 @@ class TestD1PreparedStatement {
   }
 
   async raw(...parameters: unknown[]) {
-    const target = await this.getTarget(true)
+    const isWrite = !isReadQuery(this.sql)
+    const target = await this.getTarget(!isWrite)
     const database = target.database
     const statement = database.prepare(this.sql)
 
@@ -219,7 +346,7 @@ class TestD1PreparedStatement {
       this.onQuery?.({
         sql: this.sql,
         parameters: resolvedParameters,
-        isWrite: false
+        isWrite
       }, target.version)
 
       return results
@@ -255,7 +382,8 @@ class TestD1PreparedStatement {
   }
 
   private async readFirstRow(parameters: unknown[]) {
-    const target = await this.getTarget(true)
+    const isWrite = !isReadQuery(this.sql)
+    const target = await this.getTarget(!isWrite)
     const database = target.database
     const statement = database.prepare(this.sql)
 
@@ -267,7 +395,7 @@ class TestD1PreparedStatement {
         this.onQuery?.({
           sql: this.sql,
           parameters: resolvedParameters,
-          isWrite: false
+          isWrite
         }, target.version)
         return null
       }
@@ -276,7 +404,7 @@ class TestD1PreparedStatement {
       this.onQuery?.({
         sql: this.sql,
         parameters: resolvedParameters,
-        isWrite: false
+        isWrite
       }, target.version)
       return row
     } finally {
