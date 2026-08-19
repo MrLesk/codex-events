@@ -34,7 +34,7 @@ export default defineApiHandler(async (h3Event) => {
 
   const png = await renderEventCertificatePng(certificate, verifyUrl.toString())
 
-  return new Response(toArrayBuffer(png), {
+  return new Response(streamBytes(png), {
     headers: {
       'content-type': 'image/png',
       'cache-control': privatePublicEventCacheControl,
@@ -46,6 +46,11 @@ export default defineApiHandler(async (h3Event) => {
   })
 })
 
-function toArrayBuffer(data: Uint8Array) {
-  return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer
+function streamBytes(data: Uint8Array) {
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(data)
+      controller.close()
+    }
+  })
 }

@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { requirePlatformActor } from '#server/auth/actor'
@@ -121,6 +121,7 @@ export const applicationOperation = defineStructuredRouteOperation({
       .update(events)
       .set({
         state: 'winners_announced',
+        publicContentRevision: sql`${events.publicContentRevision} + 1`,
         finalRankingSubmissionIdsJson: JSON.stringify(finalRankingSubmissionIds),
         updatedAt: announcedAt
       })

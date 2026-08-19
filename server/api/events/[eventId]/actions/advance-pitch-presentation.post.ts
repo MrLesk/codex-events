@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
@@ -53,6 +53,7 @@ export const applicationOperation = defineStructuredRouteOperation({
     .set({
       activePitchPresentationSubmissionId: nextPresentationState.activePitchPresentationSubmissionId,
       pitchPresentationsCompletedAt: nextPresentationState.pitchPresentationsCompletedAt,
+      publicContentRevision: sql`${events.publicContentRevision} + 1`,
       updatedAt: advancedAt
     })
     .where(eq(events.id, eventId))

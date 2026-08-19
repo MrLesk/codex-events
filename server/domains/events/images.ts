@@ -48,7 +48,6 @@ interface R2HttpMetadataLike {
 }
 
 interface R2ObjectBodyLike {
-  arrayBuffer: () => Promise<ArrayBuffer>
   body: ReadableStream<Uint8Array>
   httpMetadata?: R2HttpMetadataLike | null
 }
@@ -59,7 +58,11 @@ interface R2PutOptionsLike {
 
 interface R2BucketLike {
   get: (key: string) => Promise<R2ObjectBodyLike | null>
-  put: (key: string, value: ArrayBuffer | ArrayBufferView, options?: R2PutOptionsLike) => Promise<unknown>
+  put: (
+    key: string,
+    value: ArrayBuffer | ArrayBufferView | ReadableStream<Uint8Array>,
+    options?: R2PutOptionsLike
+  ) => Promise<unknown>
   delete: (key: string) => Promise<void>
 }
 
@@ -125,11 +128,11 @@ function listAvailableR2BindingNames(cloudflareEnv: CloudflareEnvShape) {
 }
 
 export function eventImageObjectKey(eventId: string, slot: EventImageSlot) {
-  return `events/${eventId}/${slot}-image`
+  return `events/${eventId}/${slot}/${crypto.randomUUID()}`
 }
 
 export function platformDefaultEventBackgroundImageObjectKey() {
-  return 'platform/default-event-background-image'
+  return `platform/default-event-background/${crypto.randomUUID()}`
 }
 
 export function publicEventImagePath(slug: string, slot: EventImageSlot) {
@@ -356,18 +359,17 @@ export function assertValidEventImagePart(part: {
   }
 }
 
-export async function getEventImageObject(event: H3Event, eventId: string, slot: EventImageSlot) {
-  return await getEventImagesBucket(event).get(eventImageObjectKey(eventId, slot))
+export async function getEventImageObject(event: H3Event, objectKey: string) {
+  return await getEventImagesBucket(event).get(objectKey)
 }
 
-export async function getPlatformDefaultEventBackgroundImageObject(event: H3Event) {
-  return await getEventImagesBucket(event).get(platformDefaultEventBackgroundImageObjectKey())
+export async function getPlatformDefaultEventBackgroundImageObject(event: H3Event, objectKey: string) {
+  return await getEventImagesBucket(event).get(objectKey)
 }
 
 export async function putEventImageObject(
   event: H3Event,
-  eventId: string,
-  slot: EventImageSlot,
+  objectKey: string,
   payload: {
     contentType: string
     data: Uint8Array
@@ -380,7 +382,7 @@ export async function putEventImageObject(
     : new Uint8Array(payload.data)
 
   await getEventImagesBucket(event).put(
-    eventImageObjectKey(eventId, slot),
+    objectKey,
     normalizedData,
     {
       httpMetadata: {
@@ -392,6 +394,7 @@ export async function putEventImageObject(
 
 export async function putPlatformDefaultEventBackgroundImageObject(
   event: H3Event,
+  objectKey: string,
   payload: {
     contentType: string
     data: Uint8Array
@@ -402,7 +405,7 @@ export async function putPlatformDefaultEventBackgroundImageObject(
     : new Uint8Array(payload.data)
 
   await getEventImagesBucket(event).put(
-    platformDefaultEventBackgroundImageObjectKey(),
+    objectKey,
     normalizedData,
     {
       httpMetadata: {
@@ -412,10 +415,10 @@ export async function putPlatformDefaultEventBackgroundImageObject(
   )
 }
 
-export async function deleteEventImageObject(event: H3Event, eventId: string, slot: EventImageSlot) {
-  await getEventImagesBucket(event).delete(eventImageObjectKey(eventId, slot))
+export async function deleteEventImageObject(event: H3Event, objectKey: string) {
+  await getEventImagesBucket(event).delete(objectKey)
 }
 
-export async function deletePlatformDefaultEventBackgroundImageObject(event: H3Event) {
-  await getEventImagesBucket(event).delete(platformDefaultEventBackgroundImageObjectKey())
+export async function deletePlatformDefaultEventBackgroundImageObject(event: H3Event, objectKey: string) {
+  await getEventImagesBucket(event).delete(objectKey)
 }

@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { resolveEventAuthorization } from '#server/auth/authorization'
+import { getDatabase } from '#server/database/client'
 import { users, userApplications } from '#server/database/schema'
 import { defineApiHandler } from '#server/http/api-handler'
 import { ApiError } from '#server/http/api-error'
@@ -24,8 +25,22 @@ export default defineApiHandler(async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
   const query = parseValidatedQuery(h3Event, profileIconQuerySchema)
   const requestedUserId = query.user ?? actor.platformUser.id
-  let targetUserId = actor.platformUser.id
-  let targetProfileIconUpdatedAt = actor.platformUser.profileIconUpdatedAt
+  const database = getDatabase(h3Event)
+  let targetProfileIconRevision = actor.platformUser.profileIconRevision
+  let targetProfileIconObjectKey: string | null = null
+
+  if (requestedUserId === actor.platformUser.id) {
+    const targetUser = await database.query.users.findFirst({
+      columns: {
+        profileIconObjectKey: true,
+        profileIconRevision: true
+      },
+      where: eq(users.id, actor.platformUser.id)
+    })
+
+    targetProfileIconRevision = targetUser?.profileIconRevision ?? 0
+    targetProfileIconObjectKey = targetUser?.profileIconObjectKey ?? null
+  }
 
   if (requestedUserId !== actor.platformUser.id) {
     if (!query.event) {
@@ -39,10 +54,10 @@ export default defineApiHandler(async (h3Event) => {
       })
     }
 
-    const { database } = await requireEventWorkspaceAccess(h3Event, query.event)
+    const { database: eventDatabase } = await requireEventWorkspaceAccess(h3Event, query.event)
     const authorization = await resolveEventAuthorization(h3Event, query.event)
     const hasEventApplication = authorization.canViewParticipantsAndTeams
-      ? await database.query.userApplications.findFirst({
+      ? await eventDatabase.query.userApplications.findFirst({
           columns: {
             id: true
           },
@@ -53,7 +68,7 @@ export default defineApiHandler(async (h3Event) => {
         })
       : null
     const isPublishedRosterMember = await isUserVisibleInPublishedEventRoster(
-      database,
+      eventDatabase,
       query.event,
       requestedUserId
     )
@@ -66,10 +81,11 @@ export default defineApiHandler(async (h3Event) => {
       })
     }
 
-    const targetUser = await database.query.users.findFirst({
+    const targetUser = await eventDatabase.query.users.findFirst({
       columns: {
         id: true,
-        profileIconUpdatedAt: true
+        profileIconObjectKey: true,
+        profileIconRevision: true
       },
       where: and(
         eq(users.id, requestedUserId),
@@ -77,11 +93,11 @@ export default defineApiHandler(async (h3Event) => {
       )
     })
 
-    targetUserId = requestedUserId
-    targetProfileIconUpdatedAt = targetUser?.profileIconUpdatedAt ?? null
+    targetProfileIconRevision = targetUser?.profileIconRevision ?? 0
+    targetProfileIconObjectKey = targetUser?.profileIconObjectKey ?? null
   }
 
-  if (!targetProfileIconUpdatedAt) {
+  if (!targetProfileIconObjectKey || targetProfileIconRevision < 1) {
     throw new ApiError({
       statusCode: 404,
       code: 'profile_icon_not_found',
@@ -89,7 +105,15 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  const icon = await getProfileIconObject(h3Event, targetUserId)
+  if (query.v && query.v !== String(targetProfileIconRevision)) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'profile_icon_not_found',
+      message: 'The requested profile icon version was not found.'
+    })
+  }
+
+  const icon = await getProfileIconObject(h3Event, targetProfileIconObjectKey)
 
   if (!icon) {
     throw new ApiError({
@@ -99,10 +123,10 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  setHeader(h3Event, 'cache-control', 'private, max-age=31536000, immutable')
+  setHeader(h3Event, 'cache-control', 'private, no-store')
   setHeader(h3Event, 'vary', 'Cookie')
 
-  return new Response(await icon.arrayBuffer(), {
+  return new Response(icon.body, {
     headers: {
       'content-type': icon.httpMetadata?.contentType ?? 'application/octet-stream',
       'x-content-type-options': 'nosniff'

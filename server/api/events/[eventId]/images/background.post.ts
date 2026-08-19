@@ -11,6 +11,7 @@ import { apiData } from '#server/http/api-response'
 import {
   assertValidEventImagePart,
   buildPublicEventImageUrl,
+  eventImageObjectKey,
   putEventImageObject
 } from '#server/domains/events/images'
 import {
@@ -30,8 +31,9 @@ export default defineApiHandler(async (h3Event) => {
   const multipart = await readMultipartFormData(h3Event)
   const filePart = multipart?.find(part => part.name === 'file')
   const validFile = assertValidEventImagePart(filePart ?? {})
+  const objectKey = eventImageObjectKey(event.id, 'background')
 
-  await putEventImageObject(h3Event, event.id, 'background', {
+  await putEventImageObject(h3Event, objectKey, {
     contentType: validFile.contentType,
     data: validFile.data
   })
@@ -44,7 +46,9 @@ export default defineApiHandler(async (h3Event) => {
     .update(events)
     .set({
       backgroundImageUrl,
-      mediaRevision: sql`${events.mediaRevision} + 1`,
+      backgroundImageObjectKey: objectKey,
+      backgroundImageRevision: sql`${events.backgroundImageRevision} + 1`,
+      publicContentRevision: sql`${events.publicContentRevision} + 1`,
       updatedAt
     })
     .where(eq(events.id, event.id))

@@ -758,7 +758,10 @@ export function serializeUserApplication(
             openaiOrgId: options.user.openaiOrgId,
             lumaEmail: options.user.lumaEmail,
             lumaUsername: options.user.lumaUsername,
-            profileIconUpdatedAt: options.user.profileIconUpdatedAt
+            profileIconUpdatedAt: options.user.profileIconUpdatedAt,
+            profileIconRevision: options.user.profileIconObjectKey
+              ? options.user.profileIconRevision
+              : null
           }
         }
       : {}),

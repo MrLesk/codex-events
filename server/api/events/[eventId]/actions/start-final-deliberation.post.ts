@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
@@ -58,6 +58,7 @@ export const applicationOperation = defineStructuredRouteOperation({
     .set({
       state: 'final_deliberation',
       finalRankingSubmissionIdsJson: '[]',
+      publicContentRevision: sql`${events.publicContentRevision} + 1`,
       updatedAt: transitionedAt
     })
     .where(eq(events.id, eventId))

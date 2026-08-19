@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
-import { prizeRedemptions, submissions } from '#server/database/schema'
+import { events, prizeRedemptions, submissions } from '#server/database/schema'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import { requireTeamAdminContext } from '#server/domains/teams'
@@ -43,13 +43,31 @@ export const applicationOperation = defineStructuredRouteOperation({
 
   const updatedAt = new Date().toISOString()
 
-  await database
-    .update(submissions)
-    .set({
-      isPubliclyVisible: body.isPubliclyVisible,
-      updatedAt
-    })
-    .where(eq(submissions.id, submission.id))
+  if (submission.isPubliclyVisible !== body.isPubliclyVisible) {
+    await database.batch([
+      database
+        .update(submissions)
+        .set({
+          isPubliclyVisible: body.isPubliclyVisible,
+          updatedAt
+        })
+        .where(eq(submissions.id, submission.id)),
+      database
+        .update(events)
+        .set({
+          publicContentRevision: sql`${events.publicContentRevision} + 1`
+        })
+        .where(eq(events.id, eventId))
+    ])
+  } else {
+    await database
+      .update(submissions)
+      .set({
+        isPubliclyVisible: body.isPubliclyVisible,
+        updatedAt
+      })
+      .where(eq(submissions.id, submission.id))
+  }
 
   await refreshCompletedOutcomeCache(database, eventId)
 

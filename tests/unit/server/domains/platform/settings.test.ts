@@ -37,6 +37,7 @@ describe('platform settings utilities', () => {
     const created = await setDefaultEventBackgroundImageUrl(
       database,
       'https://example.com/default-background.png',
+      'platform/default/background-1',
       'platform_admin'
     )
 
@@ -49,7 +50,8 @@ describe('platform settings utilities', () => {
     })
     await expect(getEventDisplayImageOptions(database)).resolves.toEqual({
       defaultEventBackgroundImageUrl: 'https://example.com/default-background.png',
-      defaultEventBackgroundImageVersion: storedSettings?.mediaRevision
+      defaultEventBackgroundImageObjectKey: storedSettings?.defaultEventBackgroundImageObjectKey,
+      defaultEventBackgroundImageRevision: storedSettings?.defaultEventBackgroundImageRevision
     })
 
     const auditRows = await database.select().from(auditLogs)
@@ -67,12 +69,14 @@ describe('platform settings utilities', () => {
     await setDefaultEventBackgroundImageUrl(
       database,
       'https://example.com/default-background.png',
+      'platform/default/background-1',
       'platform_admin'
     )
 
     const updated = await setDefaultEventBackgroundImageUrl(
       database,
       'https://example.com/replacement-background.png',
+      'platform/default/background-2',
       'platform_admin'
     )
     const storedSettings = await database.query.platformSettings.findFirst({
@@ -102,6 +106,7 @@ describe('platform settings utilities', () => {
     await setDefaultEventBackgroundImageUrl(
       database,
       'https://example.com/default-background.png',
+      'platform/default/background-1',
       'platform_admin'
     )
 

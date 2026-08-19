@@ -2,8 +2,8 @@ import type { H3Event } from 'h3'
 
 import { setHeader } from 'h3'
 
-export const publicEventCacheControl = 'public, max-age=30, stale-if-error=0'
-export const publicEventCdnCacheControl = 'public, max-age=30, stale-if-error=0'
+export const publicEventCacheControl = 'public, max-age=30, must-revalidate'
+export const publicEventCdnCacheControl = 'public, max-age=30, must-revalidate'
 export const privatePublicEventCacheControl = 'private, no-store'
 
 function hashCachePayload(value: string) {

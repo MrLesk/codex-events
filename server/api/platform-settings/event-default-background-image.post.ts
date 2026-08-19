@@ -6,6 +6,7 @@ import { getDatabase } from '#server/database/client'
 import {
   assertValidEventImagePart,
   buildPublicPlatformDefaultEventBackgroundImageUrl,
+  platformDefaultEventBackgroundImageObjectKey,
   putPlatformDefaultEventBackgroundImageObject
 } from '#server/domains/events/images'
 import {
@@ -24,8 +25,9 @@ export default defineApiHandler(async (h3Event) => {
   const multipart = await readMultipartFormData(h3Event)
   const filePart = multipart?.find(part => part.name === 'file')
   const validFile = assertValidEventImagePart(filePart ?? {})
+  const objectKey = platformDefaultEventBackgroundImageObjectKey()
 
-  await putPlatformDefaultEventBackgroundImageObject(h3Event, {
+  await putPlatformDefaultEventBackgroundImageObject(h3Event, objectKey, {
     contentType: validFile.contentType,
     data: validFile.data
   })
@@ -33,6 +35,7 @@ export default defineApiHandler(async (h3Event) => {
   const settings = await setDefaultEventBackgroundImageUrl(
     getDatabase(h3Event),
     buildPublicPlatformDefaultEventBackgroundImageUrl(h3Event),
+    objectKey,
     actor.platformUser.id
   )
 

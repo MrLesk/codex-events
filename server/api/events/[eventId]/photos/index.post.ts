@@ -10,6 +10,7 @@ import {
   chunkEventPhotoRowsForInsert,
   getEventPhotoCapturedAt,
   getEventPhotoDimensions,
+  eventPhotoObjectKey,
   listEventPhotoRecords,
   putEventPhotoObject,
   requireEventPhotoManageAccess
@@ -51,22 +52,28 @@ export default defineApiHandler(async (h3Event) => {
   }
 
   const uploadedAt = new Date().toISOString()
-  const createdRows = preparedFiles.map(file => ({
-    id: crypto.randomUUID(),
-    eventId,
-    uploadedByUserId: actor.platformUser.id,
-    fileName: file.fileName,
-    isPubliclyVisible: false,
-    isHighlighted: false,
-    contentType: file.contentType,
-    width: file.width,
-    height: file.height,
-    createdAt: file.capturedAt ?? uploadedAt
-  }))
+  const createdRows = preparedFiles.map((file) => {
+    const id = crypto.randomUUID()
+
+    return {
+      id,
+      eventId,
+      uploadedByUserId: actor.platformUser.id,
+      objectKey: eventPhotoObjectKey(eventId, id),
+      imageRevision: 1,
+      fileName: file.fileName,
+      isPubliclyVisible: false,
+      isHighlighted: false,
+      contentType: file.contentType,
+      width: file.width,
+      height: file.height,
+      createdAt: file.capturedAt ?? uploadedAt
+    }
+  })
 
   for (const [index, row] of createdRows.entries()) {
     const file = preparedFiles[index]!
-    await putEventPhotoObject(h3Event, eventId, row.id, {
+    await putEventPhotoObject(h3Event, row.objectKey!, {
       contentType: file.contentType,
       data: file.data
     })

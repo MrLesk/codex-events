@@ -27,7 +27,7 @@ export const applicationOperation = defineStructuredRouteOperation({
   const { slug } = parseValidatedParams(h3Event, routeSlugParamsSchema)
   const database = getDatabase(h3Event)
   const event = await getPublicEventBySlugOrThrow(database, slug)
-  const photos = await listPublicEventPhotoRecords(database, event.id, event.slug, event.mediaRevision)
+  const photos = await listPublicEventPhotoRecords(database, event.id, event.slug)
 
   const response = apiList(photos, {
     total: photos.length

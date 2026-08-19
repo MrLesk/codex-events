@@ -33,7 +33,7 @@ export default defineApiHandler(async (h3Event) => {
 
   const pdf = await renderEventCertificatePdf(certificate, verifyUrl.toString())
 
-  return new Response(pdf.buffer.slice(pdf.byteOffset, pdf.byteOffset + pdf.byteLength) as ArrayBuffer, {
+  return new Response(streamBytes(pdf), {
     headers: {
       'content-type': 'application/pdf',
       'cache-control': 'private, no-store',
@@ -42,3 +42,12 @@ export default defineApiHandler(async (h3Event) => {
     }
   })
 })
+
+function streamBytes(data: Uint8Array) {
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(data)
+      controller.close()
+    }
+  })
+}

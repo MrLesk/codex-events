@@ -32,7 +32,8 @@ export default defineApiHandler(async (h3Event) => {
     !event.backgroundImageUrl
     || imagePath !== publicEventImagePath(event.slug, 'background')
     || query.variant !== 'background'
-    || query.v !== String(event.mediaRevision)
+    || !event.backgroundImageObjectKey
+    || query.v !== String(event.backgroundImageRevision)
   ) {
     throw new ApiError({
       statusCode: 404,
@@ -41,7 +42,7 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  const image = await getEventImageObject(h3Event, event.id, 'background')
+  const image = await getEventImageObject(h3Event, event.backgroundImageObjectKey)
 
   if (!image) {
     throw new ApiError({

@@ -3,6 +3,10 @@ import { eq, sql } from 'drizzle-orm'
 import { writeAuditLog } from '#server/database/audit-log'
 import type { AppDatabase } from '#server/database/client'
 import { platformSettings } from '#server/database/schema'
+import {
+  buildVersionedPublicEventImageUrl,
+  isManagedPublicEventImageUrl
+} from '#server/domains/events/images'
 
 export const platformSettingsId = 'default'
 
@@ -10,13 +14,28 @@ type PlatformSettingsRecord = typeof platformSettings.$inferSelect
 
 export interface EventDisplayImageOptions {
   defaultEventBackgroundImageUrl?: string | null
-  defaultEventBackgroundImageVersion?: string | number | null
+  defaultEventBackgroundImageObjectKey?: string | null
+  defaultEventBackgroundImageRevision?: string | number | null
 }
 
 export function serializePlatformSettings(settings: PlatformSettingsRecord) {
+  const defaultEventBackgroundImageUrl = settings.defaultEventBackgroundImageUrl?.trim() || null
+  const isManagedDefaultImage = isManagedPublicEventImageUrl(defaultEventBackgroundImageUrl ?? '')
+  const versionedDefaultEventBackgroundImageUrl = isManagedDefaultImage
+    && settings.defaultEventBackgroundImageObjectKey
+    ? buildVersionedPublicEventImageUrl(
+        defaultEventBackgroundImageUrl,
+        settings.defaultEventBackgroundImageRevision,
+        'background'
+      )
+    : null
+
   return {
     id: settings.id,
-    defaultEventBackgroundImageUrl: settings.defaultEventBackgroundImageUrl,
+    defaultEventBackgroundImageUrl: isManagedDefaultImage
+      ? versionedDefaultEventBackgroundImageUrl
+      : defaultEventBackgroundImageUrl,
+    defaultEventBackgroundImageRevision: settings.defaultEventBackgroundImageRevision,
     createdAt: settings.createdAt,
     updatedAt: settings.updatedAt
   }
@@ -47,19 +66,22 @@ export async function getEventDisplayImageOptions(database: AppDatabase): Promis
 
   return {
     defaultEventBackgroundImageUrl: settings?.defaultEventBackgroundImageUrl ?? null,
-    defaultEventBackgroundImageVersion: settings?.mediaRevision ?? null
+    defaultEventBackgroundImageObjectKey: settings?.defaultEventBackgroundImageObjectKey ?? null,
+    defaultEventBackgroundImageRevision: settings?.defaultEventBackgroundImageRevision ?? null
   }
 }
 
 export async function setDefaultEventBackgroundImageUrl(
   database: AppDatabase,
   defaultEventBackgroundImageUrl: string,
+  defaultEventBackgroundImageObjectKey: string,
   actorUserId: string
 ) {
   const now = new Date().toISOString()
   const existingSettings = await getPlatformSettings(database)
   const values = {
     defaultEventBackgroundImageUrl,
+    defaultEventBackgroundImageObjectKey,
     updatedAt: now
   }
 
@@ -68,14 +90,14 @@ export async function setDefaultEventBackgroundImageUrl(
       .update(platformSettings)
       .set({
         ...values,
-        mediaRevision: sql`${platformSettings.mediaRevision} + 1`
+        defaultEventBackgroundImageRevision: sql`${platformSettings.defaultEventBackgroundImageRevision} + 1`
       })
       .where(eq(platformSettings.id, platformSettingsId))
   } else {
     await database.insert(platformSettings).values({
       id: platformSettingsId,
       ...values,
-      mediaRevision: 1,
+      defaultEventBackgroundImageRevision: 1,
       createdAt: now
     })
   }
@@ -107,8 +129,9 @@ export async function clearDefaultEventBackgroundImageUrl(
     .update(platformSettings)
     .set({
       defaultEventBackgroundImageUrl: null,
+      defaultEventBackgroundImageObjectKey: null,
       updatedAt: new Date().toISOString(),
-      mediaRevision: sql`${platformSettings.mediaRevision} + 1`
+      defaultEventBackgroundImageRevision: sql`${platformSettings.defaultEventBackgroundImageRevision} + 1`
     })
     .where(eq(platformSettings.id, platformSettingsId))
 

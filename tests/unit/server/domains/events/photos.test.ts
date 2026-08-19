@@ -8,6 +8,7 @@ import {
   buildEventPhotoImageUrl,
   buildPublicEventPhotoImageUrl,
   chunkEventPhotoRowsForInsert,
+  createEventPhotoFullDisplayResponse,
   createEventPhotoPreviewResponse,
   createPublicEventPhotoResponse,
   getEventPhotoCapturedAt,
@@ -40,7 +41,11 @@ function createEvent(cloudflareEnv: Record<string, unknown>) {
 
 describe('event photo utilities', () => {
   test('builds canonical protected and fallback public photo paths', () => {
-    expect(eventPhotoObjectKey('event_1', 'photo_1')).toBe('events/event_1/photos/photo_1')
+    const firstKey = eventPhotoObjectKey('event_1', 'photo_1')
+    const secondKey = eventPhotoObjectKey('event_1', 'photo_1')
+
+    expect(firstKey).toMatch(/^events\/event_1\/photos\/photo_1\/[0-9a-f-]{36}$/)
+    expect(secondKey).not.toBe(firstKey)
     expect(buildEventPhotoImageUrl('event_1', 'photo_1', 'preview', '2026-04-19T10:00:00.000Z')).toBe(
       '/api/events/event_1/photos/photo_1/image?variant=preview&v=2026-04-19T10%3A00%3A00.000Z'
     )
@@ -171,50 +176,13 @@ describe('event photo utilities', () => {
       }
     })
 
-    expect(response.headers.get('cache-control')).toBe('private, max-age=31536000, immutable')
+    expect(response.headers.get('cache-control')).toBe('private, no-store')
     expect(response.headers.get('content-type')).toBe('image/webp')
     expect(response.headers.get('vary')).toBe('Cookie')
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([9, 8, 7]))
   })
 
-  test('can create a transformed preview response with public caching headers', async () => {
-    const imagesBinding = {
-      info: vi.fn(async () => ({ width: 1600, height: 900 })),
-      input: vi.fn(() => ({
-        transform: vi.fn(() => ({
-          output: vi.fn(async () => ({
-            response: () => new Response(new Uint8Array([6, 5, 4]), {
-              status: 200
-            }),
-            contentType: () => 'image/webp'
-          }))
-        }))
-      }))
-    }
-    const event = createEvent({
-      IMAGES: imagesBinding
-    })
-
-    const response = await createEventPhotoPreviewResponse(event, {
-      body: new Response(pngSignatureBytes).body!,
-      arrayBuffer: async () => pngSignatureBytes.buffer.slice(
-        pngSignatureBytes.byteOffset,
-        pngSignatureBytes.byteOffset + pngSignatureBytes.byteLength
-      ),
-      httpMetadata: {
-        contentType: 'image/png'
-      }
-    }, {
-      cacheControl: 'public, max-age=31536000, immutable',
-      includeCookieVary: false
-    })
-
-    expect(response.headers.get('cache-control')).toBe('public, max-age=31536000, immutable')
-    expect(response.headers.get('vary')).toBeNull()
-    expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([6, 5, 4]))
-  })
-
-  test('uses distinct bounded Images variants for public preview and full-display responses', async () => {
+  test('uses bounded Images variants for public and protected full-display responses', async () => {
     const transformCalls: unknown[] = []
     const arrayBuffer = vi.fn(async () => pngSignatureBytes.buffer.slice(
       pngSignatureBytes.byteOffset,
@@ -244,24 +212,17 @@ describe('event photo utilities', () => {
         contentType: 'image/png'
       }
     }
-    const publicCacheOptions = {
-      cacheControl: 'public, max-age=30, stale-if-error=0',
-      cdnCacheControl: 'public, max-age=30, stale-if-error=0',
-      includeCookieVary: false
-    }
-
     const previewResponse = await createPublicEventPhotoResponse(
       event,
       photoObject,
-      'preview',
-      publicCacheOptions
+      'preview'
     )
     const originalResponse = await createPublicEventPhotoResponse(
       event,
       photoObject,
-      'original',
-      publicCacheOptions
+      'original'
     )
+    const privateFullDisplayResponse = await createEventPhotoFullDisplayResponse(event, photoObject)
 
     expect(publicEventPhotoVariants.original.name).toBe('full-display')
     expect(transformCalls).toEqual([
@@ -274,11 +235,18 @@ describe('event photo utilities', () => {
         width: publicEventPhotoVariants.original.width,
         height: publicEventPhotoVariants.original.height,
         fit: 'scale-down'
+      },
+      {
+        width: publicEventPhotoVariants.original.width,
+        height: publicEventPhotoVariants.original.height,
+        fit: 'scale-down'
       }
     ])
     expect(arrayBuffer).not.toHaveBeenCalled()
-    expect(previewResponse.headers.get('cache-control')).toBe('public, max-age=30, stale-if-error=0')
-    expect(originalResponse.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-if-error=0')
+    expect(previewResponse.headers.get('cache-control')).toBe('public, max-age=30, must-revalidate')
+    expect(originalResponse.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, must-revalidate')
+    expect(privateFullDisplayResponse.headers.get('cache-control')).toBe('private, no-store')
+    expect(privateFullDisplayResponse.headers.get('vary')).toBe('Cookie')
   })
 
   test('normalizes Node Buffer payloads before writing photo objects to R2', async () => {
@@ -299,7 +267,7 @@ describe('event photo utilities', () => {
       EVENT_IMAGES: bucket
     })
 
-    await putEventPhotoObject(event, 'event_1', 'photo_1', {
+    await putEventPhotoObject(event, eventPhotoObjectKey('event_1', 'photo_1'), {
       contentType: 'image/png',
       data: Buffer.from(pngSignatureBytes) as unknown as Uint8Array
     })

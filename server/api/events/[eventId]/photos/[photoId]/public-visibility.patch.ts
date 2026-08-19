@@ -33,13 +33,14 @@ export const applicationOperation = defineStructuredRouteOperation({
       database
         .update(eventPhotos)
         .set({
-          isPubliclyVisible: body.isPubliclyVisible
+          isPubliclyVisible: body.isPubliclyVisible,
+          imageRevision: sql`${eventPhotos.imageRevision} + 1`
         })
         .where(eq(eventPhotos.id, photo.id)),
       database
         .update(events)
         .set({
-          mediaRevision: sql`${events.mediaRevision} + 1`
+          publicContentRevision: sql`${events.publicContentRevision} + 1`
         })
         .where(eq(events.id, event.id))
     ])

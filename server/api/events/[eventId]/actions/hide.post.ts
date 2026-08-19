@@ -46,7 +46,7 @@ export const applicationOperation = defineStructuredRouteOperation({
       hiddenAt,
       hiddenByUserId: actor.platformUser.id,
       hiddenReason: body.reason,
-      mediaRevision: sql`${events.mediaRevision} + 1`,
+      publicContentRevision: sql`${events.publicContentRevision} + 1`,
       updatedAt: hiddenAt
     })
     .where(eq(events.id, eventId))

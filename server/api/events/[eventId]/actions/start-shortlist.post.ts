@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
@@ -43,6 +43,7 @@ export const applicationOperation = defineStructuredRouteOperation({
     .update(events)
     .set({
       state: 'shortlist',
+      publicContentRevision: sql`${events.publicContentRevision} + 1`,
       pitchFinalistSubmissionIdsJson: '[]',
       activePitchPresentationSubmissionId: null,
       pitchPresentationsCompletedAt: null,

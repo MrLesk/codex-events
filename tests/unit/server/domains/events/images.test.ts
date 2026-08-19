@@ -43,9 +43,13 @@ function createOversizedPngBytes(size: number) {
 
 describe('event image utilities', () => {
   test('builds canonical event image object keys', () => {
-    expect(eventImageObjectKey('event_1', 'background')).toBe('events/event_1/background-image')
-    expect(eventImageObjectKey('event_1', 'banner')).toBe('events/event_1/banner-image')
-    expect(platformDefaultEventBackgroundImageObjectKey()).toBe('platform/default-event-background-image')
+    const firstBackgroundKey = eventImageObjectKey('event_1', 'background')
+    const secondBackgroundKey = eventImageObjectKey('event_1', 'background')
+
+    expect(firstBackgroundKey).toMatch(/^events\/event_1\/background\/[0-9a-f-]{36}$/)
+    expect(secondBackgroundKey).not.toBe(firstBackgroundKey)
+    expect(eventImageObjectKey('event_1', 'banner')).toMatch(/^events\/event_1\/banner\/[0-9a-f-]{36}$/)
+    expect(platformDefaultEventBackgroundImageObjectKey()).toMatch(/^platform\/default-event-background\/[0-9a-f-]{36}$/)
   })
 
   test('builds canonical public event image paths', () => {
@@ -115,8 +119,8 @@ describe('event image utilities', () => {
     expect(arrayBuffer).not.toHaveBeenCalled()
     expect(transform).toHaveBeenCalledWith({ width: 1600, height: 900, fit: 'cover' })
     expect(output).toHaveBeenCalledWith({ format: 'image/avif', quality: 82 })
-    expect(response.headers.get('cache-control')).toBe('public, max-age=30, stale-if-error=0')
-    expect(response.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-if-error=0')
+    expect(response.headers.get('cache-control')).toBe('public, max-age=30, must-revalidate')
+    expect(response.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, must-revalidate')
     expect(response.headers.get('vary')).toBe('Accept')
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([4, 5, 6]))
   })
@@ -250,7 +254,7 @@ describe('event image utilities', () => {
       }
     } as H3Event
 
-    await putEventImageObject(event, 'event_1', 'background', {
+    await putEventImageObject(event, eventImageObjectKey('event_1', 'background'), {
       contentType: 'image/png',
       data: Buffer.from(pngSignatureBytes) as unknown as Uint8Array
     })

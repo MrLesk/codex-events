@@ -6,7 +6,6 @@ import { getDatabase } from '#server/database/client'
 import { events } from '#server/database/schema'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
-import { deleteEventImageObject } from '#server/domains/events/images'
 import {
   requireEventAdmin,
   routeIdParamsSchema,
@@ -21,13 +20,13 @@ export default defineApiHandler(async (h3Event) => {
   const { event } = await requireEventAdmin(h3Event, eventId)
   const database = getDatabase(h3Event)
 
-  await deleteEventImageObject(h3Event, event.id, 'background')
-
   await database
     .update(events)
     .set({
       backgroundImageUrl: null,
-      mediaRevision: sql`${events.mediaRevision} + 1`,
+      backgroundImageObjectKey: null,
+      backgroundImageRevision: sql`${events.backgroundImageRevision} + 1`,
+      publicContentRevision: sql`${events.publicContentRevision} + 1`,
       updatedAt: new Date().toISOString()
     })
     .where(eq(events.id, event.id))

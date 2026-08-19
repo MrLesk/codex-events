@@ -20,6 +20,6 @@ export interface EventPhotoRecord {
     id: string
     displayName: string
   } | null
-  previewUrl: string
-  originalUrl: string
+  previewUrl: string | null
+  originalUrl: string | null
 }

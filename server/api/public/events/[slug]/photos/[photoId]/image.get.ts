@@ -1,4 +1,3 @@
-import { setHeader } from 'h3'
 import { z } from 'zod'
 
 import { getDatabase } from '#server/database/client'
@@ -15,8 +14,6 @@ import {
   routeSlugParamsSchema
 } from '#server/domains/events'
 import {
-  publicEventCacheControl,
-  publicEventCdnCacheControl,
   setPrivatePublicEventCacheHeaders
 } from '#server/domains/events/public-cache'
 import { parseValidatedParams, parseValidatedQuery } from '#server/http/validation'
@@ -31,7 +28,9 @@ export default defineApiHandler(async (h3Event) => {
   const database = getDatabase(h3Event)
   const event = await getPublicEventBySlugOrThrow(database, slug)
 
-  if (query.v !== String(event.mediaRevision)) {
+  const photo = await getPublicEventPhotoRecordOrThrow(database, event.id, photoId)
+
+  if (!photo.objectKey || query.v !== String(photo.imageRevision)) {
     throw new ApiError({
       statusCode: 404,
       code: 'event_photo_not_found',
@@ -43,8 +42,7 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  await getPublicEventPhotoRecordOrThrow(database, event.id, photoId)
-  const photoObject = await getEventPhotoObject(h3Event, event.id, photoId)
+  const photoObject = await getEventPhotoObject(h3Event, photo.objectKey)
 
   if (!photoObject) {
     throw new ApiError({
@@ -58,14 +56,5 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  const response = await createPublicEventPhotoResponse(h3Event, photoObject, query.variant, {
-    cacheControl: publicEventCacheControl,
-    cdnCacheControl: publicEventCdnCacheControl,
-    includeCookieVary: false
-  })
-
-  setHeader(h3Event, 'cache-control', publicEventCacheControl)
-  setHeader(h3Event, 'cloudflare-cdn-cache-control', publicEventCdnCacheControl)
-
-  return response
+  return await createPublicEventPhotoResponse(h3Event, photoObject, query.variant)
 })

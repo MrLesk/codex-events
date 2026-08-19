@@ -5,7 +5,6 @@ import { eventPhotos, events } from '#server/database/schema'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
-  deleteEventPhotoObject,
   getEventPhotoRecordOrThrow,
   eventPhotoParamsSchema,
   requireEventPhotoManageAccess
@@ -26,8 +25,6 @@ export const applicationOperation = defineStructuredRouteOperation({
   const { actor, database, event } = await requireEventPhotoManageAccess(h3Event, eventId)
   const photo = await getEventPhotoRecordOrThrow(database, eventId, photoId)
 
-  await deleteEventPhotoObject(h3Event, eventId, photo.id)
-
   await database.batch([
     database
       .delete(eventPhotos)
@@ -38,7 +35,7 @@ export const applicationOperation = defineStructuredRouteOperation({
     database
       .update(events)
       .set({
-        mediaRevision: sql`${events.mediaRevision} + 1`
+        publicContentRevision: sql`${events.publicContentRevision} + 1`
       })
       .where(eq(events.id, event.id))
   ])

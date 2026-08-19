@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, eq, getTableColumns } from 'drizzle-orm'
+import { and, asc, eq, getTableColumns, gt, isNotNull } from 'drizzle-orm'
 import { z } from 'zod'
 
 import type { EventPhotoImageVariant, EventPhotoRecord } from '#shared/domains/events/photos'
@@ -11,6 +11,10 @@ import { getDatabase, type AppDatabase } from '#server/database/client'
 import { eventPhotos, userApplications, users } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
 import { getEventImagesBucket } from './images'
+import {
+  publicEventCacheControl,
+  publicEventCdnCacheControl
+} from './public-cache'
 import {
   getEventOrThrow,
   routeIdParamsSchema
@@ -25,6 +29,7 @@ import { assertGuard } from '#server/domains/lifecycle-guard'
 export const eventPhotoMaxBytes = 10 * 1024 * 1024
 export const eventPhotoContentTypes = supportedImageContentTypes
 export const eventPhotoMaxRowsPerInsert = 10
+export const privateEventPhotoCacheControl = 'private, no-store'
 
 type TiffByteOrder = 'little' | 'big'
 
@@ -155,7 +160,7 @@ function createImageStream(data: Uint8Array) {
 }
 
 export function eventPhotoObjectKey(eventId: string, photoId: string) {
-  return `events/${eventId}/photos/${photoId}`
+  return `events/${eventId}/photos/${photoId}/${crypto.randomUUID()}`
 }
 
 export function buildEventPhotoImageUrl(
@@ -633,8 +638,7 @@ export async function getEventPhotoDimensions(event: H3Event, data: Uint8Array) 
 
 export async function putEventPhotoObject(
   event: H3Event,
-  eventId: string,
-  photoId: string,
+  objectKey: string,
   payload: {
     contentType: SupportedImageContentType
     data: Uint8Array
@@ -645,7 +649,7 @@ export async function putEventPhotoObject(
     : new Uint8Array(payload.data)
 
   await getEventImagesBucket(event).put(
-    eventPhotoObjectKey(eventId, photoId),
+    objectKey,
     normalizedData,
     {
       httpMetadata: {
@@ -667,18 +671,16 @@ export function chunkEventPhotoRowsForInsert(rows: Array<typeof eventPhotos.$inf
 
 export async function getEventPhotoObject(
   event: H3Event,
-  eventId: string,
-  photoId: string
+  objectKey: string
 ) {
-  return await getEventImagesBucket(event).get(eventPhotoObjectKey(eventId, photoId))
+  return await getEventImagesBucket(event).get(objectKey)
 }
 
 export async function deleteEventPhotoObject(
   event: H3Event,
-  eventId: string,
-  photoId: string
+  objectKey: string
 ) {
-  await getEventImagesBucket(event).delete(eventPhotoObjectKey(eventId, photoId))
+  await getEventImagesBucket(event).delete(objectKey)
 }
 
 export async function getEventPhotoRecordOrThrow(
@@ -765,8 +767,12 @@ function serializeEventPhotoRecord(
           displayName: options.uploader.displayName
         }
       : null,
-    previewUrl: options.imagePathBuilder(photo.id, 'preview', photo.createdAt),
-    originalUrl: options.imagePathBuilder(photo.id, 'original', photo.createdAt)
+    previewUrl: photo.objectKey && photo.imageRevision > 0
+      ? options.imagePathBuilder(photo.id, 'preview', String(photo.imageRevision))
+      : null,
+    originalUrl: photo.objectKey && photo.imageRevision > 0
+      ? options.imagePathBuilder(photo.id, 'original', String(photo.imageRevision))
+      : null
   }
 }
 
@@ -794,23 +800,24 @@ export async function listEventPhotoRecords(database: AppDatabase, eventId: stri
 export async function listPublicEventPhotoRecords(
   database: AppDatabase,
   eventId: string,
-  slug: string,
-  mediaRevision: string | number
+  slug: string
 ) {
   const photos = await database.query.eventPhotos.findMany({
     where: and(
       eq(eventPhotos.eventId, eventId),
-      eq(eventPhotos.isPubliclyVisible, true)
+      eq(eventPhotos.isPubliclyVisible, true),
+      isNotNull(eventPhotos.objectKey),
+      gt(eventPhotos.imageRevision, 0)
     ),
     orderBy: [asc(eventPhotos.createdAt)]
   })
 
   return photos.map(photo => serializeEventPhotoRecord(photo, {
-    imagePathBuilder: (photoId, variant, _version) => buildPublicEventPhotoImageUrl(
+    imagePathBuilder: (photoId, variant, version) => buildPublicEventPhotoImageUrl(
       slug,
       photoId,
       variant,
-      String(mediaRevision)
+      version
     ),
     includeHighlight: false,
     uploadedByUserId: null,
@@ -836,7 +843,9 @@ export async function hasPublicEventPhotos(database: AppDatabase, eventId: strin
     },
     where: and(
       eq(eventPhotos.eventId, eventId),
-      eq(eventPhotos.isPubliclyVisible, true)
+      eq(eventPhotos.isPubliclyVisible, true),
+      isNotNull(eventPhotos.objectKey),
+      gt(eventPhotos.imageRevision, 0)
     )
   })
 
@@ -952,7 +961,7 @@ async function createTransformedEventPhotoResponse(
 
   const response = transformed.response()
   const headers: Record<string, string> = {
-    'cache-control': options?.cacheControl ?? 'private, max-age=31536000, immutable',
+    'cache-control': options?.cacheControl ?? privateEventPhotoCacheControl,
     'content-type': transformed.contentType(),
     'x-content-type-options': 'nosniff'
   }
@@ -976,25 +985,38 @@ export async function createPublicEventPhotoResponse(
   event: H3Event,
   photoObject: EventPhotoObject,
   variant: EventPhotoImageVariant,
-  options?: EventPhotoResponseOptions
+  options?: Pick<EventPhotoResponseOptions, 'includeCookieVary'>
 ) {
   return createTransformedEventPhotoResponse(
     event,
     photoObject,
     publicEventPhotoVariants[variant],
-    options
+    {
+      cacheControl: publicEventCacheControl,
+      cdnCacheControl: publicEventCdnCacheControl,
+      includeCookieVary: options?.includeCookieVary ?? false
+    }
   )
 }
 
 export async function createEventPhotoPreviewResponse(
   event: H3Event,
-  photoObject: EventPhotoObject,
-  options?: EventPhotoResponseOptions
+  photoObject: EventPhotoObject
 ) {
   return createTransformedEventPhotoResponse(
     event,
     photoObject,
-    publicEventPhotoVariants.preview,
-    options
+    publicEventPhotoVariants.preview
+  )
+}
+
+export async function createEventPhotoFullDisplayResponse(
+  event: H3Event,
+  photoObject: EventPhotoObject
+) {
+  return createTransformedEventPhotoResponse(
+    event,
+    photoObject,
+    publicEventPhotoVariants.original
   )
 }

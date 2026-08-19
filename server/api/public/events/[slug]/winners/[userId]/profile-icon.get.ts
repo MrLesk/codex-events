@@ -57,7 +57,8 @@ export default defineApiHandler(async (h3Event) => {
   const targetUser = await database.query.users.findFirst({
     columns: {
       id: true,
-      profileIconUpdatedAt: true
+      profileIconObjectKey: true,
+      profileIconRevision: true
     },
     where: and(
       eq(users.id, userId),
@@ -65,7 +66,7 @@ export default defineApiHandler(async (h3Event) => {
     )
   })
 
-  if (!targetUser?.profileIconUpdatedAt) {
+  if (!targetUser?.profileIconObjectKey || targetUser.profileIconRevision < 1) {
     throw new ApiError({
       statusCode: 404,
       code: 'profile_icon_not_found',
@@ -73,7 +74,7 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  if (query.v !== targetUser.profileIconUpdatedAt) {
+  if (query.v !== String(targetUser.profileIconRevision)) {
     throw new ApiError({
       statusCode: 404,
       code: 'profile_icon_not_found',
@@ -81,7 +82,7 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  const icon = await getProfileIconObject(h3Event, userId)
+  const icon = await getProfileIconObject(h3Event, targetUser.profileIconObjectKey)
 
   if (!icon) {
     throw new ApiError({
@@ -91,7 +92,7 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  return new Response(await icon.arrayBuffer(), {
+  return new Response(icon.body, {
     headers: {
       'cache-control': privatePublicEventCacheControl,
       'content-type': icon.httpMetadata?.contentType ?? 'application/octet-stream',

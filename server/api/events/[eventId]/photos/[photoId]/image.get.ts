@@ -1,8 +1,7 @@
-import { setHeader } from 'h3'
-
 import { defineApiHandler } from '#server/http/api-handler'
 import { ApiError } from '#server/http/api-error'
 import {
+  createEventPhotoFullDisplayResponse,
   createEventPhotoPreviewResponse,
   getEventPhotoObject,
   getEventPhotoRecordOrThrow,
@@ -19,8 +18,33 @@ export default defineApiHandler(async (h3Event) => {
   const { eventId, photoId } = parseValidatedParams(h3Event, eventPhotoParamsSchema)
   const query = parseValidatedQuery(h3Event, eventPhotoImageQuerySchema)
   const { database } = await requireEventPhotoReadAccess(h3Event, eventId)
-  await getEventPhotoRecordOrThrow(database, eventId, photoId)
-  const photoObject = await getEventPhotoObject(h3Event, eventId, photoId)
+  const photo = await getEventPhotoRecordOrThrow(database, eventId, photoId)
+
+  if (query.v && query.v !== String(photo.imageRevision)) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'event_photo_not_found',
+      message: 'The requested event photo version was not found.',
+      details: {
+        eventId,
+        photoId
+      }
+    })
+  }
+
+  if (!photo.objectKey) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'event_photo_not_found',
+      message: 'The requested event photo was not found.',
+      details: {
+        eventId,
+        photoId
+      }
+    })
+  }
+
+  const photoObject = await getEventPhotoObject(h3Event, photo.objectKey)
 
   if (!photoObject) {
     throw new ApiError({
@@ -38,13 +62,5 @@ export default defineApiHandler(async (h3Event) => {
     return await createEventPhotoPreviewResponse(h3Event, photoObject)
   }
 
-  setHeader(h3Event, 'cache-control', 'private, max-age=31536000, immutable')
-  setHeader(h3Event, 'vary', 'Cookie')
-
-  return new Response(await photoObject.arrayBuffer(), {
-    headers: {
-      'content-type': photoObject.httpMetadata?.contentType ?? 'application/octet-stream',
-      'x-content-type-options': 'nosniff'
-    }
-  })
+  return await createEventPhotoFullDisplayResponse(h3Event, photoObject)
 })

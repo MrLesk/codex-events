@@ -18,7 +18,7 @@ interface R2HttpMetadataLike {
 }
 
 interface R2ObjectBodyLike {
-  arrayBuffer: () => Promise<ArrayBuffer>
+  body: ReadableStream<Uint8Array>
   httpMetadata?: R2HttpMetadataLike | null
 }
 
@@ -28,7 +28,11 @@ interface R2PutOptionsLike {
 
 interface R2BucketLike {
   get: (key: string) => Promise<R2ObjectBodyLike | null>
-  put: (key: string, value: ArrayBuffer | ArrayBufferView, options?: R2PutOptionsLike) => Promise<unknown>
+  put: (
+    key: string,
+    value: ArrayBuffer | ArrayBufferView | ReadableStream<Uint8Array>,
+    options?: R2PutOptionsLike
+  ) => Promise<unknown>
   delete: (key: string) => Promise<void>
 }
 
@@ -74,7 +78,7 @@ function listAvailableR2BindingNames(cloudflareEnv: CloudflareEnvShape) {
 }
 
 export function profileIconObjectKey(userId: string) {
-  return `users/${userId}/profile-icon`
+  return `users/${userId}/profile-icon/${crypto.randomUUID()}`
 }
 
 export function getProfileIconsBucket(event: H3Event): R2BucketLike {
@@ -146,13 +150,13 @@ export function assertValidProfileIconPart(part: {
   }
 }
 
-export async function getProfileIconObject(event: H3Event, userId: string) {
-  return await getProfileIconsBucket(event).get(profileIconObjectKey(userId))
+export async function getProfileIconObject(event: H3Event, objectKey: string) {
+  return await getProfileIconsBucket(event).get(objectKey)
 }
 
 export async function putProfileIconObject(
   event: H3Event,
-  userId: string,
+  objectKey: string,
   payload: {
     contentType: string
     data: Uint8Array
@@ -165,7 +169,7 @@ export async function putProfileIconObject(
     : new Uint8Array(payload.data)
 
   await getProfileIconsBucket(event).put(
-    profileIconObjectKey(userId),
+    objectKey,
     normalizedData,
     {
       httpMetadata: {
@@ -175,6 +179,6 @@ export async function putProfileIconObject(
   )
 }
 
-export async function deleteProfileIconObject(event: H3Event, userId: string) {
-  await getProfileIconsBucket(event).delete(profileIconObjectKey(userId))
+export async function deleteProfileIconObject(event: H3Event, objectKey: string) {
+  await getProfileIconsBucket(event).delete(objectKey)
 }
