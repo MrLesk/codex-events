@@ -18,9 +18,9 @@ import { deleteCookie, getCookie, getQuery, getRequestURL, parseCookies, setCook
 
 import { buildAccountRegisterHref } from '#shared/domains/accounts/auth-navigation'
 import { getDatabase } from '#server/database/client'
-import { users } from '#server/database/schema'
+import { userAuthIdentities, users } from '#server/database/schema'
 import {
-  ensurePlatformUserAuthIdentities,
+  findPlatformUserAuthIdentity,
   findPlatformUserByAuth0Subject
 } from '#server/domains/accounts/auth-identities'
 import { ApiError } from '#server/http/api-error'
@@ -631,6 +631,69 @@ export async function readPlatformAccountLinkAuthenticatedSubject(event: H3Event
   return session?.user?.sub?.trim() ?? ''
 }
 
+async function persistValidatedPlatformAccountLinkIdentity(
+  database: AppDatabase,
+  input: {
+    userId: string
+    auth0Subject: string
+    createdAt: string
+  }
+) {
+  const auth0Subject = input.auth0Subject.trim()
+  const existingIdentity = await findPlatformUserAuthIdentity(database, auth0Subject)
+
+  if (existingIdentity) {
+    if (existingIdentity.userId !== input.userId) {
+      throw new ApiError({
+        statusCode: 409,
+        code: 'platform_user_auth_identity_conflict',
+        message: 'This Auth0 identity is already linked to another platform user.',
+        details: {
+          auth0Subject,
+          userId: existingIdentity.userId
+        }
+      })
+    }
+
+    return existingIdentity
+  }
+
+  const identityRecord = {
+    id: crypto.randomUUID(),
+    userId: input.userId,
+    auth0Subject,
+    createdAt: input.createdAt
+  } satisfies typeof userAuthIdentities.$inferInsert
+
+  await database.insert(userAuthIdentities)
+    .values(identityRecord)
+    .onConflictDoNothing({ target: userAuthIdentities.auth0Subject })
+
+  const persistedIdentity = await findPlatformUserAuthIdentity(database, auth0Subject)
+
+  if (!persistedIdentity) {
+    throw new ApiError({
+      statusCode: 500,
+      code: 'platform_user_auth_identity_persistence_failed',
+      message: 'The Auth0 identity could not be recorded for this platform account.'
+    })
+  }
+
+  if (persistedIdentity.userId !== input.userId) {
+    throw new ApiError({
+      statusCode: 409,
+      code: 'platform_user_auth_identity_conflict',
+      message: 'This Auth0 identity is already linked to another platform user.',
+      details: {
+        auth0Subject,
+        userId: persistedIdentity.userId
+      }
+    })
+  }
+
+  return persistedIdentity
+}
+
 export async function persistPlatformAccountLinkIdentities(
   event: H3Event,
   challenge: Pick<PlatformAccountLinkChallenge, 'primaryAuth0Subject' | 'secondaryAuth0Subject'>
@@ -646,13 +709,19 @@ export async function persistPlatformAccountLinkIdentities(
     })
   }
 
-  await ensurePlatformUserAuthIdentities(database, {
-    userId: platformUser.id,
-    auth0Subjects: [
-      challenge.primaryAuth0Subject,
-      challenge.secondaryAuth0Subject
-    ]
-  })
+  const createdAt = new Date().toISOString()
+  const uniqueSubjects = new Set([
+    challenge.primaryAuth0Subject.trim(),
+    challenge.secondaryAuth0Subject.trim()
+  ].filter(Boolean))
+
+  for (const auth0Subject of uniqueSubjects) {
+    await persistValidatedPlatformAccountLinkIdentity(database, {
+      userId: platformUser.id,
+      auth0Subject,
+      createdAt
+    })
+  }
 }
 
 export async function clearPlatformAccountLinkAuthentication(event: H3Event) {

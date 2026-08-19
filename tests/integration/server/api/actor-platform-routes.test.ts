@@ -2584,7 +2584,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(auth0Fetch).not.toHaveBeenCalled()
   })
 
-  test('POST /api/account/registration accepts a stale unverified session after Auth0 userinfo reports the email as verified', async () => {
+  test('POST /api/account/registration rejects an unverified session without an Auth0 refresh', async () => {
     const sessionUser = {
       sub: 'auth0|stale-verification-user',
       email: 'stale-verification@example.com',
@@ -2597,22 +2597,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       expiresAt: Math.floor(Date.now() / 1000) + 300,
       scope: 'openid profile email'
     }))
-    const userInfoFetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
-      expect(String(url)).toBe('https://codex-events-test.eu.auth0.com/userinfo')
-      expect(new Headers(init?.headers).get('authorization')).toBe('Bearer userinfo-token')
-
-      return new Response(JSON.stringify({
-        sub: sessionUser.sub,
-        email: sessionUser.email,
-        email_verified: true,
-        name: sessionUser.name
-      }), {
-        status: 200,
-        headers: {
-          'content-type': 'application/json'
-        }
-      })
-    })
+    const userInfoFetch = vi.fn()
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler },
@@ -2643,7 +2628,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
           kind: 'authenticated_identity',
           sessionUser: {
             email: sessionUser.email,
-            email_verified: true
+            email_verified: false
           }
         }
       }
@@ -2660,18 +2645,15 @@ describe('TASK-3.5 actor-facing API routes', () => {
       where: eq(users.auth0Subject, sessionUser.sub)
     })
 
-    expect(registrationResponse.status).toBe(200)
+    expect(registrationResponse.status).toBe(409)
     expect(await registrationResponse.json()).toMatchObject({
-      data: {
-        user: {
-          email: sessionUser.email,
-          displayName: sessionUser.name
-        }
+      error: {
+        code: 'identity_email_unverified'
       }
     })
-    expect(createdUser?.email).toBe(sessionUser.email)
-    expect(getAccessToken).toHaveBeenCalled()
-    expect(userInfoFetch).toHaveBeenCalled()
+    expect(createdUser).toBeUndefined()
+    expect(getAccessToken).not.toHaveBeenCalled()
+    expect(userInfoFetch).not.toHaveBeenCalled()
   })
 
   test('POST /api/account/registration rejects outdated or mismatched platform document ids', async () => {

@@ -154,6 +154,39 @@ describe('request actor resolution', () => {
     })
   })
 
+  test.each([
+    ['false', false],
+    ['missing', undefined]
+  ])('does not refresh an unverified or missing-email-verification session through Auth0 (%s)', async (_label, emailVerified) => {
+    const sessionUser = {
+      sub: 'google-oauth2|unpersisted-user',
+      email: 'unpersisted-user@example.com',
+      ...(emailVerified === undefined ? {} : { email_verified: emailVerified })
+    }
+    const getAccessToken = vi.fn(async () => ({ accessToken: 'must-not-be-requested' }))
+    const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }))
+    const event = createEvent(sessionUser)
+    event.context.runtimeConfig!.auth0 = {
+      domain: 'codex-events-test.eu.auth0.com'
+    }
+    vi.stubGlobal('useAuth0', vi.fn(() => ({
+      getSession: vi.fn(async () => ({ user: sessionUser })),
+      getAccessToken
+    })))
+    vi.stubGlobal('fetch', fetchMock)
+    setDatabase(event, createDatabaseMock())
+
+    await expect(getRequestActor(event)).resolves.toMatchObject({
+      kind: 'authenticated_identity',
+      sessionUser: {
+        sub: sessionUser.sub,
+        email_verified: emailVerified ?? null
+      }
+    })
+    expect(getAccessToken).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   test('derives a GitHub profile URL for authenticated GitHub identities', async () => {
     const event = createEvent({
       sub: 'github|user_1',
