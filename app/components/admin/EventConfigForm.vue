@@ -60,7 +60,7 @@ const props = defineProps<{
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
   bannerImageUploadError?: string
-  imageVersion?: string | null
+  imageVersion?: string | number | null
   eventId?: string | null
   persistedSimplifiedClaimingEnabled?: boolean
   persistedTalkProposalsEnabled?: boolean

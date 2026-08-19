@@ -16,6 +16,10 @@ import {
   parseValidatedParams,
   parseValidatedQuery
 } from '#server/http/validation'
+import {
+  publicEventCacheControl,
+  publicEventCdnCacheControl
+} from '#server/domains/events/public-cache'
 
 const winnerProfileIconParamsSchema = routeSlugParamsSchema.extend({
   userId: z.string().trim().min(1)
@@ -27,7 +31,7 @@ const winnerProfileIconQuerySchema = z.object({
 
 export default defineApiHandler(async (h3Event) => {
   const { slug, userId } = parseValidatedParams(h3Event, winnerProfileIconParamsSchema)
-  parseValidatedQuery(h3Event, winnerProfileIconQuerySchema)
+  const query = parseValidatedQuery(h3Event, winnerProfileIconQuerySchema)
 
   const database = getDatabase(h3Event)
   const event = await getPublicEventBySlugOrThrow(database, slug)
@@ -73,6 +77,14 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
+  if (query.v !== targetUser.profileIconUpdatedAt) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'profile_icon_not_found',
+      message: 'The requested profile icon version was not found.'
+    })
+  }
+
   const icon = await getProfileIconObject(h3Event, userId)
 
   if (!icon) {
@@ -83,7 +95,8 @@ export default defineApiHandler(async (h3Event) => {
     })
   }
 
-  setHeader(h3Event, 'cache-control', 'public, max-age=31536000, immutable')
+  setHeader(h3Event, 'cache-control', publicEventCacheControl)
+  setHeader(h3Event, 'cloudflare-cdn-cache-control', publicEventCdnCacheControl)
 
   return new Response(await icon.arrayBuffer(), {
     headers: {

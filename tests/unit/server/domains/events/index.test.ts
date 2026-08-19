@@ -33,6 +33,7 @@ function buildEventRecord(
     agendaItemsJson: '[]',
     backgroundImageUrl: null,
     bannerImageUrl: null,
+    mediaRevision: 0,
     discordServerUrl: null,
     lumaEventUrl: null,
     slidesUrl: null,
@@ -896,13 +897,15 @@ describe('event management utilities', () => {
 
   test('serializes public event display background without replacing stored event fields', () => {
     expect(serializePublicEvent(buildEventRecord({
-      bannerImageUrl: 'https://example.com/banner.png'
+      bannerImageUrl: 'https://example.com/api/public/events/fixture-event/images/banner',
+      mediaRevision: 1
     }), undefined, undefined, {
-      defaultEventBackgroundImageUrl: 'https://example.com/default-background.png'
+      defaultEventBackgroundImageUrl: 'https://example.com/api/public/platform/event-default-background-image',
+      defaultEventBackgroundImageVersion: 1
     })).toMatchObject({
       backgroundImageUrl: null,
-      displayBackgroundImageUrl: 'https://example.com/default-background.png',
-      bannerImageUrl: 'https://example.com/banner.png'
+      displayBackgroundImageUrl: 'https://example.com/api/public/platform/event-default-background-image?variant=background&v=1',
+      bannerImageUrl: 'https://example.com/api/public/events/fixture-event/images/banner?variant=banner&v=1'
     })
   })
 

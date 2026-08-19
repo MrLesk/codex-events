@@ -40,6 +40,7 @@ describe('deploy Wrangler config generator', () => {
     expect(config.name).toBe('codex-events-test')
     expect(config.main).toBe('../../.output/server/index.mjs')
     expect(config.assets.directory).toBe('../../.output/public')
+    expect(config.cache).toEqual({ enabled: true })
     expect(config.routes).toEqual([
       {
         pattern: 'test.example.com',

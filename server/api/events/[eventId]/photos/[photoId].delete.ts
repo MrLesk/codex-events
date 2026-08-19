@@ -1,7 +1,7 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 
 import { writeAuditLog } from '#server/database/audit-log'
-import { eventPhotos } from '#server/database/schema'
+import { eventPhotos, events } from '#server/database/schema'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
@@ -23,17 +23,25 @@ export const applicationOperation = defineStructuredRouteOperation({
   effect: 'delete'
 }, async (h3Event) => {
   const { eventId, photoId } = parseValidatedParams(h3Event, eventPhotoParamsSchema)
-  const { actor, database } = await requireEventPhotoManageAccess(h3Event, eventId)
+  const { actor, database, event } = await requireEventPhotoManageAccess(h3Event, eventId)
   const photo = await getEventPhotoRecordOrThrow(database, eventId, photoId)
 
   await deleteEventPhotoObject(h3Event, eventId, photo.id)
 
-  await database
-    .delete(eventPhotos)
-    .where(and(
-      eq(eventPhotos.eventId, eventId),
-      eq(eventPhotos.id, photo.id)
-    ))
+  await database.batch([
+    database
+      .delete(eventPhotos)
+      .where(and(
+        eq(eventPhotos.eventId, eventId),
+        eq(eventPhotos.id, photo.id)
+      )),
+    database
+      .update(events)
+      .set({
+        mediaRevision: sql`${events.mediaRevision} + 1`
+      })
+      .where(eq(events.id, event.id))
+  ])
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,

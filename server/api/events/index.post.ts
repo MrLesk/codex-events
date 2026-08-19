@@ -60,6 +60,7 @@ export const applicationOperation = defineStructuredRouteOperation({
     agendaItemsJson: serializeEventAgendaItems(body.agendaItems),
     backgroundImageUrl: body.backgroundImageUrl ?? null,
     bannerImageUrl: body.bannerImageUrl ?? null,
+    mediaRevision: body.backgroundImageUrl || body.bannerImageUrl ? 1 : 0,
     discordServerUrl: body.discordServerUrl ?? null,
     lumaEventUrl: body.lumaEventUrl ?? null,
     slidesUrl: body.slidesUrl ?? null,

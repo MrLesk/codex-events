@@ -9,6 +9,10 @@ import {
   supportedImageContentTypes,
   type SupportedImageContentType
 } from '#server/utils/image-signatures'
+import {
+  publicEventCacheControl,
+  publicEventCdnCacheControl
+} from '#server/domains/events/public-cache'
 
 export const eventImageMaxBytes = 5 * 1024 * 1024
 
@@ -22,7 +26,6 @@ export const eventImageSlots = [
 export type EventImageSlot = typeof eventImageSlots[number]
 type EventImageContentType = SupportedImageContentType
 
-export const publicEventImageCacheControl = 'public, max-age=31536000, immutable'
 export const privateEventImageCacheControl = 'private, no-store'
 
 export const publicEventImageQuerySchema = z
@@ -156,25 +159,36 @@ function appendPublicImageQuery(
   return `${base}?${params.toString()}${hash}`
 }
 
-export function isManagedPublicEventImageUrl(imageUrl: string) {
-  const pathname = new URL(imageUrl, 'https://codex-events.invalid').pathname
-
+function isManagedPublicEventImagePath(pathname: string) {
   return (
     /^\/api\/public\/events\/[^/]+\/images\/(background|banner)$/.test(pathname)
     || pathname === publicPlatformDefaultEventBackgroundImagePath()
   )
 }
 
+export function getManagedPublicEventImagePath(imageUrl: string) {
+  try {
+    const pathname = new URL(imageUrl, 'https://codex-events.invalid').pathname
+    return isManagedPublicEventImagePath(pathname) ? pathname : null
+  } catch {
+    return null
+  }
+}
+
+export function isManagedPublicEventImageUrl(imageUrl: string) {
+  return getManagedPublicEventImagePath(imageUrl) !== null
+}
+
 export function buildVersionedPublicEventImageUrl(
   imageUrl: string | null | undefined,
-  version: string | null | undefined,
+  version: string | number | null | undefined,
   variant: PublicEventImageVariant
 ) {
   const normalizedImageUrl = imageUrl?.trim() ?? ''
-  const normalizedVersion = version?.trim() ?? ''
+  const normalizedVersion = version === null || version === undefined ? '' : String(version).trim()
 
   if (!normalizedImageUrl || !normalizedVersion || !isManagedPublicEventImageUrl(normalizedImageUrl)) {
-    return normalizedImageUrl || null
+    return null
   }
 
   return appendPublicImageQuery(normalizedImageUrl, normalizedVersion, variant)
@@ -232,23 +246,9 @@ export async function createPublicEventImageResponse(
   image: R2ObjectBodyLike,
   slot: PublicEventImageVariant,
   options: {
-    versioned: boolean
     accept?: string | null
   }
 ) {
-  const sourceContentType = image.httpMetadata?.contentType ?? 'application/octet-stream'
-
-  if (!options.versioned) {
-    return new Response(image.body, {
-      headers: {
-        'cache-control': privateEventImageCacheControl,
-        'content-type': sourceContentType,
-        'x-content-type-options': 'nosniff',
-        'vary': 'Cookie'
-      }
-    })
-  }
-
   const variant = publicEventImageVariants[slot]
   const transformed = await getImagesBinding(event)
     .input(image.body)
@@ -264,7 +264,8 @@ export async function createPublicEventImageResponse(
   const transformedResponse = transformed.response()
   const headers = new Headers(transformedResponse.headers)
 
-  headers.set('cache-control', publicEventImageCacheControl)
+  headers.set('cache-control', publicEventCacheControl)
+  headers.set('cloudflare-cdn-cache-control', publicEventCdnCacheControl)
   headers.set('content-type', transformed.contentType())
   headers.set('x-content-type-options', 'nosniff')
   headers.set('vary', 'Accept')

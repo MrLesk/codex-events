@@ -777,7 +777,8 @@ export async function listEventPhotoRecords(database: AppDatabase, eventId: stri
 export async function listPublicEventPhotoRecords(
   database: AppDatabase,
   eventId: string,
-  slug: string
+  slug: string,
+  mediaRevision: string | number
 ) {
   const photos = await database.query.eventPhotos.findMany({
     where: and(
@@ -788,11 +789,11 @@ export async function listPublicEventPhotoRecords(
   })
 
   return photos.map(photo => serializeEventPhotoRecord(photo, {
-    imagePathBuilder: (photoId, variant, version) => buildPublicEventPhotoImageUrl(
+    imagePathBuilder: (photoId, variant, _version) => buildPublicEventPhotoImageUrl(
       slug,
       photoId,
       variant,
-      version
+      String(mediaRevision)
     ),
     includeHighlight: false,
     uploadedByUserId: null,
@@ -911,12 +912,12 @@ export async function createEventPhotoPreviewResponse(
   photoObject: NonNullable<Awaited<ReturnType<typeof getEventPhotoObject>>>,
   options?: {
     cacheControl?: string
+    cdnCacheControl?: string
     includeCookieVary?: boolean
   }
 ) {
-  const bytes = new Uint8Array(await photoObject.arrayBuffer())
   const transformed = await getImagesBinding(event)
-    .input(createImageStream(bytes))
+    .input(photoObject.body)
     .transform({
       width: 720,
       height: 720,
@@ -932,6 +933,10 @@ export async function createEventPhotoPreviewResponse(
     'cache-control': options?.cacheControl ?? 'private, max-age=31536000, immutable',
     'content-type': transformed.contentType(),
     'x-content-type-options': 'nosniff'
+  }
+
+  if (options?.cdnCacheControl) {
+    headers['cloudflare-cdn-cache-control'] = options.cdnCacheControl
   }
 
   if (options?.includeCookieVary ?? true) {

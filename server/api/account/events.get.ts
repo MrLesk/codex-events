@@ -81,6 +81,7 @@ function serializeEventParticipation(
     name: event.name,
     description: event.description,
     state: event.state,
+    mediaRevision: event.mediaRevision,
     city: event.city,
     country: event.country,
     address: showRestrictedDetails ? event.address : '',

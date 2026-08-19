@@ -1,6 +1,6 @@
 import { readMultipartFormData } from 'h3'
 
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
@@ -44,6 +44,7 @@ export default defineApiHandler(async (h3Event) => {
     .update(events)
     .set({
       bannerImageUrl,
+      mediaRevision: sql`${events.mediaRevision} + 1`,
       updatedAt
     })
     .where(eq(events.id, event.id))

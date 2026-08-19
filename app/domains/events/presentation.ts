@@ -151,10 +151,10 @@ export interface EventImageSource {
 
 export function buildVersionedEventImageUrl(
   imageUrl: string | null | undefined,
-  version: string | null | undefined
+  version: string | number | null | undefined
 ) {
   const normalizedImageUrl = imageUrl?.trim() ?? ''
-  const normalizedVersion = version?.trim() ?? ''
+  const normalizedVersion = version === null || version === undefined ? '' : String(version).trim()
 
   if (!normalizedImageUrl || !normalizedVersion) {
     return normalizedImageUrl || undefined

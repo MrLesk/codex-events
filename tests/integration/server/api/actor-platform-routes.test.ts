@@ -1434,14 +1434,10 @@ describe('TASK-3.5 actor-facing API routes', () => {
 
     const imageResponse = await adminHarness.request('/api/public/platform/event-default-background-image')
 
-    expect(imageResponse.status).toBe(200)
-    expect(imageResponse.headers.get('cache-control')).toBe('private, no-store')
-    expect(imageResponse.headers.get('content-type')).toBe('image/png')
-    expect(imageResponse.headers.get('x-content-type-options')).toBe('nosniff')
-    expect(new Uint8Array(await imageResponse.arrayBuffer())).toEqual(pngSignatureBytes)
+    expect(imageResponse.status).toBe(404)
 
     const versionedImageResponse = await adminHarness.request(
-      `/api/public/platform/event-default-background-image?variant=background&v=${encodeURIComponent(storedSettings!.updatedAt)}`,
+      `/api/public/platform/event-default-background-image?variant=background&v=${storedSettings!.mediaRevision}`,
       {
         headers: {
           accept: 'image/avif,image/webp;q=0.8'
@@ -1450,7 +1446,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
     )
 
     expect(versionedImageResponse.status).toBe(200)
-    expect(versionedImageResponse.headers.get('cache-control')).toBe('public, max-age=31536000, immutable')
+    expect(versionedImageResponse.headers.get('cache-control')).toBe('public, max-age=30, stale-if-error=0')
+    expect(versionedImageResponse.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-if-error=0')
     expect(versionedImageResponse.headers.get('content-type')).toBe('image/webp')
     expect(versionedImageResponse.headers.get('vary')).toBe('Accept')
 

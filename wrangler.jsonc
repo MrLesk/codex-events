@@ -16,6 +16,9 @@
 			"head_sampling_rate": 0.1
 		}
 	},
+	"cache": {
+		"enabled": true
+	},
 	"triggers": {
 		"crons": [
 			"*/5 * * * *"

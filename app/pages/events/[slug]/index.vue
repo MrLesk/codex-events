@@ -39,9 +39,7 @@ definePageMeta({
 
 defineRouteRules({
   cache: {
-    maxAge: 30,
-    staleMaxAge: 60,
-    swr: true
+    maxAge: 30
   }
 })
 
@@ -81,7 +79,8 @@ if (!eventData.value) {
 }
 
 if (import.meta.server) {
-  useResponseHeader('cache-control').value = 'public, max-age=0, s-maxage=30, stale-while-revalidate=60'
+  useResponseHeader('cache-control').value = 'public, max-age=30, stale-if-error=0'
+  useResponseHeader('cloudflare-cdn-cache-control').value = 'public, max-age=30, stale-if-error=0'
 }
 
 const event = computed(() => eventData.value!)

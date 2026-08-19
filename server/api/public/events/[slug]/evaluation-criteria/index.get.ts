@@ -10,6 +10,10 @@ import {
   routeSlugParamsSchema,
   serializePublicEvaluationCriterion
 } from '#server/domains/events'
+import {
+  setPrivatePublicEventCacheHeaders,
+  setPublicEventCacheHeaders
+} from '#server/domains/events/public-cache'
 import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
@@ -22,6 +26,8 @@ export const applicationOperation = defineStructuredRouteOperation({
   capabilities: ['public'],
   effect: 'read'
 }, async (h3Event) => {
+  setPrivatePublicEventCacheHeaders(h3Event)
+
   const { slug } = parseValidatedParams(h3Event, routeSlugParamsSchema)
   const database = getDatabase(h3Event)
   const event = await getPublicEventBySlugOrThrow(database, slug)
@@ -32,12 +38,16 @@ export const applicationOperation = defineStructuredRouteOperation({
     orderBy: [asc(evaluationCriteria.displayOrder)]
   })
 
-  return apiList(
+  const response = apiList(
     criteria.map(serializePublicEvaluationCriterion),
     {
       total: criteria.length
     }
   )
+
+  setPublicEventCacheHeaders(h3Event, 'public-event-evaluation-criteria', response)
+
+  return response
 })
 
 export default defineStructuredOperationApiHandler(applicationOperation)

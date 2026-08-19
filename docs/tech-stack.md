@@ -44,7 +44,11 @@ This document defines the canonical technology stack for the Codex event platfor
 ## Media Delivery
 
 - Public and versioned images are streamed from managed storage through cacheable URLs. Cloudflare Images produces a bounded set of named responsive variants; callers do not request arbitrary dimensions.
-- Private or mutable media and stored originals remain isolated behind authorization. Page backgrounds use versioned cacheable variants and never use public `no-store` original media responses.
+- Private or mutable media and stored originals remain isolated behind authorization. Page backgrounds and public event media use exact current media revisions and never use public `no-store` original media responses or raw-original fallbacks.
+- Event and platform-default media revisions are updated atomically with image, visibility, replacement, removal, and public-gallery mutations. `updated_at` is not an immutable media revision.
+- Public event HTML, JSON, and versioned media responses use `Cache-Control: public, max-age=30, stale-if-error=0` for browsers and `Cloudflare-CDN-Cache-Control: public, max-age=30, stale-if-error=0` for Cloudflare edge caching. They do not use `s-maxage`, one-year `immutable` freshness, or stale-on-error behavior.
+- A Cloudflare cache hit can be served without invoking the Worker, and Cache API deletion is data-center local. No application-owned global purge credential is part of the runtime contract, so a hide, replacement, removal, public-gallery change, or event deletion has a bounded visibility window of at most 30 seconds at the browser or Cloudflare edge; D1 validation applies on a miss or revalidation, not to an already-served cache hit.
+- Public media routes validate visibility, the exact current revision, and the managed object before reading R2 or invoking Images. Missing, invalid, or stale revisions return not found, and public callers never receive stored originals.
 
 ## Architecture Notes
 

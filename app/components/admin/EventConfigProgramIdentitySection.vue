@@ -15,7 +15,7 @@ const props = defineProps<{
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
   bannerImageUploadError?: string
-  imageVersion?: string | null
+  imageVersion?: string | number | null
 }>()
 
 const emit = defineEmits<{

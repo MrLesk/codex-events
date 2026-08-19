@@ -206,6 +206,8 @@ describe('shared schema foundation', () => {
     expect(auditIndexes).toContain('audit_logs_metadata_event_created_idx')
     expect(getTableName(platformSettings)).toBe('platform_settings')
     expect(platformSettingsColumns.defaultEventBackgroundImageUrl.name).toBe('default_event_background_image_url')
+    expect(platformSettingsColumns.mediaRevision.name).toBe('media_revision')
+    expect(getTableColumns(events).mediaRevision.name).toBe('media_revision')
     expect(platformSettingsChecks).toContain('platform_settings_singleton_id_check')
   })
 })

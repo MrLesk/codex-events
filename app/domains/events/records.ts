@@ -63,6 +63,7 @@ export interface EventRecord {
   backgroundImageUrl: string | null
   displayBackgroundImageUrl: string | null
   bannerImageUrl: string | null
+  mediaRevision: number
   discordServerUrl?: string | null
   lumaEventUrl: string | null
   slidesUrl?: string | null

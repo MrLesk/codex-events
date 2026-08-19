@@ -2,7 +2,8 @@ import type { H3Event } from 'h3'
 
 import { setHeader } from 'h3'
 
-export const publicEventCacheControl = 'public, max-age=0, s-maxage=30, stale-while-revalidate=60'
+export const publicEventCacheControl = 'public, max-age=30, stale-if-error=0'
+export const publicEventCdnCacheControl = 'public, max-age=30, stale-if-error=0'
 export const privatePublicEventCacheControl = 'private, no-store'
 
 function hashCachePayload(value: string) {
@@ -26,6 +27,7 @@ export function setPrivatePublicEventCacheHeaders(event: H3Event) {
 
 export function setPublicEventCacheHeaders(event: H3Event, scope: string, payload: unknown) {
   setHeader(event, 'cache-control', publicEventCacheControl)
+  setHeader(event, 'cloudflare-cdn-cache-control', publicEventCdnCacheControl)
   setHeader(event, 'etag', buildPublicEventEtag(scope, payload))
   setHeader(event, 'vary', 'Accept-Encoding')
 }

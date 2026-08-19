@@ -70,7 +70,12 @@ describe('event image utilities', () => {
       'https://cdn.example/background.png',
       '2026-08-19T12:00:00.000Z',
       'background'
-    )).toBe('https://cdn.example/background.png')
+    )).toBeNull()
+    expect(buildVersionedPublicEventImageUrl(
+      'not-a-url',
+      '2026-08-19T12:00:00.000Z',
+      'background'
+    )).toBeNull()
   })
 
   test('negotiates modern formats and uses deterministic local JPEG fallback', () => {
@@ -104,14 +109,14 @@ describe('event image utilities', () => {
       arrayBuffer,
       httpMetadata: { contentType: 'image/png' }
     }, 'background', {
-      versioned: true,
       accept: 'image/avif,image/webp;q=0.8'
     })
 
     expect(arrayBuffer).not.toHaveBeenCalled()
     expect(transform).toHaveBeenCalledWith({ width: 1600, height: 900, fit: 'cover' })
     expect(output).toHaveBeenCalledWith({ format: 'image/avif', quality: 82 })
-    expect(response.headers.get('cache-control')).toBe('public, max-age=31536000, immutable')
+    expect(response.headers.get('cache-control')).toBe('public, max-age=30, stale-if-error=0')
+    expect(response.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=30, stale-if-error=0')
     expect(response.headers.get('vary')).toBe('Accept')
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([4, 5, 6]))
   })

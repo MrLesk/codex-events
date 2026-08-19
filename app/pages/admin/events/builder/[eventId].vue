@@ -231,7 +231,7 @@ useSeoMeta({
       :background-image-upload-error="imageMutationState.background.error"
       :banner-image-upload-pending="imageMutationState.banner.pending"
       :banner-image-upload-error="imageMutationState.banner.error"
-      :image-version="currentEvent.updatedAt"
+      :image-version="currentEvent.mediaRevision"
       :current-application-terms="termsResponse?.applicationTerms ?? null"
       :current-winner-terms="termsResponse?.winnerTerms ?? null"
       :saving-terms-document-type="savingTermsDocumentType"

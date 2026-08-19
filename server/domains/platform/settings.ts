@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 import { writeAuditLog } from '#server/database/audit-log'
 import type { AppDatabase } from '#server/database/client'
@@ -10,7 +10,7 @@ type PlatformSettingsRecord = typeof platformSettings.$inferSelect
 
 export interface EventDisplayImageOptions {
   defaultEventBackgroundImageUrl?: string | null
-  defaultEventBackgroundImageVersion?: string | null
+  defaultEventBackgroundImageVersion?: string | number | null
 }
 
 export function serializePlatformSettings(settings: PlatformSettingsRecord) {
@@ -47,7 +47,7 @@ export async function getEventDisplayImageOptions(database: AppDatabase): Promis
 
   return {
     defaultEventBackgroundImageUrl: settings?.defaultEventBackgroundImageUrl ?? null,
-    defaultEventBackgroundImageVersion: settings?.updatedAt ?? null
+    defaultEventBackgroundImageVersion: settings?.mediaRevision ?? null
   }
 }
 
@@ -66,12 +66,16 @@ export async function setDefaultEventBackgroundImageUrl(
   if (existingSettings) {
     await database
       .update(platformSettings)
-      .set(values)
+      .set({
+        ...values,
+        mediaRevision: sql`${platformSettings.mediaRevision} + 1`
+      })
       .where(eq(platformSettings.id, platformSettingsId))
   } else {
     await database.insert(platformSettings).values({
       id: platformSettingsId,
       ...values,
+      mediaRevision: 1,
       createdAt: now
     })
   }
@@ -103,7 +107,8 @@ export async function clearDefaultEventBackgroundImageUrl(
     .update(platformSettings)
     .set({
       defaultEventBackgroundImageUrl: null,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      mediaRevision: sql`${platformSettings.mediaRevision} + 1`
     })
     .where(eq(platformSettings.id, platformSettingsId))
 

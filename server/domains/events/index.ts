@@ -1608,8 +1608,19 @@ export function buildEventUpdatePayload(
   assertEventApplicationFieldConfiguration(mergedEvent, existingEvent.id)
   assertSimplifiedClaimingConfiguration(mergedEvent, existingEvent.id)
 
+  const publicMediaChanged = (
+    normalizedPatch.backgroundImageUrl !== undefined
+    && normalizedPatch.backgroundImageUrl !== existingEvent.backgroundImageUrl
+  ) || (
+    normalizedPatch.bannerImageUrl !== undefined
+    && normalizedPatch.bannerImageUrl !== existingEvent.bannerImageUrl
+  )
+
   return {
     ...normalizedPatch,
+    ...(publicMediaChanged
+      ? { mediaRevision: sql`${events.mediaRevision} + 1` }
+      : {}),
     updatedAt: new Date().toISOString()
   }
 }
@@ -2115,6 +2126,7 @@ export function serializeEvent(
     backgroundImageUrl: event.backgroundImageUrl,
     displayBackgroundImageUrl: resolveEventDisplayBackgroundImageUrl(event, options),
     bannerImageUrl: event.bannerImageUrl,
+    mediaRevision: event.mediaRevision,
     lumaEventUrl: event.lumaEventUrl,
     lumaEventApiId: event.lumaEventApiId,
     city: event.city,
@@ -2245,12 +2257,12 @@ export function serializePublicEvent(
 ) {
   const backgroundImageUrl = buildVersionedPublicEventImageUrl(
     event.backgroundImageUrl,
-    event.updatedAt,
+    event.mediaRevision,
     'background'
   )
   const bannerImageUrl = buildVersionedPublicEventImageUrl(
     event.bannerImageUrl,
-    event.updatedAt,
+    event.mediaRevision,
     'banner'
   )
   const displayBackgroundImageUrl = event.backgroundImageUrl

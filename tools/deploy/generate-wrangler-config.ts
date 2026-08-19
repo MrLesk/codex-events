@@ -81,6 +81,9 @@ export interface GeneratedDeployWranglerConfig {
       head_sampling_rate: number
     }
   }
+  cache: {
+    enabled: boolean
+  }
   triggers: {
     crons: string[]
   }
@@ -399,6 +402,9 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
         enabled: true,
         head_sampling_rate: 0.1
       }
+    },
+    cache: {
+      enabled: true
     },
     triggers: {
       crons: ['*/5 * * * *']

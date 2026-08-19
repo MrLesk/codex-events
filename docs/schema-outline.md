@@ -89,6 +89,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `agenda_items_json`
 - `background_image_url`
 - `banner_image_url`
+- `media_revision`
 - `discord_server_url`
 - `luma_event_url`
 - `slides_url`
@@ -236,6 +237,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `slides_url` is optional because not every event has participant-facing slides, and when present it is returned only in account-scoped detail reads for approved participants plus judges, staff, event admins, and platform admins.
 - `background_image_url` stores only the event-specific uploaded background image URL. Event read serializers expose a separate `displayBackgroundImageUrl` derived from this field or from the platform default event background image.
 - `banner_image_url` stores only the event-specific uploaded banner image URL.
+- `media_revision` is a non-negative, atomically incremented event revision for public media and visibility. It increments when a managed background or banner image is uploaded or removed, when event visibility changes, and when another event-scoped public media mutation changes the set of public media. Versioned public media URLs must contain the exact current revision; `updated_at` is not a media revision.
 - `luma_event_url` is optional because not every event has a public Luma event page to link.
 - `luma_event_api_id` and `luma_api_key` are optional because not every event has Luma configured for approval, rejection, and attendance sync.
 - Luma email visibility and requirement are enabled together when an event uses Luma Sync because guest sync matches Codex participants to Luma guests by that email.
@@ -414,6 +416,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - `id`
 - `default_event_background_image_url`
+- `media_revision`
 - `created_at`
 - `updated_at`
 
@@ -425,6 +428,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - This singleton stores deployment-wide presentation defaults.
 - `default_event_background_image_url` points to the managed public platform default event background image endpoint when configured.
+- `media_revision` is a non-negative, atomically incremented revision for the managed default image. Versioned public default-image URLs must contain the exact current revision; `updated_at` is not a media revision.
 - Event-specific `background_image_url` values remain stored on `Event` and override this default in event display payloads.
 
 ## PlatformDocument

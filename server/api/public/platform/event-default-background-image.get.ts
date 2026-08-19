@@ -1,10 +1,12 @@
 import { getRequestHeader, setHeader } from 'h3'
 
-import { getPublicReplicaDatabase } from '#server/database/client'
+import { getDatabase } from '#server/database/client'
 import {
   createPublicEventImageResponse,
+  getManagedPublicEventImagePath,
   getPlatformDefaultEventBackgroundImageObject,
   privateEventImageCacheControl,
+  publicPlatformDefaultEventBackgroundImagePath,
   publicEventImageQuerySchema
 } from '#server/domains/events/images'
 import { getPlatformSettings } from '#server/domains/platform/settings'
@@ -16,9 +18,17 @@ export default defineApiHandler(async (h3Event) => {
   setHeader(h3Event, 'cache-control', privateEventImageCacheControl)
 
   const query = parseValidatedQuery(h3Event, publicEventImageQuerySchema)
-  const settings = await getPlatformSettings(getPublicReplicaDatabase(h3Event))
+  const settings = await getPlatformSettings(getDatabase(h3Event))
+  const imagePath = settings?.defaultEventBackgroundImageUrl
+    ? getManagedPublicEventImagePath(settings.defaultEventBackgroundImageUrl)
+    : null
 
-  if (!settings?.defaultEventBackgroundImageUrl) {
+  if (
+    !settings?.defaultEventBackgroundImageUrl
+    || imagePath !== publicPlatformDefaultEventBackgroundImagePath()
+    || query.variant !== 'background'
+    || query.v !== String(settings.mediaRevision)
+  ) {
     throw new ApiError({
       statusCode: 404,
       code: 'platform_default_event_background_image_not_found',
@@ -37,7 +47,6 @@ export default defineApiHandler(async (h3Event) => {
   }
 
   return await createPublicEventImageResponse(h3Event, image, 'background', {
-    versioned: query.variant === 'background' && query.v === settings.updatedAt,
     accept: getRequestHeader(h3Event, 'accept')
   })
 })

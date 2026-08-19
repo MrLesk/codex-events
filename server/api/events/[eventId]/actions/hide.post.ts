@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
@@ -46,6 +46,7 @@ export const applicationOperation = defineStructuredRouteOperation({
       hiddenAt,
       hiddenByUserId: actor.platformUser.id,
       hiddenReason: body.reason,
+      mediaRevision: sql`${events.mediaRevision} + 1`,
       updatedAt: hiddenAt
     })
     .where(eq(events.id, eventId))

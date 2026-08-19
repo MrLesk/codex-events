@@ -146,6 +146,7 @@ export const events = sqliteTable(
     agendaItemsJson: text('agenda_items_json').notNull().default('[]'),
     backgroundImageUrl: text('background_image_url'),
     bannerImageUrl: text('banner_image_url'),
+    mediaRevision: integer('media_revision').notNull().default(0),
     discordServerUrl: text('discord_server_url'),
     lumaEventUrl: text('luma_event_url'),
     slidesUrl: text('slides_url'),
@@ -487,6 +488,7 @@ export const platformSettings = sqliteTable(
   {
     id: text('id').primaryKey(),
     defaultEventBackgroundImageUrl: text('default_event_background_image_url'),
+    mediaRevision: integer('media_revision').notNull().default(0),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn()
   },

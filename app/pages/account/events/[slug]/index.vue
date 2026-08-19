@@ -112,6 +112,7 @@ interface AccountEventAccessRecord {
   name: string
   description: string
   state: PublicEvent['state']
+  mediaRevision: number
   city: string
   country: string
   address: string
@@ -153,6 +154,7 @@ interface VerifyLumaEmailResponse {
 
 type AccountWorkspaceEvent = Omit<PublicEvent, 'tracks'> & {
   id: string
+  mediaRevision: number
   updatedAt: string
   simplifiedClaimingEnabled?: boolean
   hasGallery?: boolean
@@ -843,7 +845,7 @@ const canViewRestrictedEventDetails = computed(() =>
 )
 
 const detailBackgroundImageUrl = computed(() =>
-  buildVersionedEventImageUrl(resolveEventDetailBackgroundImageUrl(event.value), event.value.updatedAt)
+  buildVersionedEventImageUrl(resolveEventDetailBackgroundImageUrl(event.value), event.value.mediaRevision)
 )
 const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }

@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 import { writeAuditLog } from '#server/database/audit-log'
-import { eventPhotos } from '#server/database/schema'
+import { eventPhotos, events } from '#server/database/schema'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiData } from '#server/http/api-response'
 import {
@@ -25,15 +25,32 @@ export const applicationOperation = defineStructuredRouteOperation({
 }, async (h3Event) => {
   const { eventId, photoId } = parseValidatedParams(h3Event, eventPhotoParamsSchema)
   const body = await parseValidatedBody(h3Event, updateEventPhotoPublicVisibilityBodySchema)
-  const { actor, database } = await requireEventPhotoManageAccess(h3Event, eventId)
+  const { actor, database, event } = await requireEventPhotoManageAccess(h3Event, eventId)
   const photo = await getEventPhotoRecordOrThrow(database, eventId, photoId)
 
-  await database
-    .update(eventPhotos)
-    .set({
-      isPubliclyVisible: body.isPubliclyVisible
-    })
-    .where(eq(eventPhotos.id, photo.id))
+  if (photo.isPubliclyVisible !== body.isPubliclyVisible) {
+    await database.batch([
+      database
+        .update(eventPhotos)
+        .set({
+          isPubliclyVisible: body.isPubliclyVisible
+        })
+        .where(eq(eventPhotos.id, photo.id)),
+      database
+        .update(events)
+        .set({
+          mediaRevision: sql`${events.mediaRevision} + 1`
+        })
+        .where(eq(events.id, event.id))
+    ])
+  } else {
+    await database
+      .update(eventPhotos)
+      .set({
+        isPubliclyVisible: body.isPubliclyVisible
+      })
+      .where(eq(eventPhotos.id, photo.id))
+  }
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,

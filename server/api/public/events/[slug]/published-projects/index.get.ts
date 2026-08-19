@@ -6,6 +6,10 @@ import {
   routeSlugParamsSchema
 } from '#server/domains/events'
 import { assertCompletedOutcomeVisible, getPublishedProjectsView } from '#server/domains/outcomes'
+import {
+  setPrivatePublicEventCacheHeaders,
+  setPublicEventCacheHeaders
+} from '#server/domains/events/public-cache'
 import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
@@ -18,6 +22,8 @@ export const applicationOperation = defineStructuredRouteOperation({
   capabilities: ['public'],
   effect: 'read'
 }, async (h3Event) => {
+  setPrivatePublicEventCacheHeaders(h3Event)
+
   const { slug } = parseValidatedParams(h3Event, routeSlugParamsSchema)
   const database = getDatabase(h3Event)
   const event = await getPublicEventBySlugOrThrow(database, slug)
@@ -26,9 +32,13 @@ export const applicationOperation = defineStructuredRouteOperation({
 
   const publishedProjects = await getPublishedProjectsView(database, event.id)
 
-  return apiList(publishedProjects, {
+  const response = apiList(publishedProjects, {
     total: publishedProjects.length
   })
+
+  setPublicEventCacheHeaders(h3Event, 'public-event-published-projects', response)
+
+  return response
 })
 
 export default defineStructuredOperationApiHandler(applicationOperation)

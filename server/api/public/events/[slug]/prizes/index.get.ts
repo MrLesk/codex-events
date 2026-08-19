@@ -5,6 +5,10 @@ import { prizes } from '#server/database/schema'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
 import { apiList } from '#server/http/api-response'
 import { assertCompetitionEvent, getPublicEventBySlugOrThrow, routeSlugParamsSchema, serializePublicPrize } from '#server/domains/events'
+import {
+  setPrivatePublicEventCacheHeaders,
+  setPublicEventCacheHeaders
+} from '#server/domains/events/public-cache'
 import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
@@ -17,6 +21,8 @@ export const applicationOperation = defineStructuredRouteOperation({
   capabilities: ['public'],
   effect: 'read'
 }, async (h3Event) => {
+  setPrivatePublicEventCacheHeaders(h3Event)
+
   const { slug } = parseValidatedParams(h3Event, routeSlugParamsSchema)
   const database = getDatabase(h3Event)
   const event = await getPublicEventBySlugOrThrow(database, slug)
@@ -27,12 +33,16 @@ export const applicationOperation = defineStructuredRouteOperation({
     orderBy: [asc(prizes.displayOrder), asc(prizes.rankEnd), desc(prizes.rankStart), asc(prizes.createdAt)]
   })
 
-  return apiList(
+  const response = apiList(
     prizeList.map(serializePublicPrize),
     {
       total: prizeList.length
     }
   )
+
+  setPublicEventCacheHeaders(h3Event, 'public-event-prizes', response)
+
+  return response
 })
 
 export default defineStructuredOperationApiHandler(applicationOperation)

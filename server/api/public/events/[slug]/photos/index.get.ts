@@ -7,6 +7,10 @@ import {
   routeSlugParamsSchema
 } from '#server/domains/events'
 import { parseValidatedParams } from '#server/http/validation'
+import {
+  setPrivatePublicEventCacheHeaders,
+  setPublicEventCacheHeaders
+} from '#server/domains/events/public-cache'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.public.events.by-slug.photos',
@@ -18,14 +22,20 @@ export const applicationOperation = defineStructuredRouteOperation({
   capabilities: ['public'],
   effect: 'read'
 }, async (h3Event) => {
+  setPrivatePublicEventCacheHeaders(h3Event)
+
   const { slug } = parseValidatedParams(h3Event, routeSlugParamsSchema)
   const database = getDatabase(h3Event)
   const event = await getPublicEventBySlugOrThrow(database, slug)
-  const photos = await listPublicEventPhotoRecords(database, event.id, event.slug)
+  const photos = await listPublicEventPhotoRecords(database, event.id, event.slug, event.mediaRevision)
 
-  return apiList(photos, {
+  const response = apiList(photos, {
     total: photos.length
   })
+
+  setPublicEventCacheHeaders(h3Event, 'public-event-photos', response)
+
+  return response
 })
 
 export default defineStructuredOperationApiHandler(applicationOperation)
