@@ -3,7 +3,6 @@ import type { PublicApiDataResponse } from '~/domains/events/presentation'
 
 import { accountDashboardHref, buildAuthLoginHref } from '#shared/domains/accounts/auth-navigation'
 import {
-  canAccessAdminDashboard,
   isEventRoleJudgingEnabled,
   isEventRoleStaffEnabled
 } from '~/domains/events/access'
@@ -37,11 +36,13 @@ export interface ShellNavigationGroup {
 
 export function useShellNavigation() {
   const route = useRoute()
-  const user = useUser()
 
   const returnTo = computed(() => route.fullPath || accountDashboardHref)
   const authEntryHref = computed(() => buildAuthLoginHref(returnTo.value))
-  const { actor, status, refresh } = useSessionActor()
+  const { actor, capabilities, status, refresh } = useSessionActor()
+  const authSubject = computed(() => actor.value.isAuthenticated
+    ? actor.value.sessionUser.sub
+    : null)
   const currentAccountEventSlug = computed(() =>
     isAccountEventDetailPath(route.path) ? String(route.params.slug ?? '').trim() : ''
   )
@@ -74,7 +75,7 @@ export function useShellNavigation() {
     error: pendingPrizeRedemptionsError,
     clear: clearPrizeRedemptions
   } = useApiData<Array<{ id: string }>>(
-    computed(() => `shell-prize-redemptions-${user.value?.sub ?? 'anonymous'}`),
+    computed(() => `shell-prize-redemptions-${authSubject.value ?? 'anonymous'}`),
     async ({ apiFetch, signal }) => {
       if (actor.value.kind !== 'platform_user') {
         return []
@@ -92,14 +93,14 @@ export function useShellNavigation() {
     }
   )
 
-  watch(() => user.value?.sub ?? null, (sub, previousSub) => {
+  watch(authSubject, (sub, previousSub) => {
     if (sub !== previousSub) {
       clearPrizeRedemptions()
     }
   })
 
   watch(() => route.path, async (nextPath, previousPath) => {
-    if (!import.meta.client || !user.value?.sub || !previousPath) {
+    if (!import.meta.client || !authSubject.value || !previousPath) {
       return
     }
 
@@ -111,17 +112,14 @@ export function useShellNavigation() {
     }
 
     await refresh()
-    await refreshNuxtData(`shell-prize-redemptions-${user.value.sub}`)
+    await refreshNuxtData(`shell-prize-redemptions-${authSubject.value}`)
   })
 
-  const isResolvingActor = computed(() => Boolean(user.value?.sub) && status.value === 'pending')
+  const isResolvingActor = computed(() => status.value === 'pending')
   const hasPlatformAccount = computed(() => actor.value.kind === 'platform_user')
-  const hasAdminAccess = computed(() => actor.value.kind === 'platform_user'
-    && canAccessAdminDashboard(actor.value))
-  const hasStaffAccess = computed(() => actor.value.kind === 'platform_user'
-    && actor.value.eventRoles.some(role => isEventRoleStaffEnabled(role)))
-  const hasJudgeAccess = computed(() => actor.value.kind === 'platform_user'
-    && actor.value.eventRoles.some(role => isEventRoleJudgingEnabled(role)))
+  const hasAdminAccess = computed(() => capabilities.value.canAccessAdminDashboard)
+  const hasStaffAccess = computed(() => capabilities.value.canAccessStaffDashboard)
+  const hasJudgeAccess = computed(() => capabilities.value.canAccessJudgeDashboard)
   const accountEventNavigationMode = computed(() =>
     resolveShellAccountEventNavigationMode({
       actor: actor.value,

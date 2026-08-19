@@ -10,6 +10,7 @@ import JudgeReviewActionFooter from '~/components/judging/JudgeReviewActionFoote
 import JudgeReviewRubric from '~/components/judging/JudgeReviewRubric.vue'
 import PitchSubmissionPanel from '~/components/judging/PitchSubmissionPanel.vue'
 import { buildAccountEventJudgingTabHref } from '~/domains/judging/query'
+import { useApiClient } from '~/composables/useApiClient'
 import {
   buildCompletionCriterionScoresPayload,
   buildSavedCriterionScoresPayload,
@@ -51,6 +52,7 @@ const judgingWorkspaceHref = computed(() =>
 )
 
 const workspace = useJudgeAssignmentWorkspace(normalizedEventId, normalizedAssignmentId)
+const apiFetch = useApiClient()
 
 const event = computed(() => workspace.event.value)
 const criteria = computed(() => workspace.criteria.value)
@@ -238,7 +240,7 @@ function updatePitchScore(score: number) {
     actionState.error = ''
     actionState.success = ''
 
-    $fetch<ApiDataResponse<JudgeAssignmentDetail>>(
+    apiFetch<ApiDataResponse<JudgeAssignmentDetail>>(
       `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/start`,
       {
         method: 'POST'
@@ -293,7 +295,7 @@ async function withActionFeedback(
 }
 
 async function persistBlindCriterionScores(nextDrafts: CriterionScoreDraft[]) {
-  const response = await $fetch<ApiDataResponse<JudgeAssignmentDetail>>(
+  const response = await apiFetch<ApiDataResponse<JudgeAssignmentDetail>>(
     `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}`,
     {
       method: 'PATCH',
@@ -330,7 +332,7 @@ async function updateBlindScoreDrafts(nextDrafts: CriterionScoreDraft[]) {
     actionState.success = ''
 
     try {
-      const response = await $fetch<ApiDataResponse<JudgeAssignmentDetail>>(
+      const response = await apiFetch<ApiDataResponse<JudgeAssignmentDetail>>(
         `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/start`,
         {
           method: 'POST'
@@ -388,7 +390,7 @@ async function completeReview() {
     }
 
     await withActionFeedback('complete', async () => {
-      const response = await $fetch<ApiDataResponse<JudgeAssignmentDetail>>(
+      const response = await apiFetch<ApiDataResponse<JudgeAssignmentDetail>>(
         `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/complete`,
         {
           method: 'POST',
@@ -417,7 +419,7 @@ async function completeReview() {
   }
 
   await withActionFeedback('complete', async () => {
-    const response = await $fetch<ApiDataResponse<JudgeAssignmentDetail>>(
+    const response = await apiFetch<ApiDataResponse<JudgeAssignmentDetail>>(
       `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/complete`,
       {
         method: 'POST',
@@ -441,7 +443,7 @@ async function skipReview() {
   }
 
   await withActionFeedback('skip', async () => {
-    await $fetch(
+    await apiFetch(
       `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/skip`,
       {
         method: 'POST',
@@ -467,7 +469,7 @@ async function markIneligible() {
   }
 
   await withActionFeedback('ineligible', async () => {
-    const response = await $fetch<ApiDataResponse<JudgeAssignmentDetail>>(
+    const response = await apiFetch<ApiDataResponse<JudgeAssignmentDetail>>(
       `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/mark-ineligible`,
       {
         method: 'POST',

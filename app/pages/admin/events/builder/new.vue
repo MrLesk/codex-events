@@ -4,12 +4,14 @@ import type { EventRecord } from '~/domains/events/records'
 
 import { normalizeApiError } from '~/lib/api'
 import AdminBuilderWorkspace from '~/components/admin/builder/AdminBuilderWorkspace.vue'
+import { useApiClient } from '~/composables/useApiClient'
 
 definePageMeta({
   middleware: ['require-event-creator']
 })
 
 const workspace = useAdminWorkspace()
+const apiFetch = useApiClient()
 const toast = useToast()
 const builder = useEventBuilder({ mode: 'create' })
 
@@ -21,7 +23,7 @@ async function createEvent() {
   isSubmitting.value = true
 
   try {
-    const response = await $fetch<ApiDataResponse<EventRecord>>('/api/events', {
+    const response = await apiFetch<ApiDataResponse<EventRecord>>('/api/events', {
       method: 'POST',
       body: {
         ...builder.buildCreateBody(),

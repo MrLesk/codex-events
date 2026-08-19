@@ -1,5 +1,7 @@
 import type { PublicEventState, PublicEventType } from '~/domains/events/presentation'
 
+import { useSessionActor } from '~/composables/useSessionActor'
+
 export type UserApplicationStatus = 'submitted' | 'approved' | 'rejected' | 'withdrawn'
 export type UserSubmissionStatus = 'draft' | 'submitted' | 'withdrawn' | 'locked' | 'disqualified' | null
 export type UserEventRole = 'event_admin' | 'judge' | 'staff'
@@ -130,16 +132,19 @@ export function resolveUserEventPrimaryAction(entry: UserEventEntry): UserEventP
 }
 
 export function useUserEvents() {
-  const user = useUser()
+  const actor = useSessionActor().actor
+  const authSubject = computed(() => actor.value.isAuthenticated
+    ? actor.value.sessionUser.sub
+    : 'anonymous')
 
   return useApiFetch<UserEventsResponse>('/api/account/events', {
-    key: () => `account-events:${user.value?.sub ?? 'anonymous'}`,
+    key: () => `account-events:${authSubject.value}`,
     default: () => ({
       data: {
         current: [],
         past: []
       }
     }),
-    watch: [computed(() => user.value?.sub ?? null)]
+    watch: [authSubject, actor]
   })
 }

@@ -30,6 +30,7 @@ import {
   loadPublishedEventRoster
 } from '~/domains/events/published-roster'
 import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
+import { useApiClient, useApiFetch } from '~/composables/useApiClient'
 
 const props = defineProps<{
   eventId: string
@@ -42,8 +43,8 @@ const props = defineProps<{
   managementEventId?: string | null
 }>()
 
-const authenticatedUser = useUser()
 const { actor } = useSessionActor()
+const apiFetch = useApiClient()
 const roleCandidatePageSize = 20
 
 const rosterState = ref(props.roster)
@@ -77,7 +78,9 @@ const errorState = computed(() => props.role === 'judge'
 const errorMessage = computed(() => rosterState.value.errorMessage?.trim() ?? '')
 const managementEventId = computed(() => props.managementEventId?.trim() ?? '')
 const canManageRoster = computed(() => managementEventId.value.length > 0)
-const subjectKey = computed(() => getApiSubjectKey(authenticatedUser.value?.sub))
+const subjectKey = computed(() => getApiSubjectKey(
+  actor.value.isAuthenticated ? actor.value.sessionUser.sub : null
+))
 const {
   candidateSearchInput,
   appliedCandidateSearch,
@@ -92,7 +95,7 @@ const {
   pageSize: roleCandidatePageSize,
   resetKey: managementEventId,
   enabled: canManageRoster,
-  loadPage: async ({ page, pageSize, search }) => await $fetch<ApiListResponse<EventRoleUserSummary>>(
+  loadPage: async ({ page, pageSize, search }) => await apiFetch<ApiListResponse<EventRoleUserSummary>>(
     `/api/events/${managementEventId.value}/roles/candidates`,
     {
       query: {
@@ -107,7 +110,7 @@ const {
     }
   )
 })
-const roleAssignmentsResponse = useFetch<ApiListResponse<EventRoleAssignment>>(
+const roleAssignmentsResponse = useApiFetch<ApiListResponse<EventRoleAssignment>>(
   () => `/api/events/${managementEventId.value}/roles`,
   {
     key: () => buildApiCacheKey(
@@ -229,7 +232,7 @@ function isAdminLikeAssignment(assignment: EventRoleAssignment | null) {
 
 async function refreshPublishedRoster() {
   rosterState.value = await loadPublishedEventRoster(
-    path => $fetch<ApiListResponse<PublishedEventRosterMember>>(path),
+    path => apiFetch<ApiListResponse<PublishedEventRosterMember>>(path),
     {
       eventId: props.eventId,
       role: props.role
@@ -267,7 +270,7 @@ async function putRoleAssignment(
   await runMutation(
     getAssignmentActionKey('assign', userId),
     async () => {
-      await $fetch(`/api/events/${managementEventId.value}/roles/${userId}`, {
+      await apiFetch(`/api/events/${managementEventId.value}/roles/${userId}`, {
         method: 'PUT',
         body: {
           role,
@@ -295,7 +298,7 @@ async function patchRoleCapabilities(
   await runMutation(
     getAssignmentActionKey('toggle', userId),
     async () => {
-      await $fetch(`/api/events/${managementEventId.value}/roles/${userId}`, {
+      await apiFetch(`/api/events/${managementEventId.value}/roles/${userId}`, {
         method: 'PATCH',
         body: updates
       })
@@ -313,7 +316,7 @@ async function deleteRoleAssignment(
   await runMutation(
     getAssignmentActionKey('remove', userId),
     async () => {
-      await $fetch(`/api/events/${managementEventId.value}/roles/${userId}`, {
+      await apiFetch(`/api/events/${managementEventId.value}/roles/${userId}`, {
         method: 'DELETE'
       })
     },

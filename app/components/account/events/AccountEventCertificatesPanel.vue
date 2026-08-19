@@ -13,6 +13,7 @@ import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
 import { formatTimestamp } from '~/lib/date-formatting'
 import type { ApplicationCheckInOverrideStatus } from '#shared/domains/applications/check-in'
 import { buildEventCertificatePath } from '#shared/domains/events/certificates'
+import { useApiClient } from '~/composables/useApiClient'
 
 const props = defineProps<{
   eventId: string
@@ -20,6 +21,7 @@ const props = defineProps<{
 }>()
 
 const toast = useToast()
+const apiFetch = useApiClient()
 const eventId = computed(() => props.eventId.trim())
 
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
@@ -103,7 +105,7 @@ async function loadApplications() {
 
   try {
     applications.value = await listAllPaginatedItems(
-      async (page, pageSize) => await $fetch<ApiListResponse<AdminApplicationRecord>>(
+      async (page, pageSize) => await apiFetch<ApiListResponse<AdminApplicationRecord>>(
         `/api/events/${eventId.value}/applications`,
         {
           query: {
@@ -132,7 +134,7 @@ async function overrideCheckIn(application: AdminApplicationRecord, status: Appl
   pendingActionKey.value = getCheckInActionKey(application, status)
 
   try {
-    const response = await $fetch<ApiDataResponse<AdminApplicationRecord>>(
+    const response = await apiFetch<ApiDataResponse<AdminApplicationRecord>>(
       `/api/events/${eventId.value}/applications/${application.id}/actions/override-check-in`,
       {
         method: 'POST',
@@ -162,7 +164,7 @@ async function setCertificateRevoked(application: AdminApplicationRecord, revoke
   pendingActionKey.value = getCertificateRevocationActionKey(application, revoked)
 
   try {
-    const response = await $fetch<ApiDataResponse<AdminApplicationRecord>>(
+    const response = await apiFetch<ApiDataResponse<AdminApplicationRecord>>(
       `/api/events/${eventId.value}/applications/${application.id}/actions/set-certificate-revocation`,
       {
         method: 'POST',
@@ -197,7 +199,7 @@ async function sendCertificateEmails() {
   pendingActionKey.value = certificateEmailActionKey
 
   try {
-    const response = await $fetch<ApiDataResponse<CertificateEmailResponse>>(
+    const response = await apiFetch<ApiDataResponse<CertificateEmailResponse>>(
       `/api/events/${eventId.value}/applications/actions/send-certificate-emails`,
       {
         method: 'POST'

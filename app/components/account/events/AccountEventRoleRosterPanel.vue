@@ -17,6 +17,7 @@ import {
   isAdminCapableEventUser,
   listEventRoleRosterBadges
 } from '~/domains/events/role-roster'
+import { useApiClient } from '~/composables/useApiClient'
 
 const props = defineProps<{
   eventId: string
@@ -27,6 +28,7 @@ const props = defineProps<{
 }>()
 
 const { actor } = useSessionActor()
+const apiFetch = useApiClient()
 const workspace = useEventRoleRosterWorkspace(toRef(props, 'eventId'))
 const roleCandidatePageSize = 20
 
@@ -48,7 +50,7 @@ const {
 } = useRosterCandidateSearch<EventRoleUserSummary>({
   pageSize: roleCandidatePageSize,
   resetKey: () => `${props.eventId}:${props.role}`,
-  loadPage: async ({ page, pageSize, search }) => await $fetch<ApiListResponse<EventRoleUserSummary>>(
+  loadPage: async ({ page, pageSize, search }) => await apiFetch<ApiListResponse<EventRoleUserSummary>>(
     `/api/events/${props.eventId}/roles/candidates`,
     {
       query: {
@@ -288,7 +290,7 @@ async function putRoleAssignment(
   await runMutation(
     getAssignmentActionKey('assign', userId),
     async () => {
-      await $fetch(`/api/events/${props.eventId}/roles/${userId}`, {
+      await apiFetch(`/api/events/${props.eventId}/roles/${userId}`, {
         method: 'PUT',
         body: {
           role,
@@ -316,7 +318,7 @@ async function patchRoleCapabilities(
   await runMutation(
     getAssignmentActionKey('toggle', userId),
     async () => {
-      await $fetch(`/api/events/${props.eventId}/roles/${userId}`, {
+      await apiFetch(`/api/events/${props.eventId}/roles/${userId}`, {
         method: 'PATCH',
         body: updates
       })
@@ -334,7 +336,7 @@ async function deleteRoleAssignment(
   await runMutation(
     getAssignmentActionKey('remove', userId),
     async () => {
-      await $fetch(`/api/events/${props.eventId}/roles/${userId}`, {
+      await apiFetch(`/api/events/${props.eventId}/roles/${userId}`, {
         method: 'DELETE'
       })
     },

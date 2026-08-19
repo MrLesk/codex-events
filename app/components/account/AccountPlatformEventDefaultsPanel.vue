@@ -3,8 +3,10 @@ import type { ApiDataResponse } from '~/lib/api'
 import type { PlatformSettingsRecord } from '~/composables/usePlatformSettings'
 
 import { normalizeApiError } from '~/lib/api'
+import { useApiClient } from '~/composables/useApiClient'
 
 const toast = useToast()
+const apiFetch = useApiClient()
 const {
   settings,
   status: settingsStatus,
@@ -43,7 +45,7 @@ async function uploadDefaultBackgroundImage(event: Event) {
     const formData = new FormData()
     formData.append('file', file)
 
-    await $fetch<ApiDataResponse<PlatformSettingsRecord>>('/api/platform-settings/event-default-background-image', {
+    await apiFetch<ApiDataResponse<PlatformSettingsRecord>>('/api/platform-settings/event-default-background-image', {
       method: 'POST',
       body: formData
     })
@@ -70,7 +72,7 @@ async function removeDefaultBackgroundImage() {
   mutation.error = ''
 
   try {
-    await $fetch<ApiDataResponse<PlatformSettingsRecord | null>>('/api/platform-settings/event-default-background-image', {
+    await apiFetch<ApiDataResponse<PlatformSettingsRecord | null>>('/api/platform-settings/event-default-background-image', {
       method: 'DELETE'
     })
 

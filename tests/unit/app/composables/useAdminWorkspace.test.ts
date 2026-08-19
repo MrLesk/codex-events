@@ -6,9 +6,17 @@ import {
   watch
 } from 'vue'
 
-const useUser = vi.hoisted(() => vi.fn())
-const useFetch = vi.hoisted(() => vi.fn())
-const refreshNuxtData = vi.hoisted(() => vi.fn())
+const useApiFetch = vi.hoisted(() => vi.fn())
+const useSessionActor = vi.hoisted(() => vi.fn())
+
+vi.mock('~/composables/useApiClient', () => ({
+  useApiClient: vi.fn(),
+  useApiFetch
+}))
+
+vi.mock('~/composables/useSessionActor', () => ({
+  useSessionActor
+}))
 
 describe('useAdminWorkspace', () => {
   let sessionRefresh: ReturnType<typeof vi.fn>
@@ -16,28 +24,31 @@ describe('useAdminWorkspace', () => {
 
   beforeEach(() => {
     vi.resetModules()
-    useUser.mockReset()
-    useFetch.mockReset()
-    refreshNuxtData.mockReset()
+    useApiFetch.mockReset()
+    useSessionActor.mockReset()
 
     sessionRefresh = vi.fn(async () => undefined)
     eventsRefresh = vi.fn(async () => undefined)
 
-    useUser.mockReturnValue(ref({
-      sub: 'auth0|event_organizer'
-    }))
-    refreshNuxtData.mockResolvedValue(undefined)
-    useFetch.mockImplementation((request: string | (() => string)) => {
+    useSessionActor.mockReturnValue({
+      actor: ref({
+        kind: 'anonymous',
+        isAuthenticated: false,
+        hasPlatformAccount: false,
+        hasAcceptedCurrentPlatformDocuments: false,
+        sessionUser: null,
+        platformUser: null,
+        isPlatformAdmin: false,
+        isEventOrganizer: false,
+        eventRoles: []
+      }),
+      error: ref(null),
+      status: ref('success'),
+      refresh: sessionRefresh,
+      clear: vi.fn()
+    })
+    useApiFetch.mockImplementation((request: string | (() => string)) => {
       const path = typeof request === 'function' ? request() : request
-
-      if (path === '/api/session') {
-        return {
-          data: ref({ data: { actor: null } }),
-          error: ref(null),
-          status: ref('success'),
-          refresh: sessionRefresh
-        }
-      }
 
       if (path.startsWith('/api/events')) {
         return {
@@ -53,10 +64,8 @@ describe('useAdminWorkspace', () => {
 
     vi.stubGlobal('computed', computed)
     vi.stubGlobal('ref', ref)
-    vi.stubGlobal('refreshNuxtData', refreshNuxtData)
     vi.stubGlobal('toValue', toValue)
-    vi.stubGlobal('useFetch', useFetch)
-    vi.stubGlobal('useUser', useUser)
+    vi.stubGlobal('useApiFetch', useApiFetch)
     vi.stubGlobal('watch', watch)
   })
 
@@ -64,7 +73,7 @@ describe('useAdminWorkspace', () => {
     vi.unstubAllGlobals()
   })
 
-  test('refreshes the shared session actor cache with the admin workspace root data', async () => {
+  test('refreshes the shared session actor with the admin workspace root data', async () => {
     const { useAdminWorkspace } = await import('../../../../app/composables/useAdminWorkspace')
 
     const workspace = useAdminWorkspace()
@@ -72,6 +81,6 @@ describe('useAdminWorkspace', () => {
 
     expect(sessionRefresh).toHaveBeenCalledTimes(1)
     expect(eventsRefresh).toHaveBeenCalledTimes(1)
-    expect(refreshNuxtData).toHaveBeenCalledWith('session-actor:auth0|event_organizer')
+    expect(useApiFetch).not.toHaveBeenCalledWith('/api/session', expect.anything())
   })
 })

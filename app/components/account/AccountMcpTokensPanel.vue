@@ -2,6 +2,7 @@
 import { normalizeApiError } from '~/lib/api'
 import type { McpAccessToken } from '~/domains/accounts/mcp-tokens'
 import { copyMcpCredential, createAccountMcpToken, listAllActiveAccountMcpTokens, revokeAccountMcpToken } from '~/domains/accounts/mcp-tokens'
+import { useApiClient } from '~/composables/useApiClient'
 
 const tokens = ref<McpAccessToken[]>([])
 const name = ref('')
@@ -12,10 +13,11 @@ const errorMessage = ref('')
 const copied = ref(false)
 const serverUrlCopied = ref(false)
 const revokingId = ref<string | null>(null)
+const apiFetch = useApiClient()
 const serverUrl = new URL('/mcp', useRequestURL()).toString()
 
 async function loadTokens() {
-  tokens.value = await listAllActiveAccountMcpTokens($fetch)
+  tokens.value = await listAllActiveAccountMcpTokens(apiFetch)
 }
 
 async function createToken() {
@@ -25,7 +27,7 @@ async function createToken() {
   credential.value = ''
 
   try {
-    const created = await createAccountMcpToken($fetch, name.value)
+    const created = await createAccountMcpToken(apiFetch, name.value)
     credential.value = created.credential
     createdTokenName.value = created.token.name
     name.value = ''
@@ -65,7 +67,7 @@ async function revokeToken(token: McpAccessToken) {
   revokingId.value = token.id
   errorMessage.value = ''
   try {
-    await revokeAccountMcpToken($fetch, token.id)
+    await revokeAccountMcpToken(apiFetch, token.id)
     await loadTokens()
   } catch (error) {
     errorMessage.value = normalizeApiError(error).message

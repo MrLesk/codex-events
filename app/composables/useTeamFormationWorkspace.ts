@@ -15,6 +15,7 @@ import {
   getOwnTeamMembership,
   normalizeTeamWorkspaceApiError
 } from '~/domains/teams/workspace'
+import { useApiClient } from '~/composables/useApiClient'
 
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 type VisibleTeamsFilter = {
@@ -65,7 +66,7 @@ export function useTeamFormationWorkspace(
     teamId?: MaybeRefOrGetter<string | null | undefined>
   }
 ) {
-  const apiFetch = import.meta.server ? useRequestFetch() : $fetch
+  const apiFetch = useApiClient()
   const { actor, status: actorStatus } = useAccountLifecycleActor()
   const resolvedEvent = computed(() => toValue(event))
   const resolvedTeamId = computed(() => {

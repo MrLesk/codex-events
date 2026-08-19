@@ -3,9 +3,13 @@ import type { SessionActor } from '~/domains/accounts/session-actor'
 import type { EventScopedRole } from '~/domains/events/roles'
 
 import { buildAuthLoginHref } from '#shared/domains/accounts/auth-navigation'
+import type { ApiClient } from '~/composables/useApiClient'
+import { useApiClient } from '~/composables/useApiClient'
+import { useSessionActor } from '~/composables/useSessionActor'
 import { resolveActorAppRedirect } from './auth-navigation'
 
 type PlatformSessionActor = Extract<SessionActor, { kind: 'platform_user' }>
+export type NavigationSessionBootstrap = Pick<ReturnType<typeof useSessionActor>, 'actor' | 'ensureLoaded'>
 export type RedirectNavigationResult = {
   redirectTo: string
   external?: boolean
@@ -13,8 +17,8 @@ export type RedirectNavigationResult = {
 type AuthenticatedNavigationResult = { actor: SessionActor }
 type PlatformNavigationResult = { actor: PlatformSessionActor }
 
-function getNavigationFetch() {
-  return import.meta.server ? useRequestFetch() : $fetch
+function getNavigationFetch(): ApiClient {
+  return useApiClient()
 }
 
 function createUnauthorizedNavigationError(statusMessage = 'Unauthorized') {
@@ -24,26 +28,27 @@ function createUnauthorizedNavigationError(statusMessage = 'Unauthorized') {
   })
 }
 
+export function isClientRenderedAuthenticatedShellPath(path: string) {
+  return path === '/account'
+    || path.startsWith('/account/')
+    || path === '/admin'
+    || path.startsWith('/admin/')
+    || path === '/prize-redemptions'
+    || path.startsWith('/prize-redemptions/')
+}
+
+export function shouldSkipServerAuthenticatedNavigation(path: string) {
+  return import.meta.server && isClientRenderedAuthenticatedShellPath(path)
+}
+
 export async function ensureAuthenticatedActor(
   to: RouteLocationNormalized,
-  navigationFetch: ReturnType<typeof getNavigationFetch> = getNavigationFetch()
+  bootstrap: NavigationSessionBootstrap = useSessionActor()
 ): Promise<RedirectNavigationResult | AuthenticatedNavigationResult> {
-  if (!useUser().value) {
-    return {
-      redirectTo: buildAuthLoginHref(to.fullPath),
-      external: true
-    }
-  }
+  await bootstrap.ensureLoaded()
+  const actor = bootstrap.actor.value
 
-  const response = await navigationFetch('/api/session') as {
-    data?: {
-      actor?: SessionActor
-    }
-  }
-
-  const actor = response.data?.actor
-
-  if (!actor) {
+  if (!actor.isAuthenticated) {
     return {
       redirectTo: buildAuthLoginHref(to.fullPath),
       external: true
@@ -65,9 +70,9 @@ export async function ensureAuthenticatedActor(
 
 export async function ensurePlatformAccountActor(
   to: RouteLocationNormalized,
-  navigationFetch: ReturnType<typeof getNavigationFetch> = getNavigationFetch()
+  bootstrap: NavigationSessionBootstrap = useSessionActor()
 ): Promise<RedirectNavigationResult | PlatformNavigationResult> {
-  const resolvedSession = await ensureAuthenticatedActor(to, navigationFetch)
+  const resolvedSession = await ensureAuthenticatedActor(to, bootstrap)
 
   if ('redirectTo' in resolvedSession) {
     return resolvedSession
@@ -85,10 +90,10 @@ export async function ensurePlatformAccountActor(
 export async function ensureAccountPageAccess(
   to: RouteLocationNormalized,
   hasAccess: (actor: PlatformSessionActor) => boolean,
-  statusMessage = 'Unauthorized'
+  statusMessage = 'Unauthorized',
+  bootstrap: NavigationSessionBootstrap = useSessionActor()
 ) {
-  const navigationFetch = getNavigationFetch()
-  const resolvedSession = await ensurePlatformAccountActor(to, navigationFetch)
+  const resolvedSession = await ensurePlatformAccountActor(to, bootstrap)
 
   if ('redirectTo' in resolvedSession) {
     return resolvedSession
@@ -101,10 +106,11 @@ export async function ensureAccountPageAccess(
 
 export async function ensureEventRoleForSlugRoute(
   to: RouteLocationNormalized,
-  roles: EventScopedRole[]
+  roles: EventScopedRole[],
+  navigationFetch: ApiClient = getNavigationFetch(),
+  bootstrap: NavigationSessionBootstrap = useSessionActor()
 ) {
-  const navigationFetch = getNavigationFetch()
-  const resolvedSession = await ensurePlatformAccountActor(to, navigationFetch)
+  const resolvedSession = await ensurePlatformAccountActor(to, bootstrap)
 
   if ('redirectTo' in resolvedSession) {
     return resolvedSession

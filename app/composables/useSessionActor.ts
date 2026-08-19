@@ -1,80 +1,115 @@
 import type {
-  AuthenticatedIdentitySessionActor,
   SessionActor,
   SessionActorResponse
 } from '~/domains/accounts/session-actor'
 
 import {
-  buildAnonymousSessionActor,
-  buildAuthenticatedIdentitySessionActor
+  buildAnonymousSessionActor
 } from '~/domains/accounts/session-actor'
+import {
+  canAccessAdminDashboard,
+  canCreateEvent,
+  isEventRoleJudgingEnabled,
+  isEventRoleStaffEnabled
+} from '~/domains/events/access'
 
 export type ResolvedSessionActor = SessionActor
 
-function buildGitHubProfileUrlFromUser(user: ReturnType<typeof useUser>['value']) {
-  const username = user?.sub?.startsWith('github|')
-    ? user.nickname?.trim()
-    : ''
-
-  return username ? `https://github.com/${encodeURIComponent(username)}` : null
+export interface SessionActorCapabilities {
+  canAccessAdminDashboard: boolean
+  canAccessJudgeDashboard: boolean
+  canAccessPlatformSettings: boolean
+  canAccessStaffDashboard: boolean
+  canCreateEvent: boolean
 }
 
-function buildAuthenticatedIdentityFallback(user: ReturnType<typeof useUser>['value']): AuthenticatedIdentitySessionActor {
-  return buildAuthenticatedIdentitySessionActor({
-    sub: user?.sub ?? '',
-    email: user?.email ?? null,
-    email_verified: typeof user?.email_verified === 'boolean' ? user.email_verified : null,
-    name: user?.name ?? null,
-    nickname: user?.nickname ?? null,
-    picture: user?.picture ?? null,
-    githubProfileUrl: buildGitHubProfileUrlFromUser(user)
-  })
+export interface SessionActorBootstrap {
+  actor: ResolvedSessionActor
+  capabilities: SessionActorCapabilities
+}
+
+function isUnauthorizedError(error: unknown) {
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+
+  const status = error as { status?: unknown, statusCode?: unknown }
+
+  return status.status === 401 || status.statusCode === 401
 }
 
 export function useSessionActor() {
-  const user = useUser()
-  const authSubject = computed(() => user.value?.sub ?? null)
-
   const {
     data,
+    error,
     status,
     refresh,
     clear
-  } = useApiData<ResolvedSessionActor | null>(
-    () => `session-actor:${authSubject.value ?? 'anonymous'}`,
+  } = useApiData<ResolvedSessionActor>(
+    'session-actor',
     async ({ apiFetch, signal }) => {
-      if (!authSubject.value) {
-        return null
+      try {
+        const response = await apiFetch<SessionActorResponse>('/api/session', {
+          signal
+        })
+
+        return response.data.actor
+      } catch (error) {
+        if (isUnauthorizedError(error)) {
+          return buildAnonymousSessionActor()
+        }
+
+        throw error
       }
-
-      const response = await apiFetch<SessionActorResponse>('/api/session', {
-        signal
-      })
-
-      return response.data.actor
     },
     {
-      default: () => null,
-      watch: [authSubject]
+      default: () => buildAnonymousSessionActor(),
+      dedupe: 'defer',
+      lazy: false,
+      server: false
     }
   )
 
-  watch(authSubject, (subject, previousSubject) => {
-    if (subject !== previousSubject) {
-      clear()
-    }
-  })
-
   const actor = computed<ResolvedSessionActor>(() => {
-    if (!authSubject.value) {
-      return buildAnonymousSessionActor()
+    return data.value ?? buildAnonymousSessionActor()
+  })
+
+  const capabilities = computed<SessionActorCapabilities>(() => ({
+    canAccessAdminDashboard: canAccessAdminDashboard(actor.value),
+    canAccessJudgeDashboard: actor.value.kind === 'platform_user'
+      && actor.value.eventRoles.some(role => isEventRoleJudgingEnabled(role)),
+    canAccessPlatformSettings: actor.value.kind === 'platform_user'
+      && actor.value.isPlatformAdmin,
+    canAccessStaffDashboard: actor.value.kind === 'platform_user'
+      && actor.value.eventRoles.some(role => isEventRoleStaffEnabled(role)),
+    canCreateEvent: canCreateEvent(actor.value)
+  }))
+
+  const bootstrap = computed<SessionActorBootstrap>(() => ({
+    actor: actor.value,
+    capabilities: capabilities.value
+  }))
+  const isReady = computed(() => status.value === 'success')
+
+  async function ensureLoaded() {
+    if (status.value === 'success') {
+      return
     }
 
-    return data.value ?? buildAuthenticatedIdentityFallback(user.value)
-  })
+    await refresh()
+
+    if (error.value) {
+      throw error.value
+    }
+  }
 
   return {
     actor,
+    bootstrap,
+    capabilities,
+    error,
+    ensureLoaded,
+    isReady,
     status,
     refresh,
     clear

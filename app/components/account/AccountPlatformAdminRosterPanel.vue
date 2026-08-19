@@ -3,12 +3,17 @@ import type { ApiListResponse } from '~/lib/api'
 import type { EventRoleUserSummary } from '~/domains/events/access'
 
 import { buildApiCacheKey, getApiSubjectKey } from '~/lib/api'
+import { useApiClient, useApiFetch } from '~/composables/useApiClient'
+import { useSessionActor } from '~/composables/useSessionActor'
 
-const authenticatedUser = useUser()
+const actor = useSessionActor().actor
 const platformAdminCandidatePageSize = 20
 
-const subjectKey = computed(() => getApiSubjectKey(authenticatedUser.value?.sub))
-const currentAdmins = useFetch<ApiListResponse<EventRoleUserSummary>>('/api/platform-admins', {
+const subjectKey = computed(() => getApiSubjectKey(
+  actor.value.isAuthenticated ? actor.value.sessionUser.sub : null
+))
+const apiFetch = useApiClient()
+const currentAdmins = useApiFetch<ApiListResponse<EventRoleUserSummary>>('/api/platform-admins', {
   key: () => buildApiCacheKey('platform-admins', subjectKey.value),
   watch: [subjectKey]
 })
@@ -32,7 +37,7 @@ const {
 } = useRosterCandidateSearch<EventRoleUserSummary>({
   pageSize: platformAdminCandidatePageSize,
   resetKey: subjectKey,
-  loadPage: async ({ page, pageSize, search }) => await $fetch<ApiListResponse<EventRoleUserSummary>>(
+  loadPage: async ({ page, pageSize, search }) => await apiFetch<ApiListResponse<EventRoleUserSummary>>(
     '/api/platform-admins/candidates',
     {
       query: {
@@ -74,7 +79,7 @@ async function addPlatformAdmin(user: EventRoleUserSummary) {
   await runRosterMutation({
     actionKey: user.id,
     action: async () => {
-      await $fetch(`/api/platform-admins/${user.id}`, {
+      await apiFetch(`/api/platform-admins/${user.id}`, {
         method: 'PUT'
       })
     },
@@ -101,7 +106,7 @@ async function removePlatformAdmin(user: EventRoleUserSummary) {
   await runRosterMutation({
     actionKey: user.id,
     action: async () => {
-      await $fetch(`/api/platform-admins/${user.id}`, {
+      await apiFetch(`/api/platform-admins/${user.id}`, {
         method: 'DELETE'
       })
     },

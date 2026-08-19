@@ -3,16 +3,23 @@ import { buildAuthLoginHref } from '#shared/domains/accounts/auth-navigation'
 import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
 
 const route = useRoute()
-const user = useUser()
 const { actor } = useSessionActor()
 
 const authEntryHref = computed(() => buildAuthLoginHref(route.fullPath || '/'))
+const isAuthenticated = computed(() => actor.value.isAuthenticated)
 const profileName = computed(() => {
   if (actor.value.kind === 'platform_user') {
     return actor.value.platformUser.displayName
   }
 
-  return user.value?.name ?? null
+  return actor.value.sessionUser?.name ?? null
+})
+const profileEmail = computed(() => {
+  if (!actor.value.isAuthenticated) {
+    return null
+  }
+
+  return actor.value.sessionUser.email ?? null
 })
 
 const profileAvatarSrc = computed(() => {
@@ -59,15 +66,15 @@ const profileAvatarSrc = computed(() => {
         <AppColorModeButton />
 
         <AppUserMenu
-          v-if="user"
+          v-if="isAuthenticated"
           :name="profileName"
-          :email="user.email"
+          :email="profileEmail"
           :avatar-src="profileAvatarSrc"
           :avatar-alt="profileName"
         />
 
         <AppButton
-          v-if="!user"
+          v-if="!isAuthenticated"
           :to="authEntryHref"
           external
           label="Sign in"

@@ -1,5 +1,4 @@
 import type { Ref } from 'vue'
-import type { SessionActor } from '~/domains/accounts/session-actor'
 import type {
   EventRecord,
   TermsDocument
@@ -15,6 +14,8 @@ import type { TeamSummary } from '~/domains/teams/admin-team-record'
 import type { ApiDataResponse, ApiListResponse } from '~/lib/api'
 
 import { buildApiCacheKey, getApiSubjectKey, listAllPaginatedItems } from '~/lib/api'
+import { useApiClient, useApiFetch } from '~/composables/useApiClient'
+import { useSessionActor } from '~/composables/useSessionActor'
 import {
   filterManageableEvents,
   hasEventAdminAccess
@@ -55,18 +56,15 @@ function refreshWhenEnabled(request: RefreshableAsyncRequest, enabled: Ref<boole
 }
 
 export function useAdminWorkspace(options: AdminWorkspaceOptions = {}) {
-  const authenticatedUser = useUser()
-  const subjectKey = computed(() => getApiSubjectKey(authenticatedUser.value?.sub))
   const loadEvents = resolveLoadFlag(options.loadEvents)
 
-  const session = useFetch<ApiDataResponse<{ actor: SessionActor }>>('/api/session', {
-    key: () => buildApiCacheKey('admin-workspace-session', subjectKey.value),
-    watch: [subjectKey]
-  })
+  const session = useSessionActor()
+  const actor = session.actor
+  const subjectKey = computed(() => getApiSubjectKey(
+    actor.value.isAuthenticated ? actor.value.sessionUser.sub : null
+  ))
 
-  const actor = computed(() => session.data.value?.data.actor ?? null)
-
-  const events = useFetch<ApiListResponse<EventRecord>>('/api/events?page=1&page_size=100', {
+  const events = useApiFetch<ApiListResponse<EventRecord>>('/api/events?page=1&page_size=100', {
     key: () => buildApiCacheKey('admin-workspace-events', subjectKey.value),
     watch: [subjectKey],
     immediate: loadEvents.value
@@ -80,8 +78,7 @@ export function useAdminWorkspace(options: AdminWorkspaceOptions = {}) {
 
   async function refreshRoot() {
     const requests: Array<Promise<unknown>> = [
-      session.refresh(),
-      refreshNuxtData(buildApiCacheKey('session-actor', subjectKey.value))
+      session.refresh()
     ]
 
     if (loadEvents.value) {
@@ -107,7 +104,7 @@ function useAdminEventBase(eventId: MaybeRefOrGetter<string>) {
     loadEvents: false
   })
 
-  const event = useFetch<ApiDataResponse<EventRecord>>(
+  const event = useApiFetch<ApiDataResponse<EventRecord>>(
     () => `/api/events/${resolvedEventId.value}`,
     {
       key: () => buildApiCacheKey('admin-event', adminWorkspace.subjectKey.value, resolvedEventId.value),
@@ -152,7 +149,7 @@ export function useAdminEventSettingsWorkspace(
     loadTerms.value && adminEvent.currentEvent.value?.eventType === 'hackathon'
   )
 
-  const criteria = useFetch<ApiListResponse<EvaluationCriterion>>(
+  const criteria = useApiFetch<ApiListResponse<EvaluationCriterion>>(
     () => `/api/events/${adminEvent.resolvedEventId.value}/evaluation-criteria`,
     {
       key: () => buildApiCacheKey('admin-event-criteria', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),
@@ -162,7 +159,7 @@ export function useAdminEventSettingsWorkspace(
   )
   refreshWhenEnabled(criteria, loadCompetitionCriteria)
 
-  const prizes = useFetch<ApiListResponse<PrizeDefinition>>(
+  const prizes = useApiFetch<ApiListResponse<PrizeDefinition>>(
     () => `/api/events/${adminEvent.resolvedEventId.value}/prizes`,
     {
       key: () => buildApiCacheKey('admin-event-prizes', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),
@@ -172,7 +169,7 @@ export function useAdminEventSettingsWorkspace(
   )
   refreshWhenEnabled(prizes, loadCompetitionPrizes)
 
-  const applicationTermsVersions = useFetch<ApiListResponse<TermsDocument>>(
+  const applicationTermsVersions = useApiFetch<ApiListResponse<TermsDocument>>(
     () => `/api/events/${adminEvent.resolvedEventId.value}/terms/application_terms/versions`,
     {
       key: () => buildApiCacheKey('admin-event-application-terms', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),
@@ -182,7 +179,7 @@ export function useAdminEventSettingsWorkspace(
   )
   refreshWhenEnabled(applicationTermsVersions, loadTerms)
 
-  const winnerTermsVersions = useFetch<ApiListResponse<TermsDocument>>(
+  const winnerTermsVersions = useApiFetch<ApiListResponse<TermsDocument>>(
     () => `/api/events/${adminEvent.resolvedEventId.value}/terms/winner_terms/versions`,
     {
       key: () => buildApiCacheKey('admin-event-winner-terms', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),
@@ -192,7 +189,7 @@ export function useAdminEventSettingsWorkspace(
   )
   refreshWhenEnabled(winnerTermsVersions, loadWinnerTerms)
 
-  const roleAssignments = useFetch<ApiListResponse<EventRoleAssignment>>(
+  const roleAssignments = useApiFetch<ApiListResponse<EventRoleAssignment>>(
     () => `/api/events/${adminEvent.resolvedEventId.value}/roles`,
     {
       key: () => buildApiCacheKey('admin-event-roles', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),
@@ -247,13 +244,13 @@ export function useAdminEventOperationsWorkspace(
   options: AdminEventOperationsWorkspaceOptions = {}
 ) {
   const adminEvent = useAdminEventBase(eventId)
-  const apiFetch = import.meta.server ? useRequestFetch() : $fetch
+  const apiFetch = useApiClient()
   const loadLifecycleData = resolveLoadFlag(options.loadLifecycleData)
   const loadCompetitionData = computed(() =>
     loadLifecycleData.value && adminEvent.currentEvent.value?.eventType === 'hackathon'
   )
 
-  const prizes = useFetch<ApiListResponse<PrizeDefinition>>(
+  const prizes = useApiFetch<ApiListResponse<PrizeDefinition>>(
     () => `/api/events/${adminEvent.resolvedEventId.value}/prizes`,
     {
       key: () => buildApiCacheKey('admin-event-prizes', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),
@@ -263,7 +260,7 @@ export function useAdminEventOperationsWorkspace(
   )
   refreshWhenEnabled(prizes, loadCompetitionData)
 
-  const roleAssignments = useFetch<ApiListResponse<EventRoleAssignment>>(
+  const roleAssignments = useApiFetch<ApiListResponse<EventRoleAssignment>>(
     () => `/api/events/${adminEvent.resolvedEventId.value}/roles`,
     {
       key: () => buildApiCacheKey('admin-event-roles', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),
@@ -295,7 +292,7 @@ export function useAdminEventOperationsWorkspace(
   )
   refreshWhenEnabled(teams, loadCompetitionData)
 
-  const assignments = useFetch<ApiListResponse<JudgeAssignmentSummary>>(
+  const assignments = useApiFetch<ApiListResponse<JudgeAssignmentSummary>>(
     () => `/api/events/${adminEvent.resolvedEventId.value}/judging/assignments`,
     {
       key: () => buildApiCacheKey('admin-event-assignments', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),
@@ -305,7 +302,7 @@ export function useAdminEventOperationsWorkspace(
   )
   refreshWhenEnabled(assignments, loadCompetitionData)
 
-  const leaderboard = useFetch<ApiListResponse<LeaderboardEntry>>(
+  const leaderboard = useApiFetch<ApiListResponse<LeaderboardEntry>>(
     () => `/api/events/${adminEvent.resolvedEventId.value}/leaderboard`,
     {
       key: () => buildApiCacheKey('admin-event-leaderboard', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),

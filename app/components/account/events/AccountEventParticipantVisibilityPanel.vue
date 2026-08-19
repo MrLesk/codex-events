@@ -10,6 +10,7 @@ import {
 import {
   shouldShowApprovedParticipantAttendanceSummary
 } from '~/domains/applications/admin-application-record'
+import { useApiClient, useApiFetch } from '~/composables/useApiClient'
 
 const props = defineProps<{
   eventId: string
@@ -18,13 +19,14 @@ const props = defineProps<{
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 
 const eventId = computed(() => props.eventId.trim())
+const apiFetch = useApiClient()
 const applications = ref<AdminApplicationRecord[]>([])
 const applicationsStatus = ref<LoadStatus>('pending')
 const applicationsErrorMessage = ref('')
 
 const {
   data: eventData
-} = useFetch<ApiDataResponse<EventRecord>>(
+} = useApiFetch<ApiDataResponse<EventRecord>>(
   () => `/api/events/${eventId.value}`,
   {
     key: () => `event-participant-visibility-config:${eventId.value}`,
@@ -43,7 +45,7 @@ async function loadApplications() {
 
   try {
     applications.value = await listAllPaginatedItems(
-      async (page, pageSize) => await $fetch<ApiListResponse<AdminApplicationRecord>>(
+      async (page, pageSize) => await apiFetch<ApiListResponse<AdminApplicationRecord>>(
         `/api/events/${eventId.value}/applications`,
         {
           query: {

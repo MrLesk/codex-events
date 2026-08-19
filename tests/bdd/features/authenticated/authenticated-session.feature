@@ -13,3 +13,10 @@ Feature: Authenticated session foundation
       | event_admin |
       | judge           |
       | regular_user    |
+
+  Scenario: Account event query navigation reuses the shared actor bootstrap
+    Given the saved "event_admin" local session state exists
+    When I open the account event overview for "e2e-fixture-event" with the saved "event_admin" session
+    Then the account event bootstrap should be requested once
+    When I switch the account event tab to "Participants"
+    Then the account event bootstrap should still be requested once

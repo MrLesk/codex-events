@@ -33,6 +33,7 @@ import { getCriteriaConfigurationValidationIssues } from '~/domains/judging/crit
 import { getEventProgramSettingsCopy } from '~/domains/events/program-settings'
 import { computeEventBalance } from '#shared/domains/events/builder-scoring'
 import { createBuilderStateFromEvent, toEventBalanceInputFromState } from '~/domains/events/builder'
+import { useApiClient } from '~/composables/useApiClient'
 
 const props = withDefaults(defineProps<{
   eventId: string
@@ -69,6 +70,7 @@ type SortableInstance = Sortable
 type SortableConstructor = typeof Sortable
 
 const toast = useToast()
+const apiFetch = useApiClient()
 const eventId = computed(() => props.eventId.trim())
 
 if (!eventId.value) {
@@ -636,7 +638,7 @@ async function patchConfiguration(
   try {
     const updateUrl = `/api/events/${currentEvent.value.id}` as string
 
-    await $fetch(updateUrl, {
+    await apiFetch(updateUrl, {
       method: 'PATCH',
       body
     })
@@ -667,7 +669,7 @@ async function retryLumaConfiguration() {
   isRetryingLumaConfiguration.value = true
 
   try {
-    await $fetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}/luma/actions/retry-configuration`, {
+    await apiFetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}/luma/actions/retry-configuration`, {
       method: 'POST'
     })
 
@@ -697,7 +699,7 @@ async function hideEvent() {
   isUpdatingEventVisibility.value = true
 
   try {
-    await $fetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}/actions/hide`, {
+    await apiFetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}/actions/hide`, {
       method: 'POST',
       body: {
         reason: trimmedHideEventReason.value
@@ -730,7 +732,7 @@ async function unhideEvent() {
   isUpdatingEventVisibility.value = true
 
   try {
-    await $fetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}/actions/unhide`, {
+    await apiFetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}/actions/unhide`, {
       method: 'POST'
     })
 
@@ -765,7 +767,7 @@ async function uploadEventImage(slot: EventImageSlot, file: File) {
     const formData = new FormData()
     formData.append('file', file)
 
-    await $fetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}/images/${slot}`, {
+    await apiFetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}/images/${slot}`, {
       method: 'POST',
       body: formData
     })
@@ -798,7 +800,7 @@ async function removeEventImage(slot: EventImageSlot) {
   state.error = ''
 
   try {
-    await $fetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}/images/${slot}`, {
+    await apiFetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}/images/${slot}`, {
       method: 'DELETE'
     })
 
@@ -995,13 +997,13 @@ async function saveCriteria() {
 
   try {
     for (const criterion of removedPersistedCriteria) {
-      await $fetch(`/api/events/${event.id}/evaluation-criteria/${criterion.id}`, {
+      await apiFetch(`/api/events/${event.id}/evaluation-criteria/${criterion.id}`, {
         method: 'DELETE'
       })
     }
 
     for (const [index, criterion] of reorderedPersistedCriteria.entries()) {
-      await $fetch(`/api/events/${event.id}/evaluation-criteria/${criterion.id}`, {
+      await apiFetch(`/api/events/${event.id}/evaluation-criteria/${criterion.id}`, {
         method: 'PATCH',
         body: {
           displayOrder: maxDisplayOrder + index + 1
@@ -1010,7 +1012,7 @@ async function saveCriteria() {
     }
 
     for (const criterion of updatedPersistedCriteria) {
-      await $fetch(`/api/events/${event.id}/evaluation-criteria/${criterion.id}`, {
+      await apiFetch(`/api/events/${event.id}/evaluation-criteria/${criterion.id}`, {
         method: 'PATCH',
         body: buildCriterionMutationBody(criterion)
       })
@@ -1021,7 +1023,7 @@ async function saveCriteria() {
         continue
       }
 
-      await $fetch(`/api/events/${event.id}/evaluation-criteria`, {
+      await apiFetch(`/api/events/${event.id}/evaluation-criteria`, {
         method: 'POST',
         body: buildCriterionMutationBody(criterion)
       })
@@ -1059,7 +1061,7 @@ async function savePrizes() {
         continue
       }
 
-      await $fetch(`/api/events/${event.id}/prizes/${prize.id}`, {
+      await apiFetch(`/api/events/${event.id}/prizes/${prize.id}`, {
         method: 'DELETE'
       })
     }
@@ -1068,7 +1070,7 @@ async function savePrizes() {
       const requestBody = buildPrizeMutationBody(prize)
 
       if (prize.isLocalDraft) {
-        await $fetch(`/api/events/${event.id}/prizes`, {
+        await apiFetch(`/api/events/${event.id}/prizes`, {
           method: 'POST',
           body: requestBody
         })
@@ -1079,7 +1081,7 @@ async function savePrizes() {
         continue
       }
 
-      await $fetch(`/api/events/${event.id}/prizes/${prize.id}`, {
+      await apiFetch(`/api/events/${event.id}/prizes/${prize.id}`, {
         method: 'PATCH',
         body: requestBody
       })
@@ -1140,7 +1142,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
   }
 
   try {
-    const createdDocument = await $fetch<ApiDataResponse<TermsDocument>>(`/api/events/${event.id}/terms/${documentType}/versions`, {
+    const createdDocument = await apiFetch<ApiDataResponse<TermsDocument>>(`/api/events/${event.id}/terms/${documentType}/versions`, {
       method: 'POST',
       body: {
         title,
@@ -1148,7 +1150,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
       }
     })
 
-    await $fetch(`/api/events/${event.id}/terms/${documentType}/actions/set-current`, {
+    await apiFetch(`/api/events/${event.id}/terms/${documentType}/actions/set-current`, {
       method: 'POST',
       body: {
         eventTermsDocumentId: createdDocument.data.id

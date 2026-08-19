@@ -7,6 +7,8 @@ import { stablePersonaKeys, storageStatePathForPersona, type StablePersonaKey } 
 
 const { Given, When, Then } = createBdd()
 
+const publicEventDocumentHeaders = new WeakMap<Page, Record<string, string>>()
+
 type StoredState = {
   cookies?: Array<{
     name: string
@@ -155,6 +157,26 @@ When('I load more public events', async ({ page }) => {
 
 Given('I am on the public event detail page for the fixture event', async ({ page }) => {
   await page.goto('/events/e2e-fixture-event')
+})
+
+When('I open the public event detail page for the fixture event with the saved {string} session', async ({ page }, personaKey: string) => {
+  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  const response = await page.goto('/events/e2e-fixture-event')
+
+  expect(response?.ok()).toBe(true)
+  publicEventDocumentHeaders.set(page, response?.headers() ?? {})
+})
+
+Then('the public event document should remain publicly cacheable', async ({ page }) => {
+  const headers = publicEventDocumentHeaders.get(page)
+
+  if (!headers) {
+    throw new Error('The public event document response headers were not captured.')
+  }
+
+  expect(headers['cache-control']).toContain('public')
+  expect(headers['cache-control']).not.toContain('private')
+  expect(headers.vary?.toLowerCase() ?? '').not.toContain('cookie')
 })
 
 Then('I should see the public event detail title {string}', async ({ page }, title: string) => {

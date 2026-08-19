@@ -9,12 +9,14 @@ import type {
 
 import { normalizeApiError } from '~/lib/api'
 import { buildEventCreateBody } from '~/domains/events/admin-event'
+import { useApiClient } from '~/composables/useApiClient'
 
 definePageMeta({
   middleware: ['require-event-creator']
 })
 
 const workspace = useAdminWorkspace()
+const apiFetch = useApiClient()
 const toast = useToast()
 
 const isSubmitting = ref(false)
@@ -25,7 +27,7 @@ async function createEvent(form: EventFormState) {
   isSubmitting.value = true
 
   try {
-    const response = await $fetch<ApiDataResponse<EventRecord>>('/api/events', {
+    const response = await apiFetch<ApiDataResponse<EventRecord>>('/api/events', {
       method: 'POST',
       body: buildEventCreateBody(form)
     })

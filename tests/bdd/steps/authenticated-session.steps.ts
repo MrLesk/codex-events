@@ -13,6 +13,12 @@ import {
 
 const { Given, When, Then } = createBdd()
 
+type AccountEventBootstrapState = {
+  count: number
+}
+
+const accountEventBootstrapCounts = new WeakMap<Page, AccountEventBootstrapState>()
+
 function parsePersonaKey(personaKey: string): StablePersonaKey {
   if (stablePersonaKeys.includes(personaKey as StablePersonaKey)) {
     return personaKey as StablePersonaKey
@@ -89,8 +95,48 @@ When('I open my events with the saved {string} session', async ({ page }, person
   await page.goto('/account')
 })
 
+When('I open the account event overview for {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
+  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  const state = { count: 0 }
+
+  accountEventBootstrapCounts.set(page, state)
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/session') {
+      state.count += 1
+    }
+  })
+
+  await page.goto(`/account/events/${slug}?tab=overview`)
+  await expect(page.getByRole('tab', { name: 'Participants', exact: true })).toBeVisible()
+})
+
+When('I switch the account event tab to {string}', async ({ page }, tabLabel: string) => {
+  await page.getByRole('tab', { name: tabLabel, exact: true }).click()
+  await expect(page.getByRole('tab', { name: tabLabel, exact: true })).toHaveAttribute('aria-selected', 'true')
+})
+
 Then('I should see the my events heading', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'My events' })).toBeVisible()
+})
+
+Then('the account event bootstrap should be requested once', async ({ page }) => {
+  const state = accountEventBootstrapCounts.get(page)
+
+  if (!state) {
+    throw new Error('The account event bootstrap request counter was not initialized.')
+  }
+
+  await expect.poll(() => state.count).toBe(1)
+})
+
+Then('the account event bootstrap should still be requested once', async ({ page }) => {
+  const state = accountEventBootstrapCounts.get(page)
+
+  if (!state) {
+    throw new Error('The account event bootstrap request counter was not initialized.')
+  }
+
+  await expect.poll(() => state.count).toBe(1)
 })
 
 Then('I should see the signed-in {string} email', async ({ page }, personaKey: string) => {
@@ -107,7 +153,8 @@ Then('the saved {string} session should authenticate a request context to {strin
     const response = await apiClient.get(path)
 
     expect(response.ok()).toBe(true)
-    expect(await response.text()).toContain('My events')
+    expect(new URL(response.url()).pathname).toBe(path)
+    expect(await response.text()).toContain('data-ssr="false"')
   } finally {
     await apiClient.dispose()
   }

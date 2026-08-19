@@ -99,6 +99,7 @@ import type { TalkProposalRecord } from '~/domains/talk-proposals'
 import { normalizeJudgeAssignmentIdQueryValue } from '~/domains/judging/query'
 import { buildAccountEventTeamsTabHref, normalizeTeamSlugQueryValue } from '~/domains/teams/query'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
+import { useApiClient, useApiFetch } from '~/composables/useApiClient'
 
 definePageMeta({
   middleware: ['require-platform-account']
@@ -203,7 +204,7 @@ const {
   data: eventResponse,
   error: eventError,
   refresh: refreshEvent
-} = await useFetch<PublicApiDataResponse<AccountWorkspaceEvent>>(() => `/api/events/slug/${slug.value}`, {
+} = await useApiFetch<PublicApiDataResponse<AccountWorkspaceEvent>>(() => `/api/events/slug/${slug.value}`, {
   key: () => `account-event-detail:${slug.value}`
 })
 
@@ -221,7 +222,7 @@ if (!eventResponse.value?.data) {
   })
 }
 
-const requestFetch = import.meta.server ? useRequestFetch() : $fetch
+const apiFetch = useApiClient()
 const initialEvent = eventResponse.value.data
 const [
   prizesResponse,
@@ -230,12 +231,12 @@ const [
   ownTalkProposalResponse
 ] = await Promise.all([
   initialEvent.eventType === 'hackathon'
-    ? requestFetch<PublicApiListResponse<AccountPrizeSummary>>(`/api/events/${initialEvent.id}/prizes`)
+    ? apiFetch<PublicApiListResponse<AccountPrizeSummary>>(`/api/events/${initialEvent.id}/prizes`)
     : Promise.resolve({ data: [] }),
-  requestFetch<AccountEventsResponse>('/api/account/events'),
-  requestFetch<EventParticipationApiDataResponse<EventParticipationPayload>>('/api/events/participation'),
+  apiFetch<AccountEventsResponse>('/api/account/events'),
+  apiFetch<EventParticipationApiDataResponse<EventParticipationPayload>>('/api/events/participation'),
   initialEvent.eventType === 'meetup' && initialEvent.talkProposalsEnabled
-    ? requestFetch<PublicApiDataResponse<TalkProposalRecord | null>>(`/api/events/${initialEvent.id}/talk-proposals/me`)
+    ? apiFetch<PublicApiDataResponse<TalkProposalRecord | null>>(`/api/events/${initialEvent.id}/talk-proposals/me`)
     : Promise.resolve({ data: null })
 ])
 const initialAccessRecord = [
@@ -253,7 +254,7 @@ const initialHasStaffCreditAccess = actor.value.kind === 'platform_user'
   && actor.value.eventRoles.some(role => role.eventId === initialEvent.id && role.isStaff)
 const initialCanClaimCredits = initialApplicationStatus === 'approved' || initialHasStaffCreditAccess
 const initialParticipantCreditsResponse = initialCanClaimCredits
-  ? await requestFetch<EventCreditApiListResponse<ParticipantEventCreditOffer>>(`/api/events/${initialEvent.id}/credits`)
+  ? await apiFetch<EventCreditApiListResponse<ParticipantEventCreditOffer>>(`/api/events/${initialEvent.id}/credits`)
   : { data: [] }
 const toast = useToast()
 const accountEventsData = ref(accountEventsResponse.data)
@@ -427,7 +428,7 @@ async function setCertificateGenerationDisabled(disabled: boolean) {
   isCertificateVisibilityPending.value = true
 
   try {
-    const response = await $fetch<ParticipantApiDataResponse<ParticipantApplicationRecord>>(
+    const response = await apiFetch<ParticipantApiDataResponse<ParticipantApplicationRecord>>(
       `/api/events/${workspaceEventId.value}/applications/me/actions/set-certificate-visibility`,
       {
         method: 'POST',
@@ -908,7 +909,7 @@ async function verifyLumaEmail() {
   lumaEmailVerificationErrorMessage.value = ''
 
   try {
-    const response = await $fetch<ParticipantApiDataResponse<VerifyLumaEmailResponse>>(
+    const response = await apiFetch<ParticipantApiDataResponse<VerifyLumaEmailResponse>>(
       `/api/events/${event.value.id}/applications/me/actions/verify-luma-email`,
       {
         method: 'POST',
@@ -955,7 +956,7 @@ async function selectParticipantTrack(trackId: string) {
   pendingSelectedTrackId.value = trackId
 
   try {
-    const response = await $fetch<ParticipantApiDataResponse<ParticipantApplicationRecord>>(
+    const response = await apiFetch<ParticipantApiDataResponse<ParticipantApplicationRecord>>(
       `/api/events/${workspaceEventId.value}/applications/me/actions/select-track`,
       {
         method: 'POST',
@@ -1003,7 +1004,7 @@ async function withdrawOwnApplication() {
   withdrawApplicationErrorMessage.value = ''
 
   try {
-    const response = await $fetch<ParticipantApiDataResponse<ParticipantApplicationRecord>>(
+    const response = await apiFetch<ParticipantApiDataResponse<ParticipantApplicationRecord>>(
       `/api/events/${event.value.id}/applications/me/actions/withdraw`,
       {
         method: 'POST'

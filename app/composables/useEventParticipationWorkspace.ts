@@ -4,15 +4,18 @@ import type {
 } from '~/domains/events/participation'
 
 import { normalizeEventParticipationApiError } from '~/domains/events/participation'
+import { useSessionActor } from '~/composables/useSessionActor'
 
 export function useEventParticipationWorkspace() {
-  const user = useUser()
-  const authSubject = computed(() => user.value?.sub ?? 'anonymous')
+  const actor = useSessionActor().actor
+  const authSubject = computed(() => actor.value.isAuthenticated
+    ? actor.value.sessionUser.sub
+    : 'anonymous')
 
   const participationRequest = useApiData<EventParticipationPayload>(
     () => `event-participation:${authSubject.value}`,
     async ({ apiFetch, signal }) => {
-      if (!user.value?.sub) {
+      if (actor.value.kind !== 'platform_user') {
         return {
           current: [],
           past: []
@@ -33,7 +36,7 @@ export function useEventParticipationWorkspace() {
         current: [],
         past: []
       }),
-      watch: [computed(() => user.value?.sub ?? null)],
+      watch: [authSubject, actor],
       server: false
     }
   )

@@ -4,6 +4,7 @@ import qrcode from 'qrcode-generator'
 import AccountEventSimplifiedClaimingStep from './AccountEventSimplifiedClaimingStep.vue'
 import type { ApiDataResponse } from '~/lib/api'
 import { normalizeApiError } from '~/lib/api'
+import { useApiClient, useApiFetch } from '~/composables/useApiClient'
 
 interface SimplifiedClaimingStatus {
   enabled: boolean
@@ -27,6 +28,7 @@ const emit = defineEmits<{
   lockChange: [locked: boolean]
 }>()
 
+const apiFetch = useApiClient()
 const toast = useToast()
 const isAttendeeUploadPending = shallowRef(false)
 const isRewardUploadPending = shallowRef(false)
@@ -36,7 +38,7 @@ const rewardUploadError = shallowRef('')
 const attendeeFileInput = useTemplateRef<HTMLInputElement>('attendeeFileInput')
 const rewardFileInput = useTemplateRef<HTMLInputElement>('rewardFileInput')
 const statusUrl = computed(() => `/api/events/${props.eventId}/simplified-claiming`)
-const { data, status, error, refresh } = await useFetch<ApiDataResponse<SimplifiedClaimingStatus>>(statusUrl, {
+const { data, status, error, refresh } = await useApiFetch<ApiDataResponse<SimplifiedClaimingStatus>>(statusUrl, {
   key: `simplified-claiming-${props.eventId}`
 })
 const claimStatus = computed(() => data.value?.data ?? null)
@@ -91,7 +93,7 @@ async function importAttendees(event: Event) {
   try {
     const body = new FormData()
     body.append('file', file)
-    const response = await $fetch<ApiDataResponse<{
+    const response = await apiFetch<ApiDataResponse<{
       eligibleCount: number
       attendeeCount: number
     }>>(`/api/events/${props.eventId}/simplified-claiming/attendees/import`, {
@@ -124,7 +126,7 @@ async function importRewards(event: Event) {
   try {
     const body = new FormData()
     body.append('file', file)
-    const response = await $fetch<ApiDataResponse<{ importedCount: number, skippedCount: number }>>(
+    const response = await apiFetch<ApiDataResponse<{ importedCount: number, skippedCount: number }>>(
       `/api/events/${props.eventId}/simplified-claiming/rewards/import`,
       {
         method: 'POST',
@@ -155,7 +157,7 @@ async function deleteRewards() {
   isRewardDeletePending.value = true
   rewardUploadError.value = ''
   try {
-    await $fetch(`/api/events/${props.eventId}/credits/${offer.id}`, {
+    await apiFetch(`/api/events/${props.eventId}/credits/${offer.id}`, {
       method: 'DELETE'
     })
     toast.add({ title: 'Attendee reward links deleted', color: 'success' })

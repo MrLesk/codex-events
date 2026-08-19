@@ -10,6 +10,7 @@ import {
   eventFeedbackNotApplicableLabel,
   eventFeedbackRatingValues
 } from '#shared/domains/events/feedback'
+import { useApiFetch } from '~/composables/useApiClient'
 
 const props = defineProps<{
   eventId: string
@@ -27,7 +28,7 @@ const {
   data: summaryResponse,
   status: summaryStatus,
   error: summaryError
-} = useFetch<ApiDataResponse<EventFeedbackSummary>>(
+} = useApiFetch<ApiDataResponse<EventFeedbackSummary>>(
   () => `/api/events/${eventId.value}/feedback`,
   {
     key: () => `event-feedback:${eventId.value}`,

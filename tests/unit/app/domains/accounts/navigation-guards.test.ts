@@ -1,10 +1,19 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 const useUser = vi.hoisted(() => vi.fn())
+const useApiClient = vi.hoisted(() => vi.fn())
+const useSessionActor = vi.hoisted(() => vi.fn())
 const navigateTo = vi.hoisted(() => vi.fn())
 const createError = vi.hoisted(() => vi.fn((input: { statusCode: number, statusMessage: string }) =>
   Object.assign(new Error(input.statusMessage), input)
 ))
+
+vi.mock('../../../../../app/composables/useApiClient', () => ({
+  useApiClient
+}))
+vi.mock('../../../../../app/composables/useSessionActor', () => ({
+  useSessionActor
+}))
 
 function createPlatformActor(overrides: Record<string, unknown> = {}) {
   return {
@@ -30,6 +39,20 @@ function createPlatformActor(overrides: Record<string, unknown> = {}) {
   }
 }
 
+function createBootstrap(actor: Record<string, unknown>) {
+  const normalizedActor = {
+    isAuthenticated: actor.kind !== 'anonymous',
+    ...actor
+  }
+
+  return {
+    actor: {
+      value: normalizedActor
+    },
+    ensureLoaded: vi.fn(async () => undefined)
+  }
+}
+
 describe('navigation guards', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -52,19 +75,13 @@ describe('navigation guards', () => {
       }
     })
 
-    const navigationFetch = vi.fn(async () => ({
-      data: {
-        actor: {
-          kind: 'platform_user',
-          hasAcceptedCurrentPlatformDocuments: true
-        }
-      }
-    }))
-
     const { ensureAuthenticatedActor } = await import('../../../../../app/domains/accounts/navigation-guards')
     const result = await ensureAuthenticatedActor({
       fullPath: '/account/register?returnTo=/account'
-    } as never, navigationFetch as never)
+    } as never, createBootstrap({
+      kind: 'platform_user',
+      hasAcceptedCurrentPlatformDocuments: true
+    }) as never)
 
     expect(result).toEqual({
       redirectTo: '/account'
@@ -80,13 +97,61 @@ describe('navigation guards', () => {
     const { ensureAuthenticatedActor } = await import('../../../../../app/domains/accounts/navigation-guards')
     const result = await ensureAuthenticatedActor({
       fullPath: '/account'
-    } as never, vi.fn() as never)
+    } as never, createBootstrap({
+      kind: 'anonymous'
+    }) as never)
 
     expect(result).toEqual({
       redirectTo: '/auth/login?returnTo=%2Faccount',
       external: true
     })
     expect(navigateTo).not.toHaveBeenCalled()
+  })
+
+  test('uses the shared bootstrap for static-shell authenticated users without SSR Auth0 state', async () => {
+    useUser.mockReturnValue({
+      value: null
+    })
+    const bootstrap = createBootstrap(createPlatformActor())
+
+    const { ensureAuthenticatedActor } = await import('../../../../../app/domains/accounts/navigation-guards')
+    const result = await ensureAuthenticatedActor({
+      fullPath: '/account'
+    } as never, bootstrap as never)
+
+    expect(bootstrap.ensureLoaded).toHaveBeenCalledOnce()
+    expect(result).toEqual({
+      actor: bootstrap.actor.value
+    })
+  })
+
+  test('redirects an authenticated identity to consented account registration', async () => {
+    useUser.mockReturnValue({
+      value: {
+        sub: 'auth0|new-user'
+      }
+    })
+
+    const { ensureAuthenticatedActor } = await import('../../../../../app/domains/accounts/navigation-guards')
+    const result = await ensureAuthenticatedActor({
+      fullPath: '/account'
+    } as never, createBootstrap({
+      kind: 'authenticated_identity',
+      hasAcceptedCurrentPlatformDocuments: false
+    }) as never)
+
+    expect(result).toEqual({
+      redirectTo: '/account/register?returnTo=%2Faccount'
+    })
+  })
+
+  test('limits server-shell skipping to account, admin, and prize-redemption workspaces', async () => {
+    const { isClientRenderedAuthenticatedShellPath } = await import('../../../../../app/domains/accounts/navigation-guards')
+
+    expect(isClientRenderedAuthenticatedShellPath('/account')).toBe(true)
+    expect(isClientRenderedAuthenticatedShellPath('/admin/events/new')).toBe(true)
+    expect(isClientRenderedAuthenticatedShellPath('/prize-redemptions')).toBe(true)
+    expect(isClientRenderedAuthenticatedShellPath('/events/codex/register')).toBe(false)
   })
 
   test('allows event organizers through the account admin guard', async () => {
@@ -96,30 +161,26 @@ describe('navigation guards', () => {
       }
     })
 
-    vi.stubGlobal('$fetch', vi.fn(async () => ({
-      data: {
-        actor: createPlatformActor({
-          isEventOrganizer: true,
-          platformUser: {
-            id: 'event-organizer',
-            email: 'organizer@example.com',
-            displayName: 'Event Organizer',
-            firstName: 'Event',
-            familyName: 'Organizer',
-            isPlatformAdmin: false,
-            isEventOrganizer: true
-          }
-        })
-      }
-    })) as never)
-
     const { ensureAccountPageAccess } = await import('../../../../../app/domains/accounts/navigation-guards')
     const { canAccessAdminDashboard } = await import('../../../../../app/domains/events/access')
+    const actor = createPlatformActor({
+      isEventOrganizer: true,
+      platformUser: {
+        id: 'event-organizer',
+        email: 'organizer@example.com',
+        displayName: 'Event Organizer',
+        firstName: 'Event',
+        familyName: 'Organizer',
+        isPlatformAdmin: false,
+        isEventOrganizer: true
+      }
+    })
 
     await expect(ensureAccountPageAccess(
       { fullPath: '/account/admin' } as never,
       actor => canAccessAdminDashboard(actor),
-      'Event admin access required.'
+      'Event admin access required.',
+      createBootstrap(actor) as never
     )).resolves.toBeUndefined()
   })
 
@@ -130,32 +191,28 @@ describe('navigation guards', () => {
       }
     })
 
-    vi.stubGlobal('$fetch', vi.fn(async () => ({
-      data: {
-        actor: createPlatformActor({
-          sessionUser: {
-            sub: 'auth0|platform-admin'
-          },
-          isPlatformAdmin: true,
-          platformUser: {
-            id: 'platform-admin',
-            email: 'platform-admin@example.com',
-            displayName: 'Platform Admin',
-            firstName: 'Platform',
-            familyName: 'Admin',
-            isPlatformAdmin: true,
-            isEventOrganizer: false
-          }
-        })
-      }
-    })) as never)
-
     const { ensureAccountPageAccess } = await import('../../../../../app/domains/accounts/navigation-guards')
+    const actor = createPlatformActor({
+      sessionUser: {
+        sub: 'auth0|platform-admin'
+      },
+      isPlatformAdmin: true,
+      platformUser: {
+        id: 'platform-admin',
+        email: 'platform-admin@example.com',
+        displayName: 'Platform Admin',
+        firstName: 'Platform',
+        familyName: 'Admin',
+        isPlatformAdmin: true,
+        isEventOrganizer: false
+      }
+    })
 
     await expect(ensureAccountPageAccess(
       { fullPath: '/account/platform-settings' } as never,
       actor => actor.isPlatformAdmin,
-      'Platform admin access required.'
+      'Platform admin access required.',
+      createBootstrap(actor) as never
     )).resolves.toBeUndefined()
   })
 
@@ -166,33 +223,29 @@ describe('navigation guards', () => {
       }
     })
 
-    vi.stubGlobal('$fetch', vi.fn(async () => ({
-      data: {
-        actor: createPlatformActor({
-          hasAcceptedCurrentPlatformDocuments: false,
-          sessionUser: {
-            sub: 'auth0|platform-admin'
-          },
-          isPlatformAdmin: true,
-          platformUser: {
-            id: 'platform-admin',
-            email: 'platform-admin@example.com',
-            displayName: 'Platform Admin',
-            firstName: 'Platform',
-            familyName: 'Admin',
-            isPlatformAdmin: true,
-            isEventOrganizer: false
-          }
-        })
-      }
-    })) as never)
-
     const { ensureAccountPageAccess } = await import('../../../../../app/domains/accounts/navigation-guards')
+    const actor = createPlatformActor({
+      hasAcceptedCurrentPlatformDocuments: false,
+      sessionUser: {
+        sub: 'auth0|platform-admin'
+      },
+      isPlatformAdmin: true,
+      platformUser: {
+        id: 'platform-admin',
+        email: 'platform-admin@example.com',
+        displayName: 'Platform Admin',
+        firstName: 'Platform',
+        familyName: 'Admin',
+        isPlatformAdmin: true,
+        isEventOrganizer: false
+      }
+    })
 
     await expect(ensureAccountPageAccess(
       { fullPath: '/account/platform-settings?tab=legal' } as never,
       actor => actor.isPlatformAdmin,
-      'Platform admin access required.'
+      'Platform admin access required.',
+      createBootstrap(actor) as never
     )).resolves.toBeUndefined()
   })
 
@@ -203,29 +256,25 @@ describe('navigation guards', () => {
       }
     })
 
-    vi.stubGlobal('$fetch', vi.fn(async () => ({
-      data: {
-        actor: createPlatformActor({
-          isEventOrganizer: true,
-          platformUser: {
-            id: 'event-organizer',
-            email: 'organizer@example.com',
-            displayName: 'Event Organizer',
-            firstName: 'Event',
-            familyName: 'Organizer',
-            isPlatformAdmin: false,
-            isEventOrganizer: true
-          }
-        })
-      }
-    })) as never)
-
     const { ensureAccountPageAccess } = await import('../../../../../app/domains/accounts/navigation-guards')
+    const actor = createPlatformActor({
+      isEventOrganizer: true,
+      platformUser: {
+        id: 'event-organizer',
+        email: 'organizer@example.com',
+        displayName: 'Event Organizer',
+        firstName: 'Event',
+        familyName: 'Organizer',
+        isPlatformAdmin: false,
+        isEventOrganizer: true
+      }
+    })
 
     await expect(ensureAccountPageAccess(
       { fullPath: '/account/platform-settings' } as never,
       actor => actor.isPlatformAdmin,
-      'Platform admin access required.'
+      'Platform admin access required.',
+      createBootstrap(actor) as never
     )).rejects.toMatchObject({
       statusCode: 401,
       statusMessage: 'Platform admin access required.'
@@ -239,30 +288,26 @@ describe('navigation guards', () => {
       }
     })
 
-    vi.stubGlobal('$fetch', vi.fn(async () => ({
-      data: {
-        actor: createPlatformActor({
-          isEventOrganizer: true,
-          platformUser: {
-            id: 'event-organizer',
-            email: 'organizer@example.com',
-            displayName: 'Event Organizer',
-            firstName: 'Event',
-            familyName: 'Organizer',
-            isPlatformAdmin: false,
-            isEventOrganizer: true
-          }
-        })
-      }
-    })) as never)
-
     const { ensureAccountPageAccess } = await import('../../../../../app/domains/accounts/navigation-guards')
     const { canCreateEvent } = await import('../../../../../app/domains/events/access')
+    const actor = createPlatformActor({
+      isEventOrganizer: true,
+      platformUser: {
+        id: 'event-organizer',
+        email: 'organizer@example.com',
+        displayName: 'Event Organizer',
+        firstName: 'Event',
+        familyName: 'Organizer',
+        isPlatformAdmin: false,
+        isEventOrganizer: true
+      }
+    })
 
     await expect(ensureAccountPageAccess(
       { fullPath: '/admin/events/new' } as never,
       actor => canCreateEvent(actor),
-      'Event creator access required.'
+      'Event creator access required.',
+      createBootstrap(actor) as never
     )).resolves.toBeUndefined()
   })
 
@@ -273,32 +318,28 @@ describe('navigation guards', () => {
       }
     })
 
-    vi.stubGlobal('$fetch', vi.fn(async () => ({
-      data: {
-        actor: createPlatformActor({
-          sessionUser: {
-            sub: 'auth0|regular-user'
-          },
-          platformUser: {
-            id: 'regular-user',
-            email: 'regular@example.com',
-            displayName: 'Regular User',
-            firstName: 'Regular',
-            familyName: 'User',
-            isPlatformAdmin: false,
-            isEventOrganizer: false
-          }
-        })
-      }
-    })) as never)
-
     const { ensureAccountPageAccess } = await import('../../../../../app/domains/accounts/navigation-guards')
     const { canCreateEvent } = await import('../../../../../app/domains/events/access')
+    const actor = createPlatformActor({
+      sessionUser: {
+        sub: 'auth0|regular-user'
+      },
+      platformUser: {
+        id: 'regular-user',
+        email: 'regular@example.com',
+        displayName: 'Regular User',
+        firstName: 'Regular',
+        familyName: 'User',
+        isPlatformAdmin: false,
+        isEventOrganizer: false
+      }
+    })
 
     await expect(ensureAccountPageAccess(
       { fullPath: '/admin/events/new' } as never,
       actor => canCreateEvent(actor),
-      'Event creator access required.'
+      'Event creator access required.',
+      createBootstrap(actor) as never
     )).rejects.toMatchObject({
       statusCode: 401,
       statusMessage: 'Event creator access required.'
@@ -312,31 +353,23 @@ describe('navigation guards', () => {
       }
     })
 
-    const navigationFetch = vi.fn()
-      .mockResolvedValueOnce({
-        data: {
-          actor: {
-            kind: 'platform_user',
-            hasPlatformAccount: true,
-            hasAcceptedCurrentPlatformDocuments: true,
-            isPlatformAdmin: false,
-            eventRoles: [{
-              eventId: 'event-1',
-              role: 'event_admin',
-              isInJudgePool: true,
-              isStaff: true,
-              createdAt: '2026-03-01T00:00:00.000Z'
-            }]
-          }
-        }
-      })
-      .mockResolvedValueOnce({
-        data: {
-          id: 'event-1'
-        }
-      })
-
-    vi.stubGlobal('$fetch', navigationFetch as never)
+    const navigationFetch = vi.fn().mockResolvedValueOnce({
+      data: {
+        id: 'event-1'
+      }
+    })
+    const actor = createPlatformActor({
+      sessionUser: {
+        sub: 'auth0|admin-judge'
+      },
+      eventRoles: [{
+        eventId: 'event-1',
+        role: 'event_admin',
+        isInJudgePool: true,
+        isStaff: true,
+        createdAt: '2026-03-01T00:00:00.000Z'
+      }]
+    })
 
     const { ensureEventRoleForSlugRoute } = await import('../../../../../app/domains/accounts/navigation-guards')
 
@@ -345,11 +378,10 @@ describe('navigation guards', () => {
       params: {
         slug: 'codex'
       }
-    } as never, ['judge'])).resolves.toBeUndefined()
+    } as never, ['judge'], navigationFetch as never, createBootstrap(actor) as never)).resolves.toBeUndefined()
 
-    expect(navigationFetch).toHaveBeenCalledTimes(2)
-    expect(navigationFetch).toHaveBeenNthCalledWith(1, '/api/session')
-    expect(navigationFetch).toHaveBeenNthCalledWith(2, '/api/events/slug/codex')
+    expect(navigationFetch).toHaveBeenCalledTimes(1)
+    expect(navigationFetch).toHaveBeenCalledWith('/api/events/slug/codex')
   })
 
   test('allows staff routes for staff-enabled event admins only', async () => {
@@ -359,31 +391,23 @@ describe('navigation guards', () => {
       }
     })
 
-    const navigationFetch = vi.fn()
-      .mockResolvedValueOnce({
-        data: {
-          actor: {
-            kind: 'platform_user',
-            hasPlatformAccount: true,
-            hasAcceptedCurrentPlatformDocuments: true,
-            isPlatformAdmin: false,
-            eventRoles: [{
-              eventId: 'event-1',
-              role: 'event_admin',
-              isInJudgePool: false,
-              isStaff: true,
-              createdAt: '2026-03-01T00:00:00.000Z'
-            }]
-          }
-        }
-      })
-      .mockResolvedValueOnce({
-        data: {
-          id: 'event-1'
-        }
-      })
-
-    vi.stubGlobal('$fetch', navigationFetch as never)
+    const navigationFetch = vi.fn().mockResolvedValueOnce({
+      data: {
+        id: 'event-1'
+      }
+    })
+    const actor = createPlatformActor({
+      sessionUser: {
+        sub: 'auth0|admin-staff'
+      },
+      eventRoles: [{
+        eventId: 'event-1',
+        role: 'event_admin',
+        isInJudgePool: false,
+        isStaff: true,
+        createdAt: '2026-03-01T00:00:00.000Z'
+      }]
+    })
 
     const { ensureEventRoleForSlugRoute } = await import('../../../../../app/domains/accounts/navigation-guards')
 
@@ -392,10 +416,9 @@ describe('navigation guards', () => {
       params: {
         slug: 'codex'
       }
-    } as never, ['staff'])).resolves.toBeUndefined()
+    } as never, ['staff'], navigationFetch as never, createBootstrap(actor) as never)).resolves.toBeUndefined()
 
-    expect(navigationFetch).toHaveBeenCalledTimes(2)
-    expect(navigationFetch).toHaveBeenNthCalledWith(1, '/api/session')
-    expect(navigationFetch).toHaveBeenNthCalledWith(2, '/api/events/slug/codex')
+    expect(navigationFetch).toHaveBeenCalledTimes(1)
+    expect(navigationFetch).toHaveBeenCalledWith('/api/events/slug/codex')
   })
 })

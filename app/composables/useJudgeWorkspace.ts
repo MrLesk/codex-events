@@ -1,5 +1,4 @@
 import type { ApiDataResponse, ApiListResponse } from '~/lib/api'
-import type { SessionActor } from '~/domains/accounts/session-actor'
 import type { EventRecord } from '~/domains/events/records'
 import type { EvaluationCriterion } from '~/domains/judging/criteria-config'
 import type {
@@ -16,18 +15,17 @@ import {
   normalizeJudgeAssignmentDetail,
   sortJudgeAssignments
 } from '~/domains/judging/workspace'
+import { useApiClient, useApiFetch } from '~/composables/useApiClient'
+import { useSessionActor } from '~/composables/useSessionActor'
 
 export function useJudgeWorkspace() {
-  const authenticatedUser = useUser()
-  const subjectKey = computed(() => getJudgeWorkspaceSubjectKey(authenticatedUser.value?.sub))
+  const apiFetch = useApiClient()
 
-  const session = useFetch<ApiDataResponse<{ actor: SessionActor }>>('/api/session', {
-    key: () => buildJudgeWorkspaceCacheKey('judge-workspace-session', subjectKey.value),
-    watch: [subjectKey],
-    server: false
-  })
-
-  const actor = computed(() => session.data.value?.data.actor ?? null)
+  const session = useSessionActor()
+  const actor = session.actor
+  const subjectKey = computed(() => getJudgeWorkspaceSubjectKey(
+    actor.value.isAuthenticated ? actor.value.sessionUser.sub : null
+  ))
   const canLoadEvents = computed(() => Boolean(actor.value?.hasPlatformAccount))
 
   const events = useAsyncData<EventRecord[]>(
@@ -38,7 +36,7 @@ export function useJudgeWorkspace() {
       }
 
       return await listAllVisibleEvents(
-        async (page, pageSize) => await $fetch<ApiListResponse<EventRecord>>('/api/events', {
+        async (page, pageSize) => await apiFetch<ApiListResponse<EventRecord>>('/api/events', {
           query: {
             page,
             page_size: pageSize
@@ -66,7 +64,7 @@ export function useJudgeWorkspace() {
       }
 
       const groups = await Promise.all(reviewableEvents.value.map(async (event) => {
-        const assignmentsResponse = await $fetch<ApiListResponse<JudgeAssignmentApiDetail>>(
+        const assignmentsResponse = await apiFetch<ApiListResponse<JudgeAssignmentApiDetail>>(
           `/api/events/${event.id}/judging/assignments`
         )
         const assignments = assignmentsResponse.data.map(normalizeJudgeAssignmentDetail)
@@ -126,18 +124,16 @@ export function useJudgeAssignmentWorkspace(
   eventId: MaybeRefOrGetter<string>,
   assignmentId: MaybeRefOrGetter<string>
 ) {
-  const authenticatedUser = useUser()
-  const subjectKey = computed(() => getJudgeWorkspaceSubjectKey(authenticatedUser.value?.sub))
   const resolvedEventId = computed(() => String(toValue(eventId)).trim())
   const resolvedAssignmentId = computed(() => String(toValue(assignmentId)).trim())
 
-  const session = useFetch<ApiDataResponse<{ actor: SessionActor }>>('/api/session', {
-    key: () => buildJudgeWorkspaceCacheKey('judge-assignment-session', subjectKey.value),
-    watch: [subjectKey],
-    server: false
-  })
+  const apiFetch = useApiClient()
+  const session = useSessionActor()
+  const subjectKey = computed(() => getJudgeWorkspaceSubjectKey(
+    session.actor.value.isAuthenticated ? session.actor.value.sessionUser.sub : null
+  ))
 
-  const event = useFetch<ApiDataResponse<EventRecord>>(
+  const event = useApiFetch<ApiDataResponse<EventRecord>>(
     () => `/api/events/${resolvedEventId.value}`,
     {
       key: () => buildJudgeWorkspaceCacheKey('judge-assignment-event', subjectKey.value, resolvedEventId.value),
@@ -146,7 +142,7 @@ export function useJudgeAssignmentWorkspace(
     }
   )
 
-  const assignmentRequest = useFetch<ApiDataResponse<JudgeAssignmentApiDetail>>(
+  const assignmentRequest = useApiFetch<ApiDataResponse<JudgeAssignmentApiDetail>>(
     () => `/api/events/${resolvedEventId.value}/judging/assignments/${resolvedAssignmentId.value}`,
     {
       key: () => buildJudgeWorkspaceCacheKey(
@@ -179,7 +175,7 @@ export function useJudgeAssignmentWorkspace(
         return []
       }
 
-      const response = await $fetch<ApiListResponse<EvaluationCriterion>>(
+      const response = await apiFetch<ApiListResponse<EvaluationCriterion>>(
         `/api/events/${resolvedEventId.value}/evaluation-criteria`
       )
 
@@ -224,7 +220,7 @@ export function useJudgeAssignmentWorkspace(
 
   return {
     session,
-    actor: computed(() => session.data.value?.data.actor ?? null),
+    actor: session.actor,
     event: computed(() => event.data.value?.data ?? null),
     assignment,
     criteria: computed(() => criteria.data.value ?? []),

@@ -10,6 +10,7 @@ import {
   talkProposalFormSchema,
   talkProposalStatusLabels
 } from '~/domains/talk-proposals'
+import { useApiClient } from '~/composables/useApiClient'
 
 const props = defineProps<{
   eventId: string
@@ -21,6 +22,7 @@ const emit = defineEmits<{
   hasProposalChange: [hasProposal: boolean]
 }>()
 
+const apiFetch = useApiClient()
 const proposal = ref<TalkProposalRecord | null>(null)
 const pending = ref(true)
 const actionPending = ref(false)
@@ -61,7 +63,7 @@ async function loadProposal() {
   pending.value = true
   errorMessage.value = ''
   try {
-    const response = await $fetch<ApiDataResponse<TalkProposalRecord | null>>(`/api/events/${props.eventId}/talk-proposals/me`)
+    const response = await apiFetch<ApiDataResponse<TalkProposalRecord | null>>(`/api/events/${props.eventId}/talk-proposals/me`)
     applyProposal(response.data)
   } catch (error) {
     errorMessage.value = normalizeApiError(error).message
@@ -74,7 +76,7 @@ const saveDraft = handleSubmit(async (values) => {
   actionPending.value = true
   errorMessage.value = ''
   try {
-    const response = await $fetch<ApiDataResponse<TalkProposalRecord>>(`/api/events/${props.eventId}/talk-proposals/me`, {
+    const response = await apiFetch<ApiDataResponse<TalkProposalRecord>>(`/api/events/${props.eventId}/talk-proposals/me`, {
       method: proposal.value ? 'PATCH' : 'POST',
       body: values
     })
@@ -91,7 +93,7 @@ async function runAction(action: 'submit' | 'withdraw' | 'revise') {
   actionPending.value = true
   errorMessage.value = ''
   try {
-    const response = await $fetch<ApiDataResponse<TalkProposalRecord>>(
+    const response = await apiFetch<ApiDataResponse<TalkProposalRecord>>(
       `/api/events/${props.eventId}/talk-proposals/me/actions/${action}`,
       { method: 'POST' }
     )

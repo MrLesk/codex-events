@@ -5,6 +5,7 @@ import type { ApiListResponse } from '~/lib/api'
 import EventGalleryPanel from '~/components/events/EventGalleryPanel.vue'
 import { normalizeApiError } from '~/lib/api'
 import { createEventGalleryUploadBatches, createEventGalleryUploadItems } from '~/domains/events/gallery'
+import { useApiClient, useApiFetch } from '~/composables/useApiClient'
 
 type AccountEventGalleryFilter = 'all' | 'highlighted' | 'not-highlighted' | 'public'
 
@@ -13,6 +14,7 @@ const props = defineProps<{
   canManage: boolean
 }>()
 
+const apiFetch = useApiClient()
 const toast = useToast()
 const eventId = computed(() => props.eventId.trim())
 const canManage = computed(() => props.canManage)
@@ -30,7 +32,7 @@ const {
   status: photosStatus,
   error: photosError,
   refresh: refreshPhotos
-} = useFetch<ApiListResponse<EventPhotoRecord>>(
+} = useApiFetch<ApiListResponse<EventPhotoRecord>>(
   () => `/api/events/${eventId.value}/photos`,
   {
     key: () => `event-photos:${eventId.value}`,
@@ -139,7 +141,7 @@ async function uploadPhotos(files: File[]) {
         formData.append('file', file)
       }
 
-      await $fetch(`/api/events/${targetEventId}/photos`, {
+      await apiFetch(`/api/events/${targetEventId}/photos`, {
         method: 'POST',
         body: formData
       })
@@ -186,7 +188,7 @@ async function deletePhoto(photo: EventPhotoRecord) {
   pendingDeletePhotoId.value = photo.id
 
   try {
-    await $fetch(`/api/events/${eventId.value}/photos/${photo.id}`, {
+    await apiFetch(`/api/events/${eventId.value}/photos/${photo.id}`, {
       method: 'DELETE'
     })
 
@@ -212,7 +214,7 @@ async function togglePublicVisibility(payload: { photo: EventPhotoRecord, value:
   pendingPublicVisibilityPhotoId.value = payload.photo.id
 
   try {
-    await $fetch(`/api/events/${eventId.value}/photos/${payload.photo.id}/public-visibility`, {
+    await apiFetch(`/api/events/${eventId.value}/photos/${payload.photo.id}/public-visibility`, {
       method: 'PATCH',
       body: {
         isPubliclyVisible: payload.value
@@ -243,7 +245,7 @@ async function toggleHighlight(payload: { photo: EventPhotoRecord, value: boolea
   pendingHighlightPhotoId.value = payload.photo.id
 
   try {
-    await $fetch(`/api/events/${eventId.value}/photos/${payload.photo.id}/highlight`, {
+    await apiFetch(`/api/events/${eventId.value}/photos/${payload.photo.id}/highlight`, {
       method: 'PATCH',
       body: {
         isHighlighted: payload.value

@@ -1,22 +1,23 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
-const createUseFetch = vi.hoisted(() => vi.fn())
-const managedUseFetch = vi.hoisted(() => vi.fn())
+const clientFetch = vi.hoisted(() => vi.fn())
+const useApiClient = vi.hoisted(() => vi.fn())
 const useAsyncData = vi.hoisted(() => vi.fn())
+
+vi.mock('../../../../app/composables/useApiClient', () => ({
+  useApiClient
+}))
 
 describe('useApiData', () => {
   beforeEach(() => {
     vi.resetModules()
-    createUseFetch.mockReset()
-    managedUseFetch.mockReset()
+    clientFetch.mockReset()
+    useApiClient.mockReset()
     useAsyncData.mockReset()
 
-    createUseFetch.mockReturnValue(managedUseFetch)
+    useApiClient.mockReturnValue(clientFetch)
 
-    vi.stubGlobal('createUseFetch', createUseFetch)
     vi.stubGlobal('useAsyncData', useAsyncData)
-    vi.stubGlobal('useRequestFetch', vi.fn())
-    vi.stubGlobal('$fetch', vi.fn())
     vi.stubGlobal('toValue', (value: unknown) =>
       typeof value === 'function'
         ? (value as () => unknown)()
@@ -28,19 +29,7 @@ describe('useApiData', () => {
     vi.unstubAllGlobals()
   })
 
-  test('creates a shared fetch factory with cancel dedupe and shallow refs by default', async () => {
-    await import('../../../../app/composables/useApiData')
-
-    expect(createUseFetch).toHaveBeenCalledWith({
-      deep: false,
-      dedupe: 'cancel'
-    })
-  })
-
   test('passes the selected fetcher and abort signal into useApiData handlers', async () => {
-    const clientFetch = vi.fn()
-    vi.stubGlobal('$fetch', clientFetch)
-
     useAsyncData.mockImplementation((key, handler, options) => ({
       key,
       handler,
@@ -66,6 +55,7 @@ describe('useApiData', () => {
       deep: false,
       dedupe: 'cancel'
     })
+    expect(useApiClient).toHaveBeenCalledOnce()
 
     const signal = new AbortController().signal
 
@@ -77,13 +67,11 @@ describe('useApiData', () => {
   })
 
   test('unwraps canonical api data responses in useApiResponse', async () => {
-    const clientFetch = vi.fn().mockResolvedValue({
+    clientFetch.mockResolvedValue({
       data: {
         id: 'privacy'
       }
     })
-
-    vi.stubGlobal('$fetch', clientFetch)
 
     useAsyncData.mockImplementation((key, handler, options) => ({
       key,

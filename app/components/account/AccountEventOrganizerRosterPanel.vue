@@ -3,12 +3,17 @@ import type { ApiListResponse } from '~/lib/api'
 import type { EventRoleUserSummary } from '~/domains/events/access'
 
 import { buildApiCacheKey, getApiSubjectKey } from '~/lib/api'
+import { useApiClient, useApiFetch } from '~/composables/useApiClient'
+import { useSessionActor } from '~/composables/useSessionActor'
 
-const authenticatedUser = useUser()
+const actor = useSessionActor().actor
 const eventOrganizerCandidatePageSize = 20
 
-const subjectKey = computed(() => getApiSubjectKey(authenticatedUser.value?.sub))
-const currentOrganizers = useFetch<ApiListResponse<EventRoleUserSummary>>('/api/event-organizers', {
+const subjectKey = computed(() => getApiSubjectKey(
+  actor.value.isAuthenticated ? actor.value.sessionUser.sub : null
+))
+const apiFetch = useApiClient()
+const currentOrganizers = useApiFetch<ApiListResponse<EventRoleUserSummary>>('/api/event-organizers', {
   key: () => buildApiCacheKey('event-organizers', subjectKey.value),
   watch: [subjectKey]
 })
@@ -32,7 +37,7 @@ const {
 } = useRosterCandidateSearch<EventRoleUserSummary>({
   pageSize: eventOrganizerCandidatePageSize,
   resetKey: subjectKey,
-  loadPage: async ({ page, pageSize, search }) => await $fetch<ApiListResponse<EventRoleUserSummary>>(
+  loadPage: async ({ page, pageSize, search }) => await apiFetch<ApiListResponse<EventRoleUserSummary>>(
     '/api/event-organizers/candidates',
     {
       query: {
@@ -74,7 +79,7 @@ async function addEventOrganizer(user: EventRoleUserSummary) {
   await runRosterMutation({
     actionKey: user.id,
     action: async () => {
-      await $fetch(`/api/event-organizers/${user.id}`, {
+      await apiFetch(`/api/event-organizers/${user.id}`, {
         method: 'PUT'
       })
     },
@@ -99,7 +104,7 @@ async function removeEventOrganizer(user: EventRoleUserSummary) {
   await runRosterMutation({
     actionKey: user.id,
     action: async () => {
-      await $fetch(`/api/event-organizers/${user.id}`, {
+      await apiFetch(`/api/event-organizers/${user.id}`, {
         method: 'DELETE'
       })
     },

@@ -4,12 +4,13 @@ import AccountMcpTokensPanel from '~/components/account/AccountMcpTokensPanel.vu
 import { authLogoutHref } from '#shared/domains/accounts/auth-navigation'
 import { normalizeApiError } from '~/lib/api'
 import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
+import { useApiClient } from '~/composables/useApiClient'
 
 definePageMeta({
   middleware: ['require-auth']
 })
 
-const user = useUser()
+const apiFetch = useApiClient()
 const { actor, status, refresh } = await useAccountLifecycleActor()
 
 const profileForm = reactive({
@@ -74,7 +75,7 @@ async function saveProfile() {
   saveState.success = ''
 
   try {
-    await $fetch('/api/account', {
+    await apiFetch('/api/account', {
       method: 'PATCH',
       body: {
         firstName: profileForm.firstName,
@@ -121,7 +122,7 @@ const profileIconAlt = computed(() => {
     return fullName || actor.value.platformUser.displayName
   }
 
-  return user.value?.name ?? 'User'
+  return actor.value.sessionUser?.name ?? 'User'
 })
 
 async function uploadProfileIcon(event: Event) {
@@ -140,7 +141,7 @@ async function uploadProfileIcon(event: Event) {
     const formData = new FormData()
     formData.append('file', file)
 
-    await $fetch('/api/account/profile-icon', {
+    await apiFetch('/api/account/profile-icon', {
       method: 'POST',
       body: formData
     })
@@ -177,7 +178,7 @@ async function deleteAccount() {
   deletionState.pending = true
 
   try {
-    await $fetch('/api/account', {
+    await apiFetch('/api/account', {
       method: 'DELETE'
     })
 
@@ -197,7 +198,7 @@ const accountEmail = computed(() => {
     return actor.value.platformUser.email
   }
 
-  return user.value?.email ?? ''
+  return actor.value.isAuthenticated ? actor.value.sessionUser.email ?? '' : ''
 })
 
 const isPlatformAccountUnavailable = computed(() =>

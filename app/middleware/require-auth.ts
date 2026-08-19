@@ -1,6 +1,13 @@
-import { ensureAuthenticatedActor } from '~/domains/accounts/navigation-guards'
+import {
+  ensureAuthenticatedActor,
+  shouldSkipServerAuthenticatedNavigation
+} from '~/domains/accounts/navigation-guards'
 
 export default defineNuxtRouteMiddleware(async (to) => {
+  if (shouldSkipServerAuthenticatedNavigation(to.path)) {
+    return
+  }
+
   const resolvedSession = await ensureAuthenticatedActor(to)
 
   if ('redirectTo' in resolvedSession) {

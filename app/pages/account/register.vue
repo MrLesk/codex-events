@@ -14,12 +14,14 @@ import {
   resolveAccountRegistrationCompletedTransition
 } from '~/domains/accounts/registration'
 import { accountDashboardHref, normalizeAuthReturnTo } from '#shared/domains/accounts/auth-navigation'
+import { useApiClient } from '~/composables/useApiClient'
 
 definePageMeta({
   middleware: ['require-auth']
 })
 
 const route = useRoute()
+const apiFetch = useApiClient()
 const returnTo = computed(() => normalizeAuthReturnTo(
   typeof route.query.returnTo === 'string' ? route.query.returnTo : null,
   accountDashboardHref
@@ -151,7 +153,7 @@ async function submitInitialPlatformSetupAccount() {
   submitState.pending = true
 
   try {
-    await $fetch('/api/account/registration', {
+    await apiFetch('/api/account/registration', {
       method: 'POST',
       body: {
         returnTo: platformLegalSettingsHref
@@ -185,7 +187,7 @@ async function resendIdentityEmailVerification() {
   identityEmailVerificationState.error = ''
 
   try {
-    await $fetch('/api/account/email-verification', {
+    await apiFetch('/api/account/email-verification', {
       method: 'POST'
     })
 
@@ -231,7 +233,7 @@ async function submitPlatformConsent() {
 
   try {
     if (actor.value.kind === 'authenticated_identity') {
-      await $fetch('/api/account/registration', {
+      await apiFetch('/api/account/registration', {
         method: 'POST',
         body: {
           returnTo: returnTo.value,
@@ -241,13 +243,13 @@ async function submitPlatformConsent() {
       })
     } else if (actor.value.kind === 'platform_user') {
       await Promise.all([
-        $fetch('/api/platform-document-acceptances', {
+        apiFetch('/api/platform-document-acceptances', {
           method: 'POST',
           body: {
             platformDocumentId: privacyPolicyDocument.value.id
           }
         }),
-        $fetch('/api/platform-document-acceptances', {
+        apiFetch('/api/platform-document-acceptances', {
           method: 'POST',
           body: {
             platformDocumentId: platformTermsDocument.value.id

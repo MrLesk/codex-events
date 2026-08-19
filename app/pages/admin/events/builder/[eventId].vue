@@ -5,12 +5,14 @@ import type { EventRecord, TermsDocument } from '~/domains/events/records'
 import { normalizeApiError } from '~/lib/api'
 import { getTermsVersionPublishErrorMessage } from '~/domains/events/admin-event'
 import AdminBuilderWorkspace from '~/components/admin/builder/AdminBuilderWorkspace.vue'
+import { useApiClient } from '~/composables/useApiClient'
 
 definePageMeta({
   middleware: ['require-platform-account']
 })
 
 const route = useRoute()
+const apiFetch = useApiClient()
 const toast = useToast()
 const eventId = computed(() => String(route.params.eventId ?? ''))
 
@@ -49,7 +51,7 @@ async function saveEvent() {
   isSubmitting.value = true
 
   try {
-    await $fetch<ApiDataResponse<EventRecord>>(`/api/events/${eventId.value}`, {
+    await apiFetch<ApiDataResponse<EventRecord>>(`/api/events/${eventId.value}`, {
       method: 'PATCH',
       body: builder.buildPatchBody()
     })
@@ -90,7 +92,7 @@ async function uploadEventImage(slot: 'background' | 'banner', file: File) {
 
     formData.append('file', file)
 
-    await $fetch<ApiDataResponse<EventRecord>>(`/api/events/${eventId.value}/images/${slot}`, {
+    await apiFetch<ApiDataResponse<EventRecord>>(`/api/events/${eventId.value}/images/${slot}`, {
       method: 'POST',
       body: formData
     })
@@ -114,7 +116,7 @@ async function removeEventImage(slot: 'background' | 'banner') {
   state.error = ''
 
   try {
-    await $fetch<ApiDataResponse<EventRecord>>(`/api/events/${eventId.value}/images/${slot}`, {
+    await apiFetch<ApiDataResponse<EventRecord>>(`/api/events/${eventId.value}/images/${slot}`, {
       method: 'DELETE'
     })
 
@@ -139,7 +141,7 @@ async function saveTerms(documentType: TermsDocument['documentType'], content: s
   const trimmedContent = content.trim()
 
   try {
-    const versions = await $fetch<{ data: TermsDocument[] }>(
+    const versions = await apiFetch<{ data: TermsDocument[] }>(
       `/api/events/${eventId.value}/terms/${documentType}/versions`
     )
     const nextVersion = versions.data.reduce((highest, doc) => Math.max(highest, doc.version), 0) + 1
@@ -151,7 +153,7 @@ async function saveTerms(documentType: TermsDocument['documentType'], content: s
       return
     }
 
-    const createdDocument = await $fetch<ApiDataResponse<TermsDocument>>(
+    const createdDocument = await apiFetch<ApiDataResponse<TermsDocument>>(
       `/api/events/${eventId.value}/terms/${documentType}/versions`,
       {
         method: 'POST',
@@ -159,7 +161,7 @@ async function saveTerms(documentType: TermsDocument['documentType'], content: s
       }
     )
 
-    await $fetch(`/api/events/${eventId.value}/terms/${documentType}/actions/set-current`, {
+    await apiFetch(`/api/events/${eventId.value}/terms/${documentType}/actions/set-current`, {
       method: 'POST',
       body: { eventTermsDocumentId: createdDocument.data.id }
     })

@@ -5,6 +5,7 @@ import type {
 } from '~/domains/submissions/team-submission'
 
 import { normalizeTeamSubmissionApiError } from '~/domains/submissions/team-submission'
+import { useApiClient } from '~/composables/useApiClient'
 
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 
@@ -33,7 +34,7 @@ export function useTeamSubmissionWorkspace(
     hasInitialSubmissionState?: MaybeRefOrGetter<boolean>
   }
 ) {
-  const apiFetch = $fetch
+  const apiFetch = useApiClient()
   const resolvedEvent = computed(() => toValue(event))
   const resolvedEventId = computed(() => {
     const eventId = toValue(options.visibleEventId)

@@ -5,6 +5,10 @@ import type { TeamSubmissionRecord } from '../../../../../app/domains/submission
 
 const apiFetch = vi.fn()
 
+vi.mock('~/composables/useApiClient', () => ({
+  useApiClient: () => apiFetch
+}))
+
 vi.mock('~/domains/submissions/team-submission', async () => await import('../../../../app/domains/submissions/team-submission'))
 
 function buildSubmission(

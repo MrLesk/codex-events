@@ -1,8 +1,11 @@
 import type { MultiWatchSources } from 'vue'
 import type { ApiDataResponse } from '~/lib/api'
 
+import { useApiClient } from './useApiClient'
+
 interface UseApiDataOptions<Data> {
   default?: () => Data
+  dedupe?: 'cancel' | 'defer'
   immediate?: boolean
   lazy?: boolean
   server?: boolean
@@ -11,21 +14,16 @@ interface UseApiDataOptions<Data> {
 }
 
 interface UseApiDataContext {
-  apiFetch: ReturnType<typeof useRequestFetch>
+  apiFetch: ReturnType<typeof useApiClient>
   signal: AbortSignal
 }
-
-export const useApiFetch = createUseFetch({
-  deep: false,
-  dedupe: 'cancel'
-})
 
 export function useApiData<Data>(
   key: MaybeRefOrGetter<string>,
   handler: (context: UseApiDataContext) => Promise<Data>,
   options?: UseApiDataOptions<Data>
 ) {
-  const apiFetch = import.meta.server ? useRequestFetch() : $fetch
+  const apiFetch = useApiClient()
 
   return useAsyncData<Data>(
     key,

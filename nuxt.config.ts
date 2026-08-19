@@ -105,11 +105,11 @@ export default defineNuxtConfig({
   },
 
   routeRules: {
-    '/account': { appLayout: 'profile' },
-    '/account/**': { appLayout: 'profile' },
-    '/admin/**': { appLayout: 'profile' },
-    '/prize-redemptions': { appLayout: 'profile' },
-    '/prize-redemptions/**': { appLayout: 'profile' }
+    '/account': { appLayout: 'profile', ssr: false },
+    '/account/**': { appLayout: 'profile', ssr: false },
+    '/admin/**': { appLayout: 'profile', ssr: false },
+    '/prize-redemptions': { appLayout: 'profile', ssr: false },
+    '/prize-redemptions/**': { appLayout: 'profile', ssr: false }
   },
 
   sourcemap: {

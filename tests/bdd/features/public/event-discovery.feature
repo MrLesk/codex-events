@@ -26,3 +26,8 @@ Feature: Public event discovery
     And I should see the public prize "Launch Award"
     And I should see the text "Vienna, Austria"
     And I should not see the admin control "Configure"
+
+  Scenario: Authenticated public event detail remains publicly cacheable
+    Given the saved "platform_admin" local session state exists
+    When I open the public event detail page for the fixture event with the saved "platform_admin" session
+    Then the public event document should remain publicly cacheable

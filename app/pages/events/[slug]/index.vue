@@ -30,6 +30,7 @@ import EventTimeline from '~/components/public/events/EventTimeline.vue'
 import EventWinnersShowcase from '~/components/public/events/EventWinnersShowcase.vue'
 import EventTalkProposalCallout from '~/components/public/events/EventTalkProposalCallout.vue'
 import { resolvePublicEventPrimaryAction } from '~/domains/applications/participant-application'
+import { usePublicEventWorkspaceAccess } from '~/composables/usePublicEventWorkspaceAccess'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
 
 definePageMeta({
@@ -40,26 +41,9 @@ defineRouteRules({
   cache: {
     maxAge: 30,
     staleMaxAge: 60,
-    swr: true,
-    varies: ['cookie']
+    swr: true
   }
 })
-
-if (import.meta.server) {
-  useResponseHeader('cache-control').value = 'private, no-store'
-  useResponseHeader('vary').value = 'Cookie'
-}
-
-interface AccountEventAccessRecord {
-  slug: string
-}
-
-interface AccountEventsResponse {
-  data: {
-    current: AccountEventAccessRecord[]
-    past: AccountEventAccessRecord[]
-  }
-}
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
@@ -67,8 +51,6 @@ const includeFullTrackDetails = computed(() => normalizeTabQueryValue(route.quer
 const publicEventDetailPath = computed(() =>
   `/api/public/events/${slug.value}${includeFullTrackDetails.value ? '?tracks=full' : ''}`
 )
-const { actor: accountActor } = await useAccountLifecycleActor()
-
 if (!slug.value) {
   throw createError({
     statusCode: 404,
@@ -105,6 +87,10 @@ if (import.meta.server) {
 const event = computed(() => eventData.value!)
 const isCompetitionEvent = computed(() => event.value.eventType === 'hackathon')
 const eventState = computed(() => event.value.state)
+const {
+  actor: accountActor,
+  hasEventWorkspaceAccess
+} = usePublicEventWorkspaceAccess(slug)
 const { data: prizesData } = await useApiData<PublicPrize[]>(
   () => `public-event-prizes:${slug.value}:${isCompetitionEvent.value ? 'competition' : 'registration'}`,
   async ({ apiFetch, signal }) => {
@@ -123,18 +109,10 @@ const { data: prizesData } = await useApiData<PublicPrize[]>(
     watch: [slug, isCompetitionEvent]
   }
 )
-const accountActorCacheKey = computed(() => {
-  if (accountActor.value.kind !== 'platform_user') {
-    return accountActor.value.kind
-  }
-
-  return `${accountActor.value.platformUser.id}:${accountActor.value.hasAcceptedCurrentPlatformDocuments ? 'accepted' : 'unaccepted'}`
-})
 const [
   { data: winnersData, error: winnersError },
   { data: publishedProjectsData, error: publishedProjectsError },
-  { data: galleryPhotosData, error: galleryError },
-  workspaceAccessRequest
+  { data: galleryPhotosData, error: galleryError }
 ] = await Promise.all([
   useApiData<WinnerEntry[]>(
     () => `public-event-winners:${slug.value}:${eventState.value}`,
@@ -178,33 +156,7 @@ const [
   useApiResponse<EventPhotoRecord[]>(() => `public-event-gallery:${slug.value}`, () => `/api/public/events/${slug.value}/photos`, {
     default: () => [],
     watch: [slug]
-  }),
-  useApiData<boolean>(
-    () => `public-event-workspace-access:${slug.value}:${accountActorCacheKey.value}`,
-    async ({ apiFetch, signal }) => {
-      if (accountActor.value.kind !== 'platform_user' || !accountActor.value.hasAcceptedCurrentPlatformDocuments) {
-        return false
-      }
-
-      try {
-        const accountEventsResponse = await apiFetch<AccountEventsResponse>('/api/account/events', {
-          signal
-        })
-        const accessibleEvents = [
-          ...accountEventsResponse.data.current,
-          ...accountEventsResponse.data.past
-        ]
-
-        return accessibleEvents.some(record => record.slug === slug.value)
-      } catch {
-        return false
-      }
-    },
-    {
-      default: () => false,
-      watch: [slug, accountActorCacheKey]
-    }
-  )
+  })
 ])
 
 if (winnersError.value) {
@@ -227,7 +179,6 @@ const hasPublishedPrizes = computed(() => isCompetitionEvent.value && prizes.val
 const hasPublicGallery = computed(() => galleryPhotos.value.length > 0)
 const isWinnerRevealVisible = computed(() => isCompetitionEvent.value && event.value.state === 'completed')
 const publicPrizeTabLabel = computed(() => isWinnerRevealVisible.value ? 'Winners' : 'Prizes')
-const hasEventWorkspaceAccess = computed(() => workspaceAccessRequest.data.value)
 
 const detailBackgroundImageUrl = computed(() => resolveEventDetailBackgroundImageUrl(event.value))
 const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value

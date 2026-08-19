@@ -40,6 +40,7 @@ import { getCurrentLifecycleControl } from '~/domains/events/lifecycle-controls'
 import { shouldShowApprovedParticipantAttendanceSummary } from '~/domains/applications/admin-application-record'
 import { buildPitchReviewCoverageEntries } from '~/domains/judging/admin-oversight'
 import { formatTimestamp } from '~/lib/date-formatting'
+import { useApiClient, useApiFetch } from '~/composables/useApiClient'
 
 type AccountEventAdminOperationsSection = 'participants' | 'submissions' | 'operations'
 type LifecycleMetricCard = {
@@ -80,7 +81,7 @@ const showLifecycleSection = computed(() => section.value === 'operations')
 const workspace = useAdminEventOperationsWorkspace(eventId, {
   loadLifecycleData: showLifecycleSection
 })
-const apiFetch = import.meta.server ? useRequestFetch() : $fetch
+const apiFetch = useApiClient()
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 type ApplyStagedApplicationDecisionsResponse = ApiDataResponse<{
   appliedCount: number
@@ -134,7 +135,7 @@ const canManage = computed(() => workspace.canManageCurrentEvent.value)
 const roleAssignments = computed(() => workspace.roleAssignments.data.value?.data ?? [])
 const assignments = computed(() => workspace.assignments.data.value?.data ?? [])
 const assignmentsTotal = computed(() => workspace.assignments.data.value?.meta?.total ?? assignments.value.length)
-const judgingSummary = useFetch<ApiDataResponse<JudgingSummary>>(
+const judgingSummary = useApiFetch<ApiDataResponse<JudgingSummary>>(
   () => `/api/events/${eventId.value}/judging/summary`,
   {
     key: () => `admin-event-judging-summary:${eventId.value}`,
@@ -168,7 +169,7 @@ const redemptionsStatus = ref<LoadStatus>('idle')
 const redemptionsErrorMessage = ref('')
 const submissionSearchInput = ref('')
 const submissionStatusFilter = ref<AdminSubmissionDashboardFilter>('all')
-const submissionSummary = useFetch<ApiDataResponse<SubmissionSummary>>(
+const submissionSummary = useApiFetch<ApiDataResponse<SubmissionSummary>>(
   () => `/api/events/${eventId.value}/submissions/summary`,
   {
     key: () => `admin-event-submission-summary:${eventId.value}`,
@@ -236,7 +237,7 @@ async function loadApplications() {
 
   try {
     applications.value = await listAllPaginatedItems(
-      async (page, pageSize) => await $fetch<ApiListResponse<AdminApplicationRecord>>(
+      async (page, pageSize) => await apiFetch<ApiListResponse<AdminApplicationRecord>>(
         `/api/events/${eventId.value}/applications`,
         {
           query: {
@@ -1498,7 +1499,7 @@ async function loadShortlist() {
   shortlistErrorMessage.value = ''
 
   try {
-    const response = await $fetch<ApiListResponse<ShortlistEntry>>(
+    const response = await apiFetch<ApiListResponse<ShortlistEntry>>(
       `/api/events/${eventId.value}/shortlist`
     )
     shortlistEntries.value = response.data
@@ -1521,7 +1522,7 @@ type ShortlistSelectionPayload = {
 }
 
 async function persistShortlistSelection(payload: ShortlistSelectionPayload) {
-  await $fetch(`/api/events/${eventId.value}/shortlist/actions/select-finalists`, {
+  await apiFetch(`/api/events/${eventId.value}/shortlist/actions/select-finalists`, {
     method: 'POST',
     body: payload
   })
@@ -1561,7 +1562,7 @@ async function startPitch(payload: ShortlistSelectionPayload) {
         await persistShortlistSelection(payload)
       }
 
-      await $fetch(`/api/events/${eventId.value}/actions/start-pitch`, {
+      await apiFetch(`/api/events/${eventId.value}/actions/start-pitch`, {
         method: 'POST'
       })
     },
@@ -1602,7 +1603,7 @@ async function loadFinalDeliberation() {
   finalDeliberationHasDraftChanges.value = false
 
   try {
-    const response = await $fetch<ApiDataResponse<FinalDeliberationView>>(
+    const response = await apiFetch<ApiDataResponse<FinalDeliberationView>>(
       `/api/events/${eventId.value}/final-deliberation`
     )
     finalDeliberation.value = response.data
@@ -1637,7 +1638,7 @@ async function loadWinners() {
   winnersErrorMessage.value = ''
 
   try {
-    const response = await $fetch<ApiListResponse<WinnerEntry>>(
+    const response = await apiFetch<ApiListResponse<WinnerEntry>>(
       `/api/events/${eventId.value}/winners`
     )
     winners.value = response.data
@@ -1666,7 +1667,7 @@ async function loadPrizeRedemptions() {
   redemptionsErrorMessage.value = ''
 
   try {
-    const response = await $fetch<ApiDataResponse<PrizeRedemptionAdminView>>(
+    const response = await apiFetch<ApiDataResponse<PrizeRedemptionAdminView>>(
       `/api/events/${eventId.value}/prize-redemptions`
     )
     winners.value = response.data.winners
@@ -1690,7 +1691,7 @@ async function reassignAssignment(payload: { assignmentId: string, judgeUserId?:
   await runMutation(
     `reassign:${payload.assignmentId}`,
     async () => {
-      await $fetch(
+      await apiFetch(
         `/api/events/${eventId.value}/judging/assignments/${payload.assignmentId}/actions/reassign`,
         {
           method: 'POST',
@@ -1709,7 +1710,7 @@ async function forceSkipAssignment(payload: { assignmentId: string, reason?: str
   await runMutation(
     `force-skip:${payload.assignmentId}`,
     async () => {
-      await $fetch(
+      await apiFetch(
         `/api/events/${eventId.value}/judging/assignments/${payload.assignmentId}/actions/force-skip`,
         {
           method: 'POST',
@@ -1738,7 +1739,7 @@ async function advancePitchPresentation() {
   await runMutation(
     'advance-pitch-presentation',
     async () => {
-      await $fetch(`/api/events/${eventId.value}/actions/advance-pitch-presentation`, {
+      await apiFetch(`/api/events/${eventId.value}/actions/advance-pitch-presentation`, {
         method: 'POST'
       })
     },
@@ -1780,7 +1781,7 @@ async function startFinalDeliberation() {
   await runMutation(
     'start-final-deliberation',
     async () => {
-      await $fetch(`/api/events/${eventId.value}/actions/start-final-deliberation`, {
+      await apiFetch(`/api/events/${eventId.value}/actions/start-final-deliberation`, {
         method: 'POST'
       })
     },
@@ -1795,7 +1796,7 @@ async function reorderFinalDeliberation(orderedSubmissionIds: string[]) {
   await runMutation(
     'final-deliberation-reorder',
     async () => {
-      await $fetch(`/api/events/${eventId.value}/final-deliberation/actions/reorder`, {
+      await apiFetch(`/api/events/${eventId.value}/final-deliberation/actions/reorder`, {
         method: 'POST',
         body: {
           orderedSubmissionIds
@@ -1832,7 +1833,7 @@ async function announceWinners() {
   await runMutation(
     'announce-winners',
     async () => {
-      await $fetch(`/api/events/${eventId.value}/actions/announce-winners`, {
+      await apiFetch(`/api/events/${eventId.value}/actions/announce-winners`, {
         method: 'POST',
         ...(shouldPersistDraftOnAnnounceWinners.value
           ? {
@@ -1853,7 +1854,7 @@ async function announceWinners() {
 async function approveApplication(application: AdminApplicationRecord) {
   await runMutation(
     `stage:approved:${application.id}`,
-    async () => await $fetch<StageApplicationResponse>(
+    async () => await apiFetch<StageApplicationResponse>(
       `/api/events/${application.eventId}/applications/${application.id}/actions/approve`,
       {
         method: 'POST'
@@ -1870,7 +1871,7 @@ async function approveApplication(application: AdminApplicationRecord) {
 async function rejectApplication(application: AdminApplicationRecord) {
   await runMutation(
     `stage:rejected:${application.id}`,
-    async () => await $fetch<StageApplicationResponse>(
+    async () => await apiFetch<StageApplicationResponse>(
       `/api/events/${application.eventId}/applications/${application.id}/actions/reject`,
       {
         method: 'POST'
@@ -1912,7 +1913,7 @@ async function withdrawApplication(application: AdminApplicationRecord) {
 
   await runMutation(
     `withdraw:${application.id}`,
-    async () => await $fetch<StageApplicationResponse>(
+    async () => await apiFetch<StageApplicationResponse>(
       `/api/events/${application.eventId}/applications/${application.id}/actions/withdraw`,
       {
         method: 'POST'
@@ -1928,7 +1929,7 @@ async function withdrawApplication(application: AdminApplicationRecord) {
 async function undoApplicationWithdrawal(application: AdminApplicationRecord) {
   await runMutation(
     `undo-withdrawal:${application.id}`,
-    async () => await $fetch<StageApplicationResponse>(
+    async () => await apiFetch<StageApplicationResponse>(
       `/api/events/${application.eventId}/applications/${application.id}/actions/undo-withdrawal`,
       {
         method: 'POST'
@@ -1959,7 +1960,7 @@ async function approveApplicationGroup(applicationsToApprove: AdminApplicationRe
   await runMutation(
     `stage:approved-team:${sortedApplicationIds.join('__')}`,
     async () => await Promise.all(targetApplications.map(async application =>
-      await $fetch<StageApplicationResponse>(
+      await apiFetch<StageApplicationResponse>(
         `/api/events/${application.eventId}/applications/${application.id}/actions/approve`,
         {
           method: 'POST'
@@ -1978,7 +1979,7 @@ async function applyStagedApplicationDecisions() {
   await runMutation(
     'apply-staged-decisions',
     async () => {
-      const response = await $fetch<ApplyStagedApplicationDecisionsResponse>(
+      const response = await apiFetch<ApplyStagedApplicationDecisionsResponse>(
         `/api/events/${eventId.value}/applications/actions/apply-staged-decisions`,
         {
           method: 'POST'
@@ -2007,7 +2008,7 @@ async function adminWithdrawSubmission(payload: {
   await runMutation(
     `admin-withdraw:${payload.teamId}`,
     async () => {
-      await $fetch(`/api/events/${eventId.value}/teams/${payload.teamId}/submission/actions/admin-withdraw`, {
+      await apiFetch(`/api/events/${eventId.value}/teams/${payload.teamId}/submission/actions/admin-withdraw`, {
         method: 'POST',
         body: payload
       })
@@ -2026,7 +2027,7 @@ async function disqualifySubmission(payload: {
   await runMutation(
     `disqualify:${payload.teamId}`,
     async () => {
-      await $fetch(`/api/events/${eventId.value}/teams/${payload.teamId}/submission/actions/disqualify`, {
+      await apiFetch(`/api/events/${eventId.value}/teams/${payload.teamId}/submission/actions/disqualify`, {
         method: 'POST',
         body: {
           reason: payload.reason
@@ -2064,7 +2065,7 @@ async function runLifecycleAction() {
   await runMutation(
     'lifecycle',
     async () => {
-      await $fetch(lifecycleControl.value!.endpoint, {
+      await apiFetch(lifecycleControl.value!.endpoint, {
         method: 'POST'
       })
     },

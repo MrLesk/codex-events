@@ -3,8 +3,10 @@ import type { ApiDataResponse } from '~/lib/api'
 import type { PlatformDocumentRecord } from '~/composables/useCurrentPlatformDocuments'
 
 import { normalizeApiError } from '~/lib/api'
+import { useApiClient } from '~/composables/useApiClient'
 
 const toast = useToast()
+const apiFetch = useApiClient()
 const {
   settings,
   status: settingsStatus,
@@ -104,7 +106,7 @@ async function saveLegalSettings() {
   settingsMutation.error = ''
 
   try {
-    await $fetch('/api/platform-legal-settings/current', {
+    await apiFetch('/api/platform-legal-settings/current', {
       method: 'PATCH',
       body: legalSettingsForm
     })
@@ -137,7 +139,7 @@ async function publishPlatformDocument(documentType: PlatformDocumentRecord['doc
   publishingDocumentType.value = documentType
 
   try {
-    await $fetch<ApiDataResponse<PlatformDocumentRecord>>(`/api/platform-documents/${documentType}/versions`, {
+    await apiFetch<ApiDataResponse<PlatformDocumentRecord>>(`/api/platform-documents/${documentType}/versions`, {
       method: 'POST',
       body: {
         title: getDocumentTitle(documentType),

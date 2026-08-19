@@ -4,6 +4,7 @@ import type { PublicEventState } from '~/domains/events/presentation'
 import type { TalkProposalReviewEntry, TalkProposalStatus } from '~/domains/talk-proposals'
 import { normalizeApiError } from '~/lib/api'
 import { talkProposalStatusLabels } from '~/domains/talk-proposals'
+import { useApiClient } from '~/composables/useApiClient'
 
 const props = defineProps<{
   eventId: string
@@ -21,6 +22,7 @@ const pending = ref(true)
 const actionPending = ref(false)
 const errorMessage = ref('')
 const toast = useToast()
+const apiFetch = useApiClient()
 
 const selectedEntry = computed(() => entries.value.find(entry => entry.proposal.id === selectedId.value) ?? null)
 
@@ -34,7 +36,7 @@ async function loadProposals() {
   pending.value = true
   errorMessage.value = ''
   try {
-    const response = await $fetch<ApiListResponse<TalkProposalReviewEntry>>(`/api/events/${props.eventId}/talk-proposals`, {
+    const response = await apiFetch<ApiListResponse<TalkProposalReviewEntry>>(`/api/events/${props.eventId}/talk-proposals`, {
       query: {
         page: page.value,
         page_size: 20,
@@ -58,7 +60,7 @@ async function decide(decision: 'accept' | 'reject') {
   actionPending.value = true
   errorMessage.value = ''
   try {
-    const response = await $fetch<ApiDataResponse<{ proposal: TalkProposalReviewEntry['proposal'] }>>(
+    const response = await apiFetch<ApiDataResponse<{ proposal: TalkProposalReviewEntry['proposal'] }>>(
       `/api/events/${props.eventId}/talk-proposals/${selectedEntry.value.proposal.id}/actions/${decision}`,
       {
         method: 'POST',

@@ -6,20 +6,19 @@ import type {
   ParticipantCurrentTermsResponse,
   ParticipantAiKnowledgeLevelInput,
   ParticipantRegistrationTeamIntent,
-  ParticipantSessionUser,
   VisibleEventRecord
 } from '~/domains/applications/participant-application'
 
 import {
-  buildAnonymousParticipantActor,
-  buildAuthenticatedIdentityParticipantActor,
   listMissingRequiredProfileFields,
   normalizeParticipantApiError
 } from '~/domains/applications/participant-application'
+import { useApiClient } from '~/composables/useApiClient'
+import { useSessionActor } from '~/composables/useSessionActor'
 
 async function getVisibleEventBySlug(
   slug: string,
-  apiFetch: ReturnType<typeof useRequestFetch>,
+  apiFetch: ReturnType<typeof useApiClient>,
   signal?: AbortSignal
 ) {
   const response = await apiFetch<ParticipantApiDataResponse<VisibleEventRecord>>(
@@ -32,67 +31,26 @@ async function getVisibleEventBySlug(
   return response.data
 }
 
-function toFallbackSessionUser(user: ReturnType<typeof useUser>['value']): ParticipantSessionUser {
-  return {
-    sub: user?.sub ?? '',
-    email: user?.email ?? null,
-    name: user?.name ?? null,
-    nickname: user?.nickname ?? null,
-    picture: user?.picture ?? null
-  }
-}
-
 export function useParticipantApplication(
   event: MaybeRefOrGetter<PublicEvent>,
   slug: MaybeRefOrGetter<string>
 ) {
-  const apiFetch = $fetch
-  const user = useUser()
+  const apiFetch = useApiClient()
+  const sessionActor = useSessionActor()
   const resolvedEvent = computed(() => toValue(event))
   const resolvedSlug = computed(() => toValue(slug))
-  const authSubject = computed(() => user.value?.sub ?? 'anonymous')
+  const authSubject = computed(() => sessionActor.actor.value.isAuthenticated
+    ? sessionActor.actor.value.sessionUser.sub
+    : 'anonymous')
 
-  const actorRequest = useApiData<ParticipantActor | null>(
-    () => `participant-application-actor:${authSubject.value}`,
-    async ({ apiFetch, signal }) => {
-      if (!user.value?.sub) {
-        return null
-      }
-
-      const response = await apiFetch<ParticipantApiDataResponse<{ actor: ParticipantActor }>>('/api/session', {
-        signal
-      })
-      return response.data.actor
-    },
-    {
-      default: () => null,
-      watch: [computed(() => user.value?.sub ?? null)],
-      server: false
-    }
-  )
-
-  const actor = computed<ParticipantActor | null>(() => {
-    if (!user.value?.sub) {
-      return buildAnonymousParticipantActor()
-    }
-
-    if (actorRequest.status.value === 'idle' || actorRequest.status.value === 'pending') {
-      return null
-    }
-
-    if (actorRequest.error.value) {
-      return null
-    }
-
-    return actorRequest.data.value ?? buildAuthenticatedIdentityParticipantActor(toFallbackSessionUser(user.value))
-  })
+  const actor = computed<ParticipantActor>(() => sessionActor.actor.value)
 
   const actorErrorMessage = computed(() => {
-    if (!actorRequest.error.value) {
+    if (!sessionActor.error.value) {
       return ''
     }
 
-    return normalizeParticipantApiError(actorRequest.error.value).message
+    return normalizeParticipantApiError(sessionActor.error.value).message
   })
 
   const visibleEventRequest = useApiData<VisibleEventRecord | null>(
@@ -266,7 +224,7 @@ export function useParticipantApplication(
   return {
     actor,
     actorErrorMessage,
-    actorStatus: computed(() => actorRequest.status.value),
+    actorStatus: sessionActor.status,
     currentApplicationTerms,
     currentTermsErrorMessage,
     currentTermsStatus: computed(() => currentTermsRequest.status.value),

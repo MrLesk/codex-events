@@ -11,6 +11,7 @@ import {
   isEventCreditLink,
   normalizeEventCreditApiError
 } from '~/domains/credits'
+import { useApiClient } from '~/composables/useApiClient'
 
 const props = defineProps<{
   eventId: string
@@ -18,7 +19,7 @@ const props = defineProps<{
   canClaim: boolean
 }>()
 
-const apiFetch = import.meta.server ? useRequestFetch() : $fetch
+const apiFetch = useApiClient()
 const toast = useToast()
 
 const participantCreditsRequest = useAsyncData<ParticipantEventCreditOffer[]>(

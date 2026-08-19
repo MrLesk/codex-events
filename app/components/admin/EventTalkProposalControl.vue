@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useApiClient } from '~/composables/useApiClient'
+
 const enabled = defineModel<boolean>('enabled', { required: true })
 const opensAt = defineModel<string>('opensAt', { required: true })
 const closesAt = defineModel<string>('closesAt', { required: true })
@@ -9,13 +11,14 @@ const props = defineProps<{
 }>()
 
 const disablingLocked = ref(false)
+const apiFetch = useApiClient()
 
 onMounted(async () => {
   const eventId = props.eventId?.trim()
   if (!eventId || !props.persistedEnabled) return
 
   try {
-    const response = await $fetch<{ data: unknown[] }>(`/api/events/${eventId}/talk-proposals`, {
+    const response = await apiFetch<{ data: unknown[] }>(`/api/events/${eventId}/talk-proposals`, {
       query: { page: 1, page_size: 1 }
     })
     disablingLocked.value = response.data.length > 0

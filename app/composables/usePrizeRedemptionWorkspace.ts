@@ -7,16 +7,20 @@ import type {
 } from '~/domains/prize-redemptions'
 
 import { normalizePrizeRedemptionApiError } from '~/domains/prize-redemptions'
+import { useApiClient } from '~/composables/useApiClient'
+import { useSessionActor } from '~/composables/useSessionActor'
 
 export function usePrizeRedemptionWorkspace() {
-  const apiFetch = $fetch
-  const user = useUser()
-  const authSubject = computed(() => user.value?.sub ?? 'anonymous')
+  const apiFetch = useApiClient()
+  const actor = useSessionActor().actor
+  const authSubject = computed(() => actor.value.isAuthenticated
+    ? actor.value.sessionUser.sub
+    : 'anonymous')
 
   const pendingRedemptionsRequest = useApiData<PrizeRedemptionRecord[]>(
     () => `prize-redemptions:${authSubject.value}`,
     async ({ apiFetch, signal }) => {
-      if (!user.value?.sub) {
+      if (actor.value.kind !== 'platform_user') {
         return []
       }
 
@@ -27,7 +31,7 @@ export function usePrizeRedemptionWorkspace() {
     },
     {
       default: () => [],
-      watch: [computed(() => user.value?.sub ?? null)],
+      watch: [authSubject, actor],
       server: false
     }
   )
@@ -40,7 +44,7 @@ export function usePrizeRedemptionWorkspace() {
   const currentTermsRequest = useApiData<Record<string, TermsDocument | null>>(
     () => `prize-redemption-terms:${authSubject.value}:${visibleEventIds.value.join(',')}`,
     async ({ apiFetch, signal }) => {
-      if (!user.value?.sub || visibleEventIds.value.length === 0) {
+      if (actor.value.kind !== 'platform_user' || visibleEventIds.value.length === 0) {
         return {}
       }
 
@@ -61,7 +65,7 @@ export function usePrizeRedemptionWorkspace() {
     },
     {
       default: () => ({}),
-      watch: [computed(() => user.value?.sub ?? null), visibleEventIds],
+      watch: [authSubject, actor, visibleEventIds],
       server: false
     }
   )
