@@ -17,6 +17,7 @@ type DeniedRootCapability
     | 'constructor'
     | 'getBookmark'
     | 'prepare'
+    | 'transaction'
     | '_prepare'
     | 'session'
     | 'stmt'
@@ -32,6 +33,7 @@ const deniedCapabilities = new Set<PropertyKey>([
   'constructor',
   'getBookmark',
   'prepare',
+  'transaction',
   '_prepare',
   'session',
   'stmt',
@@ -155,22 +157,6 @@ function wrapRuntimeValue<T>(value: T): T {
 
       const method = propertyValue as (...args: unknown[]) => unknown
       return (...args: unknown[]) => {
-        if (property === 'transaction') {
-          const callback = args[0]
-          const wrappedCallback = typeof callback === 'function'
-            ? (transaction: object) => unwrapRuntimeValue(Reflect.apply(
-                callback as (...callbackArgs: unknown[]) => unknown,
-                undefined,
-                [wrapRuntimeValue(transaction)]
-              ))
-            : callback
-
-          return wrapRuntimeValue(Reflect.apply(method, target, [
-            wrappedCallback,
-            ...args.slice(1).map(unwrapRuntimeValue)
-          ]))
-        }
-
         return wrapRuntimeValue(Reflect.apply(method, target, args.map(unwrapRuntimeValue)))
       }
     },
@@ -178,14 +164,30 @@ function wrapRuntimeValue<T>(value: T): T {
       return !deniedCapabilities.has(property) && Reflect.has(target, property)
     },
     ownKeys(target) {
-      return Reflect.ownKeys(target).filter(property => !deniedCapabilities.has(property))
+      return Reflect.ownKeys(target).filter(property =>
+        !deniedCapabilities.has(property)
+        || Reflect.getOwnPropertyDescriptor(target, property)?.configurable === false
+      )
     },
     getOwnPropertyDescriptor(target, property) {
-      if (deniedCapabilities.has(property)) {
+      const descriptor = Reflect.getOwnPropertyDescriptor(target, property)
+
+      if (!descriptor) {
         return undefined
       }
 
-      return Reflect.getOwnPropertyDescriptor(target, property)
+      if (deniedCapabilities.has(property)) {
+        if (descriptor.configurable === false) throw new TypeError('Denied database capabilities cannot be reflected.')
+        return undefined
+      }
+
+      if (!('value' in descriptor)) throw new TypeError('Accessor database values cannot be reflected.')
+      if (descriptor.configurable === false && descriptor.writable === false) throw new TypeError('Immutable database values cannot be reflected.')
+
+      return {
+        ...descriptor,
+        value: wrapRuntimeValue(descriptor.value)
+      }
     },
     set(target, property, nextValue) {
       return !deniedCapabilities.has(property)

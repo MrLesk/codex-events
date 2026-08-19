@@ -73,4 +73,33 @@ describe('AppDatabase facade', () => {
     expect(sqlConditionRows).toEqual([{ id: 'facade_user' }])
     expect(batchResults).toHaveLength(2)
   })
+
+  test('wraps root and nested descriptor values and removes transaction escapes', async () => {
+    const d1Database = createTestD1Database()
+    databases.push(d1Database)
+    const database = createNonHttpDatabase(d1Database as never)
+
+    const rootDescriptor = Object.getOwnPropertyDescriptor(database, 'query')
+    expect(rootDescriptor).toMatchObject({ value: expect.any(Object) })
+
+    const queryFromDescriptor = rootDescriptor?.value as { users: object }
+    expect(queryFromDescriptor).toBe(database.query)
+    expect(Object.getOwnPropertyDescriptor(database, 'session')).toBeUndefined()
+    expect(Object.getOwnPropertyDescriptor(queryFromDescriptor, 'session')).toBeUndefined()
+
+    const nestedDescriptor = Object.getOwnPropertyDescriptor(queryFromDescriptor, 'users')
+    expect(nestedDescriptor).toMatchObject({ value: expect.any(Object) })
+
+    const usersFromDescriptor = nestedDescriptor?.value as object
+    expect(usersFromDescriptor).toBe(database.query.users)
+    expect(Object.getOwnPropertyDescriptor(usersFromDescriptor, 'client')).toBeUndefined()
+    expect(Reflect.get(usersFromDescriptor, 'session')).toBeUndefined()
+    expect(Reflect.get(usersFromDescriptor, 'client')).toBeUndefined()
+    expect(Reflect.get(usersFromDescriptor, '$client')).toBeUndefined()
+    expect(Reflect.get(database, 'transaction')).toBeUndefined()
+
+    expect(() => (database as unknown as {
+      transaction: (callback: (transaction: unknown) => unknown) => Promise<unknown>
+    }).transaction(transaction => transaction)).toThrow()
+  })
 })

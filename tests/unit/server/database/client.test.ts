@@ -18,6 +18,8 @@ function assertApplicationDatabaseType(database: AppDatabase) {
   void database.prepare
   // @ts-expect-error Application databases must not expose session construction.
   void database.withSession
+  // @ts-expect-error Application databases must not expose transaction construction.
+  void database.transaction
   // @ts-expect-error Relational query builders must not expose the internal database session.
   void database.query.users.session
   // @ts-expect-error Select builders must not expose the internal database session.
