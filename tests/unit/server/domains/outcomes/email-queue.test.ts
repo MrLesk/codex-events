@@ -3,7 +3,7 @@ import type { H3Event } from 'h3'
 import { describe, expect, test, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 
-import { createDatabase } from '../../../../../server/database/client'
+import { createNonHttpDatabase } from '../../../../../server/database/non-http'
 import {
   events,
   userApplications,
@@ -179,7 +179,7 @@ describe('event outcome email queue utilities', () => {
 
   test('queue message processing marks certificate emails sent after delivery', async () => {
     const d1Database = createTestD1Database()
-    const database = createDatabase(d1Database as never)
+    const database = createNonHttpDatabase(d1Database as never)
 
     try {
       await database.insert(users).values([

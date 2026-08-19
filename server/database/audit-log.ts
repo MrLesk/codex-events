@@ -1,7 +1,8 @@
 import type { AuditMetadata } from './schema'
 import { auditLogs } from './schema'
+import type { AppDatabase } from './client'
 
-type InsertableExecutor = Pick<ReturnType<typeof import('./client').createDatabase>, 'insert'>
+type InsertableExecutor = Pick<AppDatabase, 'insert'>
 
 export interface AuditLogEntry {
   actorUserId?: string | null

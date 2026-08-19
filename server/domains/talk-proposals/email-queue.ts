@@ -3,8 +3,12 @@ import type { H3Event } from 'h3'
 import { and, asc, eq, isNull, lt, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
-import type { AppDatabase, D1DatabaseBinding } from '#server/database/client'
-import { createDatabase, resolveD1Binding } from '#server/database/client'
+import {
+  createNonHttpDatabase,
+  resolveNonHttpD1Binding,
+  type AppDatabase,
+  type D1DatabaseBinding
+} from '#server/database/non-http'
 import { writeAuditLog } from '#server/database/audit-log'
 import { events, talkProposals } from '#server/database/schema'
 import { isRetryableOutboundEmailProviderError } from '#server/utils/outbound-email'
@@ -441,7 +445,7 @@ async function resolveRecoveryDatabase(options: {
 }) {
   if (options.database) return options.database
   const binding = configValue(options.runtimeConfig).database?.binding?.trim() || 'DB'
-  return createDatabase(resolveD1Binding(binding, options.cloudflareEnv, options.d1Database))
+  return createNonHttpDatabase(resolveNonHttpD1Binding(binding, options.cloudflareEnv, options.d1Database))
 }
 
 export async function reconcilePendingTalkProposalDecisionEmails(options: {

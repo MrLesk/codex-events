@@ -3,7 +3,12 @@ import type { H3Event } from 'h3'
 import { and, asc, eq, getTableColumns, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { createDatabase, resolveD1Binding, type AppDatabase, type D1DatabaseBinding } from '#server/database/client'
+import {
+  createNonHttpDatabase,
+  resolveNonHttpD1Binding,
+  type AppDatabase,
+  type D1DatabaseBinding
+} from '#server/database/non-http'
 import { writeAuditLog } from '#server/database/audit-log'
 import { events, prizeEligibilitySnapshots, userApplications, users } from '#server/database/schema'
 import { getFinalDeliberationView } from '#server/domains/outcomes'
@@ -413,7 +418,7 @@ async function resolveProcessingDatabase(options: {
   const config = resolveQueueRuntimeConfigFromUnknown(options.runtimeConfig ?? {})
 
   if (options.d1Database) {
-    return createDatabase(options.d1Database)
+    return createNonHttpDatabase(options.d1Database)
   }
 
   const bindingName = getDatabaseBindingName(config)
@@ -422,7 +427,7 @@ async function resolveProcessingDatabase(options: {
     return null
   }
 
-  return createDatabase(resolveD1Binding(bindingName, options.cloudflareEnv))
+  return createNonHttpDatabase(resolveNonHttpD1Binding(bindingName, options.cloudflareEnv))
 }
 
 export async function processEventOutcomeEmailQueueMessage(

@@ -1,11 +1,7 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { eq } from 'drizzle-orm'
 
-import {
-  createDatabase,
-  createDatabaseAccess,
-  createPublicReplicaDatabaseAccess
-} from '../../../../server/database/client'
+import { createNonHttpDatabase } from '../../../../server/database/non-http'
 import { users } from '../../../../server/database/schema'
 import { createTestD1Database } from '../../../support/backend/fake-d1'
 
@@ -21,7 +17,7 @@ describe('TestD1Database', () => {
   test('supports Drizzle queries against an in-memory D1-compatible binding', async () => {
     const d1Database = createTestD1Database()
     databases.push(d1Database)
-    const database = createDatabase(d1Database as never)
+    const database = createNonHttpDatabase(d1Database as never)
 
     await database.insert(users).values({
       id: 'user_1',
@@ -44,8 +40,8 @@ describe('TestD1Database', () => {
     const firstDatabase = createTestD1Database()
     const secondDatabase = createTestD1Database()
     databases.push(firstDatabase, secondDatabase)
-    const firstAppDatabase = createDatabase(firstDatabase as never)
-    const secondAppDatabase = createDatabase(secondDatabase as never)
+    const firstAppDatabase = createNonHttpDatabase(firstDatabase as never)
+    const secondAppDatabase = createNonHttpDatabase(secondDatabase as never)
 
     await firstAppDatabase.insert(users).values({
       id: 'user_1',
@@ -70,7 +66,7 @@ describe('TestD1Database', () => {
   test('starts sequential test databases from a clean migrated state', async () => {
     for (let iteration = 0; iteration < 6; iteration += 1) {
       const d1Database = createTestD1Database()
-      const database = createDatabase(d1Database as never)
+      const database = createNonHttpDatabase(d1Database as never)
 
       await database.insert(users).values({
         id: 'user_1',
@@ -93,32 +89,31 @@ describe('TestD1Database', () => {
     const d1Database = createTestD1Database({ replicaStale: true })
     databases.push(d1Database)
 
-    const writer = createDatabaseAccess(d1Database as never)
-    await writer.database.insert(users).values({
+    const writerSession = d1Database.withSession('first-primary')
+    const writer = createNonHttpDatabase(writerSession as never)
+    await writer.insert(users).values({
       id: 'bookmark_user',
       auth0Subject: 'auth0|bookmark_user',
       email: 'bookmark@example.com',
       displayName: 'Bookmark User'
     })
 
-    const writeBookmark = writer.session.getBookmark()
+    const writeBookmark = d1Database.getLatestBookmark()
     expect(writeBookmark).toBe('test-bookmark-1')
 
-    const unbookmarkedRead = createPublicReplicaDatabaseAccess(d1Database as never)
-    await expect(unbookmarkedRead.database.query.users.findFirst({
+    const unbookmarkedRead = createNonHttpDatabase(d1Database.withSession('first-unconstrained') as never)
+    await expect(unbookmarkedRead.query.users.findFirst({
       where: eq(users.id, 'bookmark_user')
     })).resolves.toBeUndefined()
-    expect(unbookmarkedRead.session.getBookmark()).toBe('test-bookmark-0')
+    expect(d1Database.getLatestBookmark()).toBe('test-bookmark-0')
 
-    const bookmarkedRead = createPublicReplicaDatabaseAccess(d1Database as never, {
-      incomingBookmark: writeBookmark ?? undefined
-    })
-    await expect(bookmarkedRead.database.query.users.findFirst({
+    const bookmarkedRead = createNonHttpDatabase(d1Database.withSession(writeBookmark ?? undefined) as never)
+    await expect(bookmarkedRead.query.users.findFirst({
       where: eq(users.id, 'bookmark_user')
     })).resolves.toMatchObject({
       id: 'bookmark_user'
     })
-    expect(bookmarkedRead.session.getBookmark()).toBe(writeBookmark)
+    expect(d1Database.getLatestBookmark()).toBe(writeBookmark)
   })
 
   test('accounts direct infrastructure writes in fake-D1 bookmark state', async () => {
@@ -144,18 +139,17 @@ describe('TestD1Database', () => {
       })
     ])
 
-    const unbookmarkedRead = createPublicReplicaDatabaseAccess(d1Database as never)
-    await expect(unbookmarkedRead.database.query.users.findFirst({
+    const unbookmarkedRead = createNonHttpDatabase(d1Database.withSession('first-unconstrained') as never)
+    await expect(unbookmarkedRead.query.users.findFirst({
       where: eq(users.id, 'infrastructure_user')
     })).resolves.toBeUndefined()
 
-    const bookmarkedRead = createPublicReplicaDatabaseAccess(d1Database as never, {
-      incomingBookmark: infrastructureBookmark ?? undefined
-    })
-    await expect(bookmarkedRead.database.query.users.findFirst({
+    const bookmarkedRead = createNonHttpDatabase(d1Database.withSession(infrastructureBookmark ?? undefined) as never)
+    await expect(bookmarkedRead.query.users.findFirst({
       where: eq(users.id, 'infrastructure_user')
     })).resolves.toMatchObject({
       id: 'infrastructure_user'
     })
+    expect(d1Database.getLatestBookmark()).toBe(infrastructureBookmark)
   })
 })

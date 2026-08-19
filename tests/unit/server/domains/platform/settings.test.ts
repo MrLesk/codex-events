@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 
 import { eq } from 'drizzle-orm'
 
-import { createDatabase, type AppDatabase } from '../../../../../server/database/client'
+import { createNonHttpDatabase, type AppDatabase } from '../../../../../server/database/non-http'
 import { auditLogs, platformSettings, users } from '../../../../../server/database/schema'
 import {
   clearDefaultEventBackgroundImageUrl,
@@ -19,7 +19,7 @@ describe('platform settings utilities', () => {
 
   beforeEach(async () => {
     d1Database = createTestD1Database()
-    database = createDatabase(d1Database as never)
+    database = createNonHttpDatabase(d1Database as never)
     await database.insert(users).values({
       id: 'platform_admin',
       auth0Subject: 'auth0|platform-admin',
@@ -49,7 +49,7 @@ describe('platform settings utilities', () => {
     })
     await expect(getEventDisplayImageOptions(database)).resolves.toEqual({
       defaultEventBackgroundImageUrl: 'https://example.com/default-background.png',
-      defaultEventBackgroundImageVersion: storedSettings?.updatedAt
+      defaultEventBackgroundImageVersion: storedSettings?.mediaRevision
     })
 
     const auditRows = await database.select().from(auditLogs)

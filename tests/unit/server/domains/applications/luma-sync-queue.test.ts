@@ -3,7 +3,7 @@ import type { H3Event } from 'h3'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 
-import { createDatabase } from '../../../../../server/database/client'
+import { createNonHttpDatabase } from '../../../../../server/database/non-http'
 import {
   auditLogs,
   eventTermsDocuments,
@@ -97,7 +97,7 @@ async function seedLumaSyncContext(options?: {
   withdrawnAt?: string | null
 }) {
   const d1Database = createTestD1Database()
-  const database = createDatabase(d1Database as never)
+  const database = createNonHttpDatabase(d1Database as never)
   const applicationStatus = options?.applicationStatus ?? options?.decision ?? 'approved'
 
   await database.insert(users).values([

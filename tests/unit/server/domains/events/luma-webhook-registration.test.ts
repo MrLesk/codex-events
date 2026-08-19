@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 
-import { createDatabase } from '../../../../../server/database/client'
+import { createNonHttpDatabase } from '../../../../../server/database/non-http'
 import { events, users } from '../../../../../server/database/schema'
 import { reconcileEventLumaWebhook } from '../../../../../server/domains/events/luma-webhook-registration'
 import { createTestD1Database } from '../../../../support/backend/fake-d1'
@@ -12,7 +12,7 @@ async function seedEvent(options?: {
   lumaWebhookId?: string | null
 }) {
   const d1Database = createTestD1Database()
-  const database = createDatabase(d1Database as never)
+  const database = createNonHttpDatabase(d1Database as never)
 
   await database.insert(users).values({
     id: 'platform_admin',

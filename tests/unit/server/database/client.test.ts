@@ -3,7 +3,8 @@ import type { H3Event } from 'h3'
 import { describe, expect, test, vi } from 'vitest'
 
 import { ApiError } from '../../../../server/http/api-error'
-import { getDatabase, resolveD1Binding, setDatabase, withDatabaseBatch } from '../../../../server/database/client'
+import { getDatabase, withDatabaseBatch } from '../../../../server/database/client'
+import { resolveNonHttpD1Binding, setTestDatabase } from '../../../../server/database/non-http'
 
 function createEvent(binding?: unknown): H3Event {
   return {
@@ -15,21 +16,21 @@ function createEvent(binding?: unknown): H3Event {
   } as H3Event
 }
 
-describe('resolveD1Binding', () => {
+describe('resolveNonHttpD1Binding', () => {
   test('prefers the Cloudflare binding when present', () => {
     const binding = { prepare() {} }
 
-    expect(resolveD1Binding('DB', { DB: binding }, undefined)).toBe(binding)
+    expect(resolveNonHttpD1Binding('DB', { DB: binding }, undefined)).toBe(binding)
   })
 
   test('falls back to an injected binding for non-Cloudflare execution contexts', () => {
     const binding = { prepare() {} }
 
-    expect(resolveD1Binding('DB', undefined, binding as never)).toBe(binding)
+    expect(resolveNonHttpD1Binding('DB', undefined, binding as never)).toBe(binding)
   })
 
   test('throws a stable API error when no binding is available', () => {
-    expect(() => resolveD1Binding('DB')).toThrow(ApiError)
+    expect(() => resolveNonHttpD1Binding('DB')).toThrow(ApiError)
   })
 
   test('caches the request-scoped database instance', () => {
@@ -70,7 +71,7 @@ describe('resolveD1Binding', () => {
     const event = createEvent()
     const injectedDatabase = { query: {} } as never
 
-    setDatabase(event, injectedDatabase)
+    setTestDatabase(event, injectedDatabase)
 
     expect(getDatabase(event)).toBe(injectedDatabase)
   })
@@ -99,7 +100,7 @@ describe('resolveD1Binding', () => {
       value: injectedDatabase
     })
 
-    expect(() => setDatabase(event, injectedDatabase)).toThrow(ApiError)
+    expect(() => setTestDatabase(event, injectedDatabase)).toThrow(ApiError)
     expect(getDatabase(event)).not.toBe(injectedDatabase)
     expect(binding.withSession).toHaveBeenCalledWith('first-primary')
   })

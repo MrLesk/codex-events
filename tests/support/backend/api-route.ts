@@ -4,7 +4,7 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { createApp, createRouter, eventHandler, toWebHandler } from 'h3'
 import { vi } from 'vitest'
 
-import { createDatabase } from '../../../server/database/client'
+import { createNonHttpDatabase } from '../../../server/database/non-http'
 import { platformDocuments, userAuthIdentities, userPlatformDocumentAcceptances } from '../../../server/database/schema'
 import { getCurrentPlatformDocuments } from '../../../server/domains/platform/documents'
 import { createTestD1Database } from './fake-d1'
@@ -28,7 +28,7 @@ interface RouteDefinition {
 interface NitroTestPlugin {
   (nitroApp: {
     hooks: {
-      hook: (name: string, handler: (event: H3Event, response?: { body?: unknown }) => void | Promise<void>) => void
+      hook: (name: string, handler: (event: H3Event, response?: { body?: unknown }) => unknown | Promise<unknown>) => void
     }
   }): void
 }
@@ -88,13 +88,16 @@ export function createApiRouteTestHarness(options: {
   nitroPlugins?: readonly NitroTestPlugin[]
 }) {
   const d1Database = createTestD1Database()
-  const database = createDatabase(d1Database as never)
-  const beforeResponseHooks: Array<(event: H3Event, response?: { body?: unknown }) => void | Promise<void>> = []
+  const database = createNonHttpDatabase(d1Database as never)
+  const beforeResponseHooks: Array<(event: H3Event, response?: { body?: unknown }) => unknown | Promise<unknown>> = []
   let beforeResponseHookInvocations = 0
+  let effectiveBookmarkEmissions = 0
   const invokeBeforeResponseHooks = async (event: H3Event, response?: { body?: unknown }) => {
     for (const hook of beforeResponseHooks) {
       beforeResponseHookInvocations += 1
-      await hook(event, response)
+      if (await hook(event, response) === true) {
+        effectiveBookmarkEmissions += 1
+      }
     }
   }
   const app = createApp({
@@ -108,7 +111,7 @@ export function createApiRouteTestHarness(options: {
 
   const nitroApp = {
     hooks: {
-      hook(name: string, handler: (event: H3Event, response?: { body?: unknown }) => void | Promise<void>) {
+      hook(name: string, handler: (event: H3Event, response?: { body?: unknown }) => unknown | Promise<unknown>) {
         if (name === 'beforeResponse') {
           beforeResponseHooks.push(handler)
         }
@@ -306,6 +309,9 @@ export function createApiRouteTestHarness(options: {
     d1Database,
     get beforeResponseHookInvocations() {
       return beforeResponseHookInvocations
+    },
+    get effectiveBookmarkEmissions() {
+      return effectiveBookmarkEmissions
     },
     async request(path: string, init: RequestInit = {}) {
       await ensureCurrentPlatformDocumentAcceptanceForSession()

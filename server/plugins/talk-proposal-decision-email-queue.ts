@@ -1,4 +1,4 @@
-import { createDatabase, resolveD1Binding } from '#server/database/client'
+import { createNonHttpDatabase, resolveNonHttpD1Binding } from '#server/database/non-http'
 import { defaultApplicationLumaSyncQueueName } from '#server/domains/applications/luma-sync-queue'
 import { defaultApplicationReviewEmailQueueName } from '#server/domains/applications/review-email-queue'
 import { defaultEventOutcomeEmailQueueName } from '#server/domains/outcomes/email-queue'
@@ -43,7 +43,7 @@ export default defineNitroPlugin((nitroApp) => {
       return
     }
     const cloudflareEnv = env as Record<string, unknown> | undefined
-    const database = createDatabase(resolveD1Binding(runtimeConfig.database?.binding ?? 'DB', cloudflareEnv))
+    const database = createNonHttpDatabase(resolveNonHttpD1Binding(runtimeConfig.database?.binding ?? 'DB', cloudflareEnv))
     await processTalkProposalDecisionEmailQueueBatch(batch, { database, runtimeConfig, cloudflareEnv })
   })
 })

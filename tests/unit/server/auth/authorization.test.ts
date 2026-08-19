@@ -14,7 +14,7 @@ import {
   resolveJudgeAssignmentAuthorization,
   resolveTeamAuthorization
 } from '../../../../server/auth/authorization'
-import { setDatabase } from '../../../../server/database/client'
+import { setTestDatabase } from '../../../../server/database/non-http'
 
 type SessionUser = {
   sub: string
@@ -138,7 +138,7 @@ beforeEach(() => {
 describe('event authorization', () => {
   test('gives inherited event admin access to platform admins', async () => {
     const event = createEvent({ sub: 'auth0|admin' })
-    setDatabase(event, createDatabaseMock({
+    setTestDatabase(event, createDatabaseMock({
       user: {
         id: 'user_admin',
         auth0Subject: 'auth0|admin',
@@ -159,7 +159,7 @@ describe('event authorization', () => {
 
   test('returns explicit judge permissions for non-admin event judges', async () => {
     const event = createEvent({ sub: 'auth0|judge' })
-    setDatabase(event, createDatabaseMock({
+    setTestDatabase(event, createDatabaseMock({
       user: {
         id: 'user_judge',
         auth0Subject: 'auth0|judge',
@@ -186,7 +186,7 @@ describe('event authorization', () => {
 
   test('returns participant visibility access for explicit staff assignments', async () => {
     const event = createEvent({ sub: 'auth0|staff' })
-    setDatabase(event, createDatabaseMock({
+    setTestDatabase(event, createDatabaseMock({
       user: {
         id: 'user_staff',
         auth0Subject: 'auth0|staff',
@@ -265,7 +265,7 @@ describe('event authorization', () => {
 
   test('allows platform users to resolve authorization without extra account gating', async () => {
     const event = createEvent({ sub: 'auth0|pending' })
-    setDatabase(event, createDatabaseMock({
+    setTestDatabase(event, createDatabaseMock({
       user: {
         id: 'user_pending',
         auth0Subject: 'auth0|pending',
@@ -287,7 +287,7 @@ describe('event authorization', () => {
 describe('team authorization', () => {
   test('detects active team-admin membership', async () => {
     const event = createEvent({ sub: 'auth0|member' })
-    setDatabase(event, createDatabaseMock({
+    setTestDatabase(event, createDatabaseMock({
       user: {
         id: 'user_member',
         auth0Subject: 'auth0|member',
@@ -320,7 +320,7 @@ describe('team authorization', () => {
 describe('judge assignment authorization', () => {
   test('allows the assigned judge through the blind-review context', async () => {
     const event = createEvent({ sub: 'auth0|judge' })
-    setDatabase(event, createDatabaseMock({
+    setTestDatabase(event, createDatabaseMock({
       user: {
         id: 'user_judge',
         auth0Subject: 'auth0|judge',
@@ -345,7 +345,7 @@ describe('judge assignment authorization', () => {
 
   test('allows event admins to use blind-review access only when the assignment is theirs', async () => {
     const event = createEvent({ sub: 'auth0|admin' })
-    setDatabase(event, createDatabaseMock({
+    setTestDatabase(event, createDatabaseMock({
       user: {
         id: 'user_admin',
         auth0Subject: 'auth0|admin',
@@ -375,7 +375,7 @@ describe('judge assignment authorization', () => {
 
   test('rejects admins who are not participating through the assignment', async () => {
     const event = createEvent({ sub: 'auth0|admin' })
-    setDatabase(event, createDatabaseMock({
+    setTestDatabase(event, createDatabaseMock({
       user: {
         id: 'user_admin',
         auth0Subject: 'auth0|admin',
@@ -408,7 +408,7 @@ describe('judge assignment authorization', () => {
 
   test('returns pitch visibility for assigned pitch reviewers', async () => {
     const event = createEvent({ sub: 'auth0|judge' })
-    setDatabase(event, createDatabaseMock({
+    setTestDatabase(event, createDatabaseMock({
       user: {
         id: 'user_judge',
         auth0Subject: 'auth0|judge',

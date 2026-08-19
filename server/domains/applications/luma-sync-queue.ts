@@ -4,7 +4,12 @@ import { and, asc, eq, isNotNull, isNull, or } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { writeAuditLog } from '#server/database/audit-log'
-import { createDatabase, resolveD1Binding, type AppDatabase, type D1DatabaseBinding } from '#server/database/client'
+import {
+  createNonHttpDatabase,
+  resolveNonHttpD1Binding,
+  type AppDatabase,
+  type D1DatabaseBinding
+} from '#server/database/non-http'
 import {
   events,
   type AuditMetadata,
@@ -775,13 +780,13 @@ async function resolveProcessingDatabase(options: {
   }
 
   const config = resolveQueueRuntimeConfigFromUnknown(options.runtimeConfig ?? {})
-  const binding = resolveD1Binding(
+  const binding = resolveNonHttpD1Binding(
     getDatabaseBindingName(config),
     options.cloudflareEnv,
     options.d1Database
   )
 
-  return createDatabase(binding)
+  return createNonHttpDatabase(binding)
 }
 
 async function recordTerminalLumaSyncOutcome(

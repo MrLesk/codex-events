@@ -1,4 +1,4 @@
-import type { D1DatabaseBinding } from '#server/database/client'
+import type { D1DatabaseBinding } from '#server/database/non-http'
 
 import { ApiError } from '#server/http/api-error'
 import {

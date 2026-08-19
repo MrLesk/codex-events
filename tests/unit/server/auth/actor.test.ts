@@ -8,7 +8,7 @@ import {
   requireAuthenticatedActor,
   requirePlatformActor
 } from '../../../../server/auth/actor'
-import { setDatabase } from '../../../../server/database/client'
+import { setTestDatabase } from '../../../../server/database/non-http'
 
 type SessionUser = {
   sub: string
@@ -128,7 +128,7 @@ beforeEach(() => {
 describe('request actor resolution', () => {
   test('returns an anonymous actor when there is no Auth0 session', async () => {
     const event = createEvent()
-    setDatabase(event, createDatabaseMock())
+    setTestDatabase(event, createDatabaseMock())
 
     await expect(getRequestActor(event)).resolves.toMatchObject({
       kind: 'anonymous',
@@ -140,7 +140,7 @@ describe('request actor resolution', () => {
 
   test('returns an authenticated identity actor when no platform user exists', async () => {
     const event = createEvent({ sub: 'auth0|user_1', email: 'user@example.com' })
-    setDatabase(event, createDatabaseMock())
+    setTestDatabase(event, createDatabaseMock())
 
     await expect(getRequestActor(event)).resolves.toMatchObject({
       kind: 'authenticated_identity',
@@ -174,7 +174,7 @@ describe('request actor resolution', () => {
       getAccessToken
     })))
     vi.stubGlobal('fetch', fetchMock)
-    setDatabase(event, createDatabaseMock())
+    setTestDatabase(event, createDatabaseMock())
 
     await expect(getRequestActor(event)).resolves.toMatchObject({
       kind: 'authenticated_identity',
@@ -193,7 +193,7 @@ describe('request actor resolution', () => {
       email: 'user@example.com',
       nickname: 'github-user'
     })
-    setDatabase(event, createDatabaseMock())
+    setTestDatabase(event, createDatabaseMock())
 
     await expect(getRequestActor(event)).resolves.toMatchObject({
       kind: 'authenticated_identity',
@@ -206,7 +206,7 @@ describe('request actor resolution', () => {
 
   test('returns a platform actor when the Auth0 subject maps to an active platform user', async () => {
     const event = createEvent({ sub: 'auth0|user_1', email: 'user@example.com' })
-    setDatabase(event, createDatabaseMock({
+    setTestDatabase(event, createDatabaseMock({
       id: 'user_1',
       auth0Subject: 'auth0|user_1',
       email: 'user@example.com',
@@ -234,7 +234,7 @@ describe('request actor resolution', () => {
       displayName: 'User One',
       isPlatformAdmin: false
     })
-    setDatabase(event, database)
+    setTestDatabase(event, database)
 
     const first = await getRequestActor(event)
     const second = await getRequestActor(event)
@@ -258,7 +258,7 @@ describe('request actor resolution', () => {
     }, {
       auth0Subject: 'google-oauth2|existing-google-user'
     })
-    setDatabase(event, database)
+    setTestDatabase(event, database)
 
     await expect(getRequestActor(event)).resolves.toMatchObject({
       kind: 'platform_user',
@@ -274,7 +274,7 @@ describe('request actor resolution', () => {
 
   test('keeps a platform account actor consent-blocked when current platform documents are not accepted', async () => {
     const event = createEvent({ sub: 'auth0|user_1', email: 'user@example.com' })
-    setDatabase(event, createDatabaseMock({
+    setTestDatabase(event, createDatabaseMock({
       id: 'user_1',
       auth0Subject: 'auth0|user_1',
       email: 'user@example.com',
@@ -296,21 +296,21 @@ describe('request actor resolution', () => {
 
   test('requires an authenticated actor for protected flows', async () => {
     const event = createEvent()
-    setDatabase(event, createDatabaseMock())
+    setTestDatabase(event, createDatabaseMock())
 
     await expect(requireAuthenticatedActor(event)).rejects.toBeInstanceOf(ApiError)
   })
 
   test('requires a platform account for application-owned authorization', async () => {
     const event = createEvent({ sub: 'auth0|user_1' })
-    setDatabase(event, createDatabaseMock())
+    setTestDatabase(event, createDatabaseMock())
 
     await expect(requirePlatformActor(event)).rejects.toBeInstanceOf(ApiError)
   })
 
   test('requires current platform consent for regular platform authorization', async () => {
     const event = createEvent({ sub: 'auth0|user_1', email: 'user@example.com' })
-    setDatabase(event, createDatabaseMock({
+    setTestDatabase(event, createDatabaseMock({
       id: 'user_1',
       auth0Subject: 'auth0|user_1',
       email: 'user@example.com',
