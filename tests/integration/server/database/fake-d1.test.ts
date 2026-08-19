@@ -144,6 +144,42 @@ describe('TestD1Database', () => {
     ])
   })
 
+  test('rejects session-owned statements from direct batches before any state advances', async () => {
+    const d1Database = createTestD1Database()
+    databases.push(d1Database)
+    const session = d1Database.withSession('first-primary')
+    const beforeFailure = {
+      queries: d1Database.queries,
+      infrastructureQueries: d1Database.infrastructureQueries,
+      sessions: d1Database.sessions,
+      sessionStarts: d1Database.sessionStarts,
+      bookmark: d1Database.getLatestBookmark()
+    }
+
+    await expect(d1Database.batch([
+      d1Database.prepare(`
+        insert into users (id, auth0_subject, email, display_name)
+        values ('direct_mixed_owner_user', 'auth0|direct_mixed_owner_user', 'direct-mixed-owner@example.com', 'Direct Mixed Owner User')
+      `),
+      session.prepare(`
+        insert into users (id, auth0_subject, email, display_name)
+        values ('session_mixed_owner_user', 'auth0|session_mixed_owner_user', 'session-mixed-owner@example.com', 'Session Mixed Owner User')
+      `)
+    ])).rejects.toThrow(/session-owned/u)
+
+    expect(session.getBookmark()).toBeNull()
+    expect(d1Database.queries).toEqual(beforeFailure.queries)
+    expect(d1Database.infrastructureQueries).toEqual(beforeFailure.infrastructureQueries)
+    expect(d1Database.sessions).toEqual(beforeFailure.sessions)
+    expect(d1Database.sessionStarts).toEqual(beforeFailure.sessionStarts)
+    expect(d1Database.getLatestBookmark()).toBe(beforeFailure.bookmark)
+
+    const verification = await d1Database.prepare(`
+      select id from users where id = ? or id = ?
+    `).bind('direct_mixed_owner_user', 'session_mixed_owner_user').all()
+    expect(verification.results).toEqual([])
+  })
+
   test('rolls back a failed session batch, including its bookmark and query accounting', async () => {
     const d1Database = createTestD1Database()
     databases.push(d1Database)

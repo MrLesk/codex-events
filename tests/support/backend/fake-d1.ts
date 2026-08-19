@@ -271,11 +271,16 @@ class TestD1PreparedStatement {
     private readonly getTarget: (isRead: boolean) => Promise<TestD1QueryTarget>,
     private readonly sql: string,
     private readonly parameters: unknown[] = [],
-    private readonly onQuery?: (query: Omit<TestD1QueryRecord, 'sessionId'>, servedVersion: number) => void
+    private readonly onQuery?: (query: Omit<TestD1QueryRecord, 'sessionId'>, servedVersion: number) => void,
+    private readonly sessionOwned = false
   ) {}
 
   bind(...parameters: unknown[]) {
-    return new TestD1PreparedStatement(this.getTarget, this.sql, parameters, this.onQuery)
+    return new TestD1PreparedStatement(this.getTarget, this.sql, parameters, this.onQuery, this.sessionOwned)
+  }
+
+  isSessionOwned() {
+    return this.sessionOwned
   }
 
   async run(...parameters: unknown[]) {
@@ -463,7 +468,8 @@ class TestD1DatabaseSession {
           this.minimumVersion = this.database.resolveBookmarkVersion(bookmark)
           this.hasWritten = true
         }
-      }
+      },
+      true
     )
   }
 
@@ -555,6 +561,12 @@ export class TestD1Database {
   }
 
   async batch(statements: TestD1PreparedStatement[]) {
+    // A direct binding batch cannot restore a live session's in-memory state.
+    // Reject mixed-owner input before any statement executes instead.
+    if (statements.some(statement => statement.isSessionOwned())) {
+      throw new Error('TestD1Database.batch cannot execute session-owned statements')
+    }
+
     return await this.runAtomicBatch(async () => {
       const results: Array<D1QueryResult<Record<string, unknown>> | D1RunResult> = []
 
