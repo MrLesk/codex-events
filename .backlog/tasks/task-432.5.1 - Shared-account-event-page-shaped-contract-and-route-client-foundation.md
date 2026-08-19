@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@luna-workspace'
 created_date: '2026-08-19 19:51'
-updated_date: '2026-08-19 20:28'
+updated_date: '2026-08-19 20:45'
 labels:
   - architecture
   - performance
@@ -122,6 +122,10 @@ Docs correction: restored docs/api-surface.md managed-media/D1/bootstrap wording
 Final typecheck rerun after the root-admin boundary and signal-link correction reports only the two intentionally unmigrated child panels: AccountEventAdminOperationsPanel.vue:84 and AccountEventAdminSettingsPanel.vue:84 for removed legacy workspace composables, with their expected payload-driven cascade errors. No root-admin page, page foundation, context, contract, or test file errors were reported. Earlier full validation also exposed unrelated talk-proposal/queue changes in the shared worktree; those are not part of this task and were not staged.
 
 Final validation status: scoped ESLint and all seven foundation test files pass (46 tests). Full lint now reports only unrelated dirty-worktree errors in server/domains/events/index.ts:2279-2293 and tests/integration/server/api/event-routes.test.ts:4731. Full test:unit reports unrelated talk-proposal/index, talk-proposal/email-queue, and HTTP database-boundary failures; full test:integration reports the corresponding unrelated event/application/talk-proposal/MCP failures. No focused BDD was run because this foundation adds no concrete child route or browser page; browser topology remains TASK-432.5.7 scope. Testing guidance is covered by the new api-surface route contract and task notes; docs/testing-strategy.md remains unstaged because its existing diff is TASK-432.6-owned media guidance.
+
+Hardening follow-up: account-event page requests explicitly use server: false; client and server named registries are parity-tested; page context resolves EventAuthorization before its local visibility check and derives role access without a second event-role query; every child route definition must provide authorize(context), which executes once before load and may use only the pre-resolved context.
+
+Hardening validation: focused Vitest 6 files/13 tests passed; scoped ESLint passed; bun run lint passed; bun run test:unit passed with 137 files/972 tests. bun run typecheck remains blocked only by the explicitly deferred AccountEventAdminOperationsPanel.vue:84 and AccountEventAdminSettingsPanel.vue:84 consumers and their cascaded missing-payload types; no foundation-file errors. No integration or BDD run because this follow-up adds no concrete route or browser surface. docs/api-surface.md and all unrelated .4/.6 worktree changes remain unstaged.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

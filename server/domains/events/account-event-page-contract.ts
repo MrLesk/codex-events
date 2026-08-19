@@ -84,12 +84,22 @@ export type AccountEventPageLoader<TSchema extends z.ZodTypeAny> = (
   context: AccountEventPageContext
 ) => z.input<TSchema> | Promise<z.input<TSchema>>
 
+/**
+ * Child routes assert page-specific access from the already-resolved context.
+ * The callback receives no H3 event and must not resolve actor, authorization,
+ * database, or another HTTP endpoint.
+ */
+export type AccountEventPageAuthorizer = (
+  context: AccountEventPageContext
+) => void | Promise<void>
+
 export interface AccountEventPageRouteDefinition<
   TPageName extends AccountEventPageName,
   TSchema extends z.ZodTypeAny
 > {
   page: TPageName
   schema: TSchema
+  authorize: AccountEventPageAuthorizer
   load: AccountEventPageLoader<TSchema>
 }
 
@@ -134,6 +144,7 @@ export async function executeAccountEventPageRoute<
     page: definition.page
   })
   const context = await resolveAccountEventPageContext(h3Event, params.slug)
+  await definition.authorize(context)
   const page = definition.schema.parse(await definition.load(context))
 
   return apiData<AccountEventPageResponse<z.output<TSchema>>>({

@@ -43,8 +43,10 @@ describe('account-event page route contract', () => {
   test('keeps the child extension point named, typed, and runtime-validated', () => {
     expect(contractSource).toContain('page: TPageName')
     expect(contractSource).toContain('schema: TSchema')
+    expect(contractSource).toContain('authorize: AccountEventPageAuthorizer')
     expect(contractSource).toContain('accountEventPageParamsSchema.parse')
     expect(contractSource).toContain('definition.schema.parse')
+    expect(contractSource).toContain('await definition.authorize(context)')
     expect(contractSource).not.toContain('include')
     expect(contractSource).not.toContain('resourceMap')
   })
@@ -57,10 +59,12 @@ describe('account-event page route contract', () => {
     const schema = z.object({
       phase: z.string()
     })
+    const authorize = vi.fn()
     const load = vi.fn(() => ({ phase: 'submission_open' }))
     const route = defineAccountEventPageRoute({
       page: 'operations',
       schema,
+      authorize,
       load
     })
 
@@ -90,7 +94,9 @@ describe('account-event page route contract', () => {
       }
     })
     expect(resolveAccountEventPageContext).toHaveBeenCalledOnce()
+    expect(authorize).toHaveBeenCalledOnce()
     expect(load).toHaveBeenCalledOnce()
+    expect(authorize.mock.invocationCallOrder[0]).toBeLessThan(load.mock.invocationCallOrder[0])
   })
 
   test('rejects invalid named routes and invalid child payloads', async () => {
@@ -102,6 +108,7 @@ describe('account-event page route contract', () => {
     const invalidPayloadRoute = defineAccountEventPageRoute({
       page: 'entry',
       schema: z.object({ title: z.string() }),
+      authorize: vi.fn(),
       load: () => ({ title: 42 } as never)
     })
 

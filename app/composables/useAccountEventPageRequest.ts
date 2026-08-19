@@ -96,6 +96,7 @@ export function useAccountEventPageRequest<TPage>(
       default: options.default,
       dedupe: 'cancel',
       immediate: options.immediate ?? true,
+      server: false,
       watch: [resolvedSlug, resolvedPage, ...(options.watch ?? [])]
     }
   )

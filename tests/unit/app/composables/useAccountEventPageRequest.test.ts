@@ -106,7 +106,8 @@ describe('useAccountEventPageRequest', () => {
     expect(capturedOptions).toMatchObject({
       cacheScope: 'protected',
       dedupe: 'cancel',
-      immediate: true
+      immediate: true,
+      server: false
     })
 
     const apiFetch = vi.fn(async (path: string, options: { signal: AbortSignal }) => {

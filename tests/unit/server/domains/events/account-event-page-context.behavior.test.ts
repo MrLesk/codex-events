@@ -67,7 +67,7 @@ describe('resolveAccountEventPageContext', () => {
           }))
         },
         eventRoleAssignments: {
-          findMany: vi.fn(async () => [{ role: 'event_admin' }])
+          findMany: vi.fn()
         },
         userApplications: {
           findFirst: vi.fn(async () => null)
@@ -93,5 +93,46 @@ describe('resolveAccountEventPageContext', () => {
     expect(getDatabase).toHaveBeenCalledOnce()
     expect(database.query.events.findFirst).toHaveBeenCalledOnce()
     expect(resolveEventAuthorization).toHaveBeenCalledOnce()
+    expect(database.query.eventRoleAssignments.findMany).not.toHaveBeenCalled()
+    expect(context.authorization.explicitRole).toBe('event_admin')
+  })
+
+  test('uses the resolved authorization for hidden-event visibility without a second role query', async () => {
+    resolveEventAuthorization.mockResolvedValue({
+      eventId: 'event_1',
+      isPlatformAdmin: false,
+      explicitRole: 'staff',
+      isEventAdmin: false,
+      canReviewThroughAssignment: false,
+      isInJudgePool: false,
+      isStaff: true,
+      staffTrackId: null,
+      canViewParticipantsAndTeams: true
+    })
+
+    const roleQuery = vi.fn()
+    getDatabase.mockReturnValue({
+      query: {
+        events: {
+          findFirst: vi.fn(async () => ({
+            id: 'event_1',
+            slug: 'fixture-event',
+            name: 'Fixture event',
+            eventType: 'hackathon',
+            state: 'submission_open',
+            hiddenAt: new Date('2026-01-01')
+          }))
+        },
+        eventRoleAssignments: {
+          findMany: roleQuery
+        }
+      }
+    })
+
+    const { resolveAccountEventPageContext } = await import('../../../../../server/domains/events/account-event-page-context')
+
+    await expect(resolveAccountEventPageContext({} as never, 'fixture-event'))
+      .rejects.toMatchObject({ statusCode: 404, code: 'event_not_found' })
+    expect(roleQuery).not.toHaveBeenCalled()
   })
 })

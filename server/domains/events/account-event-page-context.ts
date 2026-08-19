@@ -5,7 +5,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { assertRegularPlatformAccess, getRequestActor, type PlatformActor } from '#server/auth/actor'
 import { resolveEventAuthorization, type EventAuthorization } from '#server/auth/authorization'
 import { getDatabase, type AppDatabase } from '#server/database/client'
-import { eventRoleAssignments, events, teamMembers, teams, userApplications } from '#server/database/schema'
+import { events, teamMembers, teams, userApplications } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
 
 export type AccountEventPageEventRecord = typeof events.$inferSelect
@@ -19,28 +19,19 @@ export interface AccountEventPageContext {
 
 async function assertAccountEventPageVisibilityAndAccess(input: {
   actor: PlatformActor
+  authorization: EventAuthorization
   database: AppDatabase
   event: AccountEventPageEventRecord
 }) {
-  const roleAssignments = await input.database.query.eventRoleAssignments.findMany({
-    columns: {
-      role: true
-    },
-    where: and(
-      eq(eventRoleAssignments.eventId, input.event.id),
-      eq(eventRoleAssignments.userId, input.actor.platformUser.id)
-    )
-  })
-  const hasEventAdminRole = roleAssignments.some(assignment => assignment.role === 'event_admin')
-  const hasInternalVisibilityRole = roleAssignments.some(
-    assignment => assignment.role === 'event_admin' || assignment.role === 'staff'
-  )
+  const hasInternalVisibilityRole = input.authorization.isEventAdmin
+    || input.authorization.isStaff
+    || input.authorization.explicitRole === 'staff'
 
   if (
-    (input.event.hiddenAt && !input.actor.platformUser.isPlatformAdmin && !hasEventAdminRole)
+    (input.event.hiddenAt && !input.authorization.isPlatformAdmin && !input.authorization.isEventAdmin)
     || (
       input.event.state === 'draft'
-      && !input.actor.platformUser.isPlatformAdmin
+      && !input.authorization.isPlatformAdmin
       && !hasInternalVisibilityRole
     )
   ) {
@@ -52,7 +43,7 @@ async function assertAccountEventPageVisibilityAndAccess(input: {
     })
   }
 
-  if (input.actor.platformUser.isPlatformAdmin) {
+  if (input.authorization.isPlatformAdmin) {
     return
   }
 
@@ -79,7 +70,11 @@ async function assertAccountEventPageVisibilityAndAccess(input: {
     ))
     .limit(1)
 
-  if (!hasApplication && roleAssignments.length === 0 && activeMembership.length === 0) {
+  if (
+    !hasApplication
+    && input.authorization.explicitRole === null
+    && activeMembership.length === 0
+  ) {
     throw new ApiError({
       statusCode: 403,
       code: 'event_workspace_access_required',
@@ -116,12 +111,14 @@ export async function resolveAccountEventPageContext(
     })
   }
 
+  const authorization = await resolveEventAuthorization(h3Event, event.id)
+
   await assertAccountEventPageVisibilityAndAccess({
     actor,
+    authorization,
     database,
     event
   })
-  const authorization = await resolveEventAuthorization(h3Event, event.id)
 
   return {
     actor,
