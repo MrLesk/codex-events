@@ -151,9 +151,9 @@ current source of truth and flag the mismatch.
 - Cloudflare D1 is the primary relational database. Do not introduce a second
   persistence model for canonical platform data unless the canonical docs change
   first.
-- Cloudflare R2 and Cloudflare Images handle file storage and protected preview
-  transformations. Keep stored originals and derived previews conceptually
-  separate.
+- Cloudflare R2 and Cloudflare Images handle file storage, public responsive
+  delivery, and protected preview transformations. Keep stored originals and
+  derived previews conceptually separate.
 - Cloudflare Queues own asynchronous email and integration work. Do not make
   user-facing request paths depend on best-effort external sync completing
   inline unless the docs explicitly require it.
@@ -163,6 +163,17 @@ current source of truth and flag the mismatch.
 - Luma is an optional event integration for guest verification,
   approval/rejection sync, and attendance webhooks. Core event participation
   should remain understandable without exposing Luma mechanics to participants.
+
+## Performance and Request Topology
+
+- Public event and discovery delivery may use cacheable SSR or static responses. `/account/**`, `/admin/**`, and prize-redemption workspaces use an immediate client-rendered or static shell; API authorization remains server-side.
+- Use the shared typed account bootstrap for actor, session, and capability data. Route guards and feature components consume it. Do not add feature-local `/api/session` calls or refresh actor data for query-only tab changes.
+- Resolve the request actor once per API request. Identity reconciliation belongs to login and account-link flows, not ordinary reads. Mutations enforce canonical authorization and current consent.
+- Data-heavy event tabs use page-shaped contracts with one critical read after bootstrap, one authorization resolution, and one request-scoped D1 client/session. Do not add a generic graph API; see `docs/api-surface.md` for the contract boundary.
+- Use replica-eligible reads, consistency bookmarks, and read-after-write behavior defined in `docs/tech-stack.md`; preserve equivalent behavior in the local fake-D1 adapter.
+- Cancel abandoned tab requests, lazy-load locally bundled heavy code, and do not load runtime editor dependencies from `unpkg`.
+- Public/versioned media uses streamed, cacheable Cloudflare Images variants. Keep private or mutable originals isolated, and do not use public `no-store` originals as page backgrounds.
+- Maintain real-browser request-topology, cancellation, media-payload, timing-phase, and wall-clock budget checks described in `docs/testing-strategy.md`.
 
 ## Database Query Guardrails
 

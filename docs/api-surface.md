@@ -79,6 +79,14 @@ It translates the canonical product model into stable backend domains, operation
 - End-to-end coverage uses the documented stable local personas and D1-owned authorization.
 - API end-to-end tests do not use fake JWTs, bypass headers, or Auth0-role shortcuts.
 
+## Request and Read Topology
+
+- `GET /api/session` is the sole actor bootstrap contract. Its typed response contains the authenticated identity, platform account, current-consent state, event roles, and derived capabilities needed by route guards and feature components. The client shares one bootstrap result; feature-local session reads and query-only tab actor refreshes are not API patterns.
+- Authenticated API requests resolve the request actor once and reuse it through authorization and domain work. Login and account-link routes perform identity reconciliation; ordinary API reads only resolve the already-reconciled identity. Mutations always enforce canonical platform authorization and current consent, even when the client supplied bootstrap capabilities.
+- Data-heavy account event tabs use a page-shaped read endpoint that returns the typed data required for the first render. The client makes one critical JSON request after bootstrap, and the server performs one authorization resolution and one logical D1 request session for that read. Domain-specific composition inside the endpoint is allowed; a generic graph endpoint is not.
+- Tab-owned requests carry cancellation signals. Leaving a tab cancels abandoned work, and heavy tab code is locally bundled and lazy. Runtime editor dependencies from `unpkg` are not supported.
+- Public image responses are streamed through versioned, cacheable URLs and named Cloudflare Images variants. Private or mutable originals remain authorization-gated; public page backgrounds do not use `no-store` original responses.
+
 ## Domain Map
 
 The canonical backend domains are:
@@ -179,7 +187,7 @@ Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| Get current session actor | `GET /api/session` | authenticated user | Returns platform user identity, effective platform-admin status, effective event-organizer status, and event roles needed for authorization-aware clients and routing. |
+| Get current session actor | `GET /api/session` | authenticated user | Returns the typed shared account bootstrap: platform identity, effective platform-admin and event-organizer status, current-consent state, event roles, and derived capabilities needed for authorization-aware clients and routing. This is the sole client source for actor, session, and capability data. |
 
 Testing:
 - Unit: actor resolution and permission derivation rules.

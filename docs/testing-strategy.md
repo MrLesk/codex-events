@@ -145,6 +145,20 @@ Role-specific coverage includes:
 | Prize-recipient workspace | Prize redemption |
 | Destructive account behavior | Account deletion and registration recovery |
 
+## Browser Performance and Topology Validation
+
+Representative Playwright journeys run in a real browser against the local Nuxt application and local D1. They cover public discovery plus signed-in participant, judge, admin, and prize-recipient workspaces.
+
+For each navigation and tab interaction, browser instrumentation records:
+
+- phase timings for shell navigation, account bootstrap, the critical page read, first usable state, lazy-tab completion, and media delivery;
+- the declared wall-clock budget and the observed duration for each phase and journey;
+- request topology, including exactly one shared bootstrap per authenticated workspace entry, exactly one critical page-shaped JSON read after bootstrap, zero feature-local session reads, and zero query-only actor refreshes;
+- cancellation of abandoned tab requests, local lazy-code loading, and the absence of runtime `unpkg` dependencies; and
+- media payload constraints, including versioned cacheable URLs, allowed named variants, response content type and byte size, and the absence of public `no-store` original media in page backgrounds.
+
+Failures report the actual request counts, cancellation observations, media payload facts, phase timings, wall-clock budget, and observed duration. The journey uses the same storage state, actor resolution, authorization, and local D1 fixtures as the rest of the BDD suite.
+
 ## Local Load Runner
 
 `tools/load-tests/local-1000-participant-event.ts` uses the same four persona
