@@ -252,6 +252,8 @@ interface TestD1QueryTarget {
   version: number
 }
 
+const infrastructureOwnerId = 0
+
 interface TestD1DatabaseSnapshot {
   primary: Uint8Array
   replica: Uint8Array
@@ -272,15 +274,15 @@ class TestD1PreparedStatement {
     private readonly sql: string,
     private readonly parameters: unknown[] = [],
     private readonly onQuery?: (query: Omit<TestD1QueryRecord, 'sessionId'>, servedVersion: number) => void,
-    private readonly sessionOwned = false
+    private readonly ownerId = infrastructureOwnerId
   ) {}
 
   bind(...parameters: unknown[]) {
-    return new TestD1PreparedStatement(this.getTarget, this.sql, parameters, this.onQuery, this.sessionOwned)
+    return new TestD1PreparedStatement(this.getTarget, this.sql, parameters, this.onQuery, this.ownerId)
   }
 
-  isSessionOwned() {
-    return this.sessionOwned
+  isOwnedBy(ownerId: number) {
+    return this.ownerId === ownerId
   }
 
   async run(...parameters: unknown[]) {
@@ -469,11 +471,15 @@ class TestD1DatabaseSession {
           this.hasWritten = true
         }
       },
-      true
+      this.sessionId
     )
   }
 
   async batch(statements: TestD1PreparedStatement[]) {
+    if (statements.some(statement => !statement.isOwnedBy(this.sessionId))) {
+      throw new Error('TestD1DatabaseSession.batch cannot execute statements owned by another database session')
+    }
+
     const previousState = {
       bookmark: this.bookmark,
       minimumVersion: this.minimumVersion,
@@ -530,6 +536,8 @@ export class TestD1Database {
 
   private latestBookmark: string | null = null
 
+  private atomicBatchTail = Promise.resolve()
+
   private closed = false
 
   constructor(options?: { applyMigrations?: boolean, replicaStale?: boolean }) {
@@ -561,10 +569,8 @@ export class TestD1Database {
   }
 
   async batch(statements: TestD1PreparedStatement[]) {
-    // A direct binding batch cannot restore a live session's in-memory state.
-    // Reject mixed-owner input before any statement executes instead.
-    if (statements.some(statement => statement.isSessionOwned())) {
-      throw new Error('TestD1Database.batch cannot execute session-owned statements')
+    if (statements.some(statement => !statement.isOwnedBy(infrastructureOwnerId))) {
+      throw new Error('TestD1Database.batch cannot execute session-owned statements from a database session')
     }
 
     return await this.runAtomicBatch(async () => {
@@ -658,13 +664,24 @@ export class TestD1Database {
     // D1 batch() executes statements sequentially but commits them as one
     // transaction. The fake must restore both SQLite replicas and all
     // bookmark/query accounting when a later statement fails.
-    const snapshot = await this.snapshotState()
+    const previousBatch = this.atomicBatchTail
+    let releaseBatch!: () => void
+    this.atomicBatchTail = new Promise<void>((resolve) => {
+      releaseBatch = resolve
+    })
+    await previousBatch
 
     try {
-      return await execute()
-    } catch (error) {
-      await this.restoreState(snapshot)
-      throw error
+      const snapshot = await this.snapshotState()
+
+      try {
+        return await execute()
+      } catch (error) {
+        await this.restoreState(snapshot)
+        throw error
+      }
+    } finally {
+      releaseBatch()
     }
   }
 

@@ -92,6 +92,7 @@ describe('AppDatabase facade', () => {
 
     const usersFromDescriptor = nestedDescriptor?.value as object
     expect(usersFromDescriptor).toBe(database.query.users)
+    expect((usersFromDescriptor as { session?: { client?: unknown } }).session?.client).toBeUndefined()
     expect(Object.getOwnPropertyDescriptor(usersFromDescriptor, 'client')).toBeUndefined()
     expect(Reflect.get(usersFromDescriptor, 'session')).toBeUndefined()
     expect(Reflect.get(usersFromDescriptor, 'client')).toBeUndefined()

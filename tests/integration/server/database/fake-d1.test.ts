@@ -185,6 +185,45 @@ describe('TestD1Database', () => {
     expect(verification.results).toEqual([])
   })
 
+  test('rejects statements owned by another session or the direct database before session execution', async () => {
+    const d1Database = createTestD1Database()
+    databases.push(d1Database)
+    const sessionA = d1Database.withSession('first-primary')
+    const sessionB = d1Database.withSession('first-primary')
+    const beforeFailure = {
+      queries: d1Database.queries,
+      infrastructureQueries: d1Database.infrastructureQueries,
+      sessions: d1Database.sessions,
+      sessionStarts: d1Database.sessionStarts,
+      bookmark: d1Database.getLatestBookmark()
+    }
+
+    await expect(sessionA.batch([
+      sessionA.prepare('select 1'),
+      sessionB.prepare('select 1')
+    ])).rejects.toThrow(/another database session/u)
+    await expect(sessionA.batch([
+      sessionA.prepare('select ?').bind(1),
+      sessionB.prepare('select ?').bind(1)
+    ])).rejects.toThrow(/another database session/u)
+    await expect(sessionA.batch([
+      sessionA.prepare('select 1'),
+      d1Database.prepare('select 1')
+    ])).rejects.toThrow(/another database session/u)
+    await expect(sessionA.batch([
+      sessionA.prepare('select ?').bind(1),
+      d1Database.prepare('select ?').bind(1)
+    ])).rejects.toThrow(/another database session/u)
+
+    expect(sessionA.getBookmark()).toBeNull()
+    expect(sessionB.getBookmark()).toBeNull()
+    expect(d1Database.queries).toEqual(beforeFailure.queries)
+    expect(d1Database.infrastructureQueries).toEqual(beforeFailure.infrastructureQueries)
+    expect(d1Database.sessions).toEqual(beforeFailure.sessions)
+    expect(d1Database.sessionStarts).toEqual(beforeFailure.sessionStarts)
+    expect(d1Database.getLatestBookmark()).toBe(beforeFailure.bookmark)
+  })
+
   test('rolls back a failed session batch, including its bookmark and query accounting', async () => {
     const d1Database = createTestD1Database()
     databases.push(d1Database)
@@ -400,5 +439,53 @@ describe('TestD1Database', () => {
       id: 'infrastructure_user'
     })
     expect(d1Database.getLatestBookmark()).toBe(infrastructureBookmark)
+  })
+
+  test('serializes overlapping atomic batches so a later rollback preserves an earlier success', async () => {
+    const d1Database = createTestD1Database()
+    databases.push(d1Database)
+    let resolveFirst: () => void = () => {}
+    const firstRelease = new Promise<void>((resolve) => {
+      resolveFirst = resolve
+    })
+    let resolveFirstEntered: () => void = () => {}
+    const firstEntered = new Promise<void>((resolve) => {
+      resolveFirstEntered = resolve
+    })
+    let secondEntered = false
+
+    const firstBatch = d1Database.runAtomicBatch(async () => {
+      await d1Database.prepare(`
+        insert into users (id, auth0_subject, email, display_name)
+        values ('overlap_success_user', 'auth0|overlap_success_user', 'overlap-success@example.com', 'Overlap Success User')
+      `).run()
+      resolveFirstEntered()
+      await firstRelease
+    })
+
+    await firstEntered
+
+    const secondBatch = d1Database.runAtomicBatch(async () => {
+      secondEntered = true
+      await d1Database.prepare(`
+        insert into users (id, auth0_subject, email, display_name)
+        values ('overlap_failure_user', 'auth0|overlap_failure_user', 'overlap-failure@example.com', 'Overlap Failure User')
+      `).run()
+      throw new Error('overlapping batch failure')
+    })
+
+    await Promise.resolve()
+    expect(secondEntered).toBe(false)
+    resolveFirst()
+    await firstBatch
+    await expect(secondBatch).rejects.toThrow(/overlapping batch failure/u)
+
+    const verification = createNonHttpDatabase(d1Database.withSession('first-primary') as never)
+    await expect(verification.query.users.findFirst({
+      where: eq(users.id, 'overlap_success_user')
+    })).resolves.toMatchObject({ id: 'overlap_success_user' })
+    await expect(verification.query.users.findFirst({
+      where: eq(users.id, 'overlap_failure_user')
+    })).resolves.toBeUndefined()
   })
 })

@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@luna-d1'
 created_date: '2026-08-19 06:22'
-updated_date: '2026-08-19 21:56'
+updated_date: '2026-08-19 22:29'
 labels: []
 dependencies:
   - TASK-432.1
@@ -57,10 +57,13 @@ Introduce a shared request-scoped Cloudflare D1 Sessions access path with strong
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Preserve the committed capability-based AppDatabase facade and recovery/source-boundary changes from 968edcda; harmless Drizzle metadata is allowed and no recursive membrane expansion is required.
-2. Close the fake-D1 mixed-owner boundary: a direct database batch must not leave a live session pointing at rolled-back state. Either snapshot/restore every live session state or explicitly reject session-prepared statements passed to the direct binding batch; prefer the smallest behavior that matches the request-session boundary.
-3. Add a regression for a failing direct batch containing a live-session-prepared statement, plus mixed write/read success and existing session/direct rollback coverage.
-4. Run focused D1 tests and lint/typecheck/integration as available; record unrelated concurrent failures. Inspect the exact diff and commit only TASK-432.4 fake-D1/tests/task notes. Do not touch media or TASK-432.5 client/page/route files; do not push.
+1. Add a safe Proxy own-property descriptor wrapper that wraps configurable data values and preserves all Proxy invariants.
+2. Remove the transaction raw-value escape by excluding transaction from the application facade; add root and nested descriptor and transaction exploit regressions.
+3. Validate every fake-D1 batch statement belongs to the calling session or direct binding, preserving atomic rollback, bookmarks, and query history.
+4. Serialize fake-D1 atomic batches and test overlapping success/failure isolation.
+5. Run focused unit/integration/lint/typecheck and commit only TASK-432.4-owned files.
+
+5. Close reflective descriptor and internal transaction escape paths found by adversarial review; add regression coverage, then rerun scoped and repository validation.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -114,6 +117,12 @@ The capability-based facade and scheduled recovery boundaries from 968edcda pass
 Corrective fake-D1 fix: direct TestD1Database.batch now preflight-rejects session-owned prepared statements before execution, preserving live session state; regression covers mixed-owner input and confirms no rows or session/database bookkeeping advance. Focused fake-D1/session/local-proxy integration passed 3 files and 17 tests; targeted ESLint passed. Full lint, typecheck, unit, and integration remain affected by unrelated concurrent worktree failures recorded in handoff.
 
 Local handoff commit: 4bb46ff6. Task remains In Progress for parent review; no push or remote access.
+
+Adversarial review of 2d4fd4d found two P1 runtime leaks: getOwnPropertyDescriptor returned raw nested values, and transaction callback results could expose a raw D1 transaction. AGENTS.md and docs/tech-stack.md now persist that reflective descriptors, prototype/constructor values, symbols, callbacks, and internal transaction entry points must not reintroduce raw client/binding/session capabilities. Retry with a fresh Luna correction before handoff.
+
+Narrow correction 2026-08-20: removed transaction from AppDatabase, wrapped configurable own-property descriptor values while preserving Proxy invariants, enforced fake-D1 statement ownership through bind, and serialized atomic batches to prevent rollback clobbering.
+
+Validation: focused D1 integration passed 2 files/15 tests; focused database unit/boundary passed 2 files/18 tests; targeted ESLint and git diff --check passed. Full nuxt typecheck remains blocked by concurrent TASK-432.5 page/operation-registry errors; no BDD was run.
 <!-- SECTION:NOTES:END -->
 
 ## Comments
@@ -176,6 +185,12 @@ author: @codex
 created: 2026-08-19 21:47
 ---
 Corrected the plan of record after concurrent metadata edits: fresh Luna pass is limited to the reviewed mixed-owner fake-D1 rollback P1; preserve 968edcda facade/recovery behavior.
+---
+
+author: @codex
+created: 2026-08-19 22:25
+---
+Fresh corrective review found descriptor and transaction capability leaks. Persistent invariant updated before the next code pass; fix only the facade and its tests.
 ---
 <!-- COMMENTS:END -->
 
