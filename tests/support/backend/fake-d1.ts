@@ -100,15 +100,24 @@ function readLastInsertRowId(database: SqlJsDatabase) {
   return Number(result?.values?.[0]?.[0] ?? 0)
 }
 
+function isReadQuery(sql: string) {
+  const normalizedSql = sql.trimStart().toLowerCase()
+
+  return normalizedSql.startsWith('select')
+    || normalizedSql.startsWith('with')
+    || normalizedSql.startsWith('pragma')
+}
+
 class TestD1PreparedStatement {
   constructor(
     private readonly getDatabase: () => Promise<SqlJsDatabase>,
     private readonly sql: string,
-    private readonly parameters: unknown[] = []
+    private readonly parameters: unknown[] = [],
+    private readonly onQuery?: (isWrite: boolean) => void
   ) {}
 
   bind(...parameters: unknown[]) {
-    return new TestD1PreparedStatement(this.getDatabase, this.sql, parameters)
+    return new TestD1PreparedStatement(this.getDatabase, this.sql, parameters, this.onQuery)
   }
 
   async run(...parameters: unknown[]) {
@@ -121,14 +130,16 @@ class TestD1PreparedStatement {
 
       const normalizedSql = this.sql.trimStart().toLowerCase()
       const isInsert = normalizedSql.startsWith('insert')
-
-      return {
+      const result = {
         success: true,
         meta: createResultMeta({
           changes: database.getRowsModified(),
           lastRowId: isInsert ? readLastInsertRowId(database) : 0
         })
       } satisfies D1RunResult
+
+      this.onQuery?.(!isReadQuery(this.sql))
+      return result
     } finally {
       statement.free()
     }
@@ -146,6 +157,8 @@ class TestD1PreparedStatement {
       while (statement.step()) {
         results.push(statement.getAsObject() as TResult)
       }
+
+      this.onQuery?.(false)
 
       return {
         success: true,
@@ -169,6 +182,8 @@ class TestD1PreparedStatement {
       while (statement.step()) {
         results.push(statement.get())
       }
+
+      this.onQuery?.(false)
 
       return results
     } finally {
@@ -195,13 +210,7 @@ class TestD1PreparedStatement {
   }
 
   async executeForBatch() {
-    const normalizedSql = this.sql.trimStart().toLowerCase()
-
-    if (
-      normalizedSql.startsWith('select')
-      || normalizedSql.startsWith('with')
-      || normalizedSql.startsWith('pragma')
-    ) {
+    if (isReadQuery(this.sql)) {
       return await this.all()
     }
 
@@ -216,10 +225,13 @@ class TestD1PreparedStatement {
       bindStatement(statement, this.resolveParameters(parameters))
 
       if (!statement.step()) {
+        this.onQuery?.(false)
         return null
       }
 
-      return statement.getAsObject() as Record<string, unknown>
+      const row = statement.getAsObject() as Record<string, unknown>
+      this.onQuery?.(false)
+      return row
     } finally {
       statement.free()
     }
@@ -230,10 +242,50 @@ class TestD1PreparedStatement {
   }
 }
 
+class TestD1DatabaseSession {
+  private bookmark: string | null = null
+
+  constructor(
+    private readonly database: TestD1Database,
+    private readonly minimumVersion: number
+  ) {}
+
+  prepare(sql: string) {
+    return new TestD1PreparedStatement(
+      () => this.database.getDatabase(),
+      sql,
+      [],
+      (isWrite) => {
+        this.bookmark = this.database.recordSessionQuery(this.minimumVersion, isWrite)
+      }
+    )
+  }
+
+  async batch(statements: TestD1PreparedStatement[]) {
+    const results: Array<D1QueryResult<Record<string, unknown>> | D1RunResult> = []
+
+    for (const statement of statements) {
+      results.push(await statement.executeForBatch())
+    }
+
+    return results
+  }
+
+  getBookmark() {
+    return this.bookmark
+  }
+}
+
 export class TestD1Database {
   private readonly database = createSqlJsDatabase()
 
   private readonly ready: Promise<void>
+
+  private databaseVersion = 0
+
+  private readonly knownBookmarks = new Map<string, number>()
+
+  private readonly sessionStartHistory: Array<string | undefined> = []
 
   private closed = false
 
@@ -263,9 +315,23 @@ export class TestD1Database {
     return results
   }
 
+  withSession(constraintOrBookmark?: string) {
+    this.sessionStartHistory.push(constraintOrBookmark)
+
+    return new TestD1DatabaseSession(
+      this,
+      this.resolveSessionStart(constraintOrBookmark)
+    )
+  }
+
+  get sessionStarts() {
+    return [...this.sessionStartHistory]
+  }
+
   async exec(sql: string) {
     const database = await this.getDatabase()
     database.run(sql)
+    this.databaseVersion += 1
   }
 
   async close() {
@@ -282,10 +348,35 @@ export class TestD1Database {
     return await this.prepare(sql).first<TResult>(...parameters)
   }
 
-  private async getDatabase() {
+  async getDatabase() {
     const database = await this.database
     await this.ready
     return database
+  }
+
+  resolveSessionStart(constraintOrBookmark?: string) {
+    if (!constraintOrBookmark || constraintOrBookmark === 'first-primary' || constraintOrBookmark === 'first-unconstrained') {
+      return 0
+    }
+
+    const version = this.knownBookmarks.get(constraintOrBookmark)
+
+    if (version === undefined) {
+      throw new Error(`Unknown local D1 bookmark: ${constraintOrBookmark}`)
+    }
+
+    return version
+  }
+
+  recordSessionQuery(minimumVersion: number, isWrite: boolean) {
+    if (isWrite) {
+      this.databaseVersion += 1
+    }
+
+    const version = Math.max(this.databaseVersion, minimumVersion)
+    const bookmark = `test-bookmark-${version}`
+    this.knownBookmarks.set(bookmark, version)
+    return bookmark
   }
 }
 

@@ -1,4 +1,4 @@
-import type { AppDatabase, D1DatabaseBinding } from '#server/database/client'
+import type { AppDatabase, AppDatabaseAccess, D1DatabaseBinding } from '#server/database/client'
 import type { RequestActor } from '#server/auth/actor'
 import type {
   EventAuthorization,
@@ -9,6 +9,7 @@ import type {
 declare module 'h3' {
   interface H3EventContext {
     appDb?: AppDatabase
+    appDbAccess?: AppDatabaseAccess
     d1Database?: D1DatabaseBinding
     requestActor?: RequestActor | Promise<RequestActor>
     eventAuthorizationByEventId?: Map<string, Promise<EventAuthorization>>

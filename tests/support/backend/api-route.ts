@@ -4,7 +4,7 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { createApp, createRouter, eventHandler, toWebHandler } from 'h3'
 import { vi } from 'vitest'
 
-import { createDatabase, setDatabase } from '../../../server/database/client'
+import { createDatabase } from '../../../server/database/client'
 import { platformDocuments, userAuthIdentities, userPlatformDocumentAcceptances } from '../../../server/database/schema'
 import { getCurrentPlatformDocuments } from '../../../server/domains/platform/documents'
 import { createTestD1Database } from './fake-d1'
@@ -256,7 +256,6 @@ export function createApiRouteTestHarness(options: {
     }
     event.context.auth0ClientOptions = {}
     event.context.d1Database = d1Database as never
-    setDatabase(event, database)
   }))
 
   for (const route of options.routes) {

@@ -1,7 +1,8 @@
 import type { EventHandlerRequest, H3Event } from 'h3'
 
-import { defineEventHandler } from 'h3'
+import { defineEventHandler, setResponseHeader } from 'h3'
 
+import { d1BookmarkHeader, getDatabaseBookmark } from '#server/database/client'
 import { sendApiError } from './api-error'
 
 export function defineApiHandler<T>(
@@ -12,6 +13,12 @@ export function defineApiHandler<T>(
       return await handler(event)
     } catch (error) {
       return sendApiError(event, error)
+    } finally {
+      const bookmark = getDatabaseBookmark(event)
+
+      if (bookmark) {
+        setResponseHeader(event, d1BookmarkHeader, bookmark)
+      }
     }
   })
 }

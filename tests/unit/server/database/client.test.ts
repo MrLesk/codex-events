@@ -33,7 +33,15 @@ describe('resolveD1Binding', () => {
   })
 
   test('caches the request-scoped database instance', () => {
-    const event = createEvent({ prepare: vi.fn() })
+    const event = createEvent({
+      prepare: vi.fn(),
+      batch: vi.fn(),
+      withSession: vi.fn(() => ({
+        prepare: vi.fn(),
+        batch: vi.fn(),
+        getBookmark: () => null
+      }))
+    })
 
     const first = getDatabase(event)
     const second = getDatabase(event)

@@ -49,6 +49,12 @@ In the Cloudflare account that will host the platform:
 
 You do not set up the D1 database, R2 buckets, or Queues yourself — the deploy workflow creates them when they do not already exist. The Cloudflare API token is created later, in the GitHub step (section 4), where it is pasted straight in.
 
+### D1 read replication
+
+The checked-in Wrangler configuration declares the D1 binding only. After the deployment workflow creates each environment's D1 database, enable read replication separately in the database's Cloudflare dashboard under **Settings → Enable Read Replication**. Repeat this for production and the optional test database when both environments are used.
+
+The Worker uses D1 Sessions and carries the latest session position in the `X-D1-Bookmark` HTTP header. Read replication is therefore an operator-controlled database setting, not a Worker binding or migration setting; do not add a read-replication field to `wrangler.jsonc` or the generated deployment configuration. Cloudflare documents the dashboard and API enablement paths in [Global read replication](https://developers.cloudflare.com/d1/best-practices/read-replication/).
+
 ## 3. Auth0
 
 Auth0 has two hostnames that are easy to confuse:

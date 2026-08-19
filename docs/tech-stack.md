@@ -36,6 +36,8 @@ This document defines the canonical technology stack for the Codex event platfor
 - D1 access uses one shared request-scoped client and one logical session. Domain functions receive that access and do not create separate bindings, Drizzle clients, or session handles.
 - Replica-eligible reads are pure public or non-sensitive workspace reads where bounded staleness is acceptable. Actor, consent, permission, lifecycle, mutation-result, and read-after-write paths use primary or otherwise strong consistency.
 - D1 Sessions bookmarks carry the causal position from a write or earlier session into a later read. A mutation/read sequence passes the latest bookmark or remains on primary; an unbookmarked replica read must not serve read-after-write data.
+- The latest D1 Sessions bookmark is transported as the `X-D1-Bookmark` request and response header. It is request metadata and never appears in a domain response or request payload.
+- Read-only HTTP requests start with `first-unconstrained`; mutations and explicitly strong reads start with `first-primary` unless an incoming `X-D1-Bookmark` anchors the session. A request uses one consistency constraint and one shared Drizzle client for all domain work.
 - The local fake-D1 and Worker D1 adapters expose equivalent client, session, bookmark, and consistency behavior. Tests exercise shared request reuse and read-after-write paths without test-only bypasses.
 
 ## Media Delivery
