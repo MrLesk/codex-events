@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, getTableColumns, isNull, ne, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, exists, getTableColumns, isNull, ne, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import type { AppDatabase } from '#server/database/client'
@@ -14,6 +14,7 @@ import {
   submissions,
   teamMembers,
   teams,
+  userApplications,
   users
 } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
@@ -31,7 +32,9 @@ import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard
 
 type EventRecord = typeof events.$inferSelect
 type TeamRecord = typeof teams.$inferSelect
+type TeamMemberRecord = typeof teamMembers.$inferSelect
 type SubmissionRecord = typeof submissions.$inferSelect
+type EvaluationCriterionRecord = typeof evaluationCriteria.$inferSelect
 type JudgeAssignmentRecord = typeof judgeAssignments.$inferSelect
 type JudgeCriterionScoreRecord = typeof judgeCriterionScores.$inferSelect
 type PrizeEligibilitySnapshotRecord = typeof prizeEligibilitySnapshots.$inferSelect
@@ -82,6 +85,14 @@ type CompetitionEntry = {
   isBlindRanked: boolean
   isFinalRanked: boolean
 }
+
+const outcomeVisibleStates = new Set<EventRecord['state']>([
+  'pitch',
+  'pitch_review',
+  'final_deliberation',
+  'winners_announced',
+  'completed'
+])
 
 type TeamCompetitionOutcome = {
   isShortlisted: boolean
@@ -689,54 +700,24 @@ export async function refreshCompletedOutcomeCache(database: AppDatabase, eventI
   return collections
 }
 
-async function loadCompetitionEntries(
-  database: AppDatabase,
-  eventId: string
-): Promise<{
-  event: EventRecord | null
-  entries: CompetitionEntry[]
-  totalTeamCount: number
-}> {
-  const event = await database.query.events.findFirst({
-    where: eq(events.id, eventId)
-  })
-
-  if (!event) {
-    return {
-      event: null,
-      entries: [],
-      totalTeamCount: 0
-    }
-  }
-
-  const eventTeams = await database.query.teams.findMany({
-    where: eq(teams.eventId, eventId),
-    orderBy: [asc(teams.createdAt), asc(teams.name)]
-  })
+function buildCompetitionEntries(
+  event: EventRecord,
+  eventTeams: TeamRecord[],
+  activeMembershipRows: TeamMemberRecord[],
+  submissionsForEvent: SubmissionRecord[],
+  assignmentRows: JudgeAssignmentRecord[],
+  criteria: EvaluationCriterionRecord[],
+  scoreRows: JudgeCriterionScoreRecord[]
+) {
+  const totalTeamCount = new Set(activeMembershipRows.map(membership => membership.teamId)).size
 
   if (eventTeams.length === 0) {
     return {
-      event,
-      entries: [],
-      totalTeamCount: 0
+      entries: [] as CompetitionEntry[],
+      totalTeamCount
     }
   }
 
-  const activeMembershipRows = await database
-    .select(getTableColumns(teamMembers))
-    .from(teamMembers)
-    .innerJoin(teams, eq(teams.id, teamMembers.teamId))
-    .where(and(
-      eq(teams.eventId, eventId),
-      isNull(teamMembers.leftAt)
-    ))
-  const totalTeamCount = new Set(activeMembershipRows.map(membership => membership.teamId)).size
-  const submissionsForEvent = await database
-    .select(getTableColumns(submissions))
-    .from(submissions)
-    .innerJoin(teams, eq(teams.id, submissions.teamId))
-    .where(eq(teams.eventId, eventId))
-    .orderBy(desc(submissions.createdAt))
   const latestSubmissionByTeamId = new Map<string, SubmissionRecord>()
 
   for (const submission of submissionsForEvent) {
@@ -757,16 +738,11 @@ async function loadCompetitionEntries(
 
   if (trackedSubmissions.length === 0) {
     return {
-      event,
-      entries: [],
+      entries: [] as CompetitionEntry[],
       totalTeamCount
     }
   }
 
-  const assignmentRows = await database.query.judgeAssignments.findMany({
-    where: eq(judgeAssignments.eventId, eventId),
-    orderBy: [desc(judgeAssignments.createdAt)]
-  })
   const assignmentsBySubmissionId = new Map<string, JudgeAssignmentRecord[]>()
 
   for (const assignment of assignmentRows) {
@@ -775,20 +751,8 @@ async function loadCompetitionEntries(
     assignmentsBySubmissionId.set(assignment.submissionId, assignments)
   }
 
-  const criteria = await database.query.evaluationCriteria.findMany({
-    where: eq(evaluationCriteria.eventId, eventId),
-    orderBy: [asc(evaluationCriteria.displayOrder), asc(evaluationCriteria.createdAt)]
-  })
   const criteriaById = new Map(criteria.map(criterion => [criterion.id, criterion]))
-  const scoreRows = assignmentRows.length === 0
-    ? []
-    : await database
-        .select(getTableColumns(judgeCriterionScores))
-        .from(judgeCriterionScores)
-        .innerJoin(judgeAssignments, eq(judgeAssignments.id, judgeCriterionScores.judgeAssignmentId))
-        .where(eq(judgeAssignments.eventId, eventId))
-        .orderBy(asc(judgeCriterionScores.createdAt))
-  const scoresByAssignmentId = new Map<string, Array<typeof scoreRows[number]>>()
+  const scoresByAssignmentId = new Map<string, JudgeCriterionScoreRecord[]>()
 
   for (const scoreRow of scoreRows) {
     const rows = scoresByAssignmentId.get(scoreRow.judgeAssignmentId) ?? []
@@ -915,9 +879,86 @@ async function loadCompetitionEntries(
   })
 
   return {
-    event,
     entries: entriesWithFinalRanks,
     totalTeamCount
+  }
+}
+
+async function loadCompetitionEntries(
+  database: AppDatabase,
+  eventId: string
+): Promise<{
+  event: EventRecord | null
+  entries: CompetitionEntry[]
+  totalTeamCount: number
+}> {
+  const event = await database.query.events.findFirst({
+    where: eq(events.id, eventId)
+  })
+
+  if (!event) {
+    return {
+      event: null,
+      entries: [],
+      totalTeamCount: 0
+    }
+  }
+
+  const eventTeams = await database.query.teams.findMany({
+    where: eq(teams.eventId, eventId),
+    orderBy: [asc(teams.createdAt), asc(teams.name)]
+  }) as TeamRecord[]
+
+  if (eventTeams.length === 0) {
+    return {
+      event,
+      entries: [],
+      totalTeamCount: 0
+    }
+  }
+
+  const activeMembershipRows = await database
+    .select(getTableColumns(teamMembers))
+    .from(teamMembers)
+    .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+    .where(and(
+      eq(teams.eventId, eventId),
+      isNull(teamMembers.leftAt)
+    )) as TeamMemberRecord[]
+  const submissionsForEvent = await database
+    .select(getTableColumns(submissions))
+    .from(submissions)
+    .innerJoin(teams, eq(teams.id, submissions.teamId))
+    .where(eq(teams.eventId, eventId))
+    .orderBy(desc(submissions.createdAt)) as SubmissionRecord[]
+  const assignmentRows = await database.query.judgeAssignments.findMany({
+    where: eq(judgeAssignments.eventId, eventId),
+    orderBy: [desc(judgeAssignments.createdAt)]
+  }) as JudgeAssignmentRecord[]
+  const criteria = await database.query.evaluationCriteria.findMany({
+    where: eq(evaluationCriteria.eventId, eventId),
+    orderBy: [asc(evaluationCriteria.displayOrder), asc(evaluationCriteria.createdAt)]
+  }) as EvaluationCriterionRecord[]
+  const scoreRows = assignmentRows.length === 0
+    ? []
+    : await database
+      .select(getTableColumns(judgeCriterionScores))
+      .from(judgeCriterionScores)
+      .innerJoin(judgeAssignments, eq(judgeAssignments.id, judgeCriterionScores.judgeAssignmentId))
+      .where(eq(judgeAssignments.eventId, eventId))
+      .orderBy(asc(judgeCriterionScores.createdAt)) as JudgeCriterionScoreRecord[]
+
+  return {
+    event,
+    ...buildCompetitionEntries(
+      event,
+      eventTeams,
+      activeMembershipRows,
+      submissionsForEvent,
+      assignmentRows,
+      criteria,
+      scoreRows
+    )
   }
 }
 
@@ -1037,33 +1078,21 @@ export async function getPublishedProjectsView(database: AppDatabase, eventId: s
   return (await loadCompletedOutcomeCollections(database, eventId)).publishedProjects
 }
 
-export async function getTeamCompetitionOutcome(
-  database: AppDatabase,
-  eventId: string,
-  teamId: string
-): Promise<TeamCompetitionOutcome | null> {
-  const [{ event, entries, totalTeamCount }, prizeList] = await Promise.all([
-    loadCompetitionEntries(database, eventId),
-    database.query.prizes.findMany({
-      where: eq(prizes.eventId, eventId),
-      orderBy: [asc(prizes.displayOrder), asc(prizes.rankEnd), desc(prizes.rankStart), asc(prizes.createdAt)]
-    })
-  ])
-
-  if (!event) {
-    return null
-  }
-
+function buildTeamCompetitionOutcome(
+  event: EventRecord,
+  entries: CompetitionEntry[],
+  totalTeamCount: number,
+  teamId: string,
+  prizeList: PrizeRecord[]
+): TeamCompetitionOutcome | null {
   const teamEntry = entries.find(entry => entry.team.id === teamId)
 
   if (!teamEntry) {
     return null
   }
 
-  const shortlistVisible = ['pitch', 'pitch_review', 'final_deliberation', 'winners_announced', 'completed']
-    .includes(event.state)
   const winnersVisible = event.state === 'completed'
-  const shortlistedSubmissionIds = shortlistVisible
+  const shortlistedSubmissionIds = outcomeVisibleStates.has(event.state)
     ? parseStoredPitchFinalistSubmissionIds(event)
     : []
   const { orderedRankedEntries, finalRanksBySubmissionId } = deriveFinalDeliberationOrdering(event, entries)
@@ -1102,6 +1131,240 @@ export async function getTeamCompetitionOutcome(
     prizes: awardedPrizes,
     rankSummary
   }
+}
+
+function getOwnOutcomeEventScope(database: AppDatabase, userId: string) {
+  return and(
+    eq(events.eventType, 'hackathon'),
+    isNull(events.hiddenAt),
+    or(
+      eq(events.state, 'pitch'),
+      eq(events.state, 'pitch_review'),
+      eq(events.state, 'final_deliberation'),
+      eq(events.state, 'winners_announced'),
+      eq(events.state, 'completed')
+    ),
+    or(
+      exists(
+        database
+          .select({ id: userApplications.id })
+          .from(userApplications)
+          .where(and(
+            eq(userApplications.eventId, events.id),
+            eq(userApplications.userId, userId)
+          ))
+      ),
+      exists(
+        database
+          .select({ id: teamMembers.id })
+          .from(teamMembers)
+          .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+          .where(and(
+            eq(teams.eventId, events.id),
+            eq(teamMembers.userId, userId)
+          ))
+      )
+    )
+  )
+}
+
+export async function getOwnTeamCompetitionOutcomes(
+  database: AppDatabase,
+  userId: string,
+  eventRecords: EventRecord[],
+  primaryTeamIdsByEventId: ReadonlyMap<string, string>
+): Promise<Map<string, TeamCompetitionOutcome>> {
+  if (primaryTeamIdsByEventId.size === 0) {
+    return new Map()
+  }
+
+  const eventScope = getOwnOutcomeEventScope(database, userId)
+  const [
+    eventTeamRows,
+    activeMembershipRows,
+    submissionRows,
+    assignmentRows,
+    criteriaRows,
+    scoreRows,
+    prizeRows
+  ] = await Promise.all([
+    database
+      .select(getTableColumns(teams))
+      .from(teams)
+      .innerJoin(events, eq(events.id, teams.eventId))
+      .where(eventScope)
+      .orderBy(asc(teams.createdAt), asc(teams.name)) as Promise<TeamRecord[]>,
+    database
+      .select(getTableColumns(teamMembers))
+      .from(teamMembers)
+      .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+      .innerJoin(events, eq(events.id, teams.eventId))
+      .where(and(eventScope, isNull(teamMembers.leftAt))) as Promise<TeamMemberRecord[]>,
+    database
+      .select(getTableColumns(submissions))
+      .from(submissions)
+      .innerJoin(teams, eq(teams.id, submissions.teamId))
+      .innerJoin(events, eq(events.id, teams.eventId))
+      .where(eventScope)
+      .orderBy(desc(submissions.createdAt)) as Promise<SubmissionRecord[]>,
+    database
+      .select(getTableColumns(judgeAssignments))
+      .from(judgeAssignments)
+      .innerJoin(events, eq(events.id, judgeAssignments.eventId))
+      .where(eventScope)
+      .orderBy(desc(judgeAssignments.createdAt)) as Promise<JudgeAssignmentRecord[]>,
+    database
+      .select(getTableColumns(evaluationCriteria))
+      .from(evaluationCriteria)
+      .innerJoin(events, eq(events.id, evaluationCriteria.eventId))
+      .where(eventScope)
+      .orderBy(asc(evaluationCriteria.displayOrder), asc(evaluationCriteria.createdAt)) as Promise<EvaluationCriterionRecord[]>,
+    database
+      .select(getTableColumns(judgeCriterionScores))
+      .from(judgeCriterionScores)
+      .innerJoin(judgeAssignments, eq(judgeAssignments.id, judgeCriterionScores.judgeAssignmentId))
+      .innerJoin(events, eq(events.id, judgeAssignments.eventId))
+      .where(eventScope)
+      .orderBy(asc(judgeCriterionScores.createdAt)) as Promise<JudgeCriterionScoreRecord[]>,
+    database
+      .select(getTableColumns(prizes))
+      .from(prizes)
+      .innerJoin(events, eq(events.id, prizes.eventId))
+      .where(eventScope)
+      .orderBy(asc(prizes.displayOrder), asc(prizes.rankEnd), desc(prizes.rankStart), asc(prizes.createdAt)) as Promise<PrizeRecord[]>
+  ])
+
+  const eventById = new Map(eventRecords.map(event => [event.id, event] as const))
+  const eventIdByTeamId = new Map<string, string>()
+  const eventTeamsByEventId = new Map<string, TeamRecord[]>()
+
+  for (const team of eventTeamRows) {
+    eventIdByTeamId.set(team.id, team.eventId)
+    const rows = eventTeamsByEventId.get(team.eventId) ?? []
+    rows.push(team)
+    eventTeamsByEventId.set(team.eventId, rows)
+  }
+
+  const activeMembershipsByEventId = new Map<string, TeamMemberRecord[]>()
+
+  for (const membership of activeMembershipRows) {
+    const eventId = eventIdByTeamId.get(membership.teamId)
+
+    if (!eventId) {
+      continue
+    }
+
+    const rows = activeMembershipsByEventId.get(eventId) ?? []
+    rows.push(membership)
+    activeMembershipsByEventId.set(eventId, rows)
+  }
+
+  const submissionsByEventId = new Map<string, SubmissionRecord[]>()
+
+  for (const submission of submissionRows) {
+    const eventId = eventIdByTeamId.get(submission.teamId)
+
+    if (!eventId) {
+      continue
+    }
+
+    const rows = submissionsByEventId.get(eventId) ?? []
+    rows.push(submission)
+    submissionsByEventId.set(eventId, rows)
+  }
+
+  const assignmentsByEventId = new Map<string, JudgeAssignmentRecord[]>()
+  const eventIdByAssignmentId = new Map<string, string>()
+
+  for (const assignment of assignmentRows) {
+    eventIdByAssignmentId.set(assignment.id, assignment.eventId)
+    const rows = assignmentsByEventId.get(assignment.eventId) ?? []
+    rows.push(assignment)
+    assignmentsByEventId.set(assignment.eventId, rows)
+  }
+
+  const criteriaByEventId = new Map<string, EvaluationCriterionRecord[]>()
+
+  for (const criterion of criteriaRows) {
+    const rows = criteriaByEventId.get(criterion.eventId) ?? []
+    rows.push(criterion)
+    criteriaByEventId.set(criterion.eventId, rows)
+  }
+
+  const scoresByEventId = new Map<string, JudgeCriterionScoreRecord[]>()
+
+  for (const score of scoreRows) {
+    const eventId = eventIdByAssignmentId.get(score.judgeAssignmentId)
+
+    if (!eventId) {
+      continue
+    }
+
+    const rows = scoresByEventId.get(eventId) ?? []
+    rows.push(score)
+    scoresByEventId.set(eventId, rows)
+  }
+
+  const prizesByEventId = new Map<string, PrizeRecord[]>()
+
+  for (const prize of prizeRows) {
+    const rows = prizesByEventId.get(prize.eventId) ?? []
+    rows.push(prize)
+    prizesByEventId.set(prize.eventId, rows)
+  }
+
+  const outcomes = new Map<string, TeamCompetitionOutcome>()
+
+  for (const [eventId, teamId] of primaryTeamIdsByEventId) {
+    const event = eventById.get(eventId)
+
+    if (!event || !outcomeVisibleStates.has(event.state)) {
+      continue
+    }
+
+    const { entries, totalTeamCount } = buildCompetitionEntries(
+      event,
+      eventTeamsByEventId.get(eventId) ?? [],
+      activeMembershipsByEventId.get(eventId) ?? [],
+      submissionsByEventId.get(eventId) ?? [],
+      assignmentsByEventId.get(eventId) ?? [],
+      criteriaByEventId.get(eventId) ?? [],
+      scoresByEventId.get(eventId) ?? []
+    )
+    const outcome = buildTeamCompetitionOutcome(
+      event,
+      entries,
+      totalTeamCount,
+      teamId,
+      prizesByEventId.get(eventId) ?? []
+    )
+
+    if (outcome) {
+      outcomes.set(eventId, outcome)
+    }
+  }
+
+  return outcomes
+}
+
+export async function getTeamCompetitionOutcome(
+  database: AppDatabase,
+  eventId: string,
+  teamId: string
+): Promise<TeamCompetitionOutcome | null> {
+  const [{ event, entries, totalTeamCount }, prizeList] = await Promise.all([
+    loadCompetitionEntries(database, eventId),
+    database.query.prizes.findMany({
+      where: eq(prizes.eventId, eventId),
+      orderBy: [asc(prizes.displayOrder), asc(prizes.rankEnd), desc(prizes.rankStart), asc(prizes.createdAt)]
+    })
+  ])
+
+  if (!event) {
+    return null
+  }
+
+  return buildTeamCompetitionOutcome(event, entries, totalTeamCount, teamId, prizeList)
 }
 
 function assertStoredPitchFinalistsMatchEntries(

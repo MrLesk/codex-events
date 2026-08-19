@@ -13,7 +13,7 @@ import {
   userApplications
 } from '#server/database/schema'
 import { parseEventAgendaItems } from '#server/domains/events'
-import { getTeamCompetitionOutcome } from '#server/domains/outcomes'
+import { getOwnTeamCompetitionOutcomes } from '#server/domains/outcomes'
 import { serializeSubmission } from '#server/domains/submissions'
 import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
 
@@ -22,6 +22,13 @@ type ApplicationRecord = typeof userApplications.$inferSelect
 type TeamRecord = typeof teams.$inferSelect
 type TeamMemberRecord = typeof teamMembers.$inferSelect
 type SubmissionRecord = typeof submissions.$inferSelect
+type ParticipationOutcome = {
+  isShortlisted: boolean
+  isWinner: boolean
+  finalRank: number | null
+  rankedTeamCount: number
+  prizes: Array<{ id: string, name: string }>
+}
 
 const pastParticipationStates = new Set<EventRecord['state']>([
   'winners_announced',
@@ -123,7 +130,7 @@ function serializeParticipationTeam(
   }
 }
 
-function serializeParticipationOutcome(outcome: Awaited<ReturnType<typeof getTeamCompetitionOutcome>>) {
+function serializeParticipationOutcome(outcome: ParticipationOutcome | null) {
   if (!outcome) {
     return null
   }
@@ -285,8 +292,32 @@ export async function listOwnEventParticipation(event: H3Event) {
     membershipEntriesByEventId.set(relatedTeam.eventId, entries)
   }
 
-  const participationRecords = (await Promise.all(relatedEvents
-    .map(async (event: EventRecord) => {
+  const primaryTeamIdsByEventId = new Map<string, string>()
+
+  for (const event of relatedEvents) {
+    if (!outcomeVisibleStates.has(event.state)) {
+      continue
+    }
+
+    const membershipEntries = membershipEntriesByEventId.get(event.id) ?? []
+    const activeMembershipEntry = membershipEntries.find(entry => entry.membership.leftAt === null) ?? null
+    const latestMembershipEntry = activeMembershipEntry ?? membershipEntries[0] ?? null
+    const primaryTeamId = activeMembershipEntry?.team.id ?? latestMembershipEntry?.team.id ?? null
+
+    if (primaryTeamId) {
+      primaryTeamIdsByEventId.set(event.id, primaryTeamId)
+    }
+  }
+
+  const outcomesByEventId = await getOwnTeamCompetitionOutcomes(
+    database,
+    userId,
+    relatedEvents,
+    primaryTeamIdsByEventId
+  )
+
+  const participationRecords = relatedEvents
+    .map((event: EventRecord) => {
       const application = applicationByEventId.get(event.id) ?? null
       const membershipEntries = (membershipEntriesByEventId.get(event.id) ?? [])
         .sort((left, right) =>
@@ -299,7 +330,7 @@ export async function listOwnEventParticipation(event: H3Event) {
         ? latestSubmissionByTeamId.get(primaryTeamId) ?? null
         : null
       const outcome = primaryTeamId && outcomeVisibleStates.has(event.state)
-        ? await getTeamCompetitionOutcome(database, event.id, primaryTeamId)
+        ? outcomesByEventId.get(event.id) ?? null
         : null
 
       if (!application && !latestMembershipEntry) {
@@ -340,7 +371,7 @@ export async function listOwnEventParticipation(event: H3Event) {
         latestSubmission: latestSubmission ? serializeSubmission(latestSubmission) : null,
         outcome: serializeParticipationOutcome(outcome)
       }
-    })))
+    })
     .filter((record): record is NonNullable<typeof record> => Boolean(record))
     .sort((left, right) => sortByRecentTimestampDesc(left.lastActivityAt, right.lastActivityAt))
 

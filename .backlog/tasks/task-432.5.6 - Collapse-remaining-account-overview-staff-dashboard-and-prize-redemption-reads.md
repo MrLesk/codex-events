@@ -3,11 +3,11 @@ id: TASK-432.5.6
 title: >-
   Collapse remaining account overview, staff dashboard, and prize-redemption
   reads
-status: Done
+status: In Progress
 assignee:
   - '@luna-workspace'
 created_date: '2026-08-19 19:54'
-updated_date: '2026-08-19 21:18'
+updated_date: '2026-08-19 22:41'
 labels:
   - architecture
   - performance
@@ -104,6 +104,8 @@ Validation
 3. Migrate the owned account, staff, and prize-redemption composables/pages to one signal-aware useApiData request each; remove client-side staff filtering and per-redemption terms Promise.all; keep redeem mutation separate and refresh only the workspace model.
 4. Add focused shared-contract/domain/composable tests plus integration coverage for consent/visibility/terms grouping, one request session, and query topology; extend the existing local prize BDD topology check without touching other child surfaces.
 5. Run scoped lint, typecheck, unit, integration, and required BDD checks; inspect only scoped changes, record generated operation metadata for TASK-432.5.1, and commit locally without push/deploy/remote D1.
+
+6. Replace per-event getTeamCompetitionOutcome calls in account participation with one fixed-query bulk outcome plan scoped by the authenticated participant; preserve ranking/prize semantics and prove constant query count across many events.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -118,6 +120,10 @@ Implementation and validation update:
 - Request topology is now one shared /api/session bootstrap plus one page read for each first render. The previous prize path was one /api/prize-redemptions/me read plus one /api/events/{eventId}/terms/current read per visible event; it is now one workspace read with terms joined into the response.
 - Canonical docs were reviewed and confirmed unchanged. Scoped diff checks and lint passed; focused unit tests passed (4 files, 32 tests). Full typecheck/lint/unit/integration and BDD runs were attempted locally. Full checks are currently blocked by concurrent shared-worktree changes: the new AppDatabase facade removed .get() while existing actor/MCP/talk-proposal paths still call it; other concurrent routes/components also have unresolved exports/types/generated-registry entries. Integration ended 35 files, 409 tests, 8 passed, 27 failed, including the four new workspace tests at the actor boundary. BDD on isolated local port 3101 ended 63 tests, 7 passed, 56 failed; the new account-overview browser scenario reached the same actor boundary, and the server also reported concurrent missing talk-proposal/judging exports. The stable browser personas do not include a staff-enabled assignment, so staff dashboard browser coverage remains an explicit fixture gap; server integration coverage is present but blocked before authorization. No remote database, deployment, or push was used.
 - Generated operation metadata intentionally remains for the TASK-432.5.1 integrator: id=get.account.overview, toolName=get_account_overview, description=GET /api/account/overview, REST=GET /api/account/overview, input={}, output=data, capabilities=[platform_user], effect=read; id=get.account.staff-workspace, toolName=get_account_staff_workspace, description=GET /api/account/staff-workspace, REST=GET /api/account/staff-workspace, input={}, output=data, capabilities=[platform_user], effect=read; id=get.prize-redemptions.workspace, toolName=get_prize_redemptions_workspace, description=GET /api/prize-redemptions/workspace, REST=GET /api/prize-redemptions/workspace, input={}, output=data, capabilities=[platform_user], effect=read. Do not hand-edit generated catalogs; the integrator should register these routes and regenerate them.
+
+Correction requested: account overview still performs per-event outcome reads. Scope is participation/outcomes helper/tests only; no remote database, deployment, or push.
+
+Correction validation: focused participation/outcome integration test passes with one versus five completed events at a constant query count, correct ranks/prizes, one request session, and no SQL IN predicate; legacy participation integration test passes; outcomes unit tests pass; scoped ESLint and full lint pass; Cloudflare build passes. Full typecheck remains blocked by two unrelated dirty-worktree UI type errors. Full unit has one unrelated useTeamFormationWorkspace timeout (1008/1009 passed); full integration has three unrelated dirty-worktree failures (consent envelope, profile-icon revision expectation, and outcome profile-icon expectation). BDD could not start because localhost:3100 was already occupied. No remote database, deployment, or push.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
