@@ -158,9 +158,13 @@ describe('resolveNonHttpD1Binding', () => {
     expect(typeof database.batch).toBe('function')
     const rootPrototype = Object.getPrototypeOf(database)
     expect(Object.getPrototypeOf(rootPrototype)).toBeNull()
-    for (const key of ['constructor', 'session', 'client']) {
-      expect(Reflect.get(rootPrototype, key)).toBeUndefined()
-      expect(key in rootPrototype).toBe(false)
+    const rootConstructor = Reflect.get(rootPrototype, 'constructor')
+    expect(typeof rootConstructor).toBe('object')
+    expect(rootConstructor).not.toBeNull()
+    expect(Object.isFrozen(rootConstructor)).toBe(true)
+    for (const key of ['session', 'client', 'prepare', 'withSession', '$client']) {
+      expect(Reflect.get(rootConstructor, key)).toBeUndefined()
+      expect(key in rootConstructor).toBe(false)
     }
 
     const dangerousCapabilityKeys = [
@@ -189,9 +193,14 @@ describe('resolveNonHttpD1Binding', () => {
 
       const safePrototype = Object.getPrototypeOf(capability)
       expect(Object.getPrototypeOf(safePrototype)).toBeNull()
-      for (const key of ['constructor', 'session', 'client']) {
-        expect(Reflect.get(safePrototype, key)).toBeUndefined()
-        expect(key in safePrototype).toBe(false)
+      const safeConstructor = Reflect.get(safePrototype, 'constructor')
+      expect(typeof safeConstructor).toBe('object')
+      expect(safeConstructor).not.toBeNull()
+      expect(Object.isFrozen(safeConstructor)).toBe(true)
+      expect(typeof Reflect.get(safeConstructor, Symbol.for('drizzle:entityKind'))).toBe('string')
+      for (const key of ['session', 'client', 'prepare', 'withSession', '$client']) {
+        expect(Reflect.get(safeConstructor, key)).toBeUndefined()
+        expect(key in safeConstructor).toBe(false)
       }
       expect(Reflect.set(capability, 'session', session)).toBe(false)
       expect(Reflect.defineProperty(capability, 'session', {

@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 
 import { drizzle, type DrizzleD1Database } from 'drizzle-orm/d1'
+import { entityKind } from 'drizzle-orm/entity'
 
 import * as schema from './schema'
 import { ApiError } from '#server/http/api-error'
@@ -45,10 +46,63 @@ function isObjectLike(value: unknown): value is object {
   return typeof value === 'object' && value !== null
 }
 
+function createSafeConstructorChain(
+  rawConstructor: object,
+  safeConstructors = new WeakMap<object, object>()
+): object {
+  const existingConstructor = safeConstructors.get(rawConstructor)
+  if (existingConstructor) {
+    return existingConstructor
+  }
+
+  const rawParent = Object.getPrototypeOf(rawConstructor)
+  const safeParent = typeof rawParent === 'function' && rawParent !== Function.prototype
+    ? createSafeConstructorChain(rawParent, safeConstructors)
+    : null
+  const safeConstructor = Object.create(safeParent) as object
+  const entityKindValue = Object.getOwnPropertyDescriptor(rawConstructor, entityKind)?.value
+
+  if (typeof entityKindValue === 'string') {
+    Object.defineProperty(safeConstructor, entityKind, {
+      configurable: false,
+      enumerable: false,
+      value: entityKindValue,
+      writable: false
+    })
+  }
+
+  const frozenConstructor = Object.freeze(safeConstructor)
+  safeConstructors.set(rawConstructor, frozenConstructor)
+  return frozenConstructor
+}
+
 function getSafePrototype(target: object) {
-  const safePrototype = safePrototypeByTarget.get(target) ?? (Object.create(null) as object)
-  safePrototypeByTarget.set(target, safePrototype)
-  return safePrototype
+  const existingPrototype = safePrototypeByTarget.get(target)
+  if (existingPrototype) {
+    return existingPrototype
+  }
+
+  const targetPrototype = Object.getPrototypeOf(target)
+  const rawConstructor = targetPrototype
+    ? Object.getOwnPropertyDescriptor(targetPrototype, 'constructor')?.value
+    : undefined
+  const safeConstructor = typeof rawConstructor === 'function'
+    ? createSafeConstructorChain(rawConstructor)
+    : undefined
+  const safePrototype = Object.create(null) as object
+
+  if (safeConstructor) {
+    Object.defineProperty(safePrototype, 'constructor', {
+      configurable: false,
+      enumerable: false,
+      value: safeConstructor,
+      writable: false
+    })
+  }
+
+  const frozenPrototype = Object.freeze(safePrototype)
+  safePrototypeByTarget.set(target, frozenPrototype)
+  return frozenPrototype
 }
 
 function unwrapRuntimeValue(value: unknown): unknown {
@@ -75,6 +129,11 @@ function unwrapRuntimeValue(value: unknown): unknown {
 
 function wrapRuntimeValue<T>(value: T): T {
   if (!isObjectLike(value) || value instanceof Promise || Array.isArray(value)) {
+    return value
+  }
+
+  const target = targetByFacade.get(value)
+  if (target) {
     return value
   }
 

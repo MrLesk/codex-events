@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'vitest'
-import { eq, sql } from 'drizzle-orm'
+import { eq, exists, sql } from 'drizzle-orm'
 
 import { createNonHttpDatabase } from '../../../../server/database/non-http'
 import { mcpAccessTokens, users } from '../../../../server/database/schema'
@@ -46,6 +46,19 @@ describe('AppDatabase facade', () => {
       .where(eq(users.id, 'facade_user'))
       .as('facade_users')
     const subqueryRows = await database.select({ id: subquery.id }).from(subquery)
+    const existsRows = await database
+      .select({ id: users.id })
+      .from(users)
+      .where(exists(
+        database
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.id, 'facade_user'))
+      ))
+    const sqlConditionRows = await database
+      .select({ id: users.id })
+      .from(users)
+      .where(sql`${users.id} = ${'facade_user'}`)
 
     await database.update(users).set({ displayName: 'Updated Facade User' }).where(eq(users.id, 'facade_user'))
     const batchResults = await database.batch([
@@ -56,6 +69,8 @@ describe('AppDatabase facade', () => {
     expect(rawRow).toEqual({ id: 'facade_user' })
     expect(joinedRows).toEqual([{ userId: 'facade_user', tokenId: 'facade_token' }])
     expect(subqueryRows).toEqual([{ id: 'facade_user' }])
+    expect(existsRows).toEqual([{ id: 'facade_user' }])
+    expect(sqlConditionRows).toEqual([{ id: 'facade_user' }])
     expect(batchResults).toHaveLength(2)
   })
 })

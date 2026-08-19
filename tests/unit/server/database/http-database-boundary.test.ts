@@ -321,7 +321,7 @@ describe('HTTP database boundary', () => {
     expect(source).toMatch(/const deniedCapabilities/u)
     expect(source).toMatch(/new Proxy/u)
     expect(source).not.toMatch(/\b(?:BuilderMethodKey|PublicBuilder|RuntimeBuilderKind|selectBuilderMethods|mutationBuilderMethods|createSafePrototype)\b/u)
-    expect(source.split('\n').length).toBeLessThan(220)
+    expect(source.split('\n').length).toBeLessThan(280)
   })
 
   test('covers every production server module with exact database import and call-site boundaries', () => {
