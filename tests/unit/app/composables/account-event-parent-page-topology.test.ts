@@ -54,6 +54,7 @@ const builderSettingsBoardSource = readFileSync(
 describe('account event parent page request topology', () => {
   test('owns the competition page reads and passes typed page state down', () => {
     expect(pageSource).toContain('useAccountEventPageRequest<AccountEventOperationsPage>(slug, \'operations\'')
+    expect(pageSource).toContain('useAccountEventPageRequest<AccountEventParticipantsPage>(slug, \'participants\'')
     expect(pageSource).toContain('useAccountEventPageRequest<AccountEventSubmissionsPage>(slug, \'submissions\'')
     expect(pageSource).toContain('useAccountEventPageRequest<AccountEventJudgingPage>(slug, \'judging\'')
     expect(pageSource).toContain('useAccountJudgeAssignmentPageRequest<AccountJudgeAssignmentWorkspacePage | null>')
@@ -79,7 +80,10 @@ describe('account event parent page request topology', () => {
     expect(pageSource).toContain('query: pageState.queryForPage(\'operations\')')
     expect(pageSource).toContain('pageState.applySelectedPageState')
     expect(pageSource).toContain('immediate: false')
-    expect(pageSource).toContain('selectedParticipantsResponse?.visibility.canManage')
+    expect(pageSource).toContain('const participantsPage = computed(() => participantsPageRequest.data.value?.page ?? null)')
+    expect(pageSource).toContain(':participants-page="participantsPage"')
+    expect(pageSource).not.toContain('selectedParticipantsResponse?.visibility.canManage')
+    expect(pageSource).not.toContain('AccountEventParticipantsPageResponse')
     expect(pageSource).toContain('shouldLoadParticipantsPage')
     expect(pageSource).not.toContain('isDirectNonEntryNavigation.value && participantsPageRequest.status.value === \'idle\'')
   })

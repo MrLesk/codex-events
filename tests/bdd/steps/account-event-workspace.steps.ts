@@ -349,7 +349,7 @@ Then('the direct account event topology should have one bootstrap and one select
   if (measurement.tab !== 'overview') {
     assertExactPathCount(capture, `/api/account/events/${encodeURIComponent(measurement.slug)}/entry`, 0)
 
-    if (measurement.tab === 'participants' && measurement.pageFamily === 'participants') {
+    if (measurement.pageFamily === 'participants') {
       assertExactPathCount(capture, `/api/account/events/${encodeURIComponent(measurement.slug)}/operations`, 0)
     }
 

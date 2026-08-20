@@ -177,6 +177,32 @@ describe('account-event page route contract', () => {
     })
   })
 
+  test('does not execute the Teams loader when page-family authorization rejects the request', async () => {
+    const {
+      defineAccountEventPageRoute,
+      executeAccountEventPageRoute
+    } = await import('../../../../../server/domains/events/account-event-page-contract')
+    const authorize = vi.fn(() => {
+      throw new Error('team visibility denied')
+    })
+    const load = vi.fn(() => ({ selectedTeamSlug: 'private-team' }))
+    const route = defineAccountEventPageRoute({
+      page: 'teams',
+      schema: z.object({ selectedTeamSlug: z.string() }),
+      authorize,
+      load
+    })
+
+    await expect(executeAccountEventPageRoute(
+      requestEvent('/?selectedTeamSlug=private-team'),
+      'fixture-event',
+      route
+    )).rejects.toThrow('team visibility denied')
+
+    expect(authorize).toHaveBeenCalledOnce()
+    expect(load).not.toHaveBeenCalled()
+  })
+
   test('rejects invalid named routes and invalid child payloads', async () => {
     const {
       accountEventPageParamsSchema,

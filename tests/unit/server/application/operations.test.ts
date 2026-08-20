@@ -62,7 +62,7 @@ describe('MCP application operation registry', () => {
       ['get.account.events.by-slug.participants', 'get_account_events_by_slug_participants', '/api/account/events/:slug/participants', ['event_staff', 'event_admin'], true],
       ['get.account.events.by-slug.workspace', 'get_account_events_by_slug_workspace', '/api/account/events/:slug/workspace', ['platform_user'], true],
       ['get.account.events.by-slug.teams', 'get_account_events_by_slug_teams', '/api/account/events/:slug/teams', ['platform_user'], true],
-      ['get.account.events.by-slug.rosters', 'get_account_events_by_slug_rosters', '/api/account/events/:slug/rosters', ['event_staff', 'event_admin'], true],
+      ['get.account.events.by-slug.rosters', 'get_account_events_by_slug_rosters', '/api/account/events/:slug/rosters', ['platform_user'], true],
       ['get.account.events.by-slug.gallery', 'get_account_events_by_slug_gallery', '/api/account/events/:slug/gallery', ['platform_user'], true],
       ['get.account.events.by-slug.feedback', 'get_account_events_by_slug_feedback', '/api/account/events/:slug/feedback', ['event_judge', 'event_staff', 'event_admin'], true],
       ['get.account.events.by-slug.certificates', 'get_account_events_by_slug_certificates', '/api/account/events/:slug/certificates', ['event_admin'], true],

@@ -1,10 +1,5 @@
 import { z } from 'zod'
 
-import {
-  accountEventOperationsPageSchema,
-  type AccountEventOperationsPage
-} from './account-event-operations-page'
-
 const eventStateSchema = z.enum([
   'draft',
   'registration_open',
@@ -109,18 +104,6 @@ export const accountEventParticipantsPageSchema = z.object({
   })
 })
 
-/**
- * The admin Participants tab is rendered by the operations page model. A
- * direct Participants link therefore resolves the same selected read as an
- * in-workspace admin navigation instead of fetching an unused participant
- * model before operations.
- */
-export const accountEventParticipantsPageResponseSchema = z.union([
-  accountEventParticipantsPageSchema,
-  accountEventOperationsPageSchema
-])
-
 export type AccountEventParticipantApplication = z.infer<typeof applicationSchema>
 export type AccountEventParticipantTrack = z.infer<typeof trackSchema>
 export type AccountEventParticipantsPage = z.infer<typeof accountEventParticipantsPageSchema>
-export type AccountEventParticipantsPageResponse = AccountEventParticipantsPage | AccountEventOperationsPage

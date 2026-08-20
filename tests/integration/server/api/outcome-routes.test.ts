@@ -22,6 +22,7 @@ import disqualifySubmissionHandler from '../../../../server/api/events/[eventId]
 import listWinnersHandler from '../../../../server/api/events/[eventId]/winners/index.get'
 import redeemPrizeRedemptionHandler from '../../../../server/api/prize-redemptions/[redemptionId]/actions/redeem.post'
 import listOwnPrizeRedemptionsHandler from '../../../../server/api/prize-redemptions/me.get'
+import { listOperationalPrizeRedemptionTeamMembersByTeamId } from '../../../../server/domains/prize-redemptions'
 import {
   auditLogs,
   evaluationCriteria,
@@ -2813,6 +2814,45 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         ]
       }
     })
+  })
+
+  test('scopes prize redemption member reads to the requested team ids', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [],
+      sessionUser: {
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedOutcomeEvent(harness, { state: 'winners_announced' })
+    const queryOffset = harness.d1Database.infrastructureQueries.length
+
+    const membersByTeamId = await listOperationalPrizeRedemptionTeamMembersByTeamId(
+      harness.database,
+      'event_1',
+      ['team_1']
+    )
+
+    expect([...membersByTeamId.keys()]).toEqual(['team_1'])
+    expect(membersByTeamId.get('team_1')).toEqual([
+      expect.objectContaining({
+        id: 'team_admin_one',
+        fullName: 'Team Admin One',
+        chatgptEmail: 'team-admin-one@chatgpt.example',
+        openaiOrgId: 'org_team_admin_one'
+      })
+    ])
+    expect(membersByTeamId.has('team_2')).toBe(false)
+
+    const memberQueries = harness.d1Database.infrastructureQueries
+      .slice(queryOffset)
+      .filter(query => query.sql.toLowerCase().includes('team_members'))
+    expect(memberQueries).toHaveLength(1)
+    expect(memberQueries[0]?.sql).toContain('"teams"."id" = ?')
+    expect(memberQueries[0]?.parameters).toContain('team_1')
+    expect(memberQueries[0]?.parameters).not.toContain('team_2')
   })
 
   test('event and platform audit routes expose restricted operational audit reads', async () => {

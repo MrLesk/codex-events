@@ -10,7 +10,10 @@ import type { AccountEventTeamsPage } from '#shared/domains/events/account-event
 import type { AccountEventPageQuery } from '#shared/domains/events/account-event-page-registry'
 import { accountEventTeamsPageSchema } from '#shared/domains/events/account-event-teams-page'
 import { defineAccountEventPageRoute } from './account-event-page-contract'
-import { getAccountEventPageAccess } from './account-event-page-context'
+import {
+  assertAccountEventTeamAccess,
+  getAccountEventPageAccess
+} from './account-event-page-context'
 
 const firstTeamPageSize = 6
 
@@ -26,6 +29,7 @@ export const accountEventTeamsPageRoute = defineAccountEventPageRoute({
   schema: accountEventTeamsPageSchema,
   authorize: async (context) => {
     assertCompetitionEvent(context.event)
+    assertAccountEventTeamAccess(context)
   },
   load: async (context, query: AccountEventPageQuery): Promise<AccountEventTeamsPage> => {
     const accessPromise = getAccountEventPageAccess(context)

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ApiDataResponse } from '~/lib/api'
+import type { AccountEventParticipantsPage } from '#shared/domains/events/account-event-participants-page'
 import type { AccountEventOperationsPage } from '#shared/domains/events/account-event-operations-page'
 import type { AccountEventSubmissionsPage } from '#shared/domains/events/account-event-submissions-page'
 import type { AdminApplicationRecord } from '~/domains/applications/admin-application-record'
@@ -65,6 +66,7 @@ const props = withDefaults(defineProps<{
   eventId: string
   section: AccountEventAdminOperationsSection
   page: AccountEventOperationsPage | AccountEventSubmissionsPage | null
+  participantsPage?: AccountEventParticipantsPage | null
   canManage: boolean
   isLoading?: boolean
   loadErrorMessage?: string
@@ -119,6 +121,7 @@ const pendingActionKey = ref<string | null>(null)
 const pageData = computed(() =>
   props.page as unknown as Partial<AccountEventOperationsPage> | null
 )
+const participantPageData = computed(() => props.participantsPage ?? null)
 const pageStatus = computed<LoadStatus>(() => {
   if (props.isLoading) {
     return 'pending'
@@ -128,12 +131,14 @@ const pageStatus = computed<LoadStatus>(() => {
     return 'error'
   }
 
-  return props.page ? 'success' : 'idle'
+  return (showParticipantsSection.value ? props.participantsPage : props.page) ? 'success' : 'idle'
 })
 const pageLoadError = computed(() => props.loadErrorMessage
   ? new Error(props.loadErrorMessage)
   : null)
-const currentEvent = computed(() => pageData.value?.event as unknown as EventRecord | null)
+const currentEvent = computed(() => (showParticipantsSection.value
+  ? participantPageData.value?.event
+  : pageData.value?.event) as unknown as EventRecord | null)
 const isCompetitionEvent = computed(() => currentEvent.value?.eventType === 'hackathon')
 const loadCompetitionLifecycleData = computed(() => showLifecycleSection.value && isCompetitionEvent.value)
 const showSubmissionsSection = computed(() => section.value === 'submissions' && isCompetitionEvent.value)
@@ -184,7 +189,7 @@ function toSectionErrorMessage(error: unknown, fallback: string) {
   return message && message.length > 0 ? message : fallback
 }
 
-watch([pageData, pageStatus, () => props.loadErrorMessage], ([page, status, errorMessage]) => {
+watch([pageData, participantPageData, pageStatus, () => props.loadErrorMessage], ([page, participantPage, status, errorMessage]) => {
   const nextStatus = normalizeAsyncStatus(status)
   applicationsStatus.value = nextStatus
   shortlistStatus.value = nextStatus
@@ -202,20 +207,28 @@ watch([pageData, pageStatus, () => props.loadErrorMessage], ([page, status, erro
     return
   }
 
-  if (!page) {
+  const pageForSection = showParticipantsSection.value ? participantPage : page
+
+  if (!pageForSection) {
     return
   }
 
-  applications.value = (page.applications ?? []) as unknown as AdminApplicationRecord[]
-  shortlistEntries.value = (page.shortlist?.entries ?? []) as unknown as ShortlistEntry[]
-  shortlistHasSavedSelection.value = page.shortlist?.hasSavedShortlistSelection ?? false
-  finalDeliberation.value = page.finalDeliberation
-    ? page.finalDeliberation as unknown as FinalDeliberationView
+  applications.value = (pageForSection.applications ?? []) as unknown as AdminApplicationRecord[]
+  if (showParticipantsSection.value) {
+    applicationsErrorMessage.value = ''
+    return
+  }
+
+  const operationsPage = pageForSection as Partial<AccountEventOperationsPage>
+  shortlistEntries.value = (operationsPage.shortlist?.entries ?? []) as unknown as ShortlistEntry[]
+  shortlistHasSavedSelection.value = operationsPage.shortlist?.hasSavedShortlistSelection ?? false
+  finalDeliberation.value = operationsPage.finalDeliberation
+    ? operationsPage.finalDeliberation as unknown as FinalDeliberationView
     : null
-  winners.value = (page.winners ?? []) as unknown as WinnerEntry[]
-  redemptions.value = (page.prizeRedemptions?.redemptions ?? []) as unknown as PrizeRedemptionRecord[]
-  prizeRedemptionBlindRankingEntries.value = (page.prizeRedemptions?.blindRankingEntries ?? []) as unknown as PrizeRedemptionBlindRankingEntry[]
-  prizeRedemptionFinalRankingEntries.value = (page.prizeRedemptions?.finalRankingEntries ?? []) as unknown as PrizeRedemptionFinalRankingEntry[]
+  winners.value = (operationsPage.winners ?? []) as unknown as WinnerEntry[]
+  redemptions.value = (operationsPage.prizeRedemptions?.redemptions ?? []) as unknown as PrizeRedemptionRecord[]
+  prizeRedemptionBlindRankingEntries.value = (operationsPage.prizeRedemptions?.blindRankingEntries ?? []) as unknown as PrizeRedemptionBlindRankingEntry[]
+  prizeRedemptionFinalRankingEntries.value = (operationsPage.prizeRedemptions?.finalRankingEntries ?? []) as unknown as PrizeRedemptionFinalRankingEntry[]
   applicationsErrorMessage.value = ''
   shortlistErrorMessage.value = ''
   finalDeliberationErrorMessage.value = ''

@@ -2,7 +2,9 @@ import { afterEach, describe, expect, test } from 'vitest'
 
 import operationsPageGetHandler from '../../../../server/api/account/events/[slug]/operations.get'
 import participantsPageGetHandler from '../../../../server/api/account/events/[slug]/participants.get'
+import rostersPageGetHandler from '../../../../server/api/account/events/[slug]/rosters.get'
 import submissionsPageGetHandler from '../../../../server/api/account/events/[slug]/submissions.get'
+import teamsPageGetHandler from '../../../../server/api/account/events/[slug]/teams.get'
 import judgingPageGetHandler from '../../../../server/api/account/events/[slug]/judging.get'
 import workspacePageGetHandler from '../../../../server/api/account/events/[slug]/workspace.get'
 import judgeInboxGetHandler from '../../../../server/api/account/judging.get'
@@ -13,6 +15,8 @@ import {
   users
 } from '../../../../server/database/schema'
 import { accountEventOperationsPageSchema } from '../../../../shared/domains/events/account-event-operations-page'
+import { accountEventParticipantsPageSchema } from '../../../../shared/domains/events/account-event-participants-page'
+import { accountEventRostersPageSchema } from '../../../../shared/domains/events/account-event-rosters-page'
 import { accountEventSubmissionsPageSchema } from '../../../../shared/domains/events/account-event-submissions-page'
 import { accountEventJudgingPageSchema, accountJudgeInboxPageSchema } from '../../../../shared/domains/events/account-event-judging-page'
 import { accountEventWorkspacePageSchema } from '../../../../shared/domains/events/account-event-workspace-page'
@@ -31,7 +35,7 @@ describe('account event operations, submissions, and judging page reads', () => 
     harness: ReturnType<typeof createApiRouteTestHarness>,
     userId: string,
     role: 'event_admin' | 'judge' | 'staff' | null,
-    applicationStatus?: 'submitted' | 'approved'
+    applicationStatus?: 'submitted' | 'approved' | 'rejected' | 'withdrawn'
   ) {
     const now = '2026-08-19T12:00:00.000Z'
 
@@ -170,7 +174,7 @@ describe('account event operations, submissions, and judging page reads', () => 
     expect(creditQueries[0]?.sql).toContain('event_credit_codes')
   })
 
-  test('uses the operations model for a direct admin Participants link', async () => {
+  test('uses the bounded participant model for a direct admin Participants link', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/account/events/:slug/participants', handler: participantsPageGetHandler }
@@ -198,12 +202,157 @@ describe('account event operations, submissions, and judging page reads', () => 
 
     expect(response.status).toBe(200)
     expect(body.data.visibility.canManage).toBe(true)
-    expect(accountEventOperationsPageSchema.parse(body.data.page)).toMatchObject({
-      event: { id: 'event_page_read' },
-      assignments: { data: [], total: 0 }
+    expect(accountEventParticipantsPageSchema.parse(body.data.page)).toMatchObject({
+      event: { state: 'judging_preparation', tracks: [] },
+      applications: [],
+      pagination: { page: 1, pageSize: 100, total: 0 },
+      statusCounts: {
+        submitted: 0,
+        approved: 0,
+        rejected: 0,
+        withdrawn: 0
+      }
     })
+    expect(body.data.page).not.toHaveProperty('assignments')
     expect(body.data.shell).toBeDefined()
     expect(new Set(harness.d1Database.queries.slice(queryOffset).map(query => query.sessionId))).toHaveLength(1)
+  })
+
+  test.each(['rejected', 'withdrawn'] as const)(
+    'rejects a %s applicant before loading Teams or member data',
+    async (applicationStatus) => {
+      const harness = createApiRouteTestHarness({
+        routes: [
+          { method: 'get', path: '/api/account/events/:slug/teams', handler: teamsPageGetHandler }
+        ],
+        sessionUser: {
+          sub: `auth0|${applicationStatus}_teams_applicant`,
+          email: `${applicationStatus}_teams_applicant@example.com`,
+          name: `${applicationStatus} Teams applicant`
+        }
+      })
+      harnesses.push(harness)
+      await seedFixture(harness, `${applicationStatus}_teams_applicant`, null, applicationStatus)
+
+      const queryOffset = harness.d1Database.queries.length
+      const response = await harness.request(
+        '/api/account/events/page-read-fixture/teams?selectedTeamSlug=private-team'
+      )
+      const body = await response.json() as { data?: unknown }
+
+      expect(response.status).toBe(403)
+      expect(body.data).toBeUndefined()
+      expect(harness.d1Database.queries.slice(queryOffset).some(query => query.sql.includes('event_tracks'))).toBe(false)
+    }
+  )
+
+  test('rejects a judge before loading Teams or member data', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/account/events/:slug/teams', handler: teamsPageGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|judge_teams_denied',
+        email: 'judge_teams_denied@example.com',
+        name: 'Judge Teams denied'
+      }
+    })
+    harnesses.push(harness)
+    await seedFixture(harness, 'judge_teams_denied', 'judge')
+
+    const queryOffset = harness.d1Database.queries.length
+    const response = await harness.request(
+      '/api/account/events/page-read-fixture/teams?selectedTeamSlug=private-team'
+    )
+    const body = await response.json() as { data?: unknown }
+
+    expect(response.status).toBe(403)
+    expect(body.data).toBeUndefined()
+    expect(harness.d1Database.queries.slice(queryOffset).some(query => query.sql.includes('event_tracks'))).toBe(false)
+  })
+
+  test('allows an ordinary workspace user with an application to read published rosters', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/account/events/:slug/rosters', handler: rostersPageGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|roster_workspace_user',
+        email: 'roster_workspace_user@example.com',
+        name: 'Roster workspace user'
+      }
+    })
+    harnesses.push(harness)
+    await seedFixture(harness, 'roster_workspace_user', null, 'submitted')
+    await harness.database.insert(users).values({
+      id: 'published_judge',
+      auth0Subject: 'auth0|published_judge',
+      email: 'published_judge@example.com',
+      displayName: 'Published Judge'
+    })
+    await harness.database.insert(eventRoleAssignments).values({
+      id: 'published_judge_role',
+      eventId: 'event_page_read',
+      userId: 'published_judge',
+      role: 'judge',
+      isInJudgePool: true,
+      isStaff: false,
+      createdAt: '2026-08-19T12:00:00.000Z'
+    })
+
+    const response = await harness.request('/api/account/events/page-read-fixture/rosters')
+    const body = await response.json() as { data: { page: unknown } }
+
+    expect(response.status).toBe(200)
+    expect(accountEventRostersPageSchema.parse(body.data.page)).toMatchObject({
+      publishedJudges: [{ id: 'published_judge', fullName: 'Published Judge' }],
+      canManageRoles: false
+    })
+  })
+
+  test('allows a judge with an event role to read published rosters', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/account/events/:slug/rosters', handler: rostersPageGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|roster_judge',
+        email: 'roster_judge@example.com',
+        name: 'Roster judge'
+      }
+    })
+    harnesses.push(harness)
+    await seedFixture(harness, 'roster_judge', 'judge')
+
+    const response = await harness.request('/api/account/events/page-read-fixture/rosters')
+    const body = await response.json() as { data: { page: unknown } }
+
+    expect(response.status).toBe(200)
+    expect(accountEventRostersPageSchema.parse(body.data.page)).toMatchObject({
+      publishedJudges: [{ id: 'roster_judge', fullName: 'roster_judge' }],
+      canManageRoles: false
+    })
+  })
+
+  test('denies a workspace user without an application or team before loading published rosters', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/account/events/:slug/rosters', handler: rostersPageGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|roster_unaffiliated',
+        email: 'roster_unaffiliated@example.com',
+        name: 'Unaffiliated roster user'
+      }
+    })
+    harnesses.push(harness)
+    await seedFixture(harness, 'roster_unaffiliated', null)
+
+    const response = await harness.request('/api/account/events/page-read-fixture/rosters')
+    const body = await response.json() as { data?: unknown }
+
+    expect(response.status).toBe(403)
+    expect(body.data).toBeUndefined()
   })
 
   test('returns judge event and global inbox page models without event GET fan-out', async () => {

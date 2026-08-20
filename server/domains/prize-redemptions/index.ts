@@ -152,28 +152,37 @@ export async function listOperationalPrizeRedemptionTeamMembersByTeamId(
     }>>()
   }
 
-  const requestedTeamIds = new Set(teamIds)
-  const memberships = (await database
-    .select(getTableColumns(teamMembers))
-    .from(teamMembers)
-    .innerJoin(teams, eq(teams.id, teamMembers.teamId))
-    .where(and(
-      eq(teams.eventId, eventId),
-      isNull(teamMembers.leftAt)
-    ))
-    .orderBy(asc(teamMembers.teamId), asc(teamMembers.joinedAt)))
-    .filter(membership => requestedTeamIds.has(membership.teamId))
-  const relatedUsers = await database
-    .select(getTableColumns(users))
-    .from(users)
-    .innerJoin(teamMembers, eq(teamMembers.userId, users.id))
-    .innerJoin(teams, eq(teams.id, teamMembers.teamId))
-    .where(and(
-      eq(teams.eventId, eventId),
-      isNull(teamMembers.leftAt),
-      isNull(users.deletedAt)
-    ))
-  const usersById = new Map(relatedUsers.map(user => [user.id, user] as const))
+  const requestedTeamIds = [...new Set(teamIds)]
+  const membershipRows = (await Promise.all(requestedTeamIds.map(teamId =>
+    database
+      .select({
+        teamId: teamMembers.teamId,
+        id: users.id,
+        displayName: users.displayName,
+        firstName: users.firstName,
+        familyName: users.familyName,
+        company: users.company,
+        bio: users.bio,
+        xProfileUrl: users.xProfileUrl,
+        linkedinProfileUrl: users.linkedinProfileUrl,
+        githubProfileUrl: users.githubProfileUrl,
+        profileIconUpdatedAt: users.profileIconUpdatedAt,
+        profileIconRevision: users.profileIconRevision,
+        profileIconObjectKey: users.profileIconObjectKey,
+        chatgptEmail: users.chatgptEmail,
+        openaiOrgId: users.openaiOrgId
+      })
+      .from(teamMembers)
+      .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+      .innerJoin(users, eq(users.id, teamMembers.userId))
+      .where(and(
+        eq(teams.eventId, eventId),
+        eq(teams.id, teamId),
+        isNull(teamMembers.leftAt),
+        isNull(users.deletedAt)
+      ))
+      .orderBy(asc(teamMembers.joinedAt))
+  ))).flat()
   const teamMembersByTeamId = new Map<string, Array<{
     id: string
     fullName: string
@@ -186,15 +195,9 @@ export async function listOperationalPrizeRedemptionTeamMembersByTeamId(
     profileIconUrl: string | null
   }>>()
 
-  for (const membership of memberships) {
-    const user = usersById.get(membership.userId)
-
-    if (!user) {
-      continue
-    }
-
+  for (const membership of membershipRows) {
     const teamRosterMembers = teamMembersByTeamId.get(membership.teamId) ?? []
-    const member = serializePublishedEventRosterMember(user)
+    const member = serializePublishedEventRosterMember(membership)
 
     teamRosterMembers.push({
       id: member.id,
@@ -203,8 +206,8 @@ export async function listOperationalPrizeRedemptionTeamMembersByTeamId(
       xProfileUrl: member.xProfileUrl,
       linkedinProfileUrl: member.linkedinProfileUrl,
       githubProfileUrl: member.githubProfileUrl,
-      chatgptEmail: user.chatgptEmail,
-      openaiOrgId: user.openaiOrgId,
+      chatgptEmail: membership.chatgptEmail,
+      openaiOrgId: membership.openaiOrgId,
       profileIconUrl: null
     })
     teamMembersByTeamId.set(membership.teamId, teamRosterMembers)

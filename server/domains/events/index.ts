@@ -700,6 +700,21 @@ type EventTermsDocumentRecord = typeof eventTermsDocuments.$inferSelect
 type EvaluationCriterionRecord = typeof evaluationCriteria.$inferSelect
 type PrizeRecord = typeof prizes.$inferSelect
 type UserRecord = typeof users.$inferSelect
+type PublishedEventRosterUser = Pick<
+  UserRecord,
+  | 'id'
+  | 'displayName'
+  | 'firstName'
+  | 'familyName'
+  | 'company'
+  | 'bio'
+  | 'xProfileUrl'
+  | 'linkedinProfileUrl'
+  | 'githubProfileUrl'
+  | 'profileIconUpdatedAt'
+  | 'profileIconRevision'
+  | 'profileIconObjectKey'
+>
 export type EventAgendaItem = z.infer<typeof agendaItemSchema>
 export type EventTrackInput = z.infer<typeof trackSchema>
 export type EventTrackResourceInput = z.infer<typeof trackResourceSchema>
@@ -2346,7 +2361,7 @@ export function serializeEventRoleUserSummary(user: typeof users.$inferSelect) {
 }
 
 export function serializePublishedEventRosterMember(
-  user: UserRecord,
+  user: PublishedEventRosterUser,
   staffTrack?: EventTrackRecord | null
 ) {
   return {

@@ -19,8 +19,7 @@ import type { AccountEventCertificatesPage } from '#shared/domains/events/accoun
 import type { AccountEventFeedbackPage } from '#shared/domains/events/account-event-feedback-page'
 import type { AccountEventGalleryPage } from '#shared/domains/events/account-event-gallery-page'
 import type {
-  AccountEventParticipantsPage,
-  AccountEventParticipantsPageResponse
+  AccountEventParticipantsPage
 } from '#shared/domains/events/account-event-participants-page'
 import type { AccountEventTeamsPage } from '#shared/domains/events/account-event-teams-page'
 import type { AccountEventWorkspacePage } from '#shared/domains/events/account-event-workspace-page'
@@ -525,7 +524,7 @@ const feedbackPageRequest = useAccountEventPageRequest<AccountEventFeedbackPage>
   immediate: false,
   query: pageState.queryForPage('feedback')
 })
-const participantsPageRequest = useAccountEventPageRequest<AccountEventParticipantsPageResponse>(slug, 'participants', {
+const participantsPageRequest = useAccountEventPageRequest<AccountEventParticipantsPage>(slug, 'participants', {
   immediate: false,
   query: pageState.queryForPage('participants')
 })
@@ -567,24 +566,10 @@ const assignmentPageRequest = useAccountJudgeAssignmentPageRequest<AccountJudgeA
 const workspacePage = computed(() => workspacePageRequest.data.value?.page ?? null)
 const galleryPage = computed(() => galleryPageRequest.data.value?.page ?? null)
 const feedbackPage = computed(() => feedbackPageRequest.data.value?.page ?? null)
-const participantsPage = computed(() => {
-  const response = participantsPageRequest.data.value
-
-  return response?.visibility.canManage
-    ? null
-    : (response?.page as AccountEventParticipantsPage | null | undefined) ?? null
-})
+const participantsPage = computed(() => participantsPageRequest.data.value?.page ?? null)
 const certificatesPage = computed(() => certificatesPageRequest.data.value?.page ?? null)
 const teamsPage = computed(() => teamsPageRequest.data.value?.page ?? null)
-const operationsPage = computed(() => {
-  const selectedParticipantsResponse = participantsPageRequest.data.value
-
-  if (selectedParticipantsResponse?.visibility.canManage) {
-    return selectedParticipantsResponse.page as AccountEventOperationsPage
-  }
-
-  return operationsPageRequest.data.value?.page ?? null
-})
+const operationsPage = computed(() => operationsPageRequest.data.value?.page ?? null)
 const submissionsPage = computed(() => submissionsPageRequest.data.value?.page ?? null)
 const judgingPage = computed(() => judgingPageRequest.data.value?.page ?? null)
 const assignmentPage = computed(() => assignmentPageRequest.data.value ?? null)
@@ -594,15 +579,7 @@ const feedbackPageIsLoading = computed(() => feedbackPageRequest.pending.value)
 const participantsPageIsLoading = computed(() => participantsPageRequest.pending.value)
 const certificatesPageIsLoading = computed(() => certificatesPageRequest.pending.value)
 const teamsPageIsLoading = computed(() => teamsPageRequest.pending.value)
-const directParticipantsOperationsRead = computed(() =>
-  isDirectNonEntryNavigation.value
-  && requestedWorkspaceTab.value === 'participants'
-  && canAdmin.value
-)
-const operationsPageIsLoading = computed(() =>
-  operationsPageRequest.pending.value
-  || (directParticipantsOperationsRead.value && participantsPageRequest.pending.value)
-)
+const operationsPageIsLoading = computed(() => operationsPageRequest.pending.value)
 const submissionsPageIsLoading = computed(() => submissionsPageRequest.pending.value)
 const judgingPageIsLoading = computed(() => judgingPageRequest.pending.value)
 const assignmentPageIsLoading = computed(() => assignmentPageRequest.pending.value)
@@ -625,11 +602,9 @@ const teamsPageErrorMessage = computed(() => teamsPageRequest.error.value
   ? normalizeParticipantApiError(teamsPageRequest.error.value).message
   : '')
 const operationsPageErrorMessage = computed(() => {
-  const error = directParticipantsOperationsRead.value
-    ? participantsPageRequest.error.value
-    : operationsPageRequest.error.value
-
-  return error ? normalizeParticipantApiError(error).message : ''
+  return operationsPageRequest.error.value
+    ? normalizeParticipantApiError(operationsPageRequest.error.value).message
+    : ''
 })
 const submissionsPageErrorMessage = computed(() => submissionsPageRequest.error.value
   ? normalizeParticipantApiError(submissionsPageRequest.error.value).message
@@ -667,8 +642,7 @@ const shouldLoadParticipantsPage = computed(() =>
     isDirectNonEntryNavigation.value
     || (
       entryPageRequest.status.value === 'success'
-      && !canAdmin.value
-      && canViewParticipantsAndTeams.value
+      && (canAdmin.value || canViewParticipantsAndTeams.value)
     )
   )
 )
@@ -682,15 +656,8 @@ watch(shouldLoadParticipantsPage, (isEnabled, wasEnabled) => {
   }
 }, { immediate: true })
 const shouldLoadOperationsPage = computed(() =>
-  (
-    activeSection.value === 'operations'
-    && (isDirectNonEntryNavigation.value || canAdmin.value)
-  )
-  || (
-    activeSection.value === 'participants'
-    && !isDirectNonEntryNavigation.value
-    && canAdmin.value
-  )
+  activeSection.value === 'operations'
+  && (isDirectNonEntryNavigation.value || canAdmin.value)
 )
 watch(shouldLoadOperationsPage, (isEnabled, wasEnabled) => {
   if (wasEnabled && !isEnabled) {
@@ -2003,11 +1970,12 @@ useSeoMeta({
           v-if="canAdmin"
           :event-id="workspaceEventId"
           section="participants"
-          :page="operationsPage"
+          :page="null"
+          :participants-page="participantsPage"
           :can-manage="canAdmin"
-          :is-loading="operationsPageIsLoading"
-          :load-error-message="operationsPageErrorMessage"
-          :refresh-page="operationsPageRequest.refresh"
+          :is-loading="participantsPageIsLoading"
+          :load-error-message="participantsPageErrorMessage"
+          :refresh-page="participantsPageRequest.refresh"
         />
 
         <LazyAccountEventParticipantVisibilityPanel

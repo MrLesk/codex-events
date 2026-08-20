@@ -159,6 +159,50 @@ export function getAccountEventPageAccess(
   return context.participantAccessPromise
 }
 
+export function assertAccountEventTeamAccess(context: AccountEventPageContext) {
+  if (context.authorization.canViewParticipantsAndTeams) {
+    return
+  }
+
+  const hasActiveTeamMembership = Boolean(
+    context.access?.memberships.some(({ membership }) => membership.leftAt === null)
+  )
+  const hasApprovedApplication = context.access?.application?.status === 'approved'
+
+  if (hasActiveTeamMembership || hasApprovedApplication) {
+    return
+  }
+
+  throw new ApiError({
+    statusCode: 403,
+    code: 'team_visibility_forbidden',
+    message: 'This operation requires approved participation or team membership in the event.',
+    details: {
+      eventId: context.event.id
+    }
+  })
+}
+
+export function assertAccountEventRosterAccess(context: AccountEventPageContext) {
+  if (
+    context.authorization.isPlatformAdmin
+    || context.authorization.explicitRole !== null
+    || context.access?.application
+    || context.access?.memberships.some(({ membership }) => membership.leftAt === null)
+  ) {
+    return
+  }
+
+  throw new ApiError({
+    statusCode: 403,
+    code: 'event_roster_visibility_required',
+    message: 'This operation requires access to the published event rosters.',
+    details: {
+      eventId: context.event.id
+    }
+  })
+}
+
 /**
  * Resolve the shared page boundary once. The actor, authorization, and
  * database accessors are request-cached; child loaders receive this context

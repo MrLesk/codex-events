@@ -11,7 +11,7 @@ export const applicationOperation = defineStructuredRouteOperation({
   rest: { method: 'GET', path: '/api/account/events/:slug/rosters' },
   input: { params: routeSlugParamsSchema },
   output: 'data',
-  capabilities: ['event_staff', 'event_admin'],
+  capabilities: ['platform_user'],
   effect: 'read'
 }, async (h3Event) => {
   const { slug } = parseValidatedParams(h3Event, routeSlugParamsSchema)

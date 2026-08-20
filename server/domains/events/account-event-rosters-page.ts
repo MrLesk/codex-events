@@ -1,17 +1,17 @@
 import { and, asc, eq, getTableColumns, isNull } from 'drizzle-orm'
 
 import { listPublishedEventRosterMembers, serializeEventRoleAssignment } from '#server/domains/events'
-import { assertEventParticipantVisibilityAccess } from '#server/auth/authorization'
 import { eventRoleAssignments, users } from '#server/database/schema'
 import type { AccountEventRostersPage } from '#shared/domains/events/account-event-rosters-page'
 import { accountEventRostersPageSchema } from '#shared/domains/events/account-event-rosters-page'
 import { defineAccountEventPageRoute } from './account-event-page-contract'
+import { assertAccountEventRosterAccess } from './account-event-page-context'
 
 export const accountEventRostersPageRoute = defineAccountEventPageRoute({
   page: 'rosters',
   schema: accountEventRostersPageSchema,
   authorize: async (context) => {
-    assertEventParticipantVisibilityAccess(context.authorization)
+    assertAccountEventRosterAccess(context)
   },
   load: async (context): Promise<AccountEventRostersPage> => {
     const [publishedJudges, publishedStaff] = await Promise.all([

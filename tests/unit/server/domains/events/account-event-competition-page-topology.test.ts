@@ -9,6 +9,18 @@ const submissionsSource = readFileSync(
   new URL('../../../../../server/domains/events/account-event-submissions-page.ts', import.meta.url),
   'utf8'
 )
+const participantsSource = readFileSync(
+  new URL('../../../../../server/domains/events/account-event-participants-page.ts', import.meta.url),
+  'utf8'
+)
+const participantsContractSource = readFileSync(
+  new URL('../../../../../shared/domains/events/account-event-participants-page.ts', import.meta.url),
+  'utf8'
+)
+const adminOperationsPanelSource = readFileSync(
+  new URL('../../../../../app/components/account/events/AccountEventAdminOperationsPanel.vue', import.meta.url),
+  'utf8'
+)
 const judgingSource = readFileSync(
   new URL('../../../../../server/domains/events/account-event-judging-page.ts', import.meta.url),
   'utf8'
@@ -43,6 +55,14 @@ describe('TASK-432.5.3 server request topology', () => {
   test('keeps bounded first-page reads explicit and uses one named assembler per page', () => {
     expect(operationsSource).toContain('page_size: 100')
     expect(submissionsSource).toContain('page_size: 100')
+    expect(participantsSource).toContain('accountEventParticipantsPageSchema')
+    expect(participantsSource).toContain('listEventApplications')
+    expect(participantsSource).not.toContain('account-event-operations-page')
+    expect(participantsSource).not.toContain('loadAccountEventOperationsPage')
+    expect(participantsContractSource).toContain('export const accountEventParticipantsPageSchema')
+    expect(participantsContractSource).not.toContain('accountEventOperationsPageSchema')
+    expect(adminOperationsPanelSource).toContain('participantsPage?: AccountEventParticipantsPage | null')
+    expect(adminOperationsPanelSource).not.toContain('AccountEventOperationsPage | AccountEventSubmissionsPage | AccountEventParticipantsPage')
     expect(operationsSource).toContain('loadAccountEventOperationsPage')
     expect(submissionsSource).toContain('loadAccountEventSubmissionsPage')
     expect(judgingSource).toContain('loadAccountEventJudgingPage')
