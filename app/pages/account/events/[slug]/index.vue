@@ -32,11 +32,7 @@ import type {
   AccountJudgeAssignmentWorkspacePage
 } from '#shared/domains/events/account-event-judging-page'
 import type { AccountEventSettingsPage } from '#shared/domains/events/account-event-settings-page'
-import type { AccountEventPageShell } from '#shared/domains/events/account-event-page-shell'
-import {
-  shouldIncludeAccountEventShell,
-  type AccountEventPageVisibility
-} from '~/domains/events/account-workspace-page'
+import type { AccountEventPageVisibility } from '~/domains/events/account-workspace-page'
 import {
   buildVersionedEventImageUrl,
   formatAccountEventHeaderSummary,
@@ -115,6 +111,10 @@ import {
   useAccountEventPageRequest,
   useAccountJudgeAssignmentPageRequest
 } from '~/composables/useAccountEventPageRequest'
+import {
+  resolveInitialAccountEventPageFamily,
+  useAccountEventPageState
+} from '~/composables/useAccountEventPageState'
 
 definePageMeta({
   middleware: ['require-platform-account']
@@ -130,7 +130,6 @@ type AccountWorkspaceEvent = AccountEventEntryEvent
 type AccountEventAccessRecord = AccountEventEntryAccess
 
 const route = useRoute()
-const initialRouteFullPath = route.fullPath
 const slug = computed(() => String(route.params.slug ?? '').trim())
 const { actor, refresh: refreshActor } = useAccountLifecycleActor()
 
@@ -161,19 +160,30 @@ const entryPageRequest = useAccountEventPageRequest<AccountEventEntryPage>(slug,
     ? { includeAdminEventConfiguration: true }
     : {})
 })
-const directPageQuery = computed(() => shouldIncludeAccountEventShell({
-  isHardDirectNavigation: route.fullPath === initialRouteFullPath,
-  isNonEntryNavigation: isDirectNonEntryNavigation.value,
-  hasEntryState: Boolean(entryPageRequest.data.value?.page)
+const initialPageFamily = resolveInitialAccountEventPageFamily({
+  isDirectNonEntryNavigation: isDirectNonEntryNavigation.value,
+  selectedTab: requestedWorkspaceTab.value
 })
-  ? { includeEventShell: true }
-  : {})
+const pageState = useAccountEventPageState({
+  initialPageFamily,
+  slug,
+  authorizationGeneration: entryPageRequest.authorizationGeneration
+})
+const includePrizesAdminEventConfiguration = shallowRef(requestedTab.value === 'prizes')
+watch(requestedTab, (tab) => {
+  if (tab === 'prizes') {
+    includePrizesAdminEventConfiguration.value = true
+  }
+}, { immediate: true })
+const prizesPageQuery = computed(() => ({
+  ...pageState.queryForPage('prizes'),
+  ...(includePrizesAdminEventConfiguration.value
+    ? { includeAdminEventConfiguration: true }
+    : {})
+}))
 const prizesPageRequest = useAccountEventPageRequest<AccountEventPrizesPage>(slug, 'prizes', {
   immediate: false,
-  query: computed(() => ({
-    ...(requestedTab.value === 'prizes' ? { includeAdminEventConfiguration: true } : {}),
-    ...directPageQuery.value
-  }))
+  query: prizesPageQuery
 })
 const entryPage = computed(() => entryPageRequest.data.value?.page ?? null)
 const prizesPage = computed(() => prizesPageRequest.data.value?.page ?? null)
@@ -193,7 +203,7 @@ const prizesPageIsLoading = computed(() => prizesPageRequest.pending.value)
 const prizesPageErrorMessage = computed(() => prizesPageRequest.error.value
   ? normalizeParticipantApiError(prizesPageRequest.error.value).message
   : '')
-const pageShell = shallowRef<AccountEventPageShell | null>(null)
+const pageShell = pageState.pageShell
 const pageVisibility = shallowRef<AccountEventPageVisibility | null>(null)
 const selectedPagePending = ref(false)
 const selectedPageError = shallowRef<unknown | null>(null)
@@ -481,7 +491,7 @@ const activeSection = computed<AccountEventWorkspaceTab>(() => {
 })
 const settingsPageRequest = useAccountEventPageRequest<AccountEventSettingsPage>(slug, 'settings', {
   immediate: false,
-  query: directPageQuery
+  query: pageState.queryForPage('settings')
 })
 const settingsPage = computed(() => settingsPageRequest.data.value?.page ?? null)
 const settingsPageIsLoading = computed(() => settingsPageRequest.pending.value)
@@ -505,42 +515,42 @@ const selectedTeamSlug = computed(() => normalizeTeamSlugQueryValue(route.query.
 const selectedJudgeAssignmentId = computed(() => normalizeJudgeAssignmentIdQueryValue(route.query.assignment))
 const workspacePageRequest = useAccountEventPageRequest<AccountEventWorkspacePage>(slug, 'workspace', {
   immediate: false,
-  query: directPageQuery
+  query: pageState.queryForPage('workspace')
 })
 const galleryPageRequest = useAccountEventPageRequest<AccountEventGalleryPage>(slug, 'gallery', {
   immediate: false,
-  query: directPageQuery
+  query: pageState.queryForPage('gallery')
 })
 const feedbackPageRequest = useAccountEventPageRequest<AccountEventFeedbackPage>(slug, 'feedback', {
   immediate: false,
-  query: directPageQuery
+  query: pageState.queryForPage('feedback')
 })
 const participantsPageRequest = useAccountEventPageRequest<AccountEventParticipantsPageResponse>(slug, 'participants', {
   immediate: false,
-  query: directPageQuery
+  query: pageState.queryForPage('participants')
 })
 const certificatesPageRequest = useAccountEventPageRequest<AccountEventCertificatesPage>(slug, 'certificates', {
   immediate: false,
-  query: directPageQuery
+  query: pageState.queryForPage('certificates')
 })
 const teamsPageRequest = useAccountEventPageRequest<AccountEventTeamsPage>(slug, 'teams', {
   immediate: false,
   query: computed(() => ({
-    ...directPageQuery.value,
+    ...pageState.queryForPage('teams'),
     selectedTeamSlug: selectedTeamSlug.value
   }))
 })
 const operationsPageRequest = useAccountEventPageRequest<AccountEventOperationsPage>(slug, 'operations', {
   immediate: false,
-  query: directPageQuery
+  query: pageState.queryForPage('operations')
 })
 const submissionsPageRequest = useAccountEventPageRequest<AccountEventSubmissionsPage>(slug, 'submissions', {
   immediate: false,
-  query: directPageQuery
+  query: pageState.queryForPage('submissions')
 })
 const judgingPageRequest = useAccountEventPageRequest<AccountEventJudgingPage>(slug, 'judging', {
   immediate: false,
-  query: directPageQuery
+  query: pageState.queryForPage('judging')
 })
 const shouldLoadAssignmentPage = computed(() =>
   activeSection.value === 'judging' && Boolean(selectedJudgeAssignmentId.value)
@@ -727,7 +737,7 @@ watch(shouldLoadAssignmentPage, (isEnabled, wasEnabled) => {
 }, { immediate: true })
 const rostersPageRequest = useAccountEventPageRequest<AccountEventRostersPage>(slug, 'rosters', {
   immediate: false,
-  query: directPageQuery
+  query: pageState.queryForPage('rosters')
 })
 const rostersPage = computed(() => rostersPageRequest.data.value?.page ?? null)
 const rostersPageIsLoading = computed(() => rostersPageRequest.pending.value)
@@ -774,7 +784,10 @@ const selectedPageRequestState = computed(() => {
 watchEffect(() => {
   const requestState = selectedPageRequestState.value
 
-  pageShell.value = entryPage.value ? null : requestState.data?.shell ?? null
+  pageState.applySelectedPageState({
+    entryPagePresent: Boolean(entryPage.value),
+    shell: requestState.data?.shell
+  })
   pageVisibility.value = entryPageRequest.data.value?.visibility
     ?? requestState.visibility
     ?? null

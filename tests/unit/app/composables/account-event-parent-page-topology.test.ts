@@ -2,8 +2,6 @@ import { readFileSync } from 'node:fs'
 
 import { describe, expect, test } from 'vitest'
 
-import { shouldIncludeAccountEventShell } from '../../../../app/domains/events/account-workspace-page'
-
 const pageSource = readFileSync(
   new URL('../../../../app/pages/account/events/[slug]/index.vue', import.meta.url),
   'utf8'
@@ -73,37 +71,16 @@ describe('account event parent page request topology', () => {
       pageSource.indexOf('const prizesPageRequest'),
       pageSource.indexOf('const entryPage =')
     )
-    expect(prizesRequestSource).toContain('...directPageQuery.value')
-    expect(pageSource).toContain('const directPageQuery = computed(() => shouldIncludeAccountEventShell({')
-    expect(pageSource).toContain('isHardDirectNavigation: route.fullPath === initialRouteFullPath')
-    expect(pageSource).toContain('hasEntryState: Boolean(entryPageRequest.data.value?.page)')
-    expect(pageSource).toContain('{ includeEventShell: true }')
+    expect(prizesRequestSource).toContain('query: prizesPageQuery')
+    expect(pageSource).toContain('const initialPageFamily = resolveInitialAccountEventPageFamily({')
+    expect(pageSource).toContain('const pageState = useAccountEventPageState({')
+    expect(pageSource).not.toContain('initialRouteFullPath')
+    expect(pageSource).toContain('query: pageState.queryForPage(\'participants\')')
+    expect(pageSource).toContain('query: pageState.queryForPage(\'operations\')')
+    expect(pageSource).toContain('pageState.applySelectedPageState')
     expect(pageSource).toContain('immediate: false')
     expect(pageSource).toContain('selectedParticipantsResponse?.visibility.canManage')
     expect(pageSource).toContain('shouldLoadParticipantsPage')
-  })
-
-  test('only includes the shell for an initial non-entry navigation without entry state', () => {
-    expect(shouldIncludeAccountEventShell({
-      isHardDirectNavigation: true,
-      isNonEntryNavigation: true,
-      hasEntryState: false
-    })).toBe(true)
-    expect(shouldIncludeAccountEventShell({
-      isHardDirectNavigation: false,
-      isNonEntryNavigation: true,
-      hasEntryState: false
-    })).toBe(false)
-    expect(shouldIncludeAccountEventShell({
-      isHardDirectNavigation: true,
-      isNonEntryNavigation: false,
-      hasEntryState: true
-    })).toBe(false)
-    expect(shouldIncludeAccountEventShell({
-      isHardDirectNavigation: true,
-      isNonEntryNavigation: true,
-      hasEntryState: true
-    })).toBe(false)
   })
 
   test('keeps selected-team navigation in the page request instead of a slug lookup', () => {
