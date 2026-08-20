@@ -12,6 +12,18 @@ function assertApplicationDatabaseType(database: AppDatabase) {
   void database.query
   void database.batch
   void database.select().from(users).execute
+  // @ts-expect-error Unsupported root query-builder construction must not be part of AppDatabase.
+  void database.selectDistinct
+  // @ts-expect-error Unsupported root CTE construction must not be part of AppDatabase.
+  void database.$with
+  // @ts-expect-error Unsupported root CTE execution must not be part of AppDatabase.
+  void database.with
+  // @ts-expect-error Unsupported root raw execution must not be part of AppDatabase.
+  void database.run
+  // @ts-expect-error Unsupported root raw execution must not be part of AppDatabase.
+  void database.all
+  // @ts-expect-error Unsupported root raw execution must not be part of AppDatabase.
+  void database.values
   // @ts-expect-error Application databases must not expose the internal database session.
   void database.session
   // @ts-expect-error Application databases must not expose raw session preparation.
@@ -111,8 +123,13 @@ describe('resolveNonHttpD1Binding', () => {
     expect(Object.prototype.hasOwnProperty.call(database, '$client')).toBe(false)
     expect('$client' in database).toBe(false)
     expect(Reflect.get(database, '$client')).toBeUndefined()
-    expect(Object.isExtensible(database)).toBe(true)
+    expect(Object.isFrozen(database)).toBe(true)
+    expect(Object.getPrototypeOf(database)).toBeNull()
     expect(Reflect.set(database, '$client', session)).toBe(false)
+    expect(Reflect.defineProperty(database, '$client', {
+      configurable: true,
+      value: session
+    })).toBe(false)
     expect(Reflect.get(database, '$client')).toBeUndefined()
     expect(requestSession).toBe(session)
     expect(session.prepare).toHaveBeenCalledWith('select 1')
@@ -158,16 +175,39 @@ describe('resolveNonHttpD1Binding', () => {
     expect(Reflect.get(database, 'prepare')).toBeUndefined()
     expect(Reflect.get(database, '$client')).toBeUndefined()
     expect(typeof database.batch).toBe('function')
-    const rootPrototype = Object.getPrototypeOf(database)
-    expect(Object.getPrototypeOf(rootPrototype)).toBeNull()
-    const rootConstructor = Reflect.get(rootPrototype, 'constructor')
-    expect(typeof rootConstructor).toBe('object')
-    expect(rootConstructor).not.toBeNull()
-    expect(Object.isFrozen(rootConstructor)).toBe(true)
-    for (const key of ['session', 'client', 'prepare', 'withSession', '$client']) {
-      expect(Reflect.get(rootConstructor, key)).toBeUndefined()
-      expect(key in rootConstructor).toBe(false)
-    }
+    expect(Object.keys(database).sort()).toEqual(['batch', 'delete', 'get', 'insert', 'query', 'select', 'update'])
+    expect(Object.getOwnPropertyDescriptor(database, 'select')?.value).toBe(database.select)
+    expect(Reflect.get(database, 'constructor')).toBeUndefined()
+    expect(Reflect.get(database, '__proto__')).toBeUndefined()
+    expect(Object.getOwnPropertySymbols(database)).toEqual([])
+
+    const maliciousReceiver = new Proxy({}, {
+      get() {
+        throw new Error('receiver getter executed')
+      },
+      set() {
+        throw new Error('receiver setter executed')
+      }
+    })
+    expect(() => Reflect.get(database, 'select', maliciousReceiver)).not.toThrow()
+    expect(() => Reflect.set(database, 'query', maliciousReceiver, maliciousReceiver)).not.toThrow()
+    expect(() => Reflect.set(database, '__proto__', maliciousReceiver, maliciousReceiver)).not.toThrow()
+    expect(() => Reflect.defineProperty(database, 'query', {
+      configurable: true,
+      value: maliciousReceiver
+    })).not.toThrow()
+    expect(Reflect.get(database, 'query') === maliciousReceiver).toBe(false)
+
+    let receiverAccessorCalled = false
+    const accessorReceiver = {}
+    Object.defineProperty(accessorReceiver, 'query', {
+      get() {
+        receiverAccessorCalled = true
+        throw new Error('receiver accessor executed')
+      }
+    })
+    expect(() => Reflect.get(database, 'query', accessorReceiver)).not.toThrow()
+    expect(receiverAccessorCalled).toBe(false)
 
     const dangerousCapabilityKeys = [
       'session',
@@ -189,9 +229,12 @@ describe('resolveNonHttpD1Binding', () => {
       // create a different request session. Dangerous capabilities fail closed.
       for (const key of dangerousCapabilityKeys) {
         expect(Reflect.get(capability, key)).toBeUndefined()
-        expect(Object.prototype.hasOwnProperty.call(capability, key)).toBe(false)
+        expect(Object.getOwnPropertyDescriptor(capability, key)).toBeUndefined()
         expect(key in capability).toBe(false)
       }
+
+      expect(Reflect.get(capability, '__proto__')).toBeUndefined()
+      expect(Object.getOwnPropertySymbols(capability)).toEqual([])
 
       const safePrototype = Object.getPrototypeOf(capability)
       expect(Object.getPrototypeOf(safePrototype)).toBeNull()
@@ -211,6 +254,13 @@ describe('resolveNonHttpD1Binding', () => {
       })).toBe(false)
       expect(Reflect.deleteProperty(capability, 'session')).toBe(false)
       expect(Reflect.get(capability, 'session')).toBeUndefined()
+
+      const receiver = new Proxy({}, {
+        get() {
+          throw new Error('nested receiver getter executed')
+        }
+      })
+      expect(() => Reflect.get(capability, 'where', receiver)).not.toThrow()
     }
   })
 

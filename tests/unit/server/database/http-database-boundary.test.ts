@@ -315,13 +315,16 @@ function unexpectedForbiddenIdentifiers(file: string, source: string) {
 }
 
 describe('HTTP database boundary', () => {
-  test('keeps the application facade deny-only instead of adding a Drizzle method allowlist', () => {
+  test('keeps the application facade rooted in an explicit operation allowlist', () => {
     const source = readFileSync(join(repositoryRoot, nonHttpImplementation), 'utf8')
 
-    expect(source).toMatch(/const deniedCapabilities/u)
+    expect(source).toMatch(/const supportedRootCapabilities/u)
+    expect(source).toMatch(/type AppDatabase = Pick<DrizzleDatabase, SupportedRootCapability>/u)
+    expect(source).toMatch(/Object\.create\(null\)/u)
+    expect(source).toMatch(/Object\.freeze\(facade\)/u)
     expect(source).toMatch(/new Proxy/u)
-    expect(source).not.toMatch(/\b(?:BuilderMethodKey|PublicBuilder|RuntimeBuilderKind|selectBuilderMethods|mutationBuilderMethods|createSafePrototype)\b/u)
-    expect(source.split('\n').length).toBeLessThan(280)
+    expect(source).not.toMatch(/\b(?:DeniedRootCapability|BuilderMethodKey|PublicBuilder|RuntimeBuilderKind|selectBuilderMethods|mutationBuilderMethods|createSafePrototype)\b/u)
+    expect(source.split('\n').length).toBeLessThan(380)
   })
 
   test('covers every production server module with exact database import and call-site boundaries', () => {

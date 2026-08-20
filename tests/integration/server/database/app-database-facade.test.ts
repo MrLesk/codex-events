@@ -35,6 +35,9 @@ describe('AppDatabase facade', () => {
     })
 
     const rawRow = await database.get<{ id: string }>(sql`select id from users where id = ${'facade_user'}`)
+    const relationalRow = await database.query.users.findFirst({
+      where: eq(users.id, 'facade_user')
+    })
     const joinedRows = await database
       .select({ userId: users.id, tokenId: mcpAccessTokens.id })
       .from(users)
@@ -67,6 +70,7 @@ describe('AppDatabase facade', () => {
     ])
 
     expect(rawRow).toEqual({ id: 'facade_user' })
+    expect(relationalRow?.id).toBe('facade_user')
     expect(joinedRows).toEqual([{ userId: 'facade_user', tokenId: 'facade_token' }])
     expect(subqueryRows).toEqual([{ id: 'facade_user' }])
     expect(existsRows).toEqual([{ id: 'facade_user' }])
@@ -74,10 +78,54 @@ describe('AppDatabase facade', () => {
     expect(batchResults).toHaveLength(2)
   })
 
-  test('wraps root and nested descriptor values and removes transaction escapes', async () => {
+  test('exposes only the root allowlist and closes reflective capability escapes', async () => {
     const d1Database = createTestD1Database()
     databases.push(d1Database)
     const database = createNonHttpDatabase(d1Database as never)
+
+    expect(Object.keys(database).sort()).toEqual(['batch', 'delete', 'get', 'insert', 'query', 'select', 'update'])
+    expect(Object.getPrototypeOf(database)).toBeNull()
+    expect(Object.isFrozen(database)).toBe(true)
+    for (const key of [
+      '$client',
+      '$count',
+      '$with',
+      'all',
+      'client',
+      'constructor',
+      'dialect',
+      'getBookmark',
+      'prepare',
+      'run',
+      'selectDistinct',
+      'session',
+      'transaction',
+      'values',
+      'with'
+    ]) {
+      expect(Reflect.get(database, key)).toBeUndefined()
+      expect(key in database).toBe(false)
+      expect(Object.getOwnPropertyDescriptor(database, key)).toBeUndefined()
+    }
+
+    const selectFromDescriptor = Object.getOwnPropertyDescriptor(database, 'select')?.value as typeof database.select
+    const descriptorRows = await Reflect.apply(selectFromDescriptor, new Proxy({}, {
+      get() {
+        throw new Error('malicious receiver getter executed')
+      }
+    }), []).from(users).limit(1)
+    expect(descriptorRows).toEqual([])
+
+    let receiverAccessorCalled = false
+    const accessorReceiver = {}
+    Object.defineProperty(accessorReceiver, 'select', {
+      get() {
+        receiverAccessorCalled = true
+        throw new Error('malicious receiver accessor executed')
+      }
+    })
+    expect(() => Reflect.get(database, 'select', accessorReceiver)).not.toThrow()
+    expect(receiverAccessorCalled).toBe(false)
 
     const rootDescriptor = Object.getOwnPropertyDescriptor(database, 'query')
     expect(rootDescriptor).toMatchObject({ value: expect.any(Object) })
@@ -97,10 +145,21 @@ describe('AppDatabase facade', () => {
     expect(Reflect.get(usersFromDescriptor, 'session')).toBeUndefined()
     expect(Reflect.get(usersFromDescriptor, 'client')).toBeUndefined()
     expect(Reflect.get(usersFromDescriptor, '$client')).toBeUndefined()
+    expect(Reflect.get(usersFromDescriptor, 'prepare')).toBeUndefined()
+    expect(Reflect.get(usersFromDescriptor, '_prepare')).toBeUndefined()
+    expect(Reflect.get(usersFromDescriptor, '__proto__')).toBeUndefined()
+    expect(Reflect.get(usersFromDescriptor, Symbol.for('drizzle:entityKind'))).toBeUndefined()
+    expect(Object.getOwnPropertyDescriptor(usersFromDescriptor, 'session')).toBeUndefined()
+    expect(Object.getOwnPropertySymbols(usersFromDescriptor)).toEqual([])
     expect(Reflect.get(database, 'transaction')).toBeUndefined()
 
-    expect(() => (database as unknown as {
-      transaction: (callback: (transaction: unknown) => unknown) => Promise<unknown>
-    }).transaction(transaction => transaction)).toThrow()
+    let transactionCallbackCalled = false
+    const transaction = Reflect.get(database, 'transaction') as undefined | ((callback: (transaction: unknown) => unknown) => Promise<unknown>)
+    expect(transaction).toBeUndefined()
+    expect(() => transaction?.((transactionResult) => {
+      transactionCallbackCalled = true
+      return transactionResult
+    })).not.toThrow()
+    expect(transactionCallbackCalled).toBe(false)
   })
 })
