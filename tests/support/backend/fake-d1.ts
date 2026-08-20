@@ -431,10 +431,6 @@ class TestD1PreparedStatement {
   }
 
   private async executeStandalone<TResult>(execute: () => Promise<TResult>) {
-    if (isReadQuery(this.sql)) {
-      return await execute()
-    }
-
     return await this.runMutation(execute)
   }
 
@@ -690,11 +686,6 @@ export class TestD1Database {
       }, this.databaseVersion)
     }
 
-    if (isReadQuery(sql)) {
-      await execute()
-      return
-    }
-
     await this.runMutation(execute)
   }
 
@@ -749,7 +740,7 @@ export class TestD1Database {
     await previousMutation
 
     try {
-      return await execute()
+      return await this.mutationContext.run({}, execute)
     } finally {
       releaseMutation()
     }

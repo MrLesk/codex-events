@@ -598,6 +598,102 @@ describe('TestD1Database', () => {
     ])
   })
 
+  test('does not expose partial atomic batch writes to an external reader', async () => {
+    const d1Database = createTestD1Database()
+    databases.push(d1Database)
+    let resolveFirstWrite: () => void = () => {}
+    const firstWrite = new Promise<void>((resolve) => {
+      resolveFirstWrite = resolve
+    })
+    let releaseBatch: () => void = () => {}
+    const batchRelease = new Promise<void>((resolve) => {
+      releaseBatch = resolve
+    })
+
+    const batch = d1Database.runAtomicBatch(async () => {
+      await d1Database.prepare(`
+        insert into users (id, auth0_subject, email, display_name)
+        values ('reader_batch_first', 'auth0|reader_batch_first', 'reader-batch-first@example.com', 'Reader Batch First')
+      `).run()
+      resolveFirstWrite()
+      await batchRelease
+      await d1Database.prepare(`
+        insert into users (id, auth0_subject, email, display_name)
+        values ('reader_batch_second', 'auth0|reader_batch_second', 'reader-batch-second@example.com', 'Reader Batch Second')
+      `).run()
+    })
+
+    await firstWrite
+
+    const reader = d1Database.withSession('first-primary')
+    let readerFinished = false
+    const read = reader.prepare('select id from users where id like ? order by id').bind('reader_batch_%').all<{ id: string }>().then((result) => {
+      readerFinished = true
+      return result
+    })
+
+    await new Promise<void>(resolve => setImmediate(resolve))
+    expect(readerFinished).toBe(false)
+    releaseBatch()
+    await batch
+
+    await expect(read).resolves.toMatchObject({
+      results: [
+        { id: 'reader_batch_first' },
+        { id: 'reader_batch_second' }
+      ]
+    })
+  })
+
+  test('does not expose rolled-back atomic batch writes to an external reader', async () => {
+    const d1Database = createTestD1Database()
+    databases.push(d1Database)
+    await d1Database.exec(`
+      insert into users (id, auth0_subject, email, display_name)
+      values ('reader_rollback_existing', 'auth0|reader_rollback_existing', 'reader-rollback-existing@example.com', 'Reader Rollback Existing')
+    `)
+
+    let resolveFirstWrite: () => void = () => {}
+    const firstWrite = new Promise<void>((resolve) => {
+      resolveFirstWrite = resolve
+    })
+    let releaseBatch: () => void = () => {}
+    const batchRelease = new Promise<void>((resolve) => {
+      releaseBatch = resolve
+    })
+
+    const failingBatch = d1Database.runAtomicBatch(async () => {
+      await d1Database.prepare(`
+        insert into users (id, auth0_subject, email, display_name)
+        values ('reader_rollback_first', 'auth0|reader_rollback_first', 'reader-rollback-first@example.com', 'Reader Rollback First')
+      `).run()
+      resolveFirstWrite()
+      await batchRelease
+      await d1Database.prepare(`
+        insert into users (id, auth0_subject, email, display_name)
+        values ('reader_rollback_existing', 'auth0|reader_rollback_duplicate@example.com', 'reader-rollback-duplicate@example.com', 'Reader Rollback Duplicate')
+      `).run()
+    })
+
+    await firstWrite
+
+    const reader = d1Database.withSession('first-primary')
+    let readerFinished = false
+    const read = reader.prepare('select id from users where id like ? order by id').bind('reader_rollback_%').all<{ id: string }>().then((result) => {
+      readerFinished = true
+      return result
+    })
+
+    await new Promise<void>(resolve => setImmediate(resolve))
+    expect(readerFinished).toBe(false)
+    releaseBatch()
+    await expect(failingBatch).rejects.toThrow(/UNIQUE constraint failed/u)
+
+    await expect(read).resolves.toMatchObject({
+      results: [{ id: 'reader_rollback_existing' }]
+    })
+  })
+
   test('does not publish a replica snapshot with a concurrent write version', async () => {
     let resolveReplicaPublication: () => void = () => {}
     const replicaPublication = new Promise<void>((resolve) => {
