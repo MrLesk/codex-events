@@ -112,6 +112,10 @@
 			{
 				"binding": "TALK_PROPOSAL_DECISION_EMAIL_QUEUE",
 				"queue": "codex-events-talk-proposal-decision-email-delivery"
+			},
+			{
+				"binding": "MEDIA_CLEANUP_QUEUE",
+				"queue": "codex-events-media-cleanup"
 			}
 		],
 		"consumers": [
@@ -138,6 +142,13 @@
 			},
 			{
 				"queue": "codex-events-talk-proposal-decision-email-delivery",
+				"max_batch_size": 10,
+				"max_batch_timeout": 5,
+				"max_retries": 10,
+				"retry_delay": 120
+			},
+			{
+				"queue": "codex-events-media-cleanup",
 				"max_batch_size": 10,
 				"max_batch_timeout": 5,
 				"max_retries": 10,

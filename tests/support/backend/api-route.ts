@@ -83,6 +83,11 @@ export function createApiRouteTestHarness(options: {
       queueName?: string
       retryDelaySeconds?: number
     }
+    mediaCleanup?: {
+      queueBinding?: string
+      queueName?: string
+      retryDelaySeconds?: number
+    }
   }
   autoAcceptCurrentPlatformDocuments?: boolean
   nitroPlugins?: readonly NitroTestPlugin[]
@@ -237,6 +242,9 @@ export function createApiRouteTestHarness(options: {
     const lumaQueueBinding = options.runtimeConfig?.luma?.queueBinding ?? 'APPLICATION_LUMA_SYNC_QUEUE'
     const lumaQueueName = options.runtimeConfig?.luma?.queueName ?? 'codex-events-dev-application-luma-sync'
     const lumaRetryDelaySeconds = options.runtimeConfig?.luma?.retryDelaySeconds ?? 120
+    const mediaCleanupQueueBinding = options.runtimeConfig?.mediaCleanup?.queueBinding ?? 'MEDIA_CLEANUP_QUEUE'
+    const mediaCleanupQueueName = options.runtimeConfig?.mediaCleanup?.queueName ?? 'codex-events-dev-media-cleanup'
+    const mediaCleanupRetryDelaySeconds = options.runtimeConfig?.mediaCleanup?.retryDelaySeconds ?? 120
 
     event.context.cloudflare = {
       env: {
@@ -291,6 +299,11 @@ export function createApiRouteTestHarness(options: {
         queueBinding: lumaQueueBinding,
         queueName: lumaQueueName,
         retryDelaySeconds: lumaRetryDelaySeconds
+      },
+      mediaCleanup: {
+        queueBinding: mediaCleanupQueueBinding,
+        queueName: mediaCleanupQueueName,
+        retryDelaySeconds: mediaCleanupRetryDelaySeconds
       }
     }
     event.context.auth0ClientOptions = {}

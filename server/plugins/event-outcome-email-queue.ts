@@ -7,6 +7,7 @@ import {
 import { defaultApplicationLumaSyncQueueName } from '#server/domains/applications/luma-sync-queue'
 import { defaultApplicationReviewEmailQueueName } from '#server/domains/applications/review-email-queue'
 import { defaultTalkProposalDecisionEmailQueueName } from '#server/domains/talk-proposals/email-queue'
+import { defaultManagedMediaCleanupQueueName } from '#server/domains/media/cleanup-queue'
 import { classifyCloudflareQueueBatch, retryCloudflareQueueBatch } from '#server/utils/cloudflare-queue-routing'
 
 export default defineNitroPlugin((nitroApp) => {
@@ -16,7 +17,8 @@ export default defineNitroPlugin((nitroApp) => {
     const reviewEmailQueueName = runtimeConfig.applicationReviewEmails?.queueName?.trim() || defaultApplicationReviewEmailQueueName
     const lumaQueueName = runtimeConfig.luma?.queueName?.trim() || defaultApplicationLumaSyncQueueName
     const talkProposalQueueName = runtimeConfig.talkProposalDecisionEmails?.queueName?.trim() || defaultTalkProposalDecisionEmailQueueName
-    const batchRoute = classifyCloudflareQueueBatch(batch.queue, expectedQueueName, [reviewEmailQueueName, lumaQueueName, talkProposalQueueName])
+    const mediaCleanupQueueName = runtimeConfig.mediaCleanup?.queueName?.trim() || defaultManagedMediaCleanupQueueName
+    const batchRoute = classifyCloudflareQueueBatch(batch.queue, expectedQueueName, [reviewEmailQueueName, lumaQueueName, talkProposalQueueName, mediaCleanupQueueName])
 
     if (batchRoute === 'ignore') {
       return
@@ -26,7 +28,7 @@ export default defineNitroPlugin((nitroApp) => {
       console.error('Unexpected Cloudflare queue batch reached the event outcome email consumer.', {
         batchQueue: batch.queue,
         expectedQueue: expectedQueueName,
-        ignoredQueues: [reviewEmailQueueName, lumaQueueName, talkProposalQueueName]
+        ignoredQueues: [reviewEmailQueueName, lumaQueueName, talkProposalQueueName, mediaCleanupQueueName]
       })
       retryCloudflareQueueBatch(batch, {
         delaySeconds: runtimeConfig.eventOutcomeEmails?.retryDelaySeconds ?? defaultEventOutcomeEmailRetryDelaySeconds

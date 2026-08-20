@@ -95,6 +95,11 @@ describe('deploy Queue consumer reconciliation', () => {
           {
             consumerId: 'stale-luma-consumer'
           }
+        ],
+        'codex-events-test-media-cleanup': [
+          {
+            consumerId: 'stale-media-cleanup-consumer'
+          }
         ]
       }
     })
@@ -136,6 +141,15 @@ describe('deploy Queue consumer reconciliation', () => {
         action: 'delete',
         queueName: 'codex-events-test-application-luma-sync',
         consumerId: 'stale-luma-consumer'
+      },
+      {
+        action: 'list',
+        queueName: 'codex-events-test-media-cleanup'
+      },
+      {
+        action: 'delete',
+        queueName: 'codex-events-test-media-cleanup',
+        consumerId: 'stale-media-cleanup-consumer'
       }
     ])
 
@@ -223,6 +237,27 @@ describe('deploy Queue consumer reconciliation', () => {
           '--config',
           '.wrangler/generated/test.jsonc'
         ]
+      },
+      {
+        command: 'bunx',
+        args: [
+          'wrangler',
+          'queues',
+          'consumer',
+          'add',
+          'codex-events-test-media-cleanup',
+          'codex-events-test',
+          '--batch-size',
+          '10',
+          '--batch-timeout',
+          '5',
+          '--message-retries',
+          '10',
+          '--retry-delay-secs',
+          '120',
+          '--config',
+          '.wrangler/generated/test.jsonc'
+        ]
       }
     ])
   })
@@ -256,9 +291,13 @@ describe('deploy Queue consumer reconciliation', () => {
       {
         action: 'list',
         queueName: 'codex-events-test-application-luma-sync'
+      },
+      {
+        action: 'list',
+        queueName: 'codex-events-test-media-cleanup'
       }
     ])
-    expect(calls).toHaveLength(4)
+    expect(calls).toHaveLength(5)
     expect(calls[0]?.args.slice(0, 5)).toEqual([
       'wrangler',
       'queues',

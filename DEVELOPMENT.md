@@ -73,6 +73,9 @@ NUXT_LUMA_PROFILE_BASE_URL=https://luma.com
 NUXT_LUMA_QUEUE_BINDING=APPLICATION_LUMA_SYNC_QUEUE
 NUXT_LUMA_QUEUE_NAME=codex-events-dev-application-luma-sync
 NUXT_LUMA_RETRY_DELAY_SECONDS=120
+NUXT_MEDIA_CLEANUP_QUEUE_BINDING=MEDIA_CLEANUP_QUEUE
+NUXT_MEDIA_CLEANUP_QUEUE_NAME=codex-events-dev-media-cleanup
+NUXT_MEDIA_CLEANUP_RETRY_DELAY_SECONDS=120
 ```
 
 Generate local-only Auth0 secret values with Bun:
@@ -187,12 +190,13 @@ Outbound email delivery uses Cloudflare Email Service through the Worker `send_e
 - `NUXT_OUTBOUND_EMAIL_REPLY_TO` optionally controls the reply destination for participant-facing notifications. When it is empty, replies go to `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`.
 - The sending domain must use Cloudflare DNS and be onboarded in Cloudflare Email Service before deployed email delivery works. Email Sending requires a Workers Paid plan.
 
-Application decision emails, Talk proposal decisions, event outcome emails, and optional Luma guest-status sync use Cloudflare Queues at runtime:
+Application decision emails, Talk proposal decisions, event outcome emails, optional Luma guest-status sync, and delayed managed-media cleanup use Cloudflare Queues at runtime:
 
 - `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING` and `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME` should match the producer and consumer queue configuration for participant decision emails.
 - `NUXT_TALK_PROPOSAL_DECISION_EMAILS_QUEUE_BINDING` and `NUXT_TALK_PROPOSAL_DECISION_EMAILS_QUEUE_NAME` should match the producer and consumer queue configuration for private Talk proposal decision emails.
 - `NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING` and `NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME` should match the producer and consumer queue configuration for shortlist and winner emails.
 - `NUXT_LUMA_QUEUE_BINDING` and `NUXT_LUMA_QUEUE_NAME` should match the producer and consumer queue configuration for Luma sync jobs.
+- `NUXT_MEDIA_CLEANUP_QUEUE_BINDING` and `NUXT_MEDIA_CLEANUP_QUEUE_NAME` should match the producer and consumer queue configuration for delayed managed-media cleanup. Producer delay is fixed at 30 seconds; `NUXT_MEDIA_CLEANUP_RETRY_DELAY_SECONDS` controls consumer retries.
 - Luma API keys, webhook IDs, and webhook signing secrets are stored per event after an event admin saves the Luma event API ID and API key in event settings.
 
 ## Local Development

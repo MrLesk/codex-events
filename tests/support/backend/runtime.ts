@@ -41,6 +41,11 @@ type EventContext = H3Event['context'] & {
       queueName?: string
       retryDelaySeconds?: number
     }
+    mediaCleanup?: {
+      queueBinding?: string
+      queueName?: string
+      retryDelaySeconds?: number
+    }
   }
 }
 

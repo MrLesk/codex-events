@@ -6,6 +6,7 @@ import {
 import { defaultApplicationLumaSyncQueueName } from '#server/domains/applications/luma-sync-queue'
 import { defaultEventOutcomeEmailQueueName } from '#server/domains/outcomes/email-queue'
 import { defaultTalkProposalDecisionEmailQueueName } from '#server/domains/talk-proposals/email-queue'
+import { defaultManagedMediaCleanupQueueName } from '#server/domains/media/cleanup-queue'
 import { classifyCloudflareQueueBatch, retryCloudflareQueueBatch } from '#server/utils/cloudflare-queue-routing'
 
 export default defineNitroPlugin((nitroApp) => {
@@ -15,7 +16,8 @@ export default defineNitroPlugin((nitroApp) => {
     const lumaQueueName = runtimeConfig.luma?.queueName?.trim() || defaultApplicationLumaSyncQueueName
     const outcomeQueueName = runtimeConfig.eventOutcomeEmails?.queueName?.trim() || defaultEventOutcomeEmailQueueName
     const talkProposalQueueName = runtimeConfig.talkProposalDecisionEmails?.queueName?.trim() || defaultTalkProposalDecisionEmailQueueName
-    const batchRoute = classifyCloudflareQueueBatch(batch.queue, expectedQueueName, [lumaQueueName, outcomeQueueName, talkProposalQueueName])
+    const mediaCleanupQueueName = runtimeConfig.mediaCleanup?.queueName?.trim() || defaultManagedMediaCleanupQueueName
+    const batchRoute = classifyCloudflareQueueBatch(batch.queue, expectedQueueName, [lumaQueueName, outcomeQueueName, talkProposalQueueName, mediaCleanupQueueName])
 
     if (batchRoute === 'ignore') {
       return
@@ -25,7 +27,7 @@ export default defineNitroPlugin((nitroApp) => {
       console.error('Unexpected Cloudflare queue batch reached the review email consumer.', {
         batchQueue: batch.queue,
         expectedQueue: expectedQueueName,
-        ignoredQueues: [lumaQueueName, outcomeQueueName, talkProposalQueueName]
+        ignoredQueues: [lumaQueueName, outcomeQueueName, talkProposalQueueName, mediaCleanupQueueName]
       })
       retryCloudflareQueueBatch(batch, {
         delaySeconds: runtimeConfig.applicationReviewEmails?.retryDelaySeconds ?? defaultApplicationReviewEmailRetryDelaySeconds

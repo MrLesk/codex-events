@@ -6,7 +6,9 @@ import { platformSettings } from '#server/database/schema'
 import { assertGuard } from '#server/domains/lifecycle-guard'
 import {
   buildVersionedPublicEventImageUrl,
-  isManagedPublicEventImageUrl
+  isManagedPublicEventImageUrl,
+  normalizeManagedPublicEventImageUrlForSlug,
+  serializeManagedPublicEventImageUrl
 } from '#server/domains/events/images'
 
 export const platformSettingsId = 'default'
@@ -25,22 +27,16 @@ export interface PlatformDefaultEventBackgroundImageExpectation {
 }
 
 export function serializePlatformSettings(settings: PlatformSettingsRecord) {
-  const defaultEventBackgroundImageUrl = settings.defaultEventBackgroundImageUrl?.trim() || null
-  const isManagedDefaultImage = isManagedPublicEventImageUrl(defaultEventBackgroundImageUrl ?? '')
-  const versionedDefaultEventBackgroundImageUrl = isManagedDefaultImage
-    && settings.defaultEventBackgroundImageObjectKey
-    ? buildVersionedPublicEventImageUrl(
-        defaultEventBackgroundImageUrl,
-        settings.defaultEventBackgroundImageRevision,
-        'background'
-      )
-    : null
+  const defaultEventBackgroundImageUrl = serializeManagedPublicEventImageUrl(
+    settings.defaultEventBackgroundImageUrl,
+    settings.defaultEventBackgroundImageObjectKey,
+    settings.defaultEventBackgroundImageRevision,
+    'background'
+  )
 
   return {
     id: settings.id,
-    defaultEventBackgroundImageUrl: isManagedDefaultImage
-      ? versionedDefaultEventBackgroundImageUrl
-      : defaultEventBackgroundImageUrl,
+    defaultEventBackgroundImageUrl,
     defaultEventBackgroundImageRevision: settings.defaultEventBackgroundImageRevision,
     createdAt: settings.createdAt,
     updatedAt: settings.updatedAt
@@ -64,12 +60,15 @@ export function resolveEventDisplayBackgroundImageUrl(
 export function resolveVersionedEventDisplayBackgroundImageUrl(
   event: {
     backgroundImageUrl: string | null
+    slug?: string | null
     backgroundImageObjectKey?: string | null
     backgroundImageRevision?: number | null
   },
   options: EventDisplayImageOptions = {}
 ) {
-  const eventBackgroundImageUrl = event.backgroundImageUrl?.trim()
+  const eventBackgroundImageUrl = event.slug
+    ? normalizeManagedPublicEventImageUrlForSlug(event.backgroundImageUrl, event.slug, 'background')
+    : event.backgroundImageUrl?.trim()
 
   if (eventBackgroundImageUrl) {
     if (!isManagedPublicEventImageUrl(eventBackgroundImageUrl)) {

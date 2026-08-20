@@ -16,6 +16,7 @@ import {
   eventPhotoMaxBytes,
   eventPhotoMaxRowsPerInsert,
   eventPhotoObjectKey,
+  publicEventPhotoImageQuerySchema,
   publicEventPhotoVariants,
   putEventPhotoObject
 } from '../../../../../server/domains/events/photos'
@@ -57,6 +58,21 @@ describe('event photo utilities', () => {
     )).toBe(
       '/api/public/events/codex-vienna/photos/photo_1/image?variant=original&v=2026-04-19T10%3A00%3A00.000Z'
     )
+  })
+
+  test('requires an explicit public gallery variant', () => {
+    expect(publicEventPhotoImageQuerySchema.parse({
+      variant: 'preview',
+      v: '4'
+    })).toEqual({
+      variant: 'preview',
+      v: '4'
+    })
+    expect(() => publicEventPhotoImageQuerySchema.parse({ v: '4' })).toThrow()
+    expect(() => publicEventPhotoImageQuerySchema.parse({
+      variant: 'thumbnail',
+      v: '4'
+    })).toThrow()
   })
 
   test('accepts supported image signatures and normalizes the optional file name', () => {

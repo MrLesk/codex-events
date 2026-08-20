@@ -8,6 +8,7 @@ import {
 import { defaultApplicationReviewEmailQueueName } from '#server/domains/applications/review-email-queue'
 import { defaultEventOutcomeEmailQueueName } from '#server/domains/outcomes/email-queue'
 import { defaultTalkProposalDecisionEmailQueueName } from '#server/domains/talk-proposals/email-queue'
+import { defaultManagedMediaCleanupQueueName } from '#server/domains/media/cleanup-queue'
 import { classifyCloudflareQueueBatch, retryCloudflareQueueBatch } from '#server/utils/cloudflare-queue-routing'
 
 export default defineNitroPlugin((nitroApp) => {
@@ -28,7 +29,8 @@ export default defineNitroPlugin((nitroApp) => {
     const reviewEmailQueueName = runtimeConfig.applicationReviewEmails?.queueName?.trim() || defaultApplicationReviewEmailQueueName
     const outcomeQueueName = runtimeConfig.eventOutcomeEmails?.queueName?.trim() || defaultEventOutcomeEmailQueueName
     const talkProposalQueueName = runtimeConfig.talkProposalDecisionEmails?.queueName?.trim() || defaultTalkProposalDecisionEmailQueueName
-    const batchRoute = classifyCloudflareQueueBatch(batch.queue, expectedQueueName, [reviewEmailQueueName, outcomeQueueName, talkProposalQueueName])
+    const mediaCleanupQueueName = runtimeConfig.mediaCleanup?.queueName?.trim() || defaultManagedMediaCleanupQueueName
+    const batchRoute = classifyCloudflareQueueBatch(batch.queue, expectedQueueName, [reviewEmailQueueName, outcomeQueueName, talkProposalQueueName, mediaCleanupQueueName])
 
     if (batchRoute === 'ignore') {
       return
@@ -38,7 +40,7 @@ export default defineNitroPlugin((nitroApp) => {
       console.error('Unexpected Cloudflare queue batch reached the Luma sync consumer.', {
         batchQueue: batch.queue,
         expectedQueue: expectedQueueName,
-        ignoredQueues: [reviewEmailQueueName, outcomeQueueName, talkProposalQueueName]
+        ignoredQueues: [reviewEmailQueueName, outcomeQueueName, talkProposalQueueName, mediaCleanupQueueName]
       })
       retryCloudflareQueueBatch(batch, {
         delaySeconds: runtimeConfig.luma?.retryDelaySeconds ?? defaultApplicationLumaSyncRetryDelaySeconds

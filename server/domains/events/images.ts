@@ -182,19 +182,72 @@ export function isManagedPublicEventImageUrl(imageUrl: string) {
   return getManagedPublicEventImagePath(imageUrl) !== null
 }
 
+export function isManagedPublicEventImageUrlForSlot(imageUrl: string, slot: EventImageSlot) {
+  return getManagedPublicEventImagePath(imageUrl)?.endsWith(`/images/${slot}`) === true
+}
+
+export function normalizeManagedPublicEventImageUrlForSlug(
+  imageUrl: string | null | undefined,
+  slug: string,
+  slot: EventImageSlot
+) {
+  const normalizedImageUrl = imageUrl?.trim() ?? ''
+
+  if (!normalizedImageUrl || !isManagedPublicEventImageUrl(normalizedImageUrl)) {
+    return normalizedImageUrl || null
+  }
+
+  try {
+    const isAbsoluteUrl = /^[a-z][a-z\d+.-]*:\/\//i.test(normalizedImageUrl)
+    const parsed = new URL(normalizedImageUrl, 'https://codex-events.invalid')
+    parsed.pathname = publicEventImagePath(slug, slot)
+
+    return isAbsoluteUrl
+      ? parsed.toString()
+      : `${parsed.pathname}${parsed.search}${parsed.hash}`
+  } catch {
+    return normalizedImageUrl
+  }
+}
+
 export function buildVersionedPublicEventImageUrl(
   imageUrl: string | null | undefined,
-  version: string | number | null | undefined,
+  version: number | null | undefined,
   variant: PublicEventImageVariant
 ) {
   const normalizedImageUrl = imageUrl?.trim() ?? ''
-  const normalizedVersion = version === null || version === undefined ? '' : String(version).trim()
+  const normalizedVersion = typeof version === 'number' && Number.isSafeInteger(version) && version > 0
+    ? String(version)
+    : ''
 
   if (!normalizedImageUrl || !normalizedVersion || !isManagedPublicEventImageUrl(normalizedImageUrl)) {
     return null
   }
 
   return appendPublicImageQuery(normalizedImageUrl, normalizedVersion, variant)
+}
+
+export function serializeManagedPublicEventImageUrl(
+  imageUrl: string | null | undefined,
+  objectKey: string | null | undefined,
+  revision: number | null | undefined,
+  variant: PublicEventImageVariant
+) {
+  const normalizedImageUrl = imageUrl?.trim() ?? ''
+
+  if (!normalizedImageUrl) {
+    return null
+  }
+
+  if (!isManagedPublicEventImageUrl(normalizedImageUrl)) {
+    return normalizedImageUrl
+  }
+
+  if (!objectKey || typeof revision !== 'number' || !Number.isSafeInteger(revision) || revision <= 0) {
+    return null
+  }
+
+  return buildVersionedPublicEventImageUrl(normalizedImageUrl, revision, variant)
 }
 
 export function negotiatePublicEventImageFormat(accept: string | null | undefined): PublicEventImageOutputFormat {
@@ -413,37 +466,4 @@ export async function putPlatformDefaultEventBackgroundImageObject(
       }
     }
   )
-}
-
-export async function deleteEventImageObject(event: H3Event, objectKey: string) {
-  await getEventImagesBucket(event).delete(objectKey)
-}
-
-export async function deletePlatformDefaultEventBackgroundImageObject(event: H3Event, objectKey: string) {
-  await getEventImagesBucket(event).delete(objectKey)
-}
-
-export async function deleteEventImageObjectBestEffort(event: H3Event, objectKey: string) {
-  try {
-    await deleteEventImageObject(event, objectKey)
-  } catch (error) {
-    console.error('Unable to delete an unreferenced event image object.', {
-      objectKey,
-      error
-    })
-  }
-}
-
-export async function deletePlatformDefaultEventBackgroundImageObjectBestEffort(
-  event: H3Event,
-  objectKey: string
-) {
-  try {
-    await deletePlatformDefaultEventBackgroundImageObject(event, objectKey)
-  } catch (error) {
-    console.error('Unable to delete an unreferenced platform default event background object.', {
-      objectKey,
-      error
-    })
-  }
 }

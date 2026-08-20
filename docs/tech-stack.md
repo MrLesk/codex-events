@@ -15,7 +15,7 @@ This document defines the canonical technology stack for the Codex event platfor
 - `Cloudflare D1` for the primary relational database
 - `Cloudflare R2` for file storage, including account profile icons, event background/banner images, platform default event background images, and public event gallery image delivery through custom domains
 - `Cloudflare Images` bindings for bounded public responsive variants and protected event photo preview transformations
-- `Cloudflare Queues` for asynchronous jobs, including retryable private Meetup talk-proposal decision email delivery
+- `Cloudflare Queues` for asynchronous jobs, including retryable private Meetup talk-proposal decision email delivery and delayed managed-media cleanup
 - `Cloudflare Cron Triggers` for scheduled platform tasks
 - `Cloudflare Email Service` for outbound transactional email delivery
 - `Auth0` for browser authentication, identity, and OAuth authorization of MCP clients
@@ -52,7 +52,7 @@ This document defines the canonical technology stack for the Codex event platfor
 - Public event and platform-default image URLs include the exact current resource revision and the required `variant`. Gallery URLs use `variant=preview` for a 720px `scale-down` transform or `variant=original` for a bounded 2400px full-display `scale-down` transform. Public variants stream through Cloudflare Images; stored R2 originals are never public fallbacks.
 - Newly issued public event HTML, JSON, and managed media responses use `Cache-Control: public, max-age=30, stale-if-error=0` and `Cloudflare-CDN-Cache-Control: public, max-age=30, stale-if-error=0`. They do not use `s-maxage`, long immutable freshness, or stale-on-error behavior.
 - A Cloudflare cache hit can be served without invoking the Worker, and Cache API deletion is local to the executing data center rather than a global purge. D1 visibility and revision checks therefore apply on a miss or revalidation. The 30-second browser and edge freshness window is the revocation bound for newly issued managed URLs; the application does not use a runtime purge credential.
-- Public managed-media routes validate visibility, the exact current revision, and the active object pointer before reading R2 or invoking Images. Removing or replacing media clears or rotates D1 first, then best-effort deletes the no-longer-referenced immutable object; a cleanup failure leaves private bytes that no route can serve. Missing, invalid, or stale revisions return not found.
+- Public managed-media routes validate visibility, the exact current revision, and the active object pointer before reading R2 or invoking Images. Removing or replacing media clears or rotates D1 first, then sends a fixed-kind cleanup message with an explicit delay of at least 30 seconds; HTTP mutations never wait for cleanup and cleanup failure leaves private bytes that no route can serve. The consumer maps each kind to a configured R2 binding, acknowledges invalid or successful messages, and retries transient bucket failures. Missing, invalid, or stale revisions return not found.
 - Generated certificate PNG/PDF responses and winner or published-project profile icons remain private, `no-store` responses. `profileIconUpdatedAt` is metadata; profile-icon URLs use the independent numeric `profile_icon_revision`.
 
 ## Architecture Notes

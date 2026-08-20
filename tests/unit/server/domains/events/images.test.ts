@@ -11,6 +11,8 @@ import {
   eventImageMaxBytes,
   eventImageObjectKey,
   negotiatePublicEventImageFormat,
+  isManagedPublicEventImageUrlForSlot,
+  normalizeManagedPublicEventImageUrlForSlug,
   platformDefaultEventBackgroundImageObjectKey,
   putEventImageObject,
   publicEventImagePath,
@@ -61,10 +63,10 @@ describe('event image utilities', () => {
   test('versions managed public image URLs with bounded named variants', () => {
     expect(buildVersionedPublicEventImageUrl(
       'https://events.example/api/public/events/codex-spring/images/background',
-      '2026-08-19T12:00:00.000Z',
+      4,
       'background'
     )).toBe(
-      'https://events.example/api/public/events/codex-spring/images/background?variant=background&v=2026-08-19T12%3A00%3A00.000Z'
+      'https://events.example/api/public/events/codex-spring/images/background?variant=background&v=4'
     )
     expect(publicEventImageVariants).toEqual({
       background: { width: 1600, height: 900, fit: 'cover', quality: 82 },
@@ -72,14 +74,31 @@ describe('event image utilities', () => {
     })
     expect(buildVersionedPublicEventImageUrl(
       'https://cdn.example/background.png',
-      '2026-08-19T12:00:00.000Z',
+      4,
       'background'
     )).toBeNull()
     expect(buildVersionedPublicEventImageUrl(
       'not-a-url',
-      '2026-08-19T12:00:00.000Z',
+      4,
       'background'
     )).toBeNull()
+    expect(buildVersionedPublicEventImageUrl(
+      'https://events.example/api/public/events/codex-spring/images/background',
+      0,
+      'background'
+    )).toBeNull()
+  })
+
+  test('normalizes managed event image paths to the current slug without changing the pointer', () => {
+    const renamedUrl = normalizeManagedPublicEventImageUrlForSlug(
+      'http://localhost/api/public/events/old-slug/images/background?variant=background&v=4',
+      'new-slug',
+      'background'
+    )
+
+    expect(renamedUrl).toBe('http://localhost/api/public/events/new-slug/images/background?variant=background&v=4')
+    expect(isManagedPublicEventImageUrlForSlot(renamedUrl!, 'background')).toBe(true)
+    expect(isManagedPublicEventImageUrlForSlot(renamedUrl!, 'banner')).toBe(false)
   })
 
   test('negotiates modern formats and uses deterministic local JPEG fallback', () => {

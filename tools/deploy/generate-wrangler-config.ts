@@ -55,6 +55,7 @@ export interface ResolvedDeployConfigInput {
   talkProposalDecisionEmails: QueueConfig
   eventOutcomeEmails: QueueConfig
   lumaSync: QueueConfig
+  mediaCleanup: QueueConfig
   mcpAllowedHostnames: string
   mcpAllowedOriginHostnames: string
   mcpResourceUrl: string
@@ -370,6 +371,13 @@ export function resolveDeployConfigInput(
       defaultBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
       defaultQueue: buildDefaultResourceName(environmentName, resourcePrefix, 'application-luma-sync')
     }),
+    mediaCleanup: resolveQueueConfig(environment, {
+      bindingEnvName: 'NUXT_MEDIA_CLEANUP_QUEUE_BINDING',
+      queueEnvName: 'CF_MEDIA_CLEANUP_QUEUE',
+      retryDelayEnvName: 'NUXT_MEDIA_CLEANUP_RETRY_DELAY_SECONDS',
+      defaultBinding: 'MEDIA_CLEANUP_QUEUE',
+      defaultQueue: buildDefaultResourceName(environmentName, resourcePrefix, 'media-cleanup')
+    }),
     mcpAllowedHostnames: readOptionalEnvironmentValue(environment, 'NUXT_MCP_ALLOWED_HOSTNAMES') || baseDomain,
     mcpAllowedOriginHostnames: readOptionalEnvironmentValue(environment, 'NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES') || baseDomain,
     mcpResourceUrl: readOptionalEnvironmentValue(environment, 'NUXT_MCP_RESOURCE_URL') || `${appBaseUrl}/mcp`
@@ -483,6 +491,9 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
       NUXT_LUMA_QUEUE_BINDING: input.lumaSync.binding,
       NUXT_LUMA_QUEUE_NAME: input.lumaSync.queue,
       NUXT_LUMA_RETRY_DELAY_SECONDS: String(input.lumaSync.retryDelaySeconds),
+      NUXT_MEDIA_CLEANUP_QUEUE_BINDING: input.mediaCleanup.binding,
+      NUXT_MEDIA_CLEANUP_QUEUE_NAME: input.mediaCleanup.queue,
+      NUXT_MEDIA_CLEANUP_RETRY_DELAY_SECONDS: String(input.mediaCleanup.retryDelaySeconds),
       NUXT_MCP_ALLOWED_HOSTNAMES: input.mcpAllowedHostnames,
       NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES: input.mcpAllowedOriginHostnames,
       NUXT_MCP_RESOURCE_URL: input.mcpResourceUrl
@@ -533,6 +544,10 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
         {
           binding: input.lumaSync.binding,
           queue: input.lumaSync.queue
+        },
+        {
+          binding: input.mediaCleanup.binding,
+          queue: input.mediaCleanup.queue
         }
       ],
       consumers: []
@@ -569,6 +584,13 @@ export function buildDeployQueueConsumerConfigs(input: ResolvedDeployConfigInput
       max_batch_timeout: 5,
       max_retries: 10,
       retry_delay: input.lumaSync.retryDelaySeconds
+    },
+    {
+      queue: input.mediaCleanup.queue,
+      max_batch_size: 10,
+      max_batch_timeout: 5,
+      max_retries: 10,
+      retry_delay: input.mediaCleanup.retryDelaySeconds
     }
   ]
 }

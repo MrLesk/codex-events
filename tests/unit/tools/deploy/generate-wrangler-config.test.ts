@@ -59,7 +59,8 @@ describe('deploy Wrangler config generator', () => {
       NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME: 'codex-events-test-application-review-email-delivery',
       NUXT_TALK_PROPOSAL_DECISION_EMAILS_QUEUE_NAME: 'codex-events-test-talk-proposal-decision-email-delivery',
       NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME: 'codex-events-test-event-outcome-email-delivery',
-      NUXT_LUMA_QUEUE_NAME: 'codex-events-test-application-luma-sync'
+      NUXT_LUMA_QUEUE_NAME: 'codex-events-test-application-luma-sync',
+      NUXT_MEDIA_CLEANUP_QUEUE_NAME: 'codex-events-test-media-cleanup'
     })
     expect(config.d1_databases[0]).toMatchObject({
       database_name: 'codex-events-test',
@@ -86,7 +87,8 @@ describe('deploy Wrangler config generator', () => {
       NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS: '60',
       NUXT_TALK_PROPOSAL_DECISION_EMAILS_RETRY_DELAY_SECONDS: '75',
       NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS: '90',
-      NUXT_LUMA_RETRY_DELAY_SECONDS: '180'
+      NUXT_LUMA_RETRY_DELAY_SECONDS: '180',
+      NUXT_MEDIA_CLEANUP_RETRY_DELAY_SECONDS: '45'
     }))
 
     expect(buildDeployQueueConsumerConfigs(input)).toEqual([
@@ -117,6 +119,13 @@ describe('deploy Wrangler config generator', () => {
         max_batch_timeout: 5,
         max_retries: 10,
         retry_delay: 180
+      },
+      {
+        queue: 'codex-events-test-media-cleanup',
+        max_batch_size: 10,
+        max_batch_timeout: 5,
+        max_retries: 10,
+        retry_delay: 45
       }
     ])
   })
@@ -218,6 +227,8 @@ describe('deploy Wrangler config generator', () => {
       CF_TALK_PROPOSAL_DECISION_EMAIL_QUEUE: 'custom-talk-proposal-decision',
       CF_EVENT_OUTCOME_EMAIL_QUEUE: 'custom-event-outcome',
       CF_LUMA_SYNC_QUEUE: 'custom-luma-sync',
+      CF_MEDIA_CLEANUP_QUEUE: 'custom-media-cleanup',
+      NUXT_MEDIA_CLEANUP_QUEUE_BINDING: 'CUSTOM_MEDIA_CLEANUP_QUEUE',
       NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'custom-users'
     }))
 
@@ -232,6 +243,8 @@ describe('deploy Wrangler config generator', () => {
     expect(input.talkProposalDecisionEmails.queue).toBe('custom-talk-proposal-decision')
     expect(input.eventOutcomeEmails.queue).toBe('custom-event-outcome')
     expect(input.lumaSync.queue).toBe('custom-luma-sync')
+    expect(input.mediaCleanup.binding).toBe('CUSTOM_MEDIA_CLEANUP_QUEUE')
+    expect(input.mediaCleanup.queue).toBe('custom-media-cleanup')
     expect(input.auth0DatabaseConnectionName).toBe('custom-users')
   })
 })

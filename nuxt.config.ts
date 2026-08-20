@@ -84,6 +84,11 @@ export default defineNuxtConfig({
       queueName: 'codex-events-dev-application-luma-sync',
       retryDelaySeconds: 120
     },
+    mediaCleanup: {
+      queueBinding: 'MEDIA_CLEANUP_QUEUE',
+      queueName: 'codex-events-dev-media-cleanup',
+      retryDelaySeconds: 120
+    },
     database: {
       binding: 'DB'
     },

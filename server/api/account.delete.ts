@@ -1,7 +1,7 @@
 import { requirePlatformAccountActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
 import { deletePlatformAccount } from '#server/domains/accounts'
-import { deleteProfileIconObjectBestEffort } from '#server/domains/accounts/profile-icons'
+import { scheduleManagedMediaCleanup } from '#server/domains/media/cleanup-queue'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
 
@@ -14,7 +14,10 @@ export default defineApiHandler(async (h3Event) => {
   })
 
   if (previousProfileIconObjectKey) {
-    await deleteProfileIconObjectBestEffort(h3Event, previousProfileIconObjectKey)
+    scheduleManagedMediaCleanup(h3Event, {
+      kind: 'profile_icon',
+      objectKey: previousProfileIconObjectKey
+    })
   }
 
   return apiData(result)

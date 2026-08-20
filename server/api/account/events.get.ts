@@ -12,8 +12,12 @@ import {
 } from '#server/database/schema'
 import { parseEventAgendaItems } from '#server/domains/events'
 import {
+  normalizeManagedPublicEventImageUrlForSlug,
+  serializeManagedPublicEventImageUrl
+} from '#server/domains/events/images'
+import {
   getEventDisplayImageOptions,
-  resolveEventDisplayBackgroundImageUrl,
+  resolveVersionedEventDisplayBackgroundImageUrl,
   type EventDisplayImageOptions
 } from '#server/domains/platform/settings'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
@@ -92,9 +96,19 @@ function serializeEventParticipation(
     city: event.city,
     country: event.country,
     address: showRestrictedDetails ? event.address : '',
-    bannerImageUrl: event.bannerImageUrl,
-    backgroundImageUrl: event.backgroundImageUrl,
-    displayBackgroundImageUrl: resolveEventDisplayBackgroundImageUrl(event, imageOptions),
+    bannerImageUrl: serializeManagedPublicEventImageUrl(
+      normalizeManagedPublicEventImageUrlForSlug(event.bannerImageUrl, event.slug, 'banner'),
+      event.bannerImageObjectKey,
+      event.bannerImageRevision,
+      'banner'
+    ),
+    backgroundImageUrl: serializeManagedPublicEventImageUrl(
+      normalizeManagedPublicEventImageUrlForSlug(event.backgroundImageUrl, event.slug, 'background'),
+      event.backgroundImageObjectKey,
+      event.backgroundImageRevision,
+      'background'
+    ),
+    displayBackgroundImageUrl: resolveVersionedEventDisplayBackgroundImageUrl(event, imageOptions),
     startsAt: getEventStartsAt(event),
     registrationOpensAt: event.registrationOpensAt,
     registrationClosesAt: event.registrationClosesAt,

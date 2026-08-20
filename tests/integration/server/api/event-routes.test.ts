@@ -1563,7 +1563,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         linkedinProfileUrl: null,
         githubProfileUrl: 'https://github.com/admin-user',
         profileIconUpdatedAt: null,
-        profileIconRevision: 0
+        profileIconRevision: null
       },
       {
         id: 'judge_user',
@@ -1574,7 +1574,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         linkedinProfileUrl: null,
         githubProfileUrl: null,
         profileIconUpdatedAt: '2026-03-15T10:00:00.000Z',
-        profileIconRevision: 0
+        profileIconRevision: null
       }
     ])
     expect(judgesPayload.data[0]).not.toHaveProperty('email')
@@ -2272,8 +2272,8 @@ describe('TASK-3.5 event CRUD routes', () => {
       data: {
         id: 'event_banner_only',
         backgroundImageUrl: null,
-        bannerImageUrl,
-        displayBackgroundImageUrl: defaultBackgroundUrl
+        bannerImageUrl: publicBannerImageUrl,
+        displayBackgroundImageUrl: publicDefaultBackgroundUrl
       }
     })
     expect(ownBackgroundDetailResponse.status).toBe(200)
@@ -4517,7 +4517,7 @@ describe('TASK-3.5 event CRUD routes', () => {
     })
   })
 
-  test('PATCH /api/events/:eventId rewrites managed image URLs when slug changes', async () => {
+  test('PATCH /api/events/:eventId does not mutate managed image fields', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'patch', path: '/api/events/:eventId', handler: eventPatchHandler }
@@ -4550,7 +4550,11 @@ describe('TASK-3.5 event CRUD routes', () => {
       slug: 'patch-event',
       description: 'Old description',
       backgroundImageUrl: 'http://localhost/api/public/events/patch-event/images/background',
+      backgroundImageObjectKey: 'events/event_patch_slug/background/object_1',
+      backgroundImageRevision: 2,
       bannerImageUrl: 'http://localhost/api/public/events/patch-event/images/banner',
+      bannerImageObjectKey: 'events/event_patch_slug/banner/object_1',
+      bannerImageRevision: 3,
       city: 'Vienna',
       country: 'Austria',
       address: 'Old Address',
@@ -4574,23 +4578,38 @@ describe('TASK-3.5 event CRUD routes', () => {
     const response = await harness.request('/api/events/event_patch_slug', {
       method: 'PATCH',
       body: JSON.stringify({
-        slug: 'patch-event-2026'
+        slug: 'patch-event-2026',
+        backgroundImageUrl: 'http://localhost/api/public/events/another-event/images/background',
+        bannerImageUrl: 'http://localhost/api/public/events/another-event/images/banner'
       })
     })
 
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
       data: {
-        id: 'event_patch_slug',
         slug: 'patch-event-2026',
-        backgroundImageUrl: 'http://localhost/api/public/events/patch-event-2026/images/background',
-        bannerImageUrl: 'http://localhost/api/public/events/patch-event-2026/images/banner'
+        backgroundImageUrl: 'http://localhost/api/public/events/patch-event-2026/images/background?variant=background&v=2',
+        bannerImageUrl: 'http://localhost/api/public/events/patch-event-2026/images/banner?variant=banner&v=3'
       }
+    })
+    expect(await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_patch_slug')
+    })).toMatchObject({
+      slug: 'patch-event-2026',
+      backgroundImageUrl: 'http://localhost/api/public/events/patch-event/images/background',
+      backgroundImageObjectKey: 'events/event_patch_slug/background/object_1',
+      backgroundImageRevision: 2,
+      bannerImageUrl: 'http://localhost/api/public/events/patch-event/images/banner',
+      bannerImageObjectKey: 'events/event_patch_slug/banner/object_1',
+      bannerImageRevision: 3
     })
   })
 
   test('event image routes upload, read, and remove event background and banner images', async () => {
     const eventImagesBucket = new InMemoryR2Bucket()
+    const mediaCleanupQueue = {
+      send: vi.fn(async () => undefined)
+    }
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/api/events/:eventId/images/background', handler: eventBackgroundImagePostHandler },
@@ -4607,16 +4626,35 @@ describe('TASK-3.5 event CRUD routes', () => {
       },
       cloudflareEnv: {
         [eventImagesBindingName]: eventImagesBucket,
+        MEDIA_CLEANUP_QUEUE: mediaCleanupQueue,
         IMAGES: createImagesBinding(),
         [authenticatedUploadRateLimitBindingName]: createRateLimiter()
       },
       runtimeConfig: {
         eventImages: {
           binding: eventImagesBindingName
+        },
+        mediaCleanup: {
+          queueBinding: 'MEDIA_CLEANUP_QUEUE'
         }
       }
     })
     harnesses.push(harness)
+
+    const expectCleanupQueued = async (objectKey: string) => {
+      await vi.waitFor(() => {
+        expect(mediaCleanupQueue.send).toHaveBeenCalledWith(
+          expect.objectContaining({
+            kind: 'event_image',
+            objectKey
+          }),
+          {
+            contentType: 'json',
+            delaySeconds: 30
+          }
+        )
+      })
+    }
 
     await harness.database.insert(users).values([
       {
@@ -4674,7 +4712,7 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect(await backgroundUploadResponse.json()).toMatchObject({
       data: {
         id: 'event_images',
-        backgroundImageUrl: 'http://localhost/api/public/events/image-event/images/background'
+        backgroundImageUrl: 'http://localhost/api/public/events/image-event/images/background?variant=background&v=1'
       }
     })
 
@@ -4726,7 +4764,8 @@ describe('TASK-3.5 event CRUD routes', () => {
     })
     expect(replacedBackgroundEvent?.backgroundImageRevision).toBe(backgroundEvent!.backgroundImageRevision + 1)
     expect(replacedBackgroundEvent?.backgroundImageObjectKey).not.toBe(backgroundEvent!.backgroundImageObjectKey)
-    expect(await eventImagesBucket.get(backgroundEvent!.backgroundImageObjectKey!)).toBeNull()
+    expect(await eventImagesBucket.get(backgroundEvent!.backgroundImageObjectKey!)).not.toBeNull()
+    await expectCleanupQueued(backgroundEvent!.backgroundImageObjectKey!)
 
     const concurrentBackgroundUploads = await Promise.all([1, 2].map(async (index) => {
       const form = new FormData()
@@ -4754,7 +4793,6 @@ describe('TASK-3.5 event CRUD routes', () => {
       .keys()
       .filter(key => key.startsWith('events/event_images/background/'))
     expect(backgroundObjectKeys).toContain(concurrentlyReplacedBackgroundEvent!.backgroundImageObjectKey)
-    expect(backgroundObjectKeys.length).toBeLessThanOrEqual(2)
     expect(new Set(backgroundObjectKeys).size).toBe(backgroundObjectKeys.length)
 
     const staleReplacedBackgroundResponse = await harness.request(
@@ -4778,7 +4816,7 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect(await bannerUploadResponse.json()).toMatchObject({
       data: {
         id: 'event_images',
-        bannerImageUrl: 'http://localhost/api/public/events/image-event/images/banner'
+        bannerImageUrl: 'http://localhost/api/public/events/image-event/images/banner?variant=banner&v=1'
       }
     })
 
@@ -4812,6 +4850,7 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect(versionedBannerResponse.headers.get('content-type')).toBe('image/webp')
     expect(versionedBannerResponse.headers.get('vary')).toBe('Accept')
 
+    const bannerObjectKey = bannerEvent!.bannerImageObjectKey!
     const backgroundDeleteResponse = await harness.request('/api/events/event_images/images/background', {
       method: 'DELETE'
     })
@@ -4837,7 +4876,8 @@ describe('TASK-3.5 event CRUD routes', () => {
     )
 
     expect(staleBackgroundResponse.status).toBe(404)
-    expect(await eventImagesBucket.get(concurrentlyReplacedBackgroundEvent!.backgroundImageObjectKey!)).toBeNull()
+    expect(await eventImagesBucket.get(concurrentlyReplacedBackgroundEvent!.backgroundImageObjectKey!)).not.toBeNull()
+    await expectCleanupQueued(concurrentlyReplacedBackgroundEvent!.backgroundImageObjectKey!)
 
     const beforeFailedUpload = await harness.database.query.events.findFirst({
       where: eq(events.id, 'event_images')
@@ -4921,6 +4961,8 @@ describe('TASK-3.5 event CRUD routes', () => {
         bannerImageUrl: null
       }
     })
+    expect(await eventImagesBucket.get(bannerObjectKey)).not.toBeNull()
+    await expectCleanupQueued(bannerObjectKey)
 
     const missingBannerResponse = await harness.request('/api/public/events/image-event/images/banner')
 
@@ -5237,6 +5279,9 @@ describe('TASK-3.5 event CRUD routes', () => {
 
   test('event photo routes let judges upload and delete gallery photos', async () => {
     const eventImagesBucket = new InMemoryR2Bucket()
+    const mediaCleanupQueue = {
+      send: vi.fn(async () => undefined)
+    }
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/events/:eventId/photos', handler: eventPhotosGetHandler },
@@ -5251,12 +5296,16 @@ describe('TASK-3.5 event CRUD routes', () => {
       },
       cloudflareEnv: {
         [eventImagesBindingName]: eventImagesBucket,
+        MEDIA_CLEANUP_QUEUE: mediaCleanupQueue,
         IMAGES: createImagesBinding(),
         [authenticatedUploadRateLimitBindingName]: createRateLimiter()
       },
       runtimeConfig: {
         eventImages: {
           binding: eventImagesBindingName
+        },
+        mediaCleanup: {
+          queueBinding: 'MEDIA_CLEANUP_QUEUE'
         }
       }
     })
@@ -5396,7 +5445,19 @@ describe('TASK-3.5 event CRUD routes', () => {
 
     const remainingPhotos = await harness.database.select().from(eventPhotos)
     expect(remainingPhotos).toEqual([])
-    expect(await eventImagesBucket.get(storedPhoto!.objectKey!)).toBeNull()
+    expect(await eventImagesBucket.get(storedPhoto!.objectKey!)).not.toBeNull()
+    await vi.waitFor(() => {
+      expect(mediaCleanupQueue.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: 'event_photo',
+          objectKey: storedPhoto!.objectKey
+        }),
+        {
+          contentType: 'json',
+          delaySeconds: 30
+        }
+      )
+    })
 
     const auditEntries = await harness.database.select().from(auditLogs)
     expect(auditEntries).toEqual([
@@ -5775,6 +5836,10 @@ describe('TASK-3.5 event CRUD routes', () => {
       ]
     })
     expect(listPayload.data[0]).not.toHaveProperty('isHighlighted')
+
+    const missingVariantResponse = await harness.request('/api/public/events/public-gallery-event/photos/photo_public/image?v=1')
+
+    expect(missingVariantResponse.status).toBe(400)
 
     const previewResponse = await harness.request('/api/public/events/public-gallery-event/photos/photo_public/image?variant=preview&v=1')
 

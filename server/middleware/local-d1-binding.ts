@@ -108,6 +108,7 @@ export default defineEventHandler(async (event) => {
   const talkProposalDecisionEmailQueueBindingName = runtimeConfig.talkProposalDecisionEmails?.queueBinding ?? 'TALK_PROPOSAL_DECISION_EMAIL_QUEUE'
   const eventOutcomeEmailQueueBindingName = runtimeConfig.eventOutcomeEmails?.queueBinding ?? 'EVENT_OUTCOME_EMAIL_QUEUE'
   const applicationLumaSyncQueueBindingName = runtimeConfig.luma?.queueBinding ?? 'APPLICATION_LUMA_SYNC_QUEUE'
+  const mediaCleanupQueueBindingName = runtimeConfig.mediaCleanup?.queueBinding ?? 'MEDIA_CLEANUP_QUEUE'
   const cloudflareEnv = event.context.cloudflare?.env as Record<string, unknown> | undefined
 
   const hasDatabaseBinding = Boolean(cloudflareEnv?.[databaseBindingName])
@@ -166,6 +167,12 @@ export default defineEventHandler(async (event) => {
       ? undefined
       : proxyEnv.APPLICATION_LUMA_SYNC_QUEUE)
   const applicationLumaSyncQueue = existingApplicationLumaSyncQueue ?? proxyApplicationLumaSyncQueue
+  const existingMediaCleanupQueue = cloudflareEnv?.[mediaCleanupQueueBindingName]
+  const proxyMediaCleanupQueue = proxyEnv[mediaCleanupQueueBindingName]
+    ?? (mediaCleanupQueueBindingName === 'MEDIA_CLEANUP_QUEUE'
+      ? undefined
+      : proxyEnv.MEDIA_CLEANUP_QUEUE)
+  const mediaCleanupQueue = existingMediaCleanupQueue ?? proxyMediaCleanupQueue
   const existingPublicContactRateLimiter = cloudflareEnv?.[publicContactRateLimitBindingName]
   const publicContactRateLimiter = existingPublicContactRateLimiter ?? proxyEnv[publicContactRateLimitBindingName]
   const existingPublicEventFeedbackRateLimiter = cloudflareEnv?.[publicEventFeedbackRateLimitBindingName]
@@ -224,6 +231,10 @@ export default defineEventHandler(async (event) => {
 
   if (!event.context.cloudflare.env[applicationLumaSyncQueueBindingName] && isQueueProducerLike(applicationLumaSyncQueue)) {
     event.context.cloudflare.env[applicationLumaSyncQueueBindingName] = applicationLumaSyncQueue as never
+  }
+
+  if (!event.context.cloudflare.env[mediaCleanupQueueBindingName] && isQueueProducerLike(mediaCleanupQueue)) {
+    event.context.cloudflare.env[mediaCleanupQueueBindingName] = mediaCleanupQueue as never
   }
 
   if (!event.context.cloudflare.env[publicContactRateLimitBindingName] && isRateLimitBindingLike(publicContactRateLimiter)) {

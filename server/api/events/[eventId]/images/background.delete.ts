@@ -4,7 +4,7 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { events } from '#server/database/schema'
-import { deleteEventImageObjectBestEffort } from '#server/domains/events/images'
+import { scheduleManagedMediaCleanup } from '#server/domains/media/cleanup-queue'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
 import {
@@ -51,7 +51,10 @@ export default defineApiHandler(async (h3Event) => {
   })
 
   if (previousObjectKey) {
-    await deleteEventImageObjectBestEffort(h3Event, previousObjectKey)
+    scheduleManagedMediaCleanup(h3Event, {
+      kind: 'event_image',
+      objectKey: previousObjectKey
+    })
   }
 
   await writeAuditLog(database, {

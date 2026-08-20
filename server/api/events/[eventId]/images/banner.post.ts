@@ -11,10 +11,10 @@ import { apiData } from '#server/http/api-response'
 import {
   assertValidEventImagePart,
   buildPublicEventImageUrl,
-  deleteEventImageObjectBestEffort,
   eventImageObjectKey,
   putEventImageObject
 } from '#server/domains/events/images'
+import { scheduleManagedMediaCleanup } from '#server/domains/media/cleanup-queue'
 import {
   requireEventAdmin,
   routeIdParamsSchema,
@@ -73,7 +73,10 @@ export default defineApiHandler(async (h3Event) => {
   })
 
   if (previousObjectKey) {
-    await deleteEventImageObjectBestEffort(h3Event, previousObjectKey)
+    scheduleManagedMediaCleanup(h3Event, {
+      kind: 'event_image',
+      objectKey: previousObjectKey
+    })
   }
 
   await writeAuditLog(database, {

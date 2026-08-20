@@ -491,17 +491,28 @@ describe('event management utilities', () => {
     })
   })
 
-  test('does not retain an active pointer for an unrelated managed image path', () => {
+  test('generic event updates do not accept managed image mutations', () => {
+    const parsed = updateEventBodySchema.parse({
+      slug: 'renamed-event',
+      backgroundImageUrl: 'http://localhost/api/public/events/another-event/images/background',
+      bannerImageUrl: 'http://localhost/api/public/events/another-event/images/banner'
+    })
     const patch = buildEventUpdatePayload(buildEventRecord({
       backgroundImageUrl: 'http://localhost/api/public/events/fixture-event/images/background',
       backgroundImageObjectKey: 'events/event_1/background/current-object',
-      backgroundImageRevision: 4
-    }), {
-      backgroundImageUrl: 'http://localhost/api/public/events/another-event/images/background'
-    })
+      backgroundImageRevision: 4,
+      bannerImageUrl: 'http://localhost/api/public/events/fixture-event/images/banner',
+      bannerImageObjectKey: 'events/event_1/banner/current-object',
+      bannerImageRevision: 3
+    }), parsed)
 
-    expect(patch.backgroundImageObjectKey).toBeNull()
-    expect(patch.backgroundImageRevision).toBeDefined()
+    expect(parsed).toEqual({ slug: 'renamed-event' })
+    expect(patch).not.toHaveProperty('backgroundImageUrl')
+    expect(patch).not.toHaveProperty('bannerImageUrl')
+    expect(patch).not.toHaveProperty('backgroundImageObjectKey')
+    expect(patch).not.toHaveProperty('bannerImageObjectKey')
+    expect(patch).not.toHaveProperty('backgroundImageRevision')
+    expect(patch).not.toHaveProperty('bannerImageRevision')
     expect(patch.publicContentRevision).toBeDefined()
   })
 
@@ -881,6 +892,21 @@ describe('event management utilities', () => {
     })).toMatchObject({
       backgroundImageUrl: 'https://example.com/event-background.png',
       displayBackgroundImageUrl: 'https://example.com/event-background.png'
+    })
+
+    const serializedManagedImages = serializeEvent(buildEventRecord({
+      backgroundImageUrl: 'https://example.com/api/public/events/fixture/images/background',
+      backgroundImageObjectKey: 'events/event_1/background/current-object',
+      backgroundImageRevision: 4,
+      bannerImageUrl: 'https://example.com/api/public/events/fixture/images/banner',
+      bannerImageObjectKey: 'events/event_1/banner/current-object',
+      bannerImageRevision: 7
+    }))
+
+    expect(serializedManagedImages).toMatchObject({
+      backgroundImageUrl: 'https://example.com/api/public/events/fixture-event/images/background?variant=background&v=4',
+      bannerImageUrl: 'https://example.com/api/public/events/fixture-event/images/banner?variant=banner&v=7',
+      displayBackgroundImageUrl: 'https://example.com/api/public/events/fixture-event/images/background?variant=background&v=4'
     })
   })
 

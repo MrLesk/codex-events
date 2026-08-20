@@ -252,6 +252,14 @@ retry. Every attempt supplies the same `X-Codex-Email-Key` so providers that
 support duplicate suppression can recognize it; use the deterministic delivery
 ID when investigating possible duplicates.
 
+Managed media replacement, removal, and account deletion enqueue immutable R2
+object cleanup through the managed-media Queue after the D1 mutation. The
+producer uses a fixed cleanup kind and an explicit delay of at least 30 seconds;
+HTTP mutations do not wait for the Queue or fail after a successful D1 write.
+The consumer maps the kind to the event-images or profile-icons binding,
+acknowledges invalid and successful messages, and retries transient R2 delete
+failures per message.
+
 If Auth0 rejects custom-domain creation because the tenant needs billing verification, add billing information in Auth0 and rerun the release workflow — it cannot finish custom-domain setup until Auth0 allows it for that tenant.
 
 ### 5.2 Create the first platform admin
@@ -332,6 +340,7 @@ Default production resource names:
 | `CF_TALK_PROPOSAL_DECISION_EMAIL_QUEUE` | Talk proposal decision email queue | `codex-events-prod-talk-proposal-decision-email-delivery` |
 | `CF_EVENT_OUTCOME_EMAIL_QUEUE`      | Event outcome email queue        | `codex-events-prod-event-outcome-email-delivery`      |
 | `CF_LUMA_SYNC_QUEUE`                | Luma sync queue                  | `codex-events-prod-application-luma-sync`             |
+| `CF_MEDIA_CLEANUP_QUEUE`            | Managed media cleanup queue      | `codex-events-prod-media-cleanup`                    |
 
 ### Optional variables
 
@@ -351,6 +360,7 @@ Deployment defaults and resource names:
 | `CF_TALK_PROPOSAL_DECISION_EMAIL_QUEUE` | Talk proposal decision email queue name                                           |
 | `CF_EVENT_OUTCOME_EMAIL_QUEUE`      | Event outcome email queue name                                                       |
 | `CF_LUMA_SYNC_QUEUE`                | Luma sync queue name                                                                 |
+| `CF_MEDIA_CLEANUP_QUEUE`            | Managed media cleanup queue name                                                     |
 | `NUXT_MCP_ALLOWED_HOSTNAMES`        | Comma-separated hostnames accepted by `/mcp`; defaults to `BASE_DOMAIN`              |
 | `NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES` | Comma-separated Origin hostnames accepted by `/mcp`; defaults to `BASE_DOMAIN`       |
 | `NUXT_MCP_RESOURCE_URL`             | Canonical OAuth resource URL; defaults to `https://<BASE_DOMAIN>/mcp`                 |
@@ -381,6 +391,8 @@ Outbound email and queues:
 | `NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS`      | Retry delay for event outcome email jobs. Defaults to `120`                           |
 | `NUXT_LUMA_QUEUE_BINDING`                            | Binding for Luma sync jobs. Defaults to `APPLICATION_LUMA_SYNC_QUEUE`                 |
 | `NUXT_LUMA_RETRY_DELAY_SECONDS`                      | Retry delay for Luma sync jobs. Defaults to `120`                                     |
+| `NUXT_MEDIA_CLEANUP_QUEUE_BINDING`                   | Binding for managed-media cleanup. Defaults to `MEDIA_CLEANUP_QUEUE`                 |
+| `NUXT_MEDIA_CLEANUP_RETRY_DELAY_SECONDS`             | Retry delay for managed-media cleanup. Defaults to `120`; producer delay is 30 seconds |
 
 ### Optional secrets
 

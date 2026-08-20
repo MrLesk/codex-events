@@ -5,10 +5,9 @@ import { defineApiHandler } from '#server/http/api-handler'
 import { ApiError } from '#server/http/api-error'
 import {
   createPublicEventImageResponse,
-  getManagedPublicEventImagePath,
   getEventImageObject,
+  isManagedPublicEventImageUrlForSlot,
   privateEventImageCacheControl,
-  publicEventImagePath,
   publicEventImageQuerySchema
 } from '#server/domains/events/images'
 import {
@@ -24,13 +23,9 @@ export default defineApiHandler(async (h3Event) => {
   const query = parseValidatedQuery(h3Event, publicEventImageQuerySchema)
   const event = await getPublicEventBySlugOrThrow(getDatabase(h3Event), slug)
 
-  const imagePath = event.bannerImageUrl
-    ? getManagedPublicEventImagePath(event.bannerImageUrl)
-    : null
-
   if (
     !event.bannerImageUrl
-    || imagePath !== publicEventImagePath(event.slug, 'banner')
+    || !isManagedPublicEventImageUrlForSlot(event.bannerImageUrl, 'banner')
     || query.variant !== 'banner'
     || !event.bannerImageObjectKey
     || query.v !== String(event.bannerImageRevision)

@@ -12,10 +12,10 @@ import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
 import {
   assertValidProfileIconPart,
-  deleteProfileIconObjectBestEffort,
   profileIconObjectKey,
   putProfileIconObject
 } from '#server/domains/accounts/profile-icons'
+import { scheduleManagedMediaCleanup } from '#server/domains/media/cleanup-queue'
 import { assertGuard } from '#server/domains/lifecycle-guard'
 import { assertAuthenticatedUploadRateLimit } from '#server/utils/rate-limit'
 
@@ -59,7 +59,10 @@ export default defineApiHandler(async (h3Event) => {
   )
 
   if (currentUser!.profileIconObjectKey) {
-    await deleteProfileIconObjectBestEffort(h3Event, currentUser!.profileIconObjectKey)
+    scheduleManagedMediaCleanup(h3Event, {
+      kind: 'profile_icon',
+      objectKey: currentUser!.profileIconObjectKey
+    })
   }
 
   return apiData({

@@ -24,10 +24,16 @@ Managed event, platform-default, and public-gallery media tests verify the
 exact current per-resource revision, immutable object pointer, stale URLs after
 visibility, replacement, and removal mutations, the configured Cloudflare
 Images binding, and the bounded transform selected by each named gallery
+variant. Public gallery route tests require an explicit `preview` or `original`
 variant. Event public-content revision tests cover submission visibility,
 completion, and hide/unhide. Profile-icon and certificate tests verify private
 streamed responses. Public gallery `original` tests verify the bounded
 full-display transform and never expect raw R2 bytes.
+
+Managed-media cleanup tests verify that replacement, removal, and account
+deletion enqueue the fixed cleanup kind with an explicit delay of at least 30
+seconds after the D1 mutation, without awaiting delivery. Consumer tests verify
+safe kind-to-bucket mapping, per-message acknowledgement, and retry behavior.
 
 Local integration tests verify response headers, streaming bodies, object-write
 ordering, revision checks, and transform configuration. They do not pretend to

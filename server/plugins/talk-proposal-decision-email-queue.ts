@@ -2,6 +2,7 @@ import { createNonHttpDatabase, resolveNonHttpD1Binding } from '#server/database
 import { defaultApplicationLumaSyncQueueName } from '#server/domains/applications/luma-sync-queue'
 import { defaultApplicationReviewEmailQueueName } from '#server/domains/applications/review-email-queue'
 import { defaultEventOutcomeEmailQueueName } from '#server/domains/outcomes/email-queue'
+import { defaultManagedMediaCleanupQueueName } from '#server/domains/media/cleanup-queue'
 import {
   defaultTalkProposalDecisionEmailQueueName,
   defaultTalkProposalDecisionEmailRetryDelaySeconds,
@@ -29,7 +30,8 @@ export default defineNitroPlugin((nitroApp) => {
     const ignoredQueues = [
       runtimeConfig.applicationReviewEmails?.queueName?.trim() || defaultApplicationReviewEmailQueueName,
       runtimeConfig.eventOutcomeEmails?.queueName?.trim() || defaultEventOutcomeEmailQueueName,
-      runtimeConfig.luma?.queueName?.trim() || defaultApplicationLumaSyncQueueName
+      runtimeConfig.luma?.queueName?.trim() || defaultApplicationLumaSyncQueueName,
+      runtimeConfig.mediaCleanup?.queueName?.trim() || defaultManagedMediaCleanupQueueName
     ]
     const route = classifyCloudflareQueueBatch(batch.queue, expectedQueueName, ignoredQueues)
     if (route === 'ignore') return

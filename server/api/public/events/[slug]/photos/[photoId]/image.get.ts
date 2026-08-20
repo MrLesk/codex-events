@@ -7,7 +7,7 @@ import {
   createPublicEventPhotoResponse,
   getEventPhotoObject,
   getPublicEventPhotoRecordOrThrow,
-  eventPhotoImageQuerySchema
+  publicEventPhotoImageQuerySchema
 } from '#server/domains/events/photos'
 import {
   getPublicEventBySlugOrThrow,
@@ -24,7 +24,7 @@ export default defineApiHandler(async (h3Event) => {
   const { slug, photoId } = parseValidatedParams(h3Event, routeSlugParamsSchema.extend({
     photoId: z.string().trim().min(1)
   }))
-  const query = parseValidatedQuery(h3Event, eventPhotoImageQuerySchema)
+  const query = parseValidatedQuery(h3Event, publicEventPhotoImageQuerySchema)
   const database = getDatabase(h3Event)
   const event = await getPublicEventBySlugOrThrow(database, slug)
 

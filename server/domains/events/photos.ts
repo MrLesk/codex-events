@@ -72,6 +72,11 @@ export const eventPhotoImageQuerySchema = z.object({
   v: z.string().trim().min(1).optional()
 })
 
+export const publicEventPhotoImageQuerySchema = z.object({
+  variant: z.enum(['preview', 'original']),
+  v: z.string().trim().min(1).optional()
+}).strict()
+
 export const publicEventPhotoVariants = {
   preview: {
     name: 'preview',
@@ -674,24 +679,6 @@ export async function getEventPhotoObject(
   objectKey: string
 ) {
   return await getEventImagesBucket(event).get(objectKey)
-}
-
-export async function deleteEventPhotoObject(
-  event: H3Event,
-  objectKey: string
-) {
-  await getEventImagesBucket(event).delete(objectKey)
-}
-
-export async function deleteEventPhotoObjectBestEffort(event: H3Event, objectKey: string) {
-  try {
-    await deleteEventPhotoObject(event, objectKey)
-  } catch (error) {
-    console.error('Unable to delete an unreferenced event photo object.', {
-      objectKey,
-      error
-    })
-  }
 }
 
 export async function getEventPhotoRecordOrThrow(

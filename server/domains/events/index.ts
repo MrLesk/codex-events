@@ -35,13 +35,11 @@ import type { eventLumaWebhookStatuses } from '#server/database/schema'
 import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
 import { ApiError } from '#server/http/api-error'
 import {
-  buildVersionedPublicEventImageUrl,
-  getManagedPublicEventImagePath,
-  isManagedPublicEventImageUrl,
-  publicEventImagePath
+  normalizeManagedPublicEventImageUrlForSlug,
+  serializeManagedPublicEventImageUrl
 } from '#server/domains/events/images'
 import {
-  resolveEventDisplayBackgroundImageUrl,
+  resolveVersionedEventDisplayBackgroundImageUrl,
   type EventDisplayImageOptions
 } from '#server/domains/platform/settings'
 import { buildEventLumaWebhookUrl } from '#shared/domains/luma/webhook-url'
@@ -534,8 +532,6 @@ export const updateEventBodySchema = z.object({
   description: eventConfigShape.description.optional(),
   agendaItems: agendaItemsSchema.optional(),
   tracks: tracksInputSchema.optional(),
-  backgroundImageUrl: eventConfigShape.backgroundImageUrl.optional(),
-  bannerImageUrl: eventConfigShape.bannerImageUrl.optional(),
   discordServerUrl: eventConfigShape.discordServerUrl.optional(),
   lumaEventUrl: eventConfigShape.lumaEventUrl.optional(),
   slidesUrl: eventConfigShape.slidesUrl.optional(),
@@ -1552,49 +1548,6 @@ export function buildEventUpdatePayload(
     })
   }
 
-  const nextSlug = patch.slug?.trim()
-
-  if (nextSlug && nextSlug !== existingEvent.slug) {
-    const previousBackgroundPath = publicEventImagePath(existingEvent.slug, 'background')
-    const previousBannerPath = publicEventImagePath(existingEvent.slug, 'banner')
-    const nextBackgroundPath = publicEventImagePath(nextSlug, 'background')
-    const nextBannerPath = publicEventImagePath(nextSlug, 'banner')
-
-    const rewriteManagedImageUrl = (
-      imageUrl: string | null | undefined,
-      previousPath: string,
-      nextPath: string
-    ) => {
-      if (!imageUrl) {
-        return imageUrl ?? null
-      }
-
-      try {
-        const parsed = new URL(imageUrl)
-
-        if (parsed.pathname !== previousPath) {
-          return imageUrl
-        }
-
-        parsed.pathname = nextPath
-        return parsed.toString()
-      } catch {
-        return imageUrl
-      }
-    }
-
-    normalizedPatch.backgroundImageUrl = rewriteManagedImageUrl(
-      normalizedPatch.backgroundImageUrl ?? existingEvent.backgroundImageUrl,
-      previousBackgroundPath,
-      nextBackgroundPath
-    )
-    normalizedPatch.bannerImageUrl = rewriteManagedImageUrl(
-      normalizedPatch.bannerImageUrl ?? existingEvent.bannerImageUrl,
-      previousBannerPath,
-      nextBannerPath
-    )
-  }
-
   const mergedEvent = {
     ...existingEvent,
     ...normalizedPatch
@@ -1610,34 +1563,8 @@ export function buildEventUpdatePayload(
   assertEventApplicationFieldConfiguration(mergedEvent, existingEvent.id)
   assertSimplifiedClaimingConfiguration(mergedEvent, existingEvent.id)
 
-  const backgroundImageChanged = normalizedPatch.backgroundImageUrl !== undefined
-    && normalizedPatch.backgroundImageUrl !== existingEvent.backgroundImageUrl
-  const bannerImageChanged = normalizedPatch.bannerImageUrl !== undefined
-    && normalizedPatch.bannerImageUrl !== existingEvent.bannerImageUrl
-  const effectiveSlug = nextSlug ?? existingEvent.slug
-  const preservesBackgroundPointer = isManagedPublicEventImageUrl(normalizedPatch.backgroundImageUrl ?? '')
-    && getManagedPublicEventImagePath(normalizedPatch.backgroundImageUrl ?? '') === publicEventImagePath(effectiveSlug, 'background')
-  const preservesBannerPointer = isManagedPublicEventImageUrl(normalizedPatch.bannerImageUrl ?? '')
-    && getManagedPublicEventImagePath(normalizedPatch.bannerImageUrl ?? '') === publicEventImagePath(effectiveSlug, 'banner')
-
   return {
     ...normalizedPatch,
-    ...(backgroundImageChanged
-      ? {
-          backgroundImageObjectKey: preservesBackgroundPointer
-            ? existingEvent.backgroundImageObjectKey
-            : null,
-          backgroundImageRevision: sql`${events.backgroundImageRevision} + 1`
-        }
-      : {}),
-    ...(bannerImageChanged
-      ? {
-          bannerImageObjectKey: preservesBannerPointer
-            ? existingEvent.bannerImageObjectKey
-            : null,
-          bannerImageRevision: sql`${events.bannerImageRevision} + 1`
-        }
-      : {}),
     publicContentRevision: sql`${events.publicContentRevision} + 1`,
     updatedAt: new Date().toISOString()
   }
@@ -2141,15 +2068,25 @@ export function serializeEvent(
     slug: event.slug,
     description: event.description,
     agendaItems: parseEventAgendaItems(event.agendaItemsJson),
-    backgroundImageUrl: event.backgroundImageUrl,
+    backgroundImageUrl: serializeManagedPublicEventImageUrl(
+      normalizeManagedPublicEventImageUrlForSlug(event.backgroundImageUrl, event.slug, 'background'),
+      event.backgroundImageObjectKey,
+      event.backgroundImageRevision,
+      'background'
+    ),
     backgroundImageRevision: event.backgroundImageRevision,
-    displayBackgroundImageUrl: resolveEventDisplayBackgroundImageUrl(event, options),
+    displayBackgroundImageUrl: resolveVersionedEventDisplayBackgroundImageUrl(event, options),
     displayBackgroundImageRevision: event.backgroundImageUrl
       ? event.backgroundImageRevision
       : options.defaultEventBackgroundImageObjectKey
         ? options.defaultEventBackgroundImageRevision ?? null
         : null,
-    bannerImageUrl: event.bannerImageUrl,
+    bannerImageUrl: serializeManagedPublicEventImageUrl(
+      normalizeManagedPublicEventImageUrlForSlug(event.bannerImageUrl, event.slug, 'banner'),
+      event.bannerImageObjectKey,
+      event.bannerImageRevision,
+      'banner'
+    ),
     bannerImageRevision: event.bannerImageRevision,
     publicContentRevision: event.publicContentRevision,
     lumaEventUrl: event.lumaEventUrl,
@@ -2280,37 +2217,26 @@ export function serializePublicEvent(
   tracks?: EventTrackRecord[],
   options: EventDisplayImageOptions & { includeFullTrackDetails?: boolean } = {}
 ) {
-  const isManagedBackgroundImage = isManagedPublicEventImageUrl(event.backgroundImageUrl ?? '')
-  const isManagedBannerImage = isManagedPublicEventImageUrl(event.bannerImageUrl ?? '')
-  const backgroundImageUrl = isManagedBackgroundImage
-    ? (event.backgroundImageObjectKey
-        ? buildVersionedPublicEventImageUrl(
-            event.backgroundImageUrl,
-            event.backgroundImageRevision,
-            'background'
-          )
-        : null)
-    : event.backgroundImageUrl?.trim() || null
-  const bannerImageUrl = isManagedBannerImage
-    ? (event.bannerImageObjectKey
-        ? buildVersionedPublicEventImageUrl(
-            event.bannerImageUrl,
-            event.bannerImageRevision,
-            'banner'
-          )
-        : null)
-    : event.bannerImageUrl?.trim() || null
+  const backgroundImageUrl = serializeManagedPublicEventImageUrl(
+    normalizeManagedPublicEventImageUrlForSlug(event.backgroundImageUrl, event.slug, 'background'),
+    event.backgroundImageObjectKey,
+    event.backgroundImageRevision,
+    'background'
+  )
+  const bannerImageUrl = serializeManagedPublicEventImageUrl(
+    normalizeManagedPublicEventImageUrlForSlug(event.bannerImageUrl, event.slug, 'banner'),
+    event.bannerImageObjectKey,
+    event.bannerImageRevision,
+    'banner'
+  )
   const displayBackgroundImageUrl = event.backgroundImageUrl
     ? backgroundImageUrl
-    : options.defaultEventBackgroundImageObjectKey
-      ? buildVersionedPublicEventImageUrl(
-          options.defaultEventBackgroundImageUrl,
-          options.defaultEventBackgroundImageRevision,
-          'background'
-        )
-      : isManagedPublicEventImageUrl(options.defaultEventBackgroundImageUrl ?? '')
-        ? null
-        : options.defaultEventBackgroundImageUrl?.trim() || null
+    : serializeManagedPublicEventImageUrl(
+        options.defaultEventBackgroundImageUrl,
+        options.defaultEventBackgroundImageObjectKey,
+        options.defaultEventBackgroundImageRevision,
+        'background'
+      )
 
   return {
     eventType: event.eventType,

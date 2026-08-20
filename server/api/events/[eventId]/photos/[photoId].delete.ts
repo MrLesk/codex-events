@@ -7,9 +7,9 @@ import { apiData } from '#server/http/api-response'
 import {
   getEventPhotoRecordOrThrow,
   eventPhotoParamsSchema,
-  deleteEventPhotoObjectBestEffort,
   requireEventPhotoManageAccess
 } from '#server/domains/events/photos'
+import { scheduleManagedMediaCleanup } from '#server/domains/media/cleanup-queue'
 import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
@@ -42,7 +42,10 @@ export const applicationOperation = defineStructuredRouteOperation({
   ])
 
   if (photo.objectKey) {
-    await deleteEventPhotoObjectBestEffort(h3Event, photo.objectKey)
+    scheduleManagedMediaCleanup(h3Event, {
+      kind: 'event_photo',
+      objectKey: photo.objectKey
+    })
   }
 
   await writeAuditLog(database, {
