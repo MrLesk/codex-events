@@ -25,6 +25,7 @@ export interface AccountEventPageContext {
   actor: PlatformActor
   authorization: EventAuthorization
   access: AccountEventPageAuthorizedAccess | null
+  participantAccessPromise: Promise<AccountEventPageAuthorizedAccess> | null
   database: AppDatabase
   event: AccountEventPageEventRecord
 }
@@ -111,7 +112,7 @@ async function resolveAccountEventPageVisibilityAndAccess(input: {
  * bypass the participant gate, but admin/staff pages may still request this
  * data when their response contract needs it.
  */
-export async function loadAccountEventPageAccess(
+async function queryAccountEventPageAccess(
   context: Pick<AccountEventPageContext, 'actor' | 'database' | 'event'>
 ): Promise<AccountEventPageAuthorizedAccess> {
   const [application, membershipRows] = await Promise.all([
@@ -139,6 +140,23 @@ export async function loadAccountEventPageAccess(
     application: application ?? null,
     memberships: membershipRows as AccountEventPageAuthorizedAccess['memberships']
   }
+}
+
+/**
+ * Return the participant-owned access record for this request. Participant
+ * authorization may seed `context.access`; explicit event roles and platform
+ * admins resolve it lazily. The promise lives on the request context so a
+ * selected page and its optional shell share one application/membership wave.
+ */
+export function getAccountEventPageAccess(
+  context: AccountEventPageContext
+): Promise<AccountEventPageAuthorizedAccess> {
+  if (context.access) {
+    return Promise.resolve(context.access)
+  }
+
+  context.participantAccessPromise ??= queryAccountEventPageAccess(context)
+  return context.participantAccessPromise
 }
 
 /**
@@ -179,6 +197,7 @@ export async function resolveAccountEventPageContext(
     actor,
     authorization,
     access,
+    participantAccessPromise: access ? Promise.resolve(access) : null,
     database,
     event
   }

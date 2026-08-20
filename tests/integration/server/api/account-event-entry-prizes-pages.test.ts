@@ -5,6 +5,7 @@ import prizesPageGetHandler from '../../../../server/api/account/events/[slug]/p
 import {
   eventCreditCodes,
   eventCreditOffers,
+  eventRoleAssignments,
   events,
   prizes,
   userApplications,
@@ -183,6 +184,43 @@ describe('account event entry and prizes page reads', () => {
 
     const hiddenResponse = await harness.request('/api/account/events/hidden-fixture/entry')
     expect(hiddenResponse.status).toBe(404)
+  })
+
+  test('shares explicit-role participant access between the entry page and optional shell', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/account/events/:slug/entry', handler: entryPageGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|entry_admin',
+        email: 'entry_admin@example.com',
+        name: 'Entry admin'
+      }
+    })
+    harnesses.push(harness)
+    await seedUser(harness, 'entry_admin')
+    await seedEvent(harness, {
+      eventId: 'event_entry_admin',
+      slug: 'entry-admin-fixture',
+      userId: 'entry_admin'
+    })
+    await harness.database.insert(eventRoleAssignments).values({
+      id: 'entry_admin_role',
+      eventId: 'event_entry_admin',
+      userId: 'entry_admin',
+      role: 'event_admin',
+      createdAt: now
+    })
+
+    const queryOffset = harness.d1Database.queries.length
+    const response = await harness.request(
+      '/api/account/events/entry-admin-fixture/entry?includeEventShell=true'
+    )
+
+    expect(response.status).toBe(200)
+    const requestQueries = harness.d1Database.queries.slice(queryOffset)
+    expect(requestQueries.filter(query => query.sql.includes('user_applications'))).toHaveLength(1)
+    expect(requestQueries.filter(query => query.sql.includes('from "team_members"'))).toHaveLength(1)
   })
 
   test('loads prizes, outcomes, and participant outcome in one lazy page read', async () => {

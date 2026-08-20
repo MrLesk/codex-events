@@ -9,8 +9,12 @@ import {
 } from '#server/domains/teams'
 import type { AccountEventWorkspacePage } from '#shared/domains/events/account-event-workspace-page'
 import { accountEventWorkspacePageSchema } from '#shared/domains/events/account-event-workspace-page'
+import { assertGuard } from '#server/domains/lifecycle-guard'
 import { defineAccountEventPageRoute } from './account-event-page-contract'
-import { loadAccountEventPageAccess } from './account-event-page-context'
+import {
+  getAccountEventPageAccess,
+  type AccountEventPageContext
+} from './account-event-page-context'
 
 const outcomeVisibleStates = new Set([
   'pitch',
@@ -27,16 +31,26 @@ function serializeTeamDetail(team: Awaited<ReturnType<typeof getTeamWithMembersO
   }
 }
 
+export async function assertAccountEventWorkspaceAccess(context: AccountEventPageContext) {
+  assertCompetitionEvent(context.event)
+  const access = await getAccountEventPageAccess(context)
+
+  assertGuard(access.application?.status === 'approved', {
+    statusCode: 403,
+    code: 'event_workspace_access_required',
+    message: 'This operation requires an approved participant application.',
+    details: {
+      eventId: context.event.id
+    }
+  })
+}
+
 export const accountEventWorkspacePageRoute = defineAccountEventPageRoute({
   page: 'workspace',
   schema: accountEventWorkspacePageSchema,
-  authorize: async (context) => {
-    assertCompetitionEvent(context.event)
-  },
+  authorize: assertAccountEventWorkspaceAccess,
   load: async (context): Promise<AccountEventWorkspacePage> => {
-    const accessPromise = context.access
-      ? Promise.resolve(context.access)
-      : loadAccountEventPageAccess(context)
+    const accessPromise = getAccountEventPageAccess(context)
     const [access, tracks] = await Promise.all([
       accessPromise,
       listEventTracks(context.database, context.event.id)

@@ -42,7 +42,7 @@ import { getTeamCompetitionOutcome } from '#server/domains/outcomes'
 import { serializeSubmission } from '#server/domains/submissions'
 import { listTalkProposals, getOwnTalkProposal, serializeTalkProposal } from '#server/domains/talk-proposals'
 import {
-  loadAccountEventPageAccess,
+  getAccountEventPageAccess,
   type AccountEventPageContext
 } from './account-event-page-context'
 import { defineAccountEventPageRoute } from './account-event-page-contract'
@@ -375,7 +375,7 @@ async function loadParticipation(
 }
 
 export async function loadAccountEventParticipation(context: AccountEventPageContext) {
-  const access = context.access ?? await loadAccountEventPageAccess(context)
+  const access = await getAccountEventPageAccess(context)
 
   return await loadParticipation(
     context,
@@ -448,9 +448,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
   load: async (context, query): Promise<AccountEventEntryPage> => {
     const event = context.event
     const userId = context.actor.platformUser.id
-    const accessPromise = context.access
-      ? Promise.resolve(context.access)
-      : loadAccountEventPageAccess(context)
+    const accessPromise = getAccountEventPageAccess(context)
     const [
       participantAccess,
       roles,

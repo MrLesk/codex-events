@@ -100,6 +100,58 @@ describe('resolveAccountEventPageContext', () => {
     expect(context.authorization.explicitRole).toBe('event_admin')
   })
 
+  test('memoizes lazy participant access on the request context for explicit roles', async () => {
+    const application = {
+      id: 'application_1',
+      eventId: 'event_1',
+      userId: 'user_1',
+      status: 'approved'
+    }
+    const orderBy = vi.fn(async () => [])
+    const findFirst = vi.fn(async () => application)
+    getDatabase.mockReturnValue({
+      query: {
+        events: {
+          findFirst: vi.fn(async () => ({
+            id: 'event_1',
+            slug: 'fixture-event',
+            name: 'Fixture event',
+            eventType: 'hackathon',
+            state: 'submission_open',
+            hiddenAt: null
+          }))
+        },
+        userApplications: {
+          findFirst
+        }
+      },
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({
+          innerJoin: vi.fn(() => ({
+            where: vi.fn(() => ({ orderBy }))
+          }))
+        }))
+      }))
+    })
+
+    const {
+      getAccountEventPageAccess,
+      resolveAccountEventPageContext
+    } = await import('../../../../../server/domains/events/account-event-page-context')
+    const context = await resolveAccountEventPageContext({} as never, 'fixture-event')
+
+    const [first, second] = await Promise.all([
+      getAccountEventPageAccess(context),
+      getAccountEventPageAccess(context)
+    ])
+
+    expect(first).toEqual(second)
+    expect(first.application).toBe(application)
+    expect(findFirst).toHaveBeenCalledOnce()
+    expect(orderBy).toHaveBeenCalledOnce()
+    expect(context.participantAccessPromise).toBeDefined()
+  })
+
   test('uses the resolved authorization for hidden-event visibility without a second role query', async () => {
     resolveEventAuthorization.mockResolvedValue({
       eventId: 'event_1',

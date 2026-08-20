@@ -20,7 +20,7 @@ import { hasEventPhotos } from '#server/domains/events/photos'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { getOwnTalkProposal } from '#server/domains/talk-proposals'
 import {
-  loadAccountEventPageAccess,
+  getAccountEventPageAccess,
   type AccountEventPageContext
 } from './account-event-page-context'
 
@@ -181,9 +181,7 @@ function serializeShellAccess(
 export async function loadAccountEventPageShell(
   context: AccountEventPageContext
 ): Promise<AccountEventPageShell> {
-  const accessPromise = context.access
-    ? Promise.resolve(context.access)
-    : loadAccountEventPageAccess(context)
+  const accessPromise = getAccountEventPageAccess(context)
   const [
     access,
     tracks,

@@ -4,15 +4,18 @@ import operationsPageGetHandler from '../../../../server/api/account/events/[slu
 import participantsPageGetHandler from '../../../../server/api/account/events/[slug]/participants.get'
 import submissionsPageGetHandler from '../../../../server/api/account/events/[slug]/submissions.get'
 import judgingPageGetHandler from '../../../../server/api/account/events/[slug]/judging.get'
+import workspacePageGetHandler from '../../../../server/api/account/events/[slug]/workspace.get'
 import judgeInboxGetHandler from '../../../../server/api/account/judging.get'
 import {
   eventRoleAssignments,
   events,
+  userApplications,
   users
 } from '../../../../server/database/schema'
 import { accountEventOperationsPageSchema } from '../../../../shared/domains/events/account-event-operations-page'
 import { accountEventSubmissionsPageSchema } from '../../../../shared/domains/events/account-event-submissions-page'
 import { accountEventJudgingPageSchema, accountJudgeInboxPageSchema } from '../../../../shared/domains/events/account-event-judging-page'
+import { accountEventWorkspacePageSchema } from '../../../../shared/domains/events/account-event-workspace-page'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
 describe('account event operations, submissions, and judging page reads', () => {
@@ -27,7 +30,8 @@ describe('account event operations, submissions, and judging page reads', () => 
   async function seedFixture(
     harness: ReturnType<typeof createApiRouteTestHarness>,
     userId: string,
-    role: 'event_admin' | 'judge'
+    role: 'event_admin' | 'judge' | 'staff' | null,
+    applicationStatus?: 'submitted' | 'approved'
   ) {
     const now = '2026-08-19T12:00:00.000Z'
 
@@ -56,15 +60,28 @@ describe('account event operations, submissions, and judging page reads', () => 
       createdAt: now,
       updatedAt: now
     })
-    await harness.database.insert(eventRoleAssignments).values({
-      id: `${userId}_role`,
-      eventId: 'event_page_read',
-      userId,
-      role,
-      isInJudgePool: role === 'judge',
-      isStaff: false,
-      createdAt: now
-    })
+    if (role) {
+      await harness.database.insert(eventRoleAssignments).values({
+        id: `${userId}_role`,
+        eventId: 'event_page_read',
+        userId,
+        role,
+        isInJudgePool: role === 'judge',
+        isStaff: role === 'staff',
+        createdAt: now
+      })
+    }
+
+    if (applicationStatus) {
+      await harness.database.insert(userApplications).values({
+        id: `${userId}_application`,
+        eventId: 'event_page_read',
+        userId,
+        status: applicationStatus,
+        submittedAt: now,
+        updatedAt: now
+      })
+    }
   }
 
   test('returns the operations page in one request-scoped D1 session', async () => {
@@ -258,6 +275,101 @@ describe('account event operations, submissions, and judging page reads', () => 
 
     expect(response.status).toBe(403)
   })
+
+  test('authorizes an approved participant before loading the workspace and optional shell', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/account/events/:slug/workspace', handler: workspacePageGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|approved_workspace_participant',
+        email: 'approved_workspace_participant@example.com',
+        name: 'Approved workspace participant'
+      }
+    })
+    harnesses.push(harness)
+    await seedFixture(harness, 'approved_workspace_participant', null, 'approved')
+
+    const response = await harness.request(
+      '/api/account/events/page-read-fixture/workspace?includeEventShell=true'
+    )
+    const body = await response.json() as {
+      data: {
+        page: unknown
+        shell?: unknown
+      }
+    }
+
+    expect(response.status).toBe(200)
+    expect(accountEventWorkspacePageSchema.parse(body.data.page)).toMatchObject({
+      application: { userId: 'approved_workspace_participant', status: 'approved' },
+      workflow: {
+        applicationStatus: 'approved',
+        isApprovedParticipant: true
+      }
+    })
+    expect(body.data.shell).toBeDefined()
+  })
+
+  test('allows an event role to use the participant workspace only with an approved application', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/account/events/:slug/workspace', handler: workspacePageGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|admin_participant',
+        email: 'admin_participant@example.com',
+        name: 'Admin participant'
+      }
+    })
+    harnesses.push(harness)
+    await seedFixture(harness, 'admin_participant', 'event_admin', 'approved')
+
+    const response = await harness.request(
+      '/api/account/events/page-read-fixture/workspace?includeEventShell=true'
+    )
+    const body = await response.json() as {
+      data: {
+        page: unknown
+        shell?: unknown
+      }
+    }
+
+    expect(response.status).toBe(200)
+    expect(accountEventWorkspacePageSchema.parse(body.data.page)).toMatchObject({
+      workflow: {
+        applicationStatus: 'approved',
+        isApprovedParticipant: true
+      }
+    })
+    expect(body.data.shell).toBeDefined()
+  })
+
+  test.each(['event_admin', 'staff'] as const)(
+    'rejects a role-only %s before loading the workspace or optional shell',
+    async (role) => {
+      const harness = createApiRouteTestHarness({
+        routes: [
+          { method: 'get', path: '/api/account/events/:slug/workspace', handler: workspacePageGetHandler }
+        ],
+        sessionUser: {
+          sub: `auth0|role_only_${role}`,
+          email: `role_only_${role}@example.com`,
+          name: `Role-only ${role}`
+        }
+      })
+      harnesses.push(harness)
+      await seedFixture(harness, `role_only_${role}`, role)
+
+      const response = await harness.request(
+        '/api/account/events/page-read-fixture/workspace?includeEventShell=true'
+      )
+      const body = await response.json() as { data?: unknown }
+
+      expect(response.status).toBe(403)
+      expect(body.data).toBeUndefined()
+    }
+  )
 
   test('rejects the global judge inbox without a judge-capable event role', async () => {
     const harness = createApiRouteTestHarness({

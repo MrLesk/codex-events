@@ -6,7 +6,7 @@ const serializeEvent = vi.hoisted(() => vi.fn())
 const hasEventPhotos = vi.hoisted(() => vi.fn())
 const getEventDisplayImageOptions = vi.hoisted(() => vi.fn())
 const getOwnTalkProposal = vi.hoisted(() => vi.fn())
-const loadAccountEventPageAccess = vi.hoisted(() => vi.fn())
+const getAccountEventPageAccess = vi.hoisted(() => vi.fn())
 
 const shellSource = readFileSync(
   new URL('../../../../../server/domains/events/account-event-page-shell.ts', import.meta.url),
@@ -31,7 +31,7 @@ vi.mock('#server/domains/talk-proposals', () => ({
 }))
 
 vi.mock('../../../../../server/domains/events/account-event-page-context', () => ({
-  loadAccountEventPageAccess
+  getAccountEventPageAccess
 }))
 
 function createTrackedPromise<T>(
@@ -65,7 +65,7 @@ describe('account-event page shell request topology', () => {
     hasEventPhotos.mockReset()
     getEventDisplayImageOptions.mockReset()
     getOwnTalkProposal.mockReset()
-    loadAccountEventPageAccess.mockReset()
+    getAccountEventPageAccess.mockReset()
   })
 
   test('starts all shell reads in one parallel wave and uses one joined credit probe', async () => {
@@ -81,6 +81,13 @@ describe('account-event page shell request topology', () => {
     getEventDisplayImageOptions.mockImplementation(() => track('image-options', null))
     hasEventPhotos.mockImplementation(() => track('gallery', false))
     getOwnTalkProposal.mockImplementation(() => track('talk-proposal', null))
+    getAccountEventPageAccess.mockResolvedValue({
+      application: {
+        status: 'submitted',
+        lumaSyncStatus: 'not_synced'
+      },
+      memberships: []
+    })
     serializeEvent.mockReturnValue({
       id: 'event_1',
       slug: 'fixture-meetup',
@@ -168,7 +175,7 @@ describe('account-event page shell request topology', () => {
     expect(shell.event.hasGallery).toBe(false)
     expect(shell.tabVisibility.hasCreditInventory).toBe(true)
     expect(getOwnTalkProposal).toHaveBeenCalledOnce()
-    expect(loadAccountEventPageAccess).not.toHaveBeenCalled()
+    expect(getAccountEventPageAccess).toHaveBeenCalledOnce()
   })
 
   test('keeps the shell’s independent reads explicit and avoids the old credit fan-out', () => {
