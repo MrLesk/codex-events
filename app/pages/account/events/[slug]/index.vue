@@ -1581,6 +1581,8 @@ useSeoMeta({
           :application-status="applicationStatus"
           :opens-at="event.talkProposalOpensAt"
           :closes-at="event.talkProposalClosesAt"
+          :questions="event.talkProposalQuestions"
+          :question-set-revision="event.talkProposalQuestionsRevision"
           :proposal="talkProposal"
           @has-proposal-change="hasRetainedTalkProposal = $event"
           @updated="refreshAccountEvent"
@@ -1592,6 +1594,7 @@ useSeoMeta({
           :event-state="event.state"
           :can-decide="canAdmin"
           :entries="talkProposalReviews"
+          :questions="event.talkProposalQuestions"
           @updated="refreshAccountEvent"
         />
       </section>

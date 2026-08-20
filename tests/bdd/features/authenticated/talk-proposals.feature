@@ -1,7 +1,7 @@
 Feature: Meetup Call for talks
-  Meetup applicants can privately submit one Talk proposal while public pages show only the Call for talks.
+  Meetup participants can privately submit one Talk proposal while public pages show only the Call for talks.
 
-  Scenario: A registered applicant submits a private Talk proposal
+  Scenario: A registered participant submits a private Talk proposal
     Given the saved "platform_admin" local session state exists
     When the saved "platform_admin" session creates an open Meetup with a Call for talks
     Then the public Meetup should show a Call for talks registration action without proposal content

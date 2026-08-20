@@ -1,5 +1,6 @@
 import type { EventState } from '~/domains/events/states'
 import type { EventBalanceBreakdown } from '#shared/domains/events/builder-scoring'
+import type { TalkProposalQuestionDefinition } from '#shared/domains/talk-proposals/questions'
 
 export interface TermsReference {
   id: string
@@ -93,6 +94,8 @@ export interface EventRecord {
   talkProposalsEnabled?: boolean
   talkProposalOpensAt?: string | null
   talkProposalClosesAt?: string | null
+  talkProposalQuestions?: TalkProposalQuestionDefinition[]
+  talkProposalQuestionsRevision?: number
   blindReviewCount: number
   pitchReviewEnabled: boolean
   blindScoreWeightPercent: number

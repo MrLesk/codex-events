@@ -205,8 +205,10 @@ state.
   proposals are available only when explicitly enabled and never appear as
   public speaker or agenda content.
 - Meetup Call for talks coverage includes Meetup-only configuration and
-  independent-window validation; one proposal per event/user; HTTP(S) link
-  validation; submitted/approved applicant eligibility; draft, submit,
+  independent-window validation; ordered custom-question schemas, required
+  answer enforcement, immutable definitions after the first proposal, and
+  concurrent question-revision checks; one proposal per event/user; HTTP(S)
+  link validation; submitted/approved participant eligibility; draft, submit,
   withdraw, revise, resubmit, accept, and reject transitions; owner mutation
   pauses after application rejection or withdrawal; retained owner/reviewer
   visibility; staff read-only and admin-only decisions; close/completion

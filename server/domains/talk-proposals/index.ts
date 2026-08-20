@@ -20,6 +20,13 @@ import {
 } from '#server/database/schema'
 import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
 import { ApiError } from '#server/http/api-error'
+import {
+  getTalkProposalAnswerIssues,
+  parseTalkProposalAnswersJson,
+  parseTalkProposalQuestionsJson,
+  talkProposalAnswersSchema,
+  type TalkProposalAnswer
+} from '#shared/domains/talk-proposals/questions'
 
 type EventRecord = typeof events.$inferSelect
 type TalkProposalRecord = typeof talkProposals.$inferSelect
@@ -39,7 +46,9 @@ export const talkProposalEventParamsSchema = talkProposalParamsSchema.pick({ eve
 export const talkProposalContentBodySchema = z.object({
   title: z.string().trim().min(1).max(200),
   abstract: z.string().trim().min(1).max(8000),
-  demoOrSlidesUrl: z.union([httpUrlSchema, z.literal(''), z.null()]).optional()
+  demoOrSlidesUrl: z.union([httpUrlSchema, z.literal(''), z.null()]).optional(),
+  questionSetRevision: z.number().int().min(0),
+  answers: talkProposalAnswersSchema
 })
 
 export const talkProposalDecisionBodySchema = z.object({
@@ -66,6 +75,8 @@ export function serializeTalkProposal(proposal: TalkProposalRecord) {
     title: proposal.title,
     abstract: proposal.abstract,
     demoOrSlidesUrl: proposal.demoOrSlidesUrl,
+    questionSetRevision: proposal.questionSetRevision,
+    answers: parseTalkProposalAnswersJson(proposal.answersJson),
     decisionMessage: proposal.decisionMessage,
     reviewedByUserId: proposal.reviewedByUserId,
     submittedAt: proposal.submittedAt,
@@ -175,11 +186,41 @@ async function assertCurrentOwnerMutationEligibility(
   database: AppDatabase,
   eventId: string,
   userId: string,
-  now: Date
+  now: Date,
+  questionSetRevision: number
 ) {
   const event = await getEventOrThrow(database, eventId)
   assertTalkProposalWindowOpen(event, now)
+  assertGuard(event.talkProposalQuestionsRevision === questionSetRevision, {
+    statusCode: 409,
+    code: 'talk_proposal_questions_changed',
+    message: 'The Call for talks questions changed. Review them before saving your proposal.'
+  })
   await assertTalkProposalOwnerEligible(database, eventId, userId)
+}
+
+export function assertTalkProposalAnswers(
+  event: Pick<EventRecord, 'talkProposalQuestionsJson' | 'talkProposalQuestionsRevision'>,
+  questionSetRevision: number,
+  answers: TalkProposalAnswer[],
+  requireComplete: boolean
+) {
+  assertGuard(event.talkProposalQuestionsRevision === questionSetRevision, {
+    statusCode: 409,
+    code: 'talk_proposal_questions_changed',
+    message: 'The Call for talks questions changed. Review them before saving your proposal.'
+  })
+  const issues = getTalkProposalAnswerIssues(
+    parseTalkProposalQuestionsJson(event.talkProposalQuestionsJson),
+    answers,
+    requireComplete
+  )
+  assertGuard(issues.length === 0, {
+    statusCode: 422,
+    code: 'talk_proposal_answers_invalid',
+    message: issues[0]?.message ?? 'The Talk proposal answers are invalid.',
+    details: { questions: issues.map(issue => issue.questionId) }
+  })
 }
 
 export async function createTalkProposalDraft(
@@ -189,6 +230,7 @@ export async function createTalkProposalDraft(
 ) {
   const event = await getEventOrThrow(database, input.eventId)
   assertTalkProposalWindowOpen(event, now)
+  assertTalkProposalAnswers(event, input.questionSetRevision, input.answers, false)
   await assertTalkProposalOwnerEligible(database, input.eventId, input.userId)
   assertGuard(!await getOwnTalkProposal(database, input.eventId, input.userId), {
     statusCode: 409,
@@ -200,11 +242,13 @@ export async function createTalkProposalDraft(
   const id = crypto.randomUUID()
   const inserted = await database.get<{ id: string }>(sql`
     insert into ${talkProposals} (
-      id, event_id, user_id, status, title, abstract, demo_or_slides_url, created_at, updated_at
+      id, event_id, user_id, status, title, abstract, demo_or_slides_url,
+      question_set_revision, answers_json, created_at, updated_at
     )
     select
       ${id}, ${input.eventId}, ${input.userId}, 'draft', ${input.title}, ${input.abstract},
-      ${normalizeOptionalText(input.demoOrSlidesUrl)}, ${timestamp}, ${timestamp}
+      ${normalizeOptionalText(input.demoOrSlidesUrl)}, ${input.questionSetRevision}, ${JSON.stringify(input.answers)},
+      ${timestamp}, ${timestamp}
     from ${events}
     inner join ${userApplications}
       on ${userApplications.eventId} = ${events.id}
@@ -212,6 +256,7 @@ export async function createTalkProposalDraft(
     where ${events.id} = ${input.eventId}
       and ${events.eventType} = 'meetup'
       and ${events.talkProposalsEnabled} = true
+      and ${events.talkProposalQuestionsRevision} = ${input.questionSetRevision}
       and ${events.talkProposalOpensAt} <= ${timestamp}
       and ${events.talkProposalClosesAt} >= ${timestamp}
       and (${userApplications.status} = 'submitted' or ${userApplications.status} = 'approved')
@@ -227,7 +272,7 @@ export async function createTalkProposalDraft(
       code: 'talk_proposal_exists',
       message: 'You already have a Talk proposal for this event.'
     })
-    await assertCurrentOwnerMutationEligibility(database, input.eventId, input.userId, now)
+    await assertCurrentOwnerMutationEligibility(database, input.eventId, input.userId, now, input.questionSetRevision)
     throw new ApiError({
       statusCode: 409,
       code: 'talk_proposal_write_conflict',
@@ -244,6 +289,7 @@ export async function updateTalkProposalDraft(
 ) {
   const event = await getEventOrThrow(database, input.eventId)
   assertTalkProposalWindowOpen(event, now)
+  assertTalkProposalAnswers(event, input.questionSetRevision, input.answers, false)
   await assertTalkProposalOwnerEligible(database, input.eventId, input.userId)
   const proposal = await getOwnTalkProposal(database, input.eventId, input.userId)
   assertGuard(Boolean(proposal), { statusCode: 404, code: 'talk_proposal_not_found', message: 'Talk proposal not found.' })
@@ -256,14 +302,16 @@ export async function updateTalkProposalDraft(
     title: input.title,
     abstract: input.abstract,
     demoOrSlidesUrl: normalizeOptionalText(input.demoOrSlidesUrl),
+    answersJson: JSON.stringify(input.answers),
     updatedAt: now.toISOString()
   }).where(and(
     eq(talkProposals.id, proposal!.id),
     eq(talkProposals.status, 'draft'),
+    eq(talkProposals.questionSetRevision, input.questionSetRevision),
     ownerMutationEligibilityPredicate(database, input.eventId, input.userId, now.toISOString())
   )).returning()
   if (!updated) {
-    await assertCurrentOwnerMutationEligibility(database, input.eventId, input.userId, now)
+    await assertCurrentOwnerMutationEligibility(database, input.eventId, input.userId, now, input.questionSetRevision)
     throw new ApiError({ statusCode: 409, code: 'talk_proposal_status_invalid', message: 'Only a draft Talk proposal can be edited.' })
   }
   return updated
@@ -286,6 +334,14 @@ async function transitionOwnTalkProposal(
     code: 'talk_proposal_status_invalid',
     message: `This Talk proposal cannot be ${transition === 'submit' ? 'submitted' : `${transition}n`} now.`
   })
+  if (transition === 'submit') {
+    assertTalkProposalAnswers(
+      event,
+      proposal!.questionSetRevision,
+      parseTalkProposalAnswersJson(proposal!.answersJson),
+      true
+    )
+  }
   const timestamp = now.toISOString()
   const [updated] = await database.update(talkProposals).set({
     status: next,
@@ -299,7 +355,7 @@ async function transitionOwnTalkProposal(
     ownerMutationEligibilityPredicate(database, input.eventId, input.userId, timestamp)
   )).returning()
   if (!updated) {
-    await assertCurrentOwnerMutationEligibility(database, input.eventId, input.userId, now)
+    await assertCurrentOwnerMutationEligibility(database, input.eventId, input.userId, now, proposal!.questionSetRevision)
     throw new ApiError({ statusCode: 409, code: 'talk_proposal_status_invalid', message: 'This Talk proposal changed before your request completed.' })
   }
   return updated

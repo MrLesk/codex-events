@@ -16,6 +16,7 @@ import {
   requireEventAdmin,
   routeIdParamsSchema,
   serializeAdminEvent,
+  talkProposalQuestionsChanged,
   updateEventBodySchema
 } from '#server/domains/events'
 import { reconcileEventLumaWebhook } from '#server/domains/events/luma-webhook-registration'
@@ -42,7 +43,10 @@ export const applicationOperation = defineStructuredRouteOperation({
   const shouldReconcileLuma = Object.hasOwn(body, 'lumaApiKey') || Object.hasOwn(body, 'lumaEventApiId')
   const simplifiedClaiming = await getSimplifiedClaimingSummary(database, event)
 
-  if (body.talkProposalsEnabled === false && event.talkProposalsEnabled) {
+  const locksAgainstExistingProposals = (body.talkProposalsEnabled === false && event.talkProposalsEnabled)
+    || talkProposalQuestionsChanged(event, body)
+
+  if (locksAgainstExistingProposals) {
     const existingProposal = await database.query.talkProposals.findFirst({
       where: eq(talkProposals.eventId, eventId),
       columns: { id: true }
@@ -95,7 +99,7 @@ export const applicationOperation = defineStructuredRouteOperation({
 
   const eventWritePredicates = [eq(events.id, eventId)]
 
-  if (body.talkProposalsEnabled === false && event.talkProposalsEnabled) {
+  if (locksAgainstExistingProposals) {
     eventWritePredicates.push(
       notExists(database.select({ id: talkProposals.id }).from(talkProposals).where(eq(talkProposals.eventId, eventId)))
     )

@@ -120,10 +120,11 @@ For Meetup and Build events, an approved application is the participation record
 
 ## Talk Proposal Permissions
 
-Talk proposal permissions apply only to Meetups with an enabled Call for talks. Proposal content and decisions are private.
+Talk proposal permissions apply only to Meetups with an enabled Call for talks. Question definitions, proposal content, custom answers, and decisions are private.
 
-| Action | Applicant / Owner | Staff | Event Admin | Platform Admin |
+| Action | Participant / Owner | Staff | Event Admin | Platform Admin |
 | --- | --- | --- | --- | --- |
+| Configure ordered Call for talks questions | No | No | Yes, before the first proposal exists and before completion | Yes, before the first proposal exists and before completion |
 | View own retained proposal | Yes | No | No | No |
 | Create proposal draft | Yes, while the Call for talks is open and own application is `submitted` or `approved` | No | No | No |
 | Edit proposal draft | Yes, while open and eligible | No | No | No |

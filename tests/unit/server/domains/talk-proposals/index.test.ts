@@ -14,7 +14,8 @@ import {
   submitOwnTalkProposal,
   talkProposalContentBodySchema,
   updateTalkProposalDraft,
-  withdrawOwnTalkProposal
+  withdrawOwnTalkProposal,
+  assertTalkProposalAnswers
 } from '../../../../../server/domains/talk-proposals'
 import { ApiError } from '../../../../../server/http/api-error'
 import { createApiRouteTestHarness } from '../../../../support/backend/api-route'
@@ -90,33 +91,51 @@ describe('Meetup talk proposal domain', () => {
     expect(disabled.talkProposalClosesAt).toBeNull()
 
     expect(() => assertTalkProposalConfigurationChangeAllowed(
-      { state: 'registration_open', talkProposalsEnabled: true },
+      { state: 'registration_open', talkProposalsEnabled: true, talkProposalQuestionsJson: '[]' },
       { talkProposalsEnabled: false },
       true
     )).toThrowError(ApiError)
     expect(() => assertTalkProposalConfigurationChangeAllowed(
-      { state: 'registration_open', talkProposalsEnabled: true },
+      { state: 'registration_open', talkProposalsEnabled: true, talkProposalQuestionsJson: '[]' },
       { talkProposalClosesAt: '2026-08-16T00:00:00.000Z' },
       true
     )).not.toThrow()
     expect(() => assertTalkProposalConfigurationChangeAllowed(
-      { state: 'completed', talkProposalsEnabled: true },
+      { state: 'completed', talkProposalsEnabled: true, talkProposalQuestionsJson: '[]' },
       { talkProposalClosesAt: '2026-08-16T00:00:00.000Z' },
       true
     )).toThrowError(ApiError)
   })
 
   test('content accepts only optional HTTP(S) links', () => {
-    const content = { title: 'Talk', abstract: 'Abstract' }
+    const content = { title: 'Talk', abstract: 'Abstract', questionSetRevision: 0, answers: [] }
     expect(talkProposalContentBodySchema.safeParse({ ...content, demoOrSlidesUrl: 'https://example.com/slides' }).success).toBe(true)
     expect(talkProposalContentBodySchema.safeParse({ ...content, demoOrSlidesUrl: 'ftp://example.com/slides' }).success).toBe(false)
+  })
+
+  test('custom answers retain drafts but enforce required submission answers', () => {
+    const questions = [{
+      id: 'format',
+      type: 'single_choice' as const,
+      prompt: 'How ready is the live demo?',
+      required: true,
+      options: ['Fully working', 'Mostly working with backup']
+    }]
+    const event = {
+      talkProposalQuestionsJson: JSON.stringify(questions),
+      talkProposalQuestionsRevision: 1
+    }
+
+    expect(() => assertTalkProposalAnswers(event, 1, [{ questionId: 'format', value: '' }], false)).not.toThrow()
+    expect(() => assertTalkProposalAnswers(event, 1, [{ questionId: 'format', value: '' }], true)).toThrowError(ApiError)
+    expect(() => assertTalkProposalAnswers(event, 2, [{ questionId: 'format', value: 'Fully working' }], false)).toThrowError(ApiError)
   })
 
   test('owner lifecycle enforces uniqueness, eligibility, and read-only submitted content', async () => {
     const harness = createApiRouteTestHarness({ routes: [] })
     harnesses.push(harness)
     await seedContext(harness)
-    const content = { eventId: 'meetup', userId: 'owner', title: 'Talk', abstract: 'Abstract', demoOrSlidesUrl: '' }
+    const content = { eventId: 'meetup', userId: 'owner', title: 'Talk', abstract: 'Abstract', demoOrSlidesUrl: '', questionSetRevision: 0, answers: [] }
     const draft = await createTalkProposalDraft(harness.database, content, now)
     expect(draft.status).toBe('draft')
     await expect(createTalkProposalDraft(harness.database, content, now)).rejects.toThrowError(ApiError)
@@ -137,7 +156,7 @@ describe('Meetup talk proposal domain', () => {
     harnesses.push(harness)
     await seedContext(harness)
     await createTalkProposalDraft(harness.database, {
-      eventId: 'meetup', userId: 'owner', title: 'Talk', abstract: 'Abstract'
+      eventId: 'meetup', userId: 'owner', title: 'Talk', abstract: 'Abstract', questionSetRevision: 0, answers: []
     }, now)
     await harness.database.update(userApplications).set({ status: 'rejected' }).where(eq(userApplications.id, 'application'))
     await expect(submitOwnTalkProposal(harness.database, { eventId: 'meetup', userId: 'owner' }, now)).rejects.toThrowError(ApiError)
@@ -149,7 +168,7 @@ describe('Meetup talk proposal domain', () => {
     harnesses.push(harness)
     await seedContext(harness)
     await createTalkProposalDraft(harness.database, {
-      eventId: 'meetup', userId: 'owner', title: 'Talk', abstract: 'Abstract'
+      eventId: 'meetup', userId: 'owner', title: 'Talk', abstract: 'Abstract', questionSetRevision: 0, answers: []
     }, now)
     await submitOwnTalkProposal(harness.database, { eventId: 'meetup', userId: 'owner' }, now)
     const afterClose = new Date('2026-08-16T00:00:00.000Z')
@@ -174,7 +193,7 @@ describe('Meetup talk proposal domain', () => {
     harnesses.push(harness)
     await seedContext(harness)
     const proposal = await createTalkProposalDraft(harness.database, {
-      eventId: 'meetup', userId: 'owner', title: 'Talk', abstract: 'Abstract'
+      eventId: 'meetup', userId: 'owner', title: 'Talk', abstract: 'Abstract', questionSetRevision: 0, answers: []
     }, now)
     await submitOwnTalkProposal(harness.database, { eventId: 'meetup', userId: 'owner' }, now)
 

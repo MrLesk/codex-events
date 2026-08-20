@@ -24,6 +24,30 @@ import { deletePlatformAccount } from '../../../../server/domains/accounts'
 import { createTalkProposalDraft } from '../../../../server/domains/talk-proposals'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
+const referenceQuestions = [
+  { id: 'phone', type: 'short_text' as const, prompt: 'Phone number', required: true, options: [] },
+  {
+    id: 'format',
+    type: 'single_choice' as const,
+    prompt: 'How ready is the live demo?',
+    required: true,
+    options: ['Fully working', 'Mostly working with backup']
+  },
+  {
+    id: 'rules',
+    type: 'acknowledgement' as const,
+    prompt: 'I understand the talk format.',
+    required: true,
+    options: []
+  }
+]
+
+const referenceAnswers = [
+  { questionId: 'phone', value: '+43 123 456' },
+  { questionId: 'format', value: 'Fully working' },
+  { questionId: 'rules', value: true }
+]
+
 function routes() {
   return [
     { method: 'get' as const, path: '/api/events/:eventId/talk-proposals/me', handler: getOwnHandler },
@@ -52,6 +76,8 @@ async function seed(harness: ReturnType<typeof createApiRouteTestHarness>) {
     city: 'Vienna', country: 'Austria', address: 'Address', registrationOpensAt: '2020-01-01T00:00:00.000Z',
     registrationClosesAt: '2099-01-01T00:00:00.000Z', talkProposalsEnabled: true,
     talkProposalOpensAt: '2020-01-01T00:00:00.000Z', talkProposalClosesAt: '2099-01-01T00:00:00.000Z',
+    talkProposalQuestionsJson: JSON.stringify(referenceQuestions),
+    talkProposalQuestionsRevision: 0,
     state: 'registration_open', maxTeamMembers: 1, createdByUserId: 'admin'
   })
   await harness.database.insert(userApplications).values([
@@ -75,7 +101,13 @@ describe('Talk proposal API routes', () => {
     const harness = createApiRouteTestHarness({ routes: routes(), sessionUser: { sub: 'auth0|owner', email: 'owner@example.com' } })
     harnesses.push(harness)
     await seed(harness)
-    const body = { title: 'Agents at the edge', abstract: 'A practical session.', demoOrSlidesUrl: 'https://example.com/slides' }
+    const body = {
+      title: 'Agents at the edge',
+      abstract: 'A practical session.',
+      demoOrSlidesUrl: 'https://example.com/slides',
+      questionSetRevision: 0,
+      answers: referenceAnswers
+    }
     expect((await harness.request('/api/events/meetup/talk-proposals/me', { method: 'POST', body: JSON.stringify(body) })).status).toBe(200)
     expect((await harness.request('/api/events/meetup/talk-proposals/me', { method: 'PATCH', body: JSON.stringify({ ...body, title: 'Revised title' }) })).status).toBe(200)
     expect((await harness.request('/api/events/meetup/talk-proposals/me/actions/submit', { method: 'POST' })).status).toBe(200)
@@ -85,6 +117,35 @@ describe('Talk proposal API routes', () => {
     const resubmit = await harness.request('/api/events/meetup/talk-proposals/me/actions/submit', { method: 'POST' })
     expect(resubmit.status).toBe(200)
     expect(await resubmit.json()).toMatchObject({ data: { userId: 'owner', status: 'submitted', title: 'Revised title' } })
+  })
+
+  test('submission requires complete answers and question definitions lock after the first draft', async () => {
+    const harness = createApiRouteTestHarness({ routes: routes(), sessionUser: { sub: 'auth0|owner', email: 'owner@example.com' } })
+    harnesses.push(harness)
+    await seed(harness)
+
+    const draft = {
+      title: 'Agents at the edge',
+      abstract: 'A practical session.',
+      demoOrSlidesUrl: '',
+      questionSetRevision: 0,
+      answers: referenceAnswers.map(answer => answer.questionId === 'phone' ? { ...answer, value: '' } : answer)
+    }
+    expect((await harness.request('/api/events/meetup/talk-proposals/me', {
+      method: 'POST', body: JSON.stringify(draft)
+    })).status).toBe(200)
+    expect((await harness.request('/api/events/meetup/talk-proposals/me/actions/submit', { method: 'POST' })).status).toBe(422)
+    expect((await harness.request('/api/events/meetup/talk-proposals/me', {
+      method: 'PATCH', body: JSON.stringify({ ...draft, answers: referenceAnswers })
+    })).status).toBe(200)
+    expect((await harness.request('/api/events/meetup/talk-proposals/me/actions/submit', { method: 'POST' })).status).toBe(200)
+
+    await harness.database.insert(eventRoleAssignments).values({
+      id: 'role_owner_admin', eventId: 'meetup', userId: 'owner', role: 'event_admin'
+    })
+    expect((await harness.request('/api/events/meetup', {
+      method: 'PATCH', body: JSON.stringify({ talkProposalQuestions: [] })
+    })).status).toBe(409)
   })
 
   test('staff can paginate retained proposals but cannot decide', async () => {
@@ -228,7 +289,8 @@ describe('Talk proposal API routes', () => {
 
     const [creation, disabling] = await Promise.allSettled([
       createTalkProposalDraft(harness.database, {
-        eventId: 'meetup', userId: 'owner', title: 'Racing talk', abstract: 'Private abstract'
+        eventId: 'meetup', userId: 'owner', title: 'Racing talk', abstract: 'Private abstract',
+        questionSetRevision: 0, answers: referenceAnswers
       }, new Date()),
       harness.request('/api/events/meetup', {
         method: 'PATCH',

@@ -1559,6 +1559,7 @@ const submitConfigForm = handleSubmit(() => {
                     v-model:enabled="form.talkProposalsEnabled"
                     v-model:opens-at="form.talkProposalOpensAt"
                     v-model:closes-at="form.talkProposalClosesAt"
+                    v-model:questions="form.talkProposalQuestions"
                     :has-existing-proposal="props.hasExistingTalkProposal"
                   />
 
@@ -1937,6 +1938,7 @@ const submitConfigForm = handleSubmit(() => {
               v-model:enabled="form.talkProposalsEnabled"
               v-model:opens-at="form.talkProposalOpensAt"
               v-model:closes-at="form.talkProposalClosesAt"
+              v-model:questions="form.talkProposalQuestions"
               :has-existing-proposal="props.hasExistingTalkProposal"
             />
 

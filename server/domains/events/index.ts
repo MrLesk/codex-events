@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, count, desc, eq, exists, getTableColumns, isNull, like, or, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, exists, getTableColumns, isNull, like, or, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { getRequestActor, requirePlatformActor } from '#server/auth/actor'
@@ -45,6 +45,10 @@ import {
 import { buildEventLumaWebhookUrl } from '#shared/domains/luma/webhook-url'
 import type { EventBalanceBreakdown, EventBalanceScoringInput } from '#shared/domains/events/builder-scoring'
 import { computeEventBalance } from '#shared/domains/events/builder-scoring'
+import {
+  parseTalkProposalQuestionsJson,
+  talkProposalQuestionsSchema
+} from '#shared/domains/talk-proposals/questions'
 
 const isoTimestampSchema = z.string().refine(
   value => !Number.isNaN(Date.parse(value)),
@@ -396,12 +400,13 @@ function addTalkProposalConfigurationIssues(
   const enabled = input.talkProposalsEnabled === true
   const opensAt = typeof input.talkProposalOpensAt === 'string' ? input.talkProposalOpensAt : null
   const closesAt = typeof input.talkProposalClosesAt === 'string' ? input.talkProposalClosesAt : null
+  const questions = Array.isArray(input.talkProposalQuestions) ? input.talkProposalQuestions : []
 
-  if (input.eventType !== undefined && input.eventType !== 'meetup' && (enabled || opensAt || closesAt)) {
+  if (input.eventType !== undefined && input.eventType !== 'meetup' && (enabled || opensAt || closesAt || questions.length > 0)) {
     addIssue(['talkProposalsEnabled'], 'Call for talks is available only for Meetup events.')
   }
 
-  if (!enabled && (opensAt || closesAt)) {
+  if (!enabled && (opensAt || closesAt || questions.length > 0)) {
     addIssue(['talkProposalsEnabled'], 'Enable Call for talks before setting its schedule.')
   }
 
@@ -452,6 +457,7 @@ const eventConfigShape = {
   talkProposalsEnabled: talkProposalsEnabledSchema.default(false),
   talkProposalOpensAt: isoTimestampSchema.nullable().default(null),
   talkProposalClosesAt: isoTimestampSchema.nullable().default(null),
+  talkProposalQuestions: talkProposalQuestionsSchema.default([]),
   blindReviewCount: blindReviewCountSchema.default(1),
   pitchReviewEnabled: pitchReviewEnabledSchema.default(false),
   blindScoreWeightPercent: blindScoreWeightPercentSchema.default(70),
@@ -551,6 +557,7 @@ export const updateEventBodySchema = z.object({
   talkProposalsEnabled: talkProposalsEnabledSchema.optional(),
   talkProposalOpensAt: isoTimestampSchema.nullable().optional(),
   talkProposalClosesAt: isoTimestampSchema.nullable().optional(),
+  talkProposalQuestions: talkProposalQuestionsSchema.optional(),
   blindReviewCount: blindReviewCountSchema.optional(),
   pitchReviewEnabled: pitchReviewEnabledSchema.optional(),
   blindScoreWeightPercent: blindScoreWeightPercentSchema.optional(),
@@ -1463,14 +1470,15 @@ export function assertEventNotHidden(event: Pick<EventRecord, 'id' | 'hiddenAt'>
 }
 
 export function assertTalkProposalConfigurationChangeAllowed(
-  event: Pick<EventRecord, 'state' | 'talkProposalsEnabled'>,
-  patch: Pick<z.infer<typeof updateEventBodySchema>, 'talkProposalsEnabled' | 'talkProposalOpensAt' | 'talkProposalClosesAt'>,
+  event: Pick<EventRecord, 'state' | 'talkProposalsEnabled' | 'talkProposalQuestionsJson'>,
+  patch: Pick<z.infer<typeof updateEventBodySchema>, 'talkProposalsEnabled' | 'talkProposalOpensAt' | 'talkProposalClosesAt' | 'talkProposalQuestions'>,
   hasExistingProposal: boolean
 ) {
   assertGuard(event.state !== 'completed' || (
     patch.talkProposalsEnabled === undefined
     && patch.talkProposalOpensAt === undefined
     && patch.talkProposalClosesAt === undefined
+    && patch.talkProposalQuestions === undefined
   ), {
     statusCode: 409,
     code: 'talk_proposal_configuration_completed',
@@ -1482,6 +1490,20 @@ export function assertTalkProposalConfigurationChangeAllowed(
     code: 'talk_proposals_disable_locked',
     message: 'Call for talks cannot be disabled after the first Talk proposal is created.'
   })
+
+  assertGuard(!(hasExistingProposal && talkProposalQuestionsChanged(event, patch)), {
+    statusCode: 409,
+    code: 'talk_proposal_questions_locked',
+    message: 'Call for talks questions cannot be changed after the first Talk proposal is created.'
+  })
+}
+
+export function talkProposalQuestionsChanged(
+  event: Pick<EventRecord, 'talkProposalQuestionsJson'>,
+  patch: Pick<z.infer<typeof updateEventBodySchema>, 'talkProposalQuestions'>
+) {
+  return patch.talkProposalQuestions !== undefined
+    && JSON.stringify(patch.talkProposalQuestions) !== JSON.stringify(parseTalkProposalQuestionsJson(event.talkProposalQuestionsJson))
 }
 
 export function buildEventUpdatePayload(
@@ -1498,7 +1520,10 @@ export function buildEventUpdatePayload(
       : patch.talkProposalOpensAt,
     talkProposalClosesAt: patch.talkProposalClosesAt === undefined
       ? existingEvent.talkProposalClosesAt
-      : patch.talkProposalClosesAt
+      : patch.talkProposalClosesAt,
+    talkProposalQuestions: patch.talkProposalQuestions === undefined
+      ? parseTalkProposalQuestionsJson(existingEvent.talkProposalQuestionsJson)
+      : patch.talkProposalQuestions
   }, existingEvent.id)
   const hackathonOnlyPatchFields = [
     'submissionOpensAt',
@@ -1529,7 +1554,11 @@ export function buildEventUpdatePayload(
     statusCode: 403
   })
 
-  const normalizedPatch: z.infer<typeof updateEventBodySchema> & { agendaItemsJson?: string } = {
+  const normalizedPatch: z.infer<typeof updateEventBodySchema> & {
+    agendaItemsJson?: string
+    talkProposalQuestionsJson?: string
+    talkProposalQuestionsRevision?: SQL<unknown>
+  } = {
     ...patch
   }
 
@@ -1540,6 +1569,15 @@ export function buildEventUpdatePayload(
 
   if (normalizedPatch.tracks !== undefined) {
     Reflect.deleteProperty(normalizedPatch, 'tracks')
+  }
+
+  if (normalizedPatch.talkProposalQuestions !== undefined) {
+    const questionsChanged = talkProposalQuestionsChanged(existingEvent, patch)
+    normalizedPatch.talkProposalQuestionsJson = JSON.stringify(normalizedPatch.talkProposalQuestions)
+    Reflect.deleteProperty(normalizedPatch, 'talkProposalQuestions')
+    if (questionsChanged) {
+      normalizedPatch.talkProposalQuestionsRevision = sql`${events.talkProposalQuestionsRevision} + 1`
+    }
   }
 
   if (existingEvent.eventType !== 'hackathon') {
@@ -2188,6 +2226,8 @@ export function serializeAdminEvent(
     talkProposalsEnabled: event.talkProposalsEnabled,
     talkProposalOpensAt: event.talkProposalOpensAt,
     talkProposalClosesAt: event.talkProposalClosesAt,
+    talkProposalQuestions: parseTalkProposalQuestionsJson(event.talkProposalQuestionsJson),
+    talkProposalQuestionsRevision: event.talkProposalQuestionsRevision,
     slidesUrl: event.slidesUrl,
     lumaApiKey: event.lumaApiKey,
     lumaWebhookStatus: event.lumaWebhookStatus,

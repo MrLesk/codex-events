@@ -80,6 +80,8 @@ export const applicationOperation = defineStructuredRouteOperation({
     talkProposalsEnabled: body.eventType === 'meetup' ? body.talkProposalsEnabled : false,
     talkProposalOpensAt: body.eventType === 'meetup' ? body.talkProposalOpensAt : null,
     talkProposalClosesAt: body.eventType === 'meetup' ? body.talkProposalClosesAt : null,
+    talkProposalQuestionsJson: JSON.stringify(body.eventType === 'meetup' ? body.talkProposalQuestions : []),
+    talkProposalQuestionsRevision: 0,
     maxTeamMembers: isHackathon ? body.maxTeamMembers : 1,
     participantsLimit: body.participantsLimit,
     autoApproveApplications: body.autoApproveApplications,

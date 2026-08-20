@@ -32,6 +32,38 @@ interface StoredState {
 
 const scenarioState = new WeakMap<Page, ScenarioState>()
 
+const referenceQuestions = [
+  { id: 'phone', type: 'short_text' as const, prompt: 'Phone number', required: true, options: [] },
+  {
+    id: 'live_demo',
+    type: 'long_text' as const,
+    prompt: 'What will you demo live, and what should the audience learn?',
+    required: true,
+    options: []
+  },
+  {
+    id: 'readiness',
+    type: 'single_choice' as const,
+    prompt: 'How ready is the live demo?',
+    required: true,
+    options: ['Fully working', 'Mostly working with backup', 'Not yet, but ready in time', 'Recorded only']
+  },
+  {
+    id: 'format',
+    type: 'acknowledgement' as const,
+    prompt: 'I understand: seven minutes, no pitch, no slideshow, and the focus is on how it was built with Codex.',
+    required: true,
+    options: []
+  }
+]
+
+const referenceAnswers = [
+  { questionId: 'phone', value: '+43 123 456' },
+  { questionId: 'live_demo', value: 'A live Codex agent handoff with a recoverable failure.' },
+  { questionId: 'readiness', value: 'Fully working' },
+  { questionId: 'format', value: true }
+]
+
 function stateFor(page: Page) {
   const existing = scenarioState.get(page)
   if (existing) return existing
@@ -71,6 +103,7 @@ When('the saved {string} session creates an open Meetup with a Call for talks', 
         talkProposalsEnabled: true,
         talkProposalOpensAt: new Date(now - 3_600_000).toISOString(),
         talkProposalClosesAt: new Date(now + 86_400_000).toISOString(),
+        talkProposalQuestions: referenceQuestions,
         maxTeamMembers: 1,
         requireXProfile: false,
         requireLinkedinProfile: false,
@@ -123,6 +156,7 @@ When('I open the remembered Meetup workspace with the saved {string} session', a
     if (!(error instanceof Error) || !error.message.includes('ERR_ABORTED')) throw error
     await page.goto(target)
   }
+  await page.getByRole('tab', { name: 'Call for talks' }).click()
 })
 
 Then('the Call for talks workspace should be available', async ({ page }) => {
@@ -134,6 +168,10 @@ When('I create and submit Talk proposal {string}', async ({ page }, title: strin
   const panel = page.getByTestId('participant-talk-proposal-panel')
   await panel.getByLabel('Title').fill(title)
   await panel.getByLabel('Abstract').fill('A practical talk about dependable handoffs between agents.')
+  await panel.getByLabel('Phone number *').fill('+43 123 456')
+  await panel.getByLabel('What will you demo live, and what should the audience learn? *').fill('A live Codex agent handoff with a recoverable failure.')
+  await panel.getByLabel('How ready is the live demo? *').selectOption('Fully working')
+  await panel.getByLabel(/seven minutes/).check()
   const [createResponse] = await Promise.all([
     page.waitForResponse(response => response.url().endsWith(`/api/events/${stateFor(page).eventId}/talk-proposals/me`) && response.request().method() === 'POST'),
     panel.getByRole('button', { name: 'Create draft' }).click()
@@ -159,7 +197,9 @@ When('the saved {string} session withdraws, revises, and resubmits the remembere
       data: {
         title: 'Reliable agent handoffs',
         abstract: 'A revised practical talk about dependable handoffs between agents.',
-        demoOrSlidesUrl: 'https://example.com/slides'
+        demoOrSlidesUrl: 'https://example.com/slides',
+        questionSetRevision: 0,
+        answers: referenceAnswers
       }
     })
     expect(update.ok(), await update.text()).toBe(true)
@@ -212,6 +252,7 @@ When('the saved {string} session reviews the remembered Talk proposal', async ({
   }
   await applyPersona(page, parsePersonaKey(personaKey))
   await page.goto(`/account/events/${state.eventSlug}?tab=call-for-talks`)
+  await page.getByRole('tab', { name: 'Call for talks' }).click()
   await expect(page.getByTestId('talk-proposal-review-panel')).toBeVisible()
 })
 
@@ -227,6 +268,7 @@ When('the saved {string} session accepts the remembered Talk proposal with messa
   const state = stateFor(page)
   await applyPersona(page, parsePersonaKey(personaKey))
   await page.goto(`/account/events/${state.eventSlug}?tab=call-for-talks`)
+  await page.getByRole('tab', { name: 'Call for talks' }).click()
   const panel = page.getByTestId('talk-proposal-review-panel')
   await expect(panel).toBeVisible()
   await panel.getByLabel('Message to speaker').fill(message)
@@ -242,6 +284,7 @@ When('the saved {string} session does not accept the remembered Talk proposal wi
   const state = stateFor(page)
   await applyPersona(page, parsePersonaKey(personaKey))
   await page.goto(`/account/events/${state.eventSlug}?tab=call-for-talks`)
+  await page.getByRole('tab', { name: 'Call for talks' }).click()
   const panel = page.getByTestId('talk-proposal-review-panel')
   await expect(panel).toBeVisible()
   await panel.getByLabel('Message to speaker').fill(message)

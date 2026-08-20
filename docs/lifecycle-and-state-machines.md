@@ -201,7 +201,7 @@ Behavior:
   Actor: event admin or platform admin.
   Guard: the event is ready to close. No submission, judging, winner, or prize workflows run.
 
-A Meetup Call for talks is controlled by `talk_proposals_enabled`, `talk_proposal_opens_at`, and `talk_proposal_closes_at`, not by the event state. The public callout is upcoming before the opening timestamp and open from the opening timestamp through the closing timestamp. Talk proposal owner mutations are available only while open; admin decisions can continue after close until the event is completed. Unresolved proposals do not block completion.
+A Meetup Call for talks is controlled by `talk_proposals_enabled`, `talk_proposal_opens_at`, `talk_proposal_closes_at`, and its ordered private question set, not by the event state. The public callout is upcoming before the opening timestamp and open from the opening timestamp through the closing timestamp. Questions can change only while no proposal exists. Talk proposal owner mutations are available only while open; admin decisions can continue after close until the event is completed. Unresolved proposals do not block completion.
 
 ## TalkProposal
 
@@ -219,14 +219,14 @@ Talk proposals exist only for Meetups whose private Call for talks is enabled.
 
 - no proposal -> `draft`
   - Actor: applicant.
-  - Guard: the Call for talks is open and the applicant's `UserApplication` is `submitted` or `approved`.
+  - Guard: the Call for talks is open and the participant's `UserApplication` is `submitted` or `approved`.
 - `draft -> draft`
   - Actor: owner.
   - Guard: the Call for talks is open and the owner remains eligible.
-  - Effect: updates title, abstract, or optional demo-or-slides URL.
+  - Effect: updates title, abstract, optional demo-or-slides URL, or custom answers against the retained question-set revision.
 - `draft -> submitted`
   - Actor: owner.
-  - Guard: the Call for talks is open, the owner remains eligible, and all proposal fields are valid.
+  - Guard: the Call for talks is open, the owner remains eligible, all proposal fields are valid, every required custom question is answered, and every configured acknowledgment is confirmed.
   - Effect: records `submitted_at`; content becomes read-only.
 - `submitted -> withdrawn`
   - Actor: owner.

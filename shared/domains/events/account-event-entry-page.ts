@@ -1,4 +1,12 @@
 import { z } from 'zod'
+import {
+  talkProposalAnswersSchema,
+  talkProposalQuestionDefinitionSchema
+} from '#shared/domains/talk-proposals/questions'
+import type {
+  TalkProposalAnswer,
+  TalkProposalQuestionDefinition
+} from '#shared/domains/talk-proposals/questions'
 
 import type {
   AccountOverviewApplicationStatus,
@@ -82,6 +90,8 @@ export interface AccountEventEntryEvent {
   talkProposalsEnabled: boolean
   talkProposalOpensAt: string | null
   talkProposalClosesAt: string | null
+  talkProposalQuestions: TalkProposalQuestionDefinition[]
+  talkProposalQuestionsRevision: number
   blindReviewCount: number
   pitchReviewEnabled: boolean
   blindScoreWeightPercent: number
@@ -183,6 +193,8 @@ export interface AccountEventEntryTalkProposal {
   title: string
   abstract: string
   demoOrSlidesUrl: string | null
+  questionSetRevision: number
+  answers: TalkProposalAnswer[]
   decisionMessage: string | null
   reviewedByUserId: string | null
   submittedAt: string | null
@@ -434,6 +446,8 @@ const accountEventEntryEventSchema = z.object({
   talkProposalsEnabled: z.boolean(),
   talkProposalOpensAt: z.string().nullable(),
   talkProposalClosesAt: z.string().nullable(),
+  talkProposalQuestions: z.array(talkProposalQuestionDefinitionSchema),
+  talkProposalQuestionsRevision: z.number().int(),
   blindReviewCount: z.number().int(),
   pitchReviewEnabled: z.boolean(),
   blindScoreWeightPercent: z.number().int(),
@@ -538,6 +552,8 @@ const talkProposalSchema = z.object({
   title: z.string(),
   abstract: z.string(),
   demoOrSlidesUrl: z.string().nullable(),
+  questionSetRevision: z.number().int(),
+  answers: talkProposalAnswersSchema,
   decisionMessage: z.string().nullable(),
   reviewedByUserId: z.string().nullable(),
   submittedAt: z.string().nullable(),

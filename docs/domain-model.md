@@ -100,7 +100,7 @@ Key characteristics:
 - Each event can optionally define a participant approval limit used as an indicative planning target during admin review and as the capacity boundary for automatic approval.
 - Each event can approve new participant applications automatically after required submission checks pass while approved participation is below the participant approval limit when one is configured.
 - A Meetup can enable simplified attendee claiming. This setting uses the event slug, one credit offer, imported approved Luma attendee eligibility, and HTTPS coupon-link inventory without a redemption token.
-- A Meetup can enable one private Call for talks with its own opening and closing timestamps. Existing Meetups and newly created Meetups default to disabled with null Call for talks timestamps.
+- A Meetup can enable one private Call for talks with its own opening and closing timestamps and up to 20 ordered custom questions. Existing Meetups and newly created Meetups default to disabled with null Call for talks timestamps and no custom questions.
 - Simplified claiming is incompatible with event application terms, required registration fields, and Luma API Sync configuration. It is ready to share only after one offer, at least one eligible attendee, and HTTPS coupon inventory exist.
 - Each event can optionally reference a restricted Discord server URL.
 - Each event has a fixed application field configuration. First name and family name are always visible and required. Event admins can mark X, LinkedIn, GitHub, ChatGPT email, OpenAI org ID, `why this event`, proof-of-execution links, participation mode, and AI Knowledge as visible or hidden.
@@ -148,18 +148,22 @@ Meetup and Build rules:
 - Meetups and Builds do not create teams, project submissions, judging assignments, prizes, winner records, or completed competition outcomes.
 - Competition-only APIs and UI surfaces are unavailable for Meetups and Builds.
 - Only Meetups can enable talk proposals. Enabling requires a Call for talks opening timestamp strictly before its closing timestamp; disabled Meetups and all non-Meetup events store both timestamps as null.
-- After the first talk proposal exists, the Call for talks cannot be disabled. Proposal creation and disabling use mutually exclusive conditional writes so a concurrent first proposal cannot be created after a successful disable. Event admins can adjust its closing timestamp before event completion.
+- Call for talks questions support short text, long text, single choice, and required acknowledgment. Single-choice questions define at least two unique choices. Question order is the stored array order.
+- Required questions and acknowledgments are enforced when the proposal is submitted; a draft can retain incomplete answers.
+- After the first talk proposal exists, the Call for talks cannot be disabled and its question prompts, types, choices, required flags, and order cannot change. Proposal creation and question-definition updates use a revision check plus mutually exclusive conditional writes, so a concurrent first proposal cannot retain answers for an ambiguous question set. Event admins can adjust its closing timestamp before event completion.
+- Google Forms sections, conditional branching, file uploads, quiz scoring, response-sheet integrations, and arbitrary third-party field types are not Call for talks question features.
 - Completing a Meetup does not require every talk proposal to have a decision.
 
 ### TalkProposal
 
-A private proposal from one registered Meetup applicant to speak at that Meetup.
+A private proposal from one registered Meetup participant to speak at that Meetup.
 
 Rules:
 
 - A user can have at most one talk proposal per Meetup.
-- A Talk proposal contains a title, an abstract, and an optional demo-or-slides URL using `http` or `https`.
+- A Talk proposal contains a title, an abstract, an optional demo-or-slides URL using `http` or `https`, the configured custom answers, and the question-set revision used to create it.
 - The owner application must be `submitted` or `approved` to create, edit, submit, withdraw, revise, or resubmit a proposal.
+- A speaker is counted through the same event application as every other participant. A Talk proposal does not create a separate speaker registration or participant-count record.
 - A later `rejected` or `withdrawn` application preserves the proposal for the owner and reviewers but pauses owner mutations. Mutations can resume only if eligibility is restored before the Call for talks closes.
 - A participant can create or edit a `draft` before the closing timestamp. Submitting changes it to `submitted` and makes its content read-only.
 - Before the closing timestamp, the owner can withdraw a submitted proposal, revise the withdrawn proposal back to draft, edit it, and resubmit it.

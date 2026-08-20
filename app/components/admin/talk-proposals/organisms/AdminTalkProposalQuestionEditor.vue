@@ -1,0 +1,241 @@
+<script setup lang="ts">
+import type {
+  TalkProposalQuestionDefinition,
+  TalkProposalQuestionType
+} from '#shared/domains/talk-proposals/questions'
+import AdminSortableEditorRow from '~/components/admin/AdminSortableEditorRow.vue'
+
+const questions = defineModel<TalkProposalQuestionDefinition[]>({ required: true })
+
+const props = defineProps<{
+  locked?: boolean
+}>()
+
+const questionTypeLabels: Record<TalkProposalQuestionType, string> = {
+  short_text: 'Short text',
+  long_text: 'Long text',
+  single_choice: 'Single choice',
+  acknowledgement: 'Required acknowledgment'
+}
+
+function updateQuestion(index: number, patch: Partial<TalkProposalQuestionDefinition>) {
+  questions.value = questions.value.map((question, currentIndex) => currentIndex === index
+    ? { ...question, ...patch }
+    : question)
+}
+
+function addQuestion() {
+  questions.value = [
+    ...questions.value,
+    {
+      id: crypto.randomUUID(),
+      type: 'short_text',
+      prompt: '',
+      required: false,
+      options: []
+    }
+  ]
+}
+
+function removeQuestion(index: number) {
+  questions.value = questions.value.filter((_, currentIndex) => currentIndex !== index)
+}
+
+function moveQuestion(index: number, offset: -1 | 1) {
+  const targetIndex = index + offset
+  if (targetIndex < 0 || targetIndex >= questions.value.length) return
+  const next = [...questions.value]
+  const [question] = next.splice(index, 1)
+  if (!question) return
+  next.splice(targetIndex, 0, question)
+  questions.value = next
+}
+
+function updateType(index: number, value: string | number | undefined) {
+  const type = value as TalkProposalQuestionType
+  updateQuestion(index, {
+    type,
+    required: type === 'acknowledgement' ? true : questions.value[index]?.required ?? false,
+    options: type === 'single_choice' ? ['', ''] : []
+  })
+}
+
+function updateOption(questionIndex: number, optionIndex: number, value: string | number | undefined) {
+  const options = [...(questions.value[questionIndex]?.options ?? [])]
+  options[optionIndex] = String(value ?? '')
+  updateQuestion(questionIndex, { options })
+}
+
+function addOption(questionIndex: number) {
+  updateQuestion(questionIndex, {
+    options: [...(questions.value[questionIndex]?.options ?? []), '']
+  })
+}
+
+function removeOption(questionIndex: number, optionIndex: number) {
+  updateQuestion(questionIndex, {
+    options: (questions.value[questionIndex]?.options ?? []).filter((_, index) => index !== optionIndex)
+  })
+}
+</script>
+
+<template>
+  <section
+    aria-labelledby="talk-proposal-questions-heading"
+    class="space-y-4"
+    data-testid="talk-proposal-question-editor"
+  >
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h3
+        id="talk-proposal-questions-heading"
+        class="text-sm font-semibold text-highlighted"
+      >
+        Questions
+      </h3>
+      <AppButton
+        size="sm"
+        color="neutral"
+        variant="outline"
+        :disabled="props.locked || questions.length >= 20"
+        @click="addQuestion"
+      >
+        Add question
+        <template #trailing>
+          <AppIcon
+            name="i-lucide-plus"
+            class="size-3.5"
+          />
+        </template>
+      </AppButton>
+    </div>
+
+    <p
+      v-if="props.locked"
+      class="text-sm text-muted"
+    >
+      Questions cannot be changed after the first Talk proposal is created.
+    </p>
+
+    <p
+      v-if="questions.length === 0"
+      class="py-3 text-sm text-muted"
+    >
+      No additional questions.
+    </p>
+
+    <div
+      v-else
+      class="space-y-3"
+    >
+      <AdminSortableEditorRow
+        v-for="(question, index) in questions"
+        :key="question.id"
+        :item-id="question.id"
+        test-id="talk-proposal-question-row"
+        item-id-attribute="data-question-id"
+        row-attribute="data-question-row"
+        sort-handle-attribute="data-question-sort-handle"
+        :move-up-label="`Move question ${index + 1} up`"
+        :move-down-label="`Move question ${index + 1} down`"
+        :drag-label="`Question ${index + 1} order`"
+        :move-up-test-id="`talk-proposal-question-${index}-up`"
+        :move-down-test-id="`talk-proposal-question-${index}-down`"
+        :move-up-disabled="props.locked || index === 0"
+        :move-down-disabled="props.locked || index === questions.length - 1"
+        drag-disabled
+        columns-class="sm:grid-cols-[4.25rem_minmax(0,1fr)_3rem]"
+        @move-up="moveQuestion(index, -1)"
+        @move-down="moveQuestion(index, 1)"
+      >
+        <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_12rem]">
+          <AppFormField
+            :name="`talk-proposal-question-${question.id}`"
+            label="Question"
+          >
+            <AppInput
+              :id="`talk-proposal-question-${question.id}`"
+              :model-value="question.prompt"
+              :disabled="props.locked"
+              @update:model-value="updateQuestion(index, { prompt: String($event ?? '') })"
+            />
+          </AppFormField>
+          <AppFormField
+            :name="`talk-proposal-question-type-${question.id}`"
+            label="Answer type"
+          >
+            <AppSelect
+              :id="`talk-proposal-question-type-${question.id}`"
+              :model-value="question.type"
+              :disabled="props.locked"
+              @update:model-value="updateType(index, $event)"
+            >
+              <option
+                v-for="(label, type) in questionTypeLabels"
+                :key="type"
+                :value="type"
+              >
+                {{ label }}
+              </option>
+            </AppSelect>
+          </AppFormField>
+        </div>
+
+        <AppCheckbox
+          :model-value="question.required"
+          label="Required"
+          :disabled="props.locked || question.type === 'acknowledgement'"
+          @update:model-value="updateQuestion(index, { required: $event })"
+        />
+
+        <div
+          v-if="question.type === 'single_choice'"
+          class="space-y-2"
+        >
+          <span class="text-sm font-medium text-highlighted">Choices</span>
+          <div
+            v-for="(option, optionIndex) in question.options"
+            :key="optionIndex"
+            class="flex items-center gap-2"
+          >
+            <AppInput
+              :model-value="option"
+              :aria-label="`Choice ${optionIndex + 1}`"
+              :disabled="props.locked"
+              @update:model-value="updateOption(index, optionIndex, $event)"
+            />
+            <AppButton
+              icon="i-lucide-x"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              :aria-label="`Remove choice ${optionIndex + 1}`"
+              :disabled="props.locked || question.options.length <= 2"
+              @click="removeOption(index, optionIndex)"
+            />
+          </div>
+          <AppButton
+            size="sm"
+            color="neutral"
+            variant="ghost"
+            :disabled="props.locked || question.options.length >= 20"
+            @click="addOption(index)"
+          >
+            Add choice
+          </AppButton>
+        </div>
+
+        <template #actions>
+          <AppButton
+            icon="i-lucide-trash-2"
+            color="error"
+            variant="ghost"
+            size="sm"
+            :aria-label="`Remove question ${index + 1}`"
+            :disabled="props.locked"
+            @click="removeQuestion(index)"
+          />
+        </template>
+      </AdminSortableEditorRow>
+    </div>
+  </section>
+</template>
