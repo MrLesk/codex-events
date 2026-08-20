@@ -1,11 +1,11 @@
 ---
 id: TASK-432.5.7
 title: 'Prove account-workspace request topology, cancellation, and lazy-loading'
-status: To Do
+status: In Progress
 assignee:
   - '@luna-workspace'
 created_date: '2026-08-19 19:55'
-updated_date: '2026-08-19 19:56'
+updated_date: '2026-08-20 21:19'
 labels:
   - testing
   - performance
@@ -121,8 +121,18 @@ Required validation
 - [ ] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+18. Reproduce the three direct Talk-proposal tab failures at 0760b571, preserve the requested tab while entry or selected-page shell visibility resolves, and verify canonical URL/aria selection, page-shell request topology, focused BDD, and required validation.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 Owned production route/component/composable/server-domain files: none. This child owns only the explicitly listed tests, BDD support, and docs/testing-strategy.md; implementation children own all production surfaces.
+
+Baseline reproduction: at 0760b571, focused Talk BDD failed scenarios 1, 3, and 4 because direct ?tab=call-for-talks resolved activeSection to provisional Overview before the entry page returned tabVisibility; the public schedule scenario passed. The preserved dirty correction passes all four focused Talk scenarios and all Talk scenarios in the full gate; full gate also has unrelated admin certificate, admin operations, and simplified-claiming failures.
+
+Final validation: focused Talk BDD 4/4 passed (31.7s); full BDD 81/85 passed, with four unrelated failures in admin certificates, admin operations, and simplified claiming; lint, typecheck, full unit 155 files/1047 tests, focused workspace unit 40 tests, and focused workspace/Talk integration 12 tests all passed. Browser QA confirmed one session bootstrap plus one entry request, no failed requests or page errors, and the direct Talk URL/aria-selected state remained correct; only the existing Vue toRefs warning appeared.
 <!-- SECTION:NOTES:END -->

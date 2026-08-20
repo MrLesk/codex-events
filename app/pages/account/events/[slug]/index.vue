@@ -82,6 +82,7 @@ import {
   getAccountEventWorkspaceBackLink,
   getAccountEventTabLabel,
   resolveAccountEventScopedId,
+  shouldPreserveAccountEventTabSelection,
   type AccountEventWorkspaceTab
 } from '~/domains/events/account-workspace-tabs'
 import { getAccountEventSeoContent } from '~/domains/events/account-workspace-seo'
@@ -481,8 +482,16 @@ const visibleTabs = computed(() =>
     to: buildWorkspaceSectionLocation(tab)
   }))
 )
+const isRequestedTabPending = computed(() =>
+  shouldPreserveAccountEventTabSelection({
+    tab: requestedWorkspaceTab.value,
+    hasEntryPage: Boolean(entryPage.value),
+    hasPageShell: Boolean(pageShell.value)
+  })
+  || (isDirectNonEntryNavigation.value && !entryPage.value && !pageShell.value)
+)
 const activeSection = computed<AccountEventWorkspaceTab>(() => {
-  if (isDirectNonEntryNavigation.value && !entryPage.value && !pageShell.value) {
+  if (isRequestedTabPending.value) {
     return requestedWorkspaceTab.value
   }
 
@@ -819,7 +828,7 @@ watchEffect(() => {
   const normalizedTab = normalizeTabQueryValue(route.query.tab)
   const resolvedTab = resolveTabQueryValue(route.query.tab, availableTabs.value, 'overview')
 
-  if (isDirectNonEntryNavigation.value && !entryPage.value && !pageShell.value) {
+  if (isRequestedTabPending.value) {
     return
   }
 

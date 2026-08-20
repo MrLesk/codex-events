@@ -7,7 +7,8 @@ import {
   getAccountEventWorkspaceBackLink,
   getAccountEventTabAccess,
   getAccountEventTabLabel,
-  resolveAccountEventScopedId
+  resolveAccountEventScopedId,
+  shouldPreserveAccountEventTabSelection
 } from '../../../../../app/domains/events/account-workspace-tabs'
 
 const hackathonOptions = {
@@ -17,6 +18,35 @@ const hackathonOptions = {
 }
 
 describe('getAccountEventTabAccess', () => {
+  test.each(['overview', 'credits', 'details', 'call-for-talks'] as const)(
+    'preserves a direct %s selection until the entry page resolves',
+    (tab) => {
+      expect(shouldPreserveAccountEventTabSelection({
+        tab,
+        hasEntryPage: false,
+        hasPageShell: false
+      })).toBe(true)
+      expect(shouldPreserveAccountEventTabSelection({
+        tab,
+        hasEntryPage: true,
+        hasPageShell: false
+      })).toBe(false)
+      expect(shouldPreserveAccountEventTabSelection({
+        tab,
+        hasEntryPage: false,
+        hasPageShell: true
+      })).toBe(false)
+    }
+  )
+
+  test('does not defer a direct page-family tab to the entry response', () => {
+    expect(shouldPreserveAccountEventTabSelection({
+      tab: 'gallery',
+      hasEntryPage: false,
+      hasPageShell: false
+    })).toBe(false)
+  })
+
   test('maps every workspace tab to one named page contract', () => {
     expect(Object.fromEntries(accountEventWorkspaceTabs.map(tab => [tab, getAccountEventPageForTab(tab)]))).toEqual({
       'overview': 'entry',

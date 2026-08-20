@@ -48,6 +48,16 @@ export function getAccountEventPageForTab(tab: AccountEventWorkspaceTab) {
   return accountEventWorkspacePageByTab[tab]
 }
 
+export function shouldPreserveAccountEventTabSelection(options: {
+  tab: AccountEventWorkspaceTab
+  hasEntryPage: boolean
+  hasPageShell: boolean
+}) {
+  return !options.hasEntryPage
+    && !options.hasPageShell
+    && getAccountEventPageForTab(options.tab) === 'entry'
+}
+
 export interface AccountEventTabAccessOptions {
   hasApprovedParticipantAccess: boolean
   hasEligibleTalkProposalApplicant?: boolean

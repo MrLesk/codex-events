@@ -126,6 +126,7 @@ When('I open the remembered Meetup workspace with the saved {string} session', a
 })
 
 Then('the Call for talks workspace should be available', async ({ page }) => {
+  expect(new URL(page.url()).searchParams.get('tab')).toBe('call-for-talks')
   await expect(page.getByRole('tab', { name: 'Call for talks' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByTestId('participant-talk-proposal-panel')).toBeVisible()
 })
@@ -212,6 +213,8 @@ When('the saved {string} session reviews the remembered Talk proposal', async ({
   }
   await applyPersona(page, parsePersonaKey(personaKey))
   await page.goto(`/account/events/${state.eventSlug}?tab=call-for-talks`)
+  expect(new URL(page.url()).searchParams.get('tab')).toBe('call-for-talks')
+  await expect(page.getByRole('tab', { name: 'Call for talks' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByTestId('talk-proposal-review-panel')).toBeVisible()
 })
 
