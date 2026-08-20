@@ -97,6 +97,7 @@ type SubmissionRecord = typeof submissions.$inferSelect
 type SubmitApplicationBody = z.infer<typeof submitApplicationBodySchema>
 type ListApplicationsQuery = z.infer<typeof listApplicationsQuerySchema>
 type UserApplicationLumaSyncStatus = UserApplicationRecord['lumaSyncStatus']
+type AdminApplicationWithdrawalInput = Pick<UserApplicationRecord, 'id' | 'userId' | 'status'>
 
 export type AdminApplicationWithdrawalTeamAction = 'none' | 'remove_member' | 'dissolve_team'
 
@@ -161,7 +162,7 @@ function normalizeProofOfExecutionUrl(value: string | null | undefined) {
 }
 
 function getAdminApplicationWithdrawalAvailabilityFromPlan(
-  application: UserApplicationRecord,
+  application: AdminApplicationWithdrawalInput,
   plan: Pick<AdminApplicationWithdrawalPlan, 'activeTeam' | 'targetMembership' | 'activeMembers' | 'activeSubmission'>
 ): AdminApplicationWithdrawalAvailability {
   if (application.status === 'withdrawn') {
@@ -261,7 +262,7 @@ function getAdminApplicationWithdrawalAvailabilityFromPlan(
 export async function getAdminApplicationWithdrawalPlan(
   database: AppDatabase,
   eventId: string,
-  application: UserApplicationRecord
+  application: AdminApplicationWithdrawalInput
 ): Promise<AdminApplicationWithdrawalPlan> {
   const activeMembershipRows = await database
     .select({
@@ -314,6 +315,22 @@ export async function getAdminApplicationWithdrawalPlan(
     targetMembership,
     activeMembers,
     activeSubmission
+  }
+}
+
+export async function getAdminApplicationWithdrawalAvailability(
+  database: AppDatabase,
+  eventId: string,
+  application: AdminApplicationWithdrawalInput
+): Promise<AdminApplicationWithdrawalAvailability> {
+  const plan = await getAdminApplicationWithdrawalPlan(database, eventId, application)
+
+  return {
+    isAllowed: plan.isAllowed,
+    reason: plan.reason,
+    warning: plan.warning,
+    activeTeamId: plan.activeTeamId,
+    teamAction: plan.teamAction
   }
 }
 

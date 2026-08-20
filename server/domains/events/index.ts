@@ -715,6 +715,21 @@ type PublishedEventRosterUser = Pick<
   | 'profileIconRevision'
   | 'profileIconObjectKey'
 >
+
+const publishedEventRosterUserProjection = {
+  id: users.id,
+  displayName: users.displayName,
+  firstName: users.firstName,
+  familyName: users.familyName,
+  company: users.company,
+  bio: users.bio,
+  xProfileUrl: users.xProfileUrl,
+  linkedinProfileUrl: users.linkedinProfileUrl,
+  githubProfileUrl: users.githubProfileUrl,
+  profileIconUpdatedAt: users.profileIconUpdatedAt,
+  profileIconRevision: users.profileIconRevision,
+  profileIconObjectKey: users.profileIconObjectKey
+}
 export type EventAgendaItem = z.infer<typeof agendaItemSchema>
 export type EventTrackInput = z.infer<typeof trackSchema>
 export type EventTrackResourceInput = z.infer<typeof trackResourceSchema>
@@ -1973,36 +1988,67 @@ export async function listPublishedEventRosterMembers(
   eventId: string,
   role: PublishedEventRosterRole
 ) {
+  const publishedJudgeWhere = or(
+    eq(eventRoleAssignments.role, 'judge'),
+    and(
+      eq(eventRoleAssignments.role, 'event_admin'),
+      eq(eventRoleAssignments.isInJudgePool, true)
+    )
+  )
+  const publishedStaffWhere = or(
+    eq(eventRoleAssignments.role, 'staff'),
+    and(
+      eq(eventRoleAssignments.role, 'event_admin'),
+      eq(eventRoleAssignments.isStaff, true)
+    )
+  )
+  const publishedRoleWhere = role === 'judge'
+    ? publishedJudgeWhere
+    : publishedStaffWhere
+
   const assignmentUserRows = await database
     .select({
-      assignment: getTableColumns(eventRoleAssignments),
-      user: getTableColumns(users)
+      assignment: {
+        role: eventRoleAssignments.role,
+        isInJudgePool: eventRoleAssignments.isInJudgePool,
+        isStaff: eventRoleAssignments.isStaff,
+        staffTrackId: eventRoleAssignments.staffTrackId,
+        createdAt: eventRoleAssignments.createdAt
+      },
+      user: publishedEventRosterUserProjection
     })
     .from(eventRoleAssignments)
     .innerJoin(users, eq(users.id, eventRoleAssignments.userId))
     .where(and(
       eq(eventRoleAssignments.eventId, eventId),
+      publishedRoleWhere,
       isNull(users.deletedAt)
     ))
     .orderBy(asc(eventRoleAssignments.createdAt))
 
-  const rosterRows = assignmentUserRows
-    .filter(row => isEventRolePublishedInRoster(row.assignment, role))
-
-  const staffTrackIds = role === 'staff'
-    ? [...new Set(rosterRows
-        .map(row => row.assignment.staffTrackId)
-        .filter((trackId): trackId is string => Boolean(trackId)))]
-    : []
-  const staffTrackIdSet = new Set(staffTrackIds)
-  const staffTrackRows = staffTrackIds.length > 0
-    ? (await database.query.eventTracks.findMany({
-        where: eq(eventTracks.eventId, eventId)
-      })).filter(track => staffTrackIdSet.has(track.id))
+  const staffTrackRows = role === 'staff'
+    ? await database
+        .select(getTableColumns(eventTracks))
+        .from(eventTracks)
+        .where(and(
+          eq(eventTracks.eventId, eventId),
+          exists(
+            database
+              .select({ id: eventRoleAssignments.id })
+              .from(eventRoleAssignments)
+              .innerJoin(users, eq(users.id, eventRoleAssignments.userId))
+              .where(and(
+                eq(eventRoleAssignments.eventId, eventId),
+                eq(eventRoleAssignments.staffTrackId, eventTracks.id),
+                publishedStaffWhere,
+                isNull(users.deletedAt)
+              ))
+          )
+        ))
     : []
   const staffTracksById = new Map(staffTrackRows.map(track => [track.id, track]))
 
-  return rosterRows
+  return assignmentUserRows
     .map(row => serializePublishedEventRosterMember(
       row.user as UserRecord,
       role === 'staff' ? staffTracksById.get(row.assignment.staffTrackId ?? '') ?? null : undefined
@@ -2023,16 +2069,23 @@ export async function isUserVisibleInPublishedEventRoster(
     },
     where: and(
       eq(eventRoleAssignments.eventId, eventId),
-      eq(eventRoleAssignments.userId, userId)
+      eq(eventRoleAssignments.userId, userId),
+      or(
+        eq(eventRoleAssignments.role, 'judge'),
+        and(
+          eq(eventRoleAssignments.role, 'event_admin'),
+          eq(eventRoleAssignments.isInJudgePool, true)
+        ),
+        eq(eventRoleAssignments.role, 'staff'),
+        and(
+          eq(eventRoleAssignments.role, 'event_admin'),
+          eq(eventRoleAssignments.isStaff, true)
+        )
+      )
     )
   })
 
-  if (!assignment) {
-    return false
-  }
-
-  return isEventRolePublishedInRoster(assignment, 'judge')
-    || isEventRolePublishedInRoster(assignment, 'staff')
+  return Boolean(assignment)
 }
 
 export async function getCurrentEventTerms(

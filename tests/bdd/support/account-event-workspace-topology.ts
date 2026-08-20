@@ -21,6 +21,52 @@ const legacyFanOutPathPatterns = [
 
 const editorOrSortableUrlPattern = /(?:sortablejs|md-editor-v3|AdminMarkdownEditor)/u
 const runtimeCdnScriptPattern = /(?:unpkg\.com|jsdelivr\.net|cdnjs\.cloudflare\.com|esm\.sh|skypack\.dev)/iu
+const expectedForbiddenConsoleErrorPattern = /^Failed to load resource: the server responded with a status of 403 \(Forbidden\)$/u
+
+export const accountEventPageKeys: Record<string, readonly string[]> = {
+  entry: [
+    'event', 'adminSettingsEvent', 'access', 'participation', 'participantCredits',
+    'adminCredits', 'talkProposal', 'talkProposalReviews', 'talkProposalReviewTotal',
+    'participantRank', 'tabVisibility', 'applicationStatus', 'lumaSyncStatus'
+  ],
+  prizes: ['event', 'adminSettingsEvent', 'prizes', 'winners', 'publishedProjects', 'participantRank', 'participantOutcome'],
+  operations: [
+    'event', 'roles', 'assignments', 'judgingSummary', 'leaderboard', 'teams', 'prizes',
+    'applications', 'submissionSummary', 'submissionMonitor', 'shortlist', 'finalDeliberation',
+    'winners', 'prizeRedemptions'
+  ],
+  submissions: ['event', 'teams', 'applications', 'submissionSummary', 'submissionMonitor', 'noSubmissionTeams'],
+  judging: ['event', 'assignments', 'criteria', 'summary'],
+  settings: [
+    'event', 'criteria', 'prizes', 'terms', 'roles', 'simplifiedClaiming', 'talkProposals', 'builder'
+  ],
+  participants: ['event', 'applications', 'pagination', 'statusCounts'],
+  workspace: [
+    'event', 'application', 'ownTeam', 'ownMembership', 'joinRequests', 'submission', 'outcome',
+    'rank', 'workflow'
+  ],
+  teams: [
+    'event', 'application', 'ownTeam', 'ownMembership', 'selectedTeam', 'joinRequests',
+    'visibleTeams', 'visibleTeamsMeta'
+  ],
+  rosters: ['publishedJudges', 'publishedStaff', 'roleAssignments', 'canManageRoles'],
+  gallery: ['photos'],
+  feedback: ['summary'],
+  certificates: ['applications', 'pagination']
+}
+
+const publishedRosterKeys = new Set([
+  'id',
+  'fullName',
+  'company',
+  'bio',
+  'xProfileUrl',
+  'linkedinProfileUrl',
+  'githubProfileUrl',
+  'profileIconUpdatedAt',
+  'profileIconRevision',
+  'staffTrack'
+])
 
 type StoredState = {
   cookies?: Array<{
@@ -56,6 +102,7 @@ export interface TopologyRequestEvidence {
   contentType: string | null
   bookmark: string | null
   hasDataEnvelope: boolean | null
+  payload: unknown | null
   errorCode: string | null
   errorMessage: string | null
 }
@@ -122,6 +169,7 @@ export class AccountEventTopologyCapture {
   readonly records: TopologyRequestEvidence[] = []
   readonly consoleErrors: string[] = []
   readonly pageErrors: string[] = []
+  expectedConsoleErrorCount = 0
   readonly phases: TopologyPhaseEvidence = {
     shellMs: null,
     bootstrapMs: null,
@@ -171,6 +219,7 @@ export class AccountEventTopologyCapture {
       contentType: null,
       bookmark: null,
       hasDataEnvelope: null,
+      payload: null,
       errorCode: null,
       errorMessage: null
     }
@@ -199,17 +248,15 @@ export class AccountEventTopologyCapture {
       }
 
       try {
-        const payload = await response.json() as {
-          error?: {
-            code?: unknown
-            message?: unknown
-          }
-        }
+        const payload = await response.json() as unknown
+        record.payload = payload
         record.hasDataEnvelope = hasDataEnvelope(payload)
+        const payloadRecord = asRecord(payload)
+        const error = asRecord(payloadRecord?.error)
 
-        if (!record.hasDataEnvelope && typeof payload.error === 'object' && payload.error !== null) {
-          record.errorCode = typeof payload.error.code === 'string' ? payload.error.code : null
-          record.errorMessage = typeof payload.error.message === 'string' ? payload.error.message : null
+        if (!record.hasDataEnvelope && error) {
+          record.errorCode = typeof error.code === 'string' ? error.code : null
+          record.errorMessage = typeof error.message === 'string' ? error.message : null
         }
       } catch {
         record.hasDataEnvelope = false
@@ -331,6 +378,12 @@ export function pathRecords(capture: AccountEventTopologyCapture, path: string) 
   return apiRecords(capture).filter(record => record.path === path)
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null
+    ? value as Record<string, unknown>
+    : null
+}
+
 export function editorOrSortableRecords(capture: AccountEventTopologyCapture) {
   return capture.records.filter(record =>
     record.resourceType === 'script' && editorOrSortableUrlPattern.test(record.url)
@@ -434,7 +487,8 @@ export function assertNoLegacyFanOut(capture: AccountEventTopologyCapture) {
 export function assertJsonApiRecord(
   capture: AccountEventTopologyCapture,
   record: TopologyRequestEvidence,
-  label: string
+  label: string,
+  pageFamily?: string
 ) {
   if (record.status === null || record.status < 200 || record.status >= 300) {
     throw topologyFailure(capture, `${label} did not return a successful response.`)
@@ -442,6 +496,110 @@ export function assertJsonApiRecord(
 
   if (record.hasDataEnvelope !== true) {
     throw topologyFailure(capture, `${label} did not return the expected data envelope.`)
+  }
+
+  if (pageFamily) {
+    assertAccountEventPagePayload(capture, record, label, pageFamily)
+  }
+}
+
+export function assertAccountEventPagePayload(
+  capture: AccountEventTopologyCapture,
+  record: TopologyRequestEvidence,
+  label: string,
+  pageFamily: string
+) {
+  const expectedKeys = accountEventPageKeys[pageFamily]
+
+  if (!expectedKeys) {
+    throw topologyFailure(capture, `${label} used unknown account event page family ${pageFamily}.`)
+  }
+
+  const payload = asRecord(record.payload)
+  const data = asRecord(payload?.data)
+  const page = asRecord(data?.page)
+
+  if (!page) {
+    throw topologyFailure(capture, `${label} did not expose a concrete ${pageFamily} page payload.`)
+  }
+
+  const missingKeys = expectedKeys.filter(key => !Object.prototype.hasOwnProperty.call(page, key))
+
+  if (missingKeys.length) {
+    throw topologyFailure(capture, `${label} is missing ${pageFamily} page key(s): ${missingKeys.join(', ')}.`)
+  }
+
+  return page
+}
+
+export function assertPublishedRosterPrivacy(
+  capture: AccountEventTopologyCapture,
+  record: TopologyRequestEvidence,
+  label = 'Published roster read'
+) {
+  const page = assertAccountEventPagePayload(capture, record, label, 'rosters')
+
+  for (const rosterKey of ['publishedJudges', 'publishedStaff']) {
+    const members = page[rosterKey]
+
+    if (!Array.isArray(members)) {
+      throw topologyFailure(capture, `${label} returned a non-array ${rosterKey} value.`)
+    }
+
+    for (const [index, member] of members.entries()) {
+      const memberRecord = asRecord(member)
+
+      if (!memberRecord) {
+        throw topologyFailure(capture, `${label} returned a non-object ${rosterKey}[${index}].`)
+      }
+
+      const privateKeys = Object.keys(memberRecord).filter(key => !publishedRosterKeys.has(key))
+
+      if (privateKeys.length) {
+        throw topologyFailure(capture, `${label} exposed private roster field(s) on ${rosterKey}[${index}]: ${privateKeys.join(', ')}.`)
+      }
+    }
+  }
+}
+
+export function assertForbiddenJsonApiRecord(
+  capture: AccountEventTopologyCapture,
+  record: TopologyRequestEvidence,
+  label: string,
+  expectedCode: string
+) {
+  if (record.status !== 403) {
+    throw topologyFailure(capture, `${label} did not return HTTP 403.`)
+  }
+
+  if (record.errorCode !== expectedCode) {
+    throw topologyFailure(capture, `${label} returned error code ${record.errorCode ?? 'none'}, expected ${expectedCode}.`)
+  }
+
+  if (record.hasDataEnvelope === true) {
+    throw topologyFailure(capture, `${label} exposed a data envelope for a forbidden response.`)
+  }
+
+  capture.expectedConsoleErrorCount += 1
+}
+
+export function assertNoUnexpectedBrowserErrors(capture: AccountEventTopologyCapture) {
+  const expectedConsoleErrors = capture.consoleErrors.filter(error =>
+    expectedForbiddenConsoleErrorPattern.test(error)
+  )
+  const unexpectedConsoleErrors = capture.consoleErrors.filter(error =>
+    !expectedForbiddenConsoleErrorPattern.test(error)
+  )
+
+  if (
+    unexpectedConsoleErrors.length
+    || expectedConsoleErrors.length !== capture.expectedConsoleErrorCount
+    || capture.pageErrors.length
+  ) {
+    throw topologyFailure(
+      capture,
+      `Unexpected browser errors: console=${unexpectedConsoleErrors.length}, expectedForbidden=${expectedConsoleErrors.length}/${capture.expectedConsoleErrorCount}, page=${capture.pageErrors.length}.`
+    )
   }
 }
 

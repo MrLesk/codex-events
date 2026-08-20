@@ -218,6 +218,119 @@ describe('account event operations, submissions, and judging page reads', () => 
     expect(new Set(harness.d1Database.queries.slice(queryOffset).map(query => query.sessionId))).toHaveLength(1)
   })
 
+  test('keeps staff out of the participant page and aggregates all non-staff applications past the page limit', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/account/events/:slug/participants', handler: participantsPageGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|bounded_participants_admin',
+        email: 'bounded_participants_admin@example.com',
+        name: 'Bounded participants admin'
+      }
+    })
+    harnesses.push(harness)
+    await seedFixture(harness, 'bounded_participants_admin', 'event_admin')
+
+    const participantStatuses = Array.from({ length: 100 }, (_, index) => {
+      if (index < 40) {
+        return 'submitted' as const
+      }
+
+      if (index < 70) {
+        return 'approved' as const
+      }
+
+      if (index < 90) {
+        return 'rejected' as const
+      }
+
+      return 'withdrawn' as const
+    })
+    const participantUsers = participantStatuses.map((_, index) => {
+      const id = `bounded_participant_${String(index).padStart(3, '0')}`
+
+      return {
+        id,
+        auth0Subject: `auth0|${id}`,
+        email: `${id}@example.com`,
+        displayName: id
+      }
+    })
+    const participantApplications = participantStatuses.map((status, index) => ({
+      id: `bounded_participant_application_${String(index).padStart(3, '0')}`,
+      eventId: 'event_page_read',
+      userId: participantUsers[index]!.id,
+      status,
+      submittedAt: '2026-08-19T12:00:00.000Z',
+      updatedAt: '2026-08-19T12:00:00.000Z'
+    }))
+    const staffUsers = Array.from({ length: 3 }, (_, index) => {
+      const id = `bounded_staff_${index}`
+
+      return {
+        id,
+        auth0Subject: `auth0|${id}`,
+        email: `${id}@example.com`,
+        displayName: id
+      }
+    })
+    const staffApplications = staffUsers.map((user, index) => ({
+      id: `bounded_staff_application_${index}`,
+      eventId: 'event_page_read',
+      userId: user.id,
+      status: (index === 0 ? 'submitted' : index === 1 ? 'approved' : 'withdrawn') as const,
+      submittedAt: '2026-08-20T12:00:00.000Z',
+      updatedAt: '2026-08-20T12:00:00.000Z'
+    }))
+
+    await harness.database.insert(users).values([...participantUsers, ...staffUsers])
+    await harness.database.insert(userApplications).values([
+      ...participantApplications,
+      ...staffApplications
+    ])
+    await harness.database.insert(eventRoleAssignments).values(staffUsers.map((user, index) => ({
+      id: `bounded_staff_role_${index}`,
+      eventId: 'event_page_read',
+      userId: user.id,
+      role: 'staff' as const,
+      isStaff: true,
+      createdAt: '2026-08-20T12:00:00.000Z'
+    })))
+
+    const queryOffset = harness.d1Database.queries.length
+    const response = await harness.request('/api/account/events/page-read-fixture/participants')
+    const body = await response.json() as { data: { page: unknown } }
+    const page = accountEventParticipantsPageSchema.parse(body.data.page)
+    const rawPage = body.data.page as {
+      applications: Array<{
+        user?: Record<string, unknown>
+      }>
+    }
+
+    expect(response.status).toBe(200)
+    expect(page.applications).toHaveLength(100)
+    expect(page.pagination).toMatchObject({ page: 1, pageSize: 100, total: 100 })
+    expect(page.statusCounts).toEqual({
+      submitted: 40,
+      approved: 30,
+      rejected: 20,
+      withdrawn: 10
+    })
+    expect(page.applications.every(application => application.isEventStaff === false)).toBe(true)
+    expect(page.applications.some(application => application.userId.startsWith('bounded_staff_'))).toBe(false)
+    expect(rawPage.applications[0]?.user).not.toHaveProperty('auth0Subject')
+    expect(rawPage.applications[0]?.user).not.toHaveProperty('isPlatformAdmin')
+
+    const requestQueries = harness.d1Database.queries.slice(queryOffset)
+    expect(requestQueries.some(query =>
+      query.sql.includes('user_applications')
+      && query.sql.includes('event_role_assignments')
+      && query.sql.includes('is_staff')
+    )).toBe(true)
+    expect(new Set(requestQueries.map(query => query.sessionId))).toHaveLength(1)
+  })
+
   test.each(['rejected', 'withdrawn'] as const)(
     'rejects a %s applicant before loading Teams or member data',
     async (applicationStatus) => {
@@ -299,15 +412,47 @@ describe('account event operations, submissions, and judging page reads', () => 
       isStaff: false,
       createdAt: '2026-08-19T12:00:00.000Z'
     })
+    await harness.database.insert(users).values({
+      id: 'unpublished_admin',
+      auth0Subject: 'auth0|unpublished_admin',
+      email: 'unpublished_admin@example.com',
+      displayName: 'Unpublished Admin'
+    })
+    await harness.database.insert(eventRoleAssignments).values({
+      id: 'unpublished_admin_role',
+      eventId: 'event_page_read',
+      userId: 'unpublished_admin',
+      role: 'event_admin',
+      isInJudgePool: false,
+      isStaff: false,
+      createdAt: '2026-08-19T12:01:00.000Z'
+    })
 
     const response = await harness.request('/api/account/events/page-read-fixture/rosters')
     const body = await response.json() as { data: { page: unknown } }
+    const rawPage = body.data.page as {
+      publishedJudges: Array<Record<string, unknown>>
+      publishedStaff: Array<Record<string, unknown>>
+    }
 
     expect(response.status).toBe(200)
     expect(accountEventRostersPageSchema.parse(body.data.page)).toMatchObject({
       publishedJudges: [{ id: 'published_judge', fullName: 'Published Judge' }],
       canManageRoles: false
     })
+    expect(rawPage.publishedJudges).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'unpublished_admin' })
+    ]))
+    for (const member of [...rawPage.publishedJudges, ...rawPage.publishedStaff]) {
+      expect(member).not.toHaveProperty('email')
+      expect(member).not.toHaveProperty('auth0Subject')
+      expect(member).not.toHaveProperty('isPlatformAdmin')
+      expect(member).not.toHaveProperty('isEventOrganizer')
+      expect(member).not.toHaveProperty('chatgptEmail')
+      expect(member).not.toHaveProperty('openaiOrgId')
+      expect(member).not.toHaveProperty('lumaEmail')
+      expect(member).not.toHaveProperty('lumaUsername')
+    }
   })
 
   test('allows a judge with an event role to read published rosters', async () => {

@@ -57,6 +57,11 @@ Every push and pull request runs:
 - `bun run typecheck`
 - `bun run test:unit`
 - `bun run test:integration`
+- `bun run test:bdd:account-workspace` on a local Chromium server bound to a
+  dedicated port at or above `3204`. This focused account-workspace topology
+  gate is required before the test deployment job and uses only the local
+  persona fixtures and local D1 state; it does not use Auth0, deployed data, or
+  a remote environment.
 
 Public signed integration behavior, including inbound Luma attendance sync, is
 covered by the unit and integration layers.
@@ -186,6 +191,13 @@ For each navigation and tab interaction, browser instrumentation records:
 - direct links to non-entry account-event tabs use that one selected page read with `includeEventShell=true`; the selected page loader and shell run concurrently in the same request, with the shell's independent tracks, image-options, gallery, published-prize, published-staff, credit-inventory, and meetup talk-proposal reads started in one D1 wave (participant application and membership access is a parallel branch when the shared context does not already contain it);
 - cancellation of abandoned tab requests, local lazy-code loading, and the absence of runtime `unpkg` dependencies; and
 - media payload constraints, including versioned cacheable URLs, allowed named variants, response content type and byte size, and the absence of public `no-store` original media in page backgrounds.
+
+Account-event reads also assert the concrete required keys for the selected
+page contract, expected API error codes for intentionally forbidden deep links,
+and the absence of private fields from published roster members. Any captured
+browser `console` error or page error fails the topology scenario; request
+failures are asserted by the individual topology scenario so intentional
+cancellation remains testable.
 
 Failures report the actual request counts, cancellation observations, media payload facts, phase timings, wall-clock budget, and observed duration. The journey uses the same storage state, actor resolution, authorization, and local D1 fixtures as the rest of the BDD suite.
 

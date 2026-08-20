@@ -6,10 +6,13 @@ import {
   assertActiveAccountEventTab,
   assertBudget,
   assertExactPathCount,
+  assertForbiddenJsonApiRecord,
   assertJsonApiRecord,
+  assertNoUnexpectedBrowserErrors,
   assertNoEditorOrSortableRequests,
   assertNoLegacyFanOut,
   assertNoRuntimeCdnScripts,
+  assertPublishedRosterPrivacy,
   capturePageTopology,
   formatTopologySummary,
   pathRecords,
@@ -122,6 +125,7 @@ function globalMeasurement(page: Page) {
 
 async function finishCapture(capture: AccountEventTopologyCapture) {
   await capture.settle()
+  assertNoUnexpectedBrowserErrors(capture)
 }
 
 function requireRecord(
@@ -166,8 +170,45 @@ When('I warm and measure a direct account event {string} tab for event slug {str
   capture.markShell()
   const selectedRead = await capture.waitForCompletedPath(selectedPath)
   capture.markCritical(selectedPath)
-  assertJsonApiRecord(capture, selectedRead, 'Selected account event read')
+  assertJsonApiRecord(capture, selectedRead, 'Selected account event read', pageFamily)
+  if (pageFamily === 'rosters') {
+    assertPublishedRosterPrivacy(capture, selectedRead)
+  }
   await waitForAccountEventTab(page, tabLabel)
+  capture.markUsable()
+  await finishCapture(capture)
+
+  measurements.set(page, {
+    kind: 'event',
+    capture,
+    slug,
+    tab,
+    pageFamily,
+    selectedPath
+  })
+})
+
+When('I measure a forbidden direct account event {string} tab for event slug {string} as {string} with page family {string} expecting API error code {string}', async ({ page }, tab: string, slug: string, persona: string, pageFamily: string, expectedCode: string) => {
+  const personaKey = parsePersona(persona)
+  const tabLabel = tabLabels[tab]
+
+  if (!tabLabel) {
+    throw new Error(`Unknown account event tab label: ${tab}`)
+  }
+
+  await applyStoredStateToPage(personaKey, page)
+  await warmAccountEventSurface(page, slug)
+
+  const capture = capturePageTopology(page)
+  const selectedPath = selectedEventReadPath(slug, pageFamily)
+
+  await page.goto(`/account/events/${encodeURIComponent(slug)}?tab=${encodeURIComponent(tab)}`, {
+    waitUntil: 'domcontentloaded'
+  })
+  capture.markShell()
+  const selectedRead = await capture.waitForCompletedPath(selectedPath)
+  capture.markCritical(selectedPath)
+  assertForbiddenJsonApiRecord(capture, selectedRead, 'Forbidden account event read', expectedCode)
   capture.markUsable()
   await finishCapture(capture)
 
@@ -194,7 +235,7 @@ When('I warm and measure the account event overview for event slug {string} as {
   capture.markShell()
   const entryRead = await capture.waitForCompletedPath(selectedPath)
   capture.markCritical(selectedPath)
-  assertJsonApiRecord(capture, entryRead, 'Account event entry read')
+  assertJsonApiRecord(capture, entryRead, 'Account event entry read', 'entry')
   await waitForAccountEventTab(page, 'Overview')
   capture.markUsable()
   await finishCapture(capture)
@@ -230,13 +271,16 @@ When('I warm and measure the account event SPA flow for event slug {string} as {
   capture.markShell()
   const entryRead = await capture.waitForCompletedPath(entryPath)
   capture.markCritical(entryPath)
-  assertJsonApiRecord(capture, entryRead, 'SPA account event entry read')
+  assertJsonApiRecord(capture, entryRead, 'SPA account event entry read', 'entry')
   await waitForAccountEventTab(page, 'Overview')
 
   await assertActiveAccountEventTab(page, tabLabel).click()
   const selectedRead = await capture.waitForCompletedPath(selectedPath)
   capture.markCritical(selectedPath)
-  assertJsonApiRecord(capture, selectedRead, 'SPA selected account event read')
+  assertJsonApiRecord(capture, selectedRead, 'SPA selected account event read', pageFamily)
+  if (pageFamily === 'rosters') {
+    assertPublishedRosterPrivacy(capture, selectedRead)
+  }
   await waitForAccountEventTab(page, tabLabel)
 
   await assertActiveAccountEventTab(page, 'Overview').click()
@@ -362,7 +406,20 @@ Then('the direct account event topology should have one bootstrap and one select
 
   assertNoLegacyFanOut(capture)
   assertJsonApiRecord(capture, requireRecord(capture, '/api/session', 'session bootstrap'), 'Session bootstrap')
-  assertJsonApiRecord(capture, requireRecord(capture, selectedPath, 'selected account event read'), 'Selected account event read')
+  const selectedRead = requireRecord(capture, selectedPath, 'selected account event read')
+  assertJsonApiRecord(capture, selectedRead, 'Selected account event read', measurement.pageFamily)
+  if (measurement.pageFamily === 'rosters') {
+    assertPublishedRosterPrivacy(capture, selectedRead)
+  }
+})
+
+Then('the forbidden account event topology should return the expected API error without a data payload', async ({ page }) => {
+  const measurement = eventMeasurement(page)
+  const { capture, selectedPath } = measurement
+
+  assertExactPathCount(capture, '/api/session', 1)
+  assertExactPathCount(capture, selectedPath, 1)
+  assertNoLegacyFanOut(capture)
 })
 
 Then('the measured account event topology should include a generous local timing budget', async ({ page }) => {
@@ -400,7 +457,7 @@ Then('the overview topology should have one session and one entry read', async (
   assertExactPathCount(capture, '/api/session', 1)
   assertExactPathCount(capture, selectedPath, 1)
   assertNoLegacyFanOut(capture)
-  assertJsonApiRecord(capture, requireRecord(capture, selectedPath, 'account event entry read'), 'Account event entry read')
+  assertJsonApiRecord(capture, requireRecord(capture, selectedPath, 'account event entry read'), 'Account event entry read', 'entry')
 })
 
 Then('the SPA event topology should reuse its session and entry state', async ({ page }) => {
@@ -418,7 +475,10 @@ Then('the SPA event topology should reuse its session and entry state', async ({
     throw topologyFailure(capture, 'SPA selected read unexpectedly requested includeEventShell.')
   }
 
-  assertJsonApiRecord(capture, selectedRead, 'SPA selected account event read')
+  assertJsonApiRecord(capture, selectedRead, 'SPA selected account event read', measurement.pageFamily)
+  if (measurement.pageFamily === 'rosters') {
+    assertPublishedRosterPrivacy(capture, selectedRead)
+  }
 })
 
 Then('the global account workspace topology should have one session and one critical read', async ({ page }) => {

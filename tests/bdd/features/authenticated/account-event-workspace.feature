@@ -24,6 +24,14 @@ Feature: Account event workspace browser topology
       | event_admin  | operations-fixture-event         | prizes       | prizes        |
       | regular_user | participant-approved-fixture-event | workspace    | workspace     |
       | regular_user | participant-team-join-fixture-event | teams        | teams         |
+      | regular_user | e2e-judging-fixture-event        | judges       | rosters       |
+      | judge        | e2e-judging-fixture-event        | judges       | rosters       |
+
+  Scenario: a rejected participant Teams deep link returns the canonical forbidden code
+    Given the saved "regular_user" local session state exists for account topology
+    When I measure a forbidden direct account event "teams" tab for event slug "participant-rejected-fixture-event" as "regular_user" with page family "teams" expecting API error code "team_visibility_forbidden"
+    Then the forbidden account event topology should return the expected API error without a data payload
+    And the browser topology should not request runtime CDN scripts
 
   Scenario: direct settings loads the admin surface without legacy fan-out
     Given the saved "event_admin" local session state exists for account topology

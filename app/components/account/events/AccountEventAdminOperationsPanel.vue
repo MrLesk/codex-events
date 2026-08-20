@@ -2038,6 +2038,7 @@ async function runLifecycleAction() {
         <LazyAccountEventParticipantsPanel
           :event-id="eventId"
           :applications="applications"
+          :status-counts="participantPageData?.statusCounts"
           :is-loading="applicationsStatus === 'pending'"
           :error-message="applicationsStatus === 'error' ? applicationsErrorMessage : ''"
           :pending-action-key="pendingActionKey"
