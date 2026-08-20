@@ -447,21 +447,25 @@ It describes the intended persistent model at the level of entities, key fields,
 - `id`
 - `kind`
 - `object_key`
+- `status`
 - `available_at`
 - `attempt_count`
 - `last_attempted_at`
+- `last_error`
 - `created_at`
 
 ### Constraints
 
 - `kind` is one of `event_image`, `event_photo`, `platform_default_event_background`, or `profile_icon`.
+- `status` is `pending` or terminal `quarantined`.
 - `(kind, object_key)` is unique.
 - `available_at` uses sortable UTC ISO-8601 text and is at least 30 seconds after the pointer mutation.
 
 ### Notes
 
 - Pointer replacement, pointer removal, and gallery-row deletion write one durable cleanup intent in the same D1 mutation that changes or removes the pointer.
-- The scheduled Worker dispatches eligible rows to the managed-media Queue without adding request fan-out, then removes the row only after the Queue send succeeds. Failed dispatches remain durable with an incremented attempt count.
+- The scheduled Worker dispatches pending eligible rows to the managed-media Queue without adding request fan-out, then removes the row only after the Queue send succeeds. Failed producer dispatches remain pending with incremented attempt and error metadata.
+- Rows with an unsupported kind or object key are atomically quarantined with incremented attempt and error metadata, logged with safe operator fields, and excluded from future dispatch windows.
 - The Queue consumer retries transient R2 failures; messages that exhaust the configured retry count are routed to the managed-media dead-letter queue for operator recovery.
 - Immutable current keys and migration-era stable keys are valid cleanup targets.
 

@@ -257,12 +257,16 @@ object cleanup in the same D1 mutation through the managed-media outbox. Its
 sortable UTC `available_at` timestamp keeps the object private for at least 30
 seconds before the scheduled Worker publishes a fixed-kind Queue message;
 HTTP mutations do not wait for the Queue or fail after a successful D1 write.
-The consumer maps the kind to the event-images or profile-icons binding,
-acknowledges invalid and successful messages, retries transient R2 delete
-failures per message, and routes messages that exhaust ten retries to the
-managed-media dead-letter queue. Migration-era stable object keys remain valid
-cleanup targets. Monitor pending outbox rows, dispatch failures, Queue retries,
-and DLQ messages by cleanup kind and object key; never log object contents.
+The dispatcher validates supported kinds and object-key shapes, atomically
+quarantines malformed outbox rows so they are not retried, and keeps producer
+failures pending with attempt metadata. The consumer maps supported kinds to the
+event-images or profile-icons binding, acknowledges invalid and successful
+messages, retries transient R2 delete failures per message, and routes messages
+that exhaust ten retries to the managed-media dead-letter queue. Migration-era
+stable object keys remain valid cleanup targets. Monitor pending and quarantined
+outbox rows, dispatch failures, Queue retries, and DLQ messages by cleanup kind
+and object key; quarantine logs contain only safe row identifiers, kind, and
+reason fields—never object contents or payloads.
 
 If Auth0 rejects custom-domain creation because the tenant needs billing verification, add billing information in Auth0 and rerun the release workflow — it cannot finish custom-domain setup until Auth0 allows it for that tenant.
 

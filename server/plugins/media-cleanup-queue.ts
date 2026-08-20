@@ -30,7 +30,9 @@ export default defineNitroPlugin((nitroApp) => {
       database,
       producer
     })
-    const failed = results.filter(result => result.status !== 'enqueued')
+    const failed = results
+      .filter(result => result.status === 'failed')
+      .map(({ id, kind, reason }) => ({ id, kind, reason }))
 
     if (failed.length > 0) {
       console.error('Managed media cleanup outbox dispatch left recovery rows pending.', {

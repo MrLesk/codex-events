@@ -33,7 +33,9 @@ full-display transform and never expect raw R2 bytes.
 Managed-media cleanup tests verify that replacement, removal, and account
 deletion record the fixed cleanup kind in the D1 outbox atomically with the
 pointer mutation, that dispatch is empty before 30 seconds and sends at or after
-the boundary, and that HTTP paths do not await delivery. Consumer tests verify
+the boundary, that malformed outbox rows are quarantined without retrying or
+starving later valid due rows, and that HTTP paths do not await delivery.
+Producer failures remain pending with attempt metadata. Consumer tests verify
 safe kind-to-bucket mapping, per-message acknowledgement, retry behavior, and
 DLQ-backed exhaustion. Migration tests cover immutable and migration-era stable
 keys.

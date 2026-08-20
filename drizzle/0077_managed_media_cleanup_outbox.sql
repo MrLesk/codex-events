@@ -2,11 +2,14 @@ CREATE TABLE `media_cleanup_outbox` (
 	`id` text PRIMARY KEY NOT NULL,
 	`kind` text NOT NULL,
 	`object_key` text NOT NULL,
+	`status` text DEFAULT 'pending' NOT NULL,
 	`available_at` text NOT NULL,
 	`attempt_count` integer DEFAULT 0 NOT NULL,
 	`last_attempted_at` text,
+	`last_error` text,
 	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	CONSTRAINT `media_cleanup_outbox_kind_check` CHECK (`kind` in ('event_image', 'event_photo', 'platform_default_event_background', 'profile_icon')),
+	CONSTRAINT `media_cleanup_outbox_status_check` CHECK (`status` in ('pending', 'quarantined')),
 	CONSTRAINT `media_cleanup_outbox_attempt_count_check` CHECK (`attempt_count` >= 0)
 );
 --> statement-breakpoint

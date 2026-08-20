@@ -58,6 +58,7 @@ export const prizeRewardTypes = ['api_credits', 'subscription', 'physical', 'oth
 export const prizeAwardScopes = ['team', 'member'] as const
 export const prizeRedemptionStatuses = ['pending', 'redeemed', 'failed'] as const
 export const eventOutcomeCacheCollections = ['winners', 'published_projects'] as const
+export const mediaCleanupOutboxStatuses = ['pending', 'quarantined'] as const
 
 export const users = sqliteTable(
   'users',
@@ -338,9 +339,11 @@ export const mediaCleanupOutbox = sqliteTable(
     id: idColumn(),
     kind: text('kind').notNull(),
     objectKey: text('object_key').notNull(),
+    status: text('status', { enum: mediaCleanupOutboxStatuses }).notNull().default('pending'),
     availableAt: text('available_at').notNull(),
     attemptCount: integer('attempt_count').notNull().default(0),
     lastAttemptedAt: text('last_attempted_at'),
+    lastError: text('last_error'),
     createdAt: createdAtColumn()
   },
   table => [
@@ -350,6 +353,7 @@ export const mediaCleanupOutbox = sqliteTable(
       'media_cleanup_outbox_kind_check',
       sql`${table.kind} in ('event_image', 'event_photo', 'platform_default_event_background', 'profile_icon')`
     ),
+    check('media_cleanup_outbox_status_check', sql`${table.status} in ('pending', 'quarantined')`),
     check('media_cleanup_outbox_attempt_count_check', sql`${table.attemptCount} >= 0`)
   ]
 )
