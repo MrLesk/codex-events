@@ -7,6 +7,7 @@ import { resolveEventAuthorization, type EventAuthorization } from '#server/auth
 import { getDatabase, type AppDatabase } from '#server/database/client'
 import { events, teamMembers, teams, userApplications } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
+import { measureRequestPhase } from '#server/http/request-timing'
 
 export type AccountEventPageEventRecord = typeof events.$inferSelect
 type AccountEventPageApplicationRecord = typeof userApplications.$inferSelect
@@ -212,12 +213,12 @@ export async function resolveAccountEventPageContext(
   h3Event: H3Event,
   slug: string
 ): Promise<AccountEventPageContext> {
-  const actor = await getRequestActor(h3Event)
+  const actor = await measureRequestPhase(h3Event, 'actor', () => getRequestActor(h3Event))
   assertRegularPlatformAccess(actor)
-  const database = getDatabase(h3Event)
-  const event = await database.query.events.findFirst({
+  const database = await measureRequestPhase(h3Event, 'd1', () => getDatabase(h3Event))
+  const event = await measureRequestPhase(h3Event, 'd1', () => database.query.events.findFirst({
     where: eq(events.slug, slug)
-  })
+  }))
 
   if (!event) {
     throw new ApiError({
@@ -228,14 +229,22 @@ export async function resolveAccountEventPageContext(
     })
   }
 
-  const authorization = await resolveEventAuthorization(h3Event, event.id)
+  const authorization = await measureRequestPhase(
+    h3Event,
+    'authorization',
+    () => resolveEventAuthorization(h3Event, event.id)
+  )
 
-  const access = await resolveAccountEventPageVisibilityAndAccess({
-    actor,
-    authorization,
-    database,
-    event
-  })
+  const access = await measureRequestPhase(
+    h3Event,
+    'd1',
+    () => resolveAccountEventPageVisibilityAndAccess({
+      actor,
+      authorization,
+      database,
+      event
+    })
+  )
 
   return {
     actor,

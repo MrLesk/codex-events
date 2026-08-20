@@ -7,6 +7,7 @@ import {
   type EventAuthorization,
   type JudgeAssignmentAuthorization
 } from '#server/auth/authorization'
+import { measureRequestPhase } from '#server/http/request-timing'
 import { routeSlugParamsSchema } from '#server/domains/events'
 import {
   accountEventPageNames,
@@ -145,18 +146,25 @@ export async function executeAccountEventPageRoute<
     accountEventPageQuerySchema.parse(getQuery(h3Event))
   )
   const context = await resolveAccountEventPageContext(h3Event, params.slug)
-  await definition.authorize(context)
-  const [pageResult, shell] = await Promise.all([
-    definition.load(context, query),
-    query.includeEventShell ? loadAccountEventPageShell(context) : Promise.resolve(undefined)
-  ])
-  const page = definition.schema.parse(await pageResult)
+  await measureRequestPhase(h3Event, 'authorization', () => definition.authorize(context))
+  const [pageResult, shell] = await measureRequestPhase(
+    h3Event,
+    'd1',
+    () => Promise.all([
+      definition.load(context, query),
+      query.includeEventShell ? loadAccountEventPageShell(context) : Promise.resolve(undefined)
+    ])
+  )
 
-  return apiData<AccountEventPageResponse<z.output<TSchema>>>({
-    event: toPageEvent(context.event),
-    visibility: toPageVisibility(context.authorization),
-    page,
-    ...(shell ? { shell } : {})
+  return await measureRequestPhase(h3Event, 'serialization', () => {
+    const page = definition.schema.parse(pageResult)
+
+    return apiData<AccountEventPageResponse<z.output<TSchema>>>({
+      event: toPageEvent(context.event),
+      visibility: toPageVisibility(context.authorization),
+      page,
+      ...(shell ? { shell } : {})
+    })
   })
 }
 
@@ -193,18 +201,27 @@ export async function executeAccountJudgeAssignmentPageRoute<TSchema extends z.Z
 ) {
   const params = accountJudgeAssignmentParamsSchema.parse({ slug, assignmentId })
   const context = await resolveAccountEventPageContext(h3Event, params.slug)
-  const assignmentAuthorization = await resolveJudgeAssignmentAuthorization(h3Event, params.assignmentId)
+  const assignmentAuthorization = await measureRequestPhase(
+    h3Event,
+    'authorization',
+    () => resolveJudgeAssignmentAuthorization(h3Event, params.assignmentId)
+  )
   const assignmentContext: AccountJudgeAssignmentPageContext = {
     ...context,
     assignmentAuthorization
   }
 
-  await definition.authorize(assignmentContext)
-  const page = definition.schema.parse(
-    await definition.load(assignmentContext, params.assignmentId)
+  await measureRequestPhase(h3Event, 'authorization', () => definition.authorize(assignmentContext))
+  const pageInput = await measureRequestPhase(
+    h3Event,
+    'd1',
+    () => definition.load(assignmentContext, params.assignmentId)
   )
 
-  return apiData<z.output<TSchema>>(page)
+  return await measureRequestPhase(h3Event, 'serialization', () => {
+    const page = definition.schema.parse(pageInput)
+    return apiData<z.output<TSchema>>(page)
+  })
 }
 
 export const accountJudgeAssignmentParamsSchema = routeSlugParamsSchema.extend({

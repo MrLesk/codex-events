@@ -4,6 +4,7 @@ import type { z } from 'zod'
 import { assertRegularPlatformAccess, getRequestActor, type PlatformActor } from '#server/auth/actor'
 import { getDatabase, type AppDatabase } from '#server/database/client'
 import { apiData } from '#server/http/api-response'
+import { measureRequestPhase } from '#server/http/request-timing'
 import {
   accountPageNames,
   accountPagePaths,
@@ -51,12 +52,12 @@ export function defineAccountPageRoute<
 export async function resolveAccountPageContext(
   h3Event: H3Event
 ): Promise<AccountPageContext> {
-  const actor = await getRequestActor(h3Event)
+  const actor = await measureRequestPhase(h3Event, 'actor', () => getRequestActor(h3Event))
   assertRegularPlatformAccess(actor)
 
   return {
     actor,
-    database: getDatabase(h3Event)
+    database: await measureRequestPhase(h3Event, 'd1', () => getDatabase(h3Event))
   }
 }
 
@@ -74,8 +75,20 @@ export async function executeAccountPageRoute<
   definition: AccountPageRouteDefinition<TPageName, TSchema, TAuthorization>
 ) {
   const context = await resolveAccountPageContext(h3Event)
-  const authorization = await definition.authorize(context)
-  const page = definition.schema.parse(await definition.load(context, authorization))
+  const authorization = await measureRequestPhase(
+    h3Event,
+    'authorization',
+    () => definition.authorize(context)
+  )
+  const pageInput = await measureRequestPhase(
+    h3Event,
+    'd1',
+    () => definition.load(context, authorization)
+  )
 
-  return apiData<z.output<TSchema>>(page)
+  return await measureRequestPhase(
+    h3Event,
+    'serialization',
+    () => apiData<z.output<TSchema>>(definition.schema.parse(pageInput))
+  )
 }

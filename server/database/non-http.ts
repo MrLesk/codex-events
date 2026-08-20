@@ -27,108 +27,82 @@ type RootMethodCapability = Exclude<SupportedRootCapability, 'query'>
 export type AppDatabase = Pick<DrizzleDatabase, SupportedRootCapability>
 export type AppDatabaseBatch = Parameters<AppDatabase['batch']>[0]
 
-const dangerousBuilderCapabilities = new Set<PropertyKey>([
-  '$client',
-  'client',
-  'constructor',
-  '__proto__',
-  'binding',
-  'batch',
-  'createSession',
-  'getBookmark',
-  'mapBatchResult',
-  'prepare',
-  'transaction',
-  '_prepare',
-  'session',
-  'stmt',
-  'withSession'
+const blockedBuilderCapabilities = new Set<PropertyKey>(`
+  $client client constructor __proto__ binding batch createSession getBookmark
+  mapBatchResult prepare transaction _prepare session stmt withSession
+  __defineGetter__ __defineSetter__ __lookupGetter__ __lookupSetter__
+  hasOwnProperty isPrototypeOf propertyIsEnumerable toLocaleString toString valueOf
+`.trim().split(/\s+/u))
+const safeBuilderDataCapabilities = new Set<PropertyKey>(['config', 'dialect'])
+const safeResultCapabilities = new Set<PropertyKey>([
+  'catch', 'execute', 'finally', 'getSelectedFields', 'getSQL', 'then', 'toSQL'
 ])
+
+const supportedQueryTableNames = [
+  'users',
+  'mcpAccessTokens',
+  'userAuthIdentities',
+  'events',
+  'eventTracks',
+  'eventPhotos',
+  'mediaCleanupOutbox',
+  'eventFeedback',
+  'eventRoleAssignments',
+  'platformDocuments',
+  'platformLegalSettings',
+  'platformSettings',
+  'userPlatformDocumentAcceptances',
+  'eventTermsDocuments',
+  'eventAttendeeEligibilities',
+  'userApplications',
+  'talkProposals',
+  'teams',
+  'teamMembers',
+  'teamJoinRequests',
+  'submissions',
+  'evaluationCriteria',
+  'judgeAssignments',
+  'judgeCriterionScores',
+  'prizes',
+  'eventCreditOffers',
+  'eventCreditCodes',
+  'prizeEligibilitySnapshots',
+  'prizeRedemptions',
+  'eventOutcomeCaches',
+  'eventOutcomeCacheEntries',
+  'auditLogs'
+] as const
+
+const supportedQueryTableNameSet = new Set<string>(supportedQueryTableNames)
 
 const facadeByTarget = new WeakMap<object, object>()
 const targetByFacade = new WeakMap<object, object>()
 const forwardedMethodsByTarget = new WeakMap<object, Map<PropertyKey, (...args: unknown[]) => unknown>>()
-const safePrototypeByTarget = new WeakMap<object, object>()
+const safeBuilderConstructor = Object.freeze(Object.create(null, {
+  [entityKind]: { configurable: false, enumerable: false, value: 'drizzle:SafeBuilder', writable: false }
+}))
+const safeBuilderPrototype = Object.freeze(Object.create(null, {
+  constructor: { configurable: false, enumerable: false, value: safeBuilderConstructor, writable: false }
+}))
 
 function isObjectLike(value: unknown): value is object {
   return (typeof value === 'object' && value !== null) || typeof value === 'function'
 }
 
-function findPropertyDescriptor(target: object, property: PropertyKey) {
-  let current: object | null = target
-
-  while (current && current !== Object.prototype) {
-    const descriptor = Reflect.getOwnPropertyDescriptor(current, property)
-    if (descriptor) {
-      return descriptor
-    }
-    current = Reflect.getPrototypeOf(current)
-  }
-
-  return undefined
+function isPlainObject(value: object) {
+  const prototype = Reflect.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
 }
 
 function isSafeBuilderDataValue(target: object, value: unknown) {
   return !isObjectLike(value) || typeof value === 'function'
-    || (value !== target && !facadeByTarget.has(value) && !hasDangerousBuilderCapability(value))
+    || (value !== target && !facadeByTarget.has(value) && typeof Reflect.get(value, 'getSQL') === 'function')
 }
 
-function createSafeConstructorChain(rawConstructor: object, seen = new WeakMap<object, object>()): object {
-  const existing = seen.get(rawConstructor)
-  if (existing) {
-    return existing
-  }
-
-  const rawParent = Object.getPrototypeOf(rawConstructor)
-  const safeParent = typeof rawParent === 'function' && rawParent !== Function.prototype
-    ? createSafeConstructorChain(rawParent, seen)
-    : null
-  const safeConstructor = Object.create(safeParent) as object
-  const entityKindValue = Object.getOwnPropertyDescriptor(rawConstructor, entityKind)?.value
-
-  if (typeof entityKindValue === 'string') {
-    Object.defineProperty(safeConstructor, entityKind, {
-      configurable: false,
-      enumerable: false,
-      value: entityKindValue,
-      writable: false
-    })
-  }
-
-  const frozen = Object.freeze(safeConstructor)
-  seen.set(rawConstructor, frozen)
-  return frozen
-}
-
-function getSafePrototype(target: object) {
-  const existing = safePrototypeByTarget.get(target)
-  if (existing) {
-    return existing
-  }
-
-  const rawPrototype = Reflect.getPrototypeOf(target)
-  const rawConstructor = rawPrototype
-    ? Reflect.getOwnPropertyDescriptor(rawPrototype, 'constructor')?.value
-    : undefined
-  const safePrototype = Object.create(null) as object
-
-  if (typeof rawConstructor === 'function') {
-    Object.defineProperty(safePrototype, 'constructor', {
-      configurable: false,
-      enumerable: false,
-      value: createSafeConstructorChain(rawConstructor),
-      writable: false
-    })
-  }
-
-  const frozen = Object.freeze(safePrototype)
-  safePrototypeByTarget.set(target, frozen)
-  return frozen
-}
-
-function isPlainObject(value: object) {
-  const prototype = Reflect.getPrototypeOf(value)
-  return prototype === Object.prototype || prototype === null
+function hasDangerousBuilderCapability(value: object) {
+  return Object.prototype.hasOwnProperty.call(value, 'session')
+    || Object.prototype.hasOwnProperty.call(value, '$client')
+    || Object.prototype.hasOwnProperty.call(value, 'client')
 }
 
 function unwrapRuntimeValue(value: unknown, unwrapBuilderFacades = false): unknown {
@@ -139,34 +113,26 @@ function unwrapRuntimeValue(value: unknown, unwrapBuilderFacades = false): unkno
     }
   }
 
-  if (Array.isArray(value)) {
+  if (unwrapBuilderFacades && Array.isArray(value)) {
     return value.map(entry => unwrapRuntimeValue(entry, unwrapBuilderFacades))
   }
 
-  if (isObjectLike(value) && isPlainObject(value)) {
+  if (unwrapBuilderFacades && isObjectLike(value) && isPlainObject(value)) {
     return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, unwrapRuntimeValue(entry, unwrapBuilderFacades)]))
   }
 
   return value
 }
 
-function hasDangerousBuilderCapability(value: object) {
-  for (const capability of dangerousBuilderCapabilities) {
-    if (capability !== 'constructor' && capability !== '__proto__' && findPropertyDescriptor(value, capability)) {
-      return true
-    }
-  }
-
-  return false
-}
-
-function wrapBuilderResult<T>(value: T): T {
+function wrapBuilderResult<T>(value: T, shouldWrap = true): T {
   if (!isObjectLike(value)
+    || !shouldWrap
     || typeof value !== 'object'
     || value instanceof Promise
     || Array.isArray(value)
     || isPlainObject(value)
-    || !hasDangerousBuilderCapability(value)) {
+    || !hasDangerousBuilderCapability(value)
+  ) {
     return value
   }
 
@@ -186,7 +152,8 @@ function getForwardedMethod(target: object, property: PropertyKey, method: (...a
   }
 
   const forwarded = (...args: unknown[]) => wrapBuilderResult(
-    Reflect.apply(method, target, args.map(arg => unwrapRuntimeValue(arg)))
+    Reflect.apply(method, target, args),
+    !safeResultCapabilities.has(property)
   )
   methods.set(property, forwarded)
   forwardedMethodsByTarget.set(target, methods)
@@ -201,45 +168,47 @@ function createBuilderFacade<T extends object>(target: T): T {
 
   const facade = new Proxy(Object.create(null) as object, {
     get(_facadeTarget, property) {
-      if (dangerousBuilderCapabilities.has(property) || typeof property === 'symbol') {
+      if (blockedBuilderCapabilities.has(property) || typeof property === 'symbol') {
         return undefined
       }
 
-      const descriptor = findPropertyDescriptor(target, property)
-      if (!descriptor || !('value' in descriptor)) {
-        return undefined
+      const value = Reflect.get(target, property)
+      if (typeof value === 'function') {
+        return getForwardedMethod(target, property, value as (...args: unknown[]) => unknown)
       }
 
-      if (!isSafeBuilderDataValue(target, descriptor.value)) {
-        return undefined
-      }
-
-      return typeof descriptor.value === 'function'
-        ? getForwardedMethod(target, property, descriptor.value as (...args: unknown[]) => unknown)
-        : descriptor.value
+      return safeBuilderDataCapabilities.has(property) || isSafeBuilderDataValue(target, value)
+        ? value
+        : undefined
     },
     has(_facadeTarget, property) {
-      const descriptor = findPropertyDescriptor(target, property)
-      return !dangerousBuilderCapabilities.has(property)
-        && typeof property !== 'symbol'
-        && Boolean(descriptor && 'value' in descriptor && isSafeBuilderDataValue(target, descriptor.value))
+      if (blockedBuilderCapabilities.has(property) || typeof property === 'symbol') {
+        return false
+      }
+
+      const value = Reflect.get(target, property)
+      return typeof value === 'function'
+        || safeBuilderDataCapabilities.has(property)
+        || isSafeBuilderDataValue(target, value)
     },
     ownKeys() {
       return Reflect.ownKeys(target).filter((property) => {
-        if (dangerousBuilderCapabilities.has(property) || typeof property === 'symbol') {
+        if (blockedBuilderCapabilities.has(property) || typeof property === 'symbol') {
           return false
         }
         const descriptor = Reflect.getOwnPropertyDescriptor(target, property)
-        return Boolean(descriptor && 'value' in descriptor && isSafeBuilderDataValue(target, descriptor.value))
+        return Boolean(descriptor && 'value' in descriptor
+          && (safeBuilderDataCapabilities.has(property) || isSafeBuilderDataValue(target, descriptor.value)))
       })
     },
     getOwnPropertyDescriptor(_facadeTarget, property) {
-      if (dangerousBuilderCapabilities.has(property) || typeof property === 'symbol') {
+      if (blockedBuilderCapabilities.has(property) || typeof property === 'symbol') {
         return undefined
       }
 
       const descriptor = Reflect.getOwnPropertyDescriptor(target, property)
-      if (!descriptor || !('value' in descriptor) || !isSafeBuilderDataValue(target, descriptor.value)) {
+      if (!descriptor || !('value' in descriptor)
+        || (!safeBuilderDataCapabilities.has(property) && !isSafeBuilderDataValue(target, descriptor.value))) {
         return undefined
       }
 
@@ -255,7 +224,7 @@ function createBuilderFacade<T extends object>(target: T): T {
     set: () => false,
     defineProperty: () => false,
     deleteProperty: () => false,
-    getPrototypeOf: () => getSafePrototype(target),
+    getPrototypeOf: () => safeBuilderPrototype,
     setPrototypeOf: () => false,
     preventExtensions: () => false
   })
@@ -266,24 +235,61 @@ function createBuilderFacade<T extends object>(target: T): T {
 }
 
 function createQueryFacade(query: DrizzleDatabase['query']) {
-  const facade = Object.create(null) as Record<string, unknown>
+  const tableFacades = new Map<string, object>()
+  const getTableFacade = (tableName: string) => {
+    const existing = tableFacades.get(tableName)
+    if (existing) {
+      return existing
+    }
 
-  for (const [tableName, relationalQuery] of Object.entries(query)) {
-    Object.defineProperty(facade, tableName, {
-      configurable: false,
-      enumerable: true,
-      value: wrapBuilderResult(relationalQuery),
-      writable: false
-    })
+    const relationalQuery = (query as Record<string, object | undefined>)[tableName]
+    if (!relationalQuery) {
+      return undefined
+    }
+
+    const facade = createBuilderFacade(relationalQuery)
+    tableFacades.set(tableName, facade)
+    return facade
   }
 
-  return Object.freeze(facade) as DrizzleDatabase['query']
+  const facade = new Proxy(Object.create(null) as Record<string, unknown>, {
+    get(_target, property) {
+      return typeof property === 'string' && supportedQueryTableNameSet.has(property)
+        ? getTableFacade(property)
+        : undefined
+    },
+    has(_target, property) {
+      return typeof property === 'string' && supportedQueryTableNameSet.has(property)
+    },
+    ownKeys() {
+      return [...supportedQueryTableNames]
+    },
+    getOwnPropertyDescriptor(_target, property) {
+      if (typeof property !== 'string' || !supportedQueryTableNameSet.has(property)) {
+        return undefined
+      }
+
+      const value = getTableFacade(property)
+      return value
+        ? { configurable: true, enumerable: true, value, writable: false }
+        : undefined
+    },
+    set: () => false,
+    defineProperty: () => false,
+    deleteProperty: () => false,
+    getPrototypeOf: () => null
+  })
+
+  return facade as DrizzleDatabase['query']
 }
 
 function forwardRootMethod<K extends RootMethodCapability>(database: DrizzleDatabase, capability: K) {
   const method = database[capability] as unknown as (...args: unknown[]) => unknown
   return ((...args: unknown[]) => wrapBuilderResult(
-    Reflect.apply(method, database, args.map(arg => unwrapRuntimeValue(arg, capability === 'batch')))
+    Reflect.apply(method, database, capability === 'batch'
+      ? args.map(arg => unwrapRuntimeValue(arg, true))
+      : args),
+    capability !== 'get' && capability !== 'batch'
   )) as DrizzleDatabase[K]
 }
 
@@ -303,14 +309,7 @@ function createApplicationDatabase(database: DrizzleDatabase): AppDatabase {
     })
   }
 
-  const frozenFacade = Object.freeze(facade)
-  return new Proxy(frozenFacade, {
-    get(target, property) {
-      return Reflect.getOwnPropertyDescriptor(target, property)?.value
-    },
-    set: () => false,
-    defineProperty: () => false
-  }) as AppDatabase
+  return Object.freeze(facade) as AppDatabase
 }
 
 function createD1DatabaseClientBinding(
