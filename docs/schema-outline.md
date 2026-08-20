@@ -116,6 +116,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `talk_proposals_enabled`
 - `talk_proposal_opens_at`
 - `talk_proposal_closes_at`
+- `talk_proposal_questions_json`
+- `talk_proposal_questions_revision`
 - `state`
 - `hidden_at`
 - `hidden_by_user_id`
@@ -203,6 +205,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - For Hackathon events, `registration_opens_at < registration_closes_at <= submission_opens_at < submission_closes_at`.
 - For Meetup and Build events, `registration_opens_at < registration_closes_at`, and `submission_opens_at` and `submission_closes_at` are null.
 - For an enabled Meetup Call for talks, `talk_proposal_opens_at < talk_proposal_closes_at`.
+- `talk_proposal_questions_json` is an ordered array with at most 20 definitions. Each definition has a stable `id`, `type`, `prompt`, `required`, and `options`; only `single_choice` uses options, and `acknowledgement` is always required.
 - Disabled Meetups and all non-Meetup events have `talk_proposals_enabled = false` with null talk-proposal timestamps.
 
 ### Notes
@@ -228,7 +231,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `participants_limit` is an indicative planning target surfaced in admin approval workflows and does not enforce staged or applied admin approval writes by itself. When auto approval is enabled, it is also the capacity boundary for automatic approval.
 - `auto_approve_applications` controls whether newly submitted applications are approved immediately after required submission checks pass while approved participation is below `participants_limit` when one is configured. It defaults to false and does not affect already submitted applications when changed.
 - `simplified_claiming_enabled` is available only for Meetups. It requires no application terms, required registration fields, or Luma API Sync configuration. It uses the event slug and sole credit offer instead of a token or selected-offer field.
-- `talk_proposals_enabled` defaults to false. After the first `TalkProposal` exists for the event it cannot be set to false. Its closing timestamp can change until the event is completed.
+- `talk_proposals_enabled` defaults to false. `talk_proposal_questions_json` defaults to `[]`, and `talk_proposal_questions_revision` defaults to `0`. After the first `TalkProposal` exists for the event, the feature cannot be disabled and the question definition cannot change. Its closing timestamp can change until the event is completed.
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.
 - Application field visibility columns control whether each optional application field appears on the participant application form. First name and family name are always visible and required.
 - `require_x_profile`, `require_linkedin_profile`, `require_github_profile`, `require_chatgpt_email`, `require_openai_org_id`, `require_luma_profile`, `require_why_this_event`, `require_proof_of_execution`, `require_team_intent`, and `require_ai_knowledge` control whether the corresponding visible field is required.
@@ -627,6 +630,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `title`
 - `abstract`
 - `demo_or_slides_url`
+- `question_set_revision`
+- `answers_json`
 - `decision_message`
 - `reviewed_by_user_id`
 - `submitted_at`
@@ -676,11 +681,13 @@ It describes the intended persistent model at the level of entities, key fields,
 - Pending/retryable delivery reconciliation is indexed by `(decision_email_state, decision_email_enqueue_lease_expires_at, updated_at)`.
 - `decision_email_delivery_id` is null before a decision and unique after one is recorded.
 - `demo_or_slides_url` is null or uses `http` or `https`.
+- `answers_json` is an ordered array of unique `{ questionId, value }` entries. Values are strings for text and single-choice questions and booleans for acknowledgments.
 
 ### Notes
 
 - The row is private to its owner and authorized event reviewers.
 - Only `draft` content is editable. A withdrawn proposal must return to `draft` through the revise action before editing.
+- `question_set_revision` identifies the immutable event question definition used by the proposal. Draft saves validate answer types and choices; submission also enforces required answers and confirmed acknowledgments.
 - `decision_message`, `reviewed_by_user_id`, and `decided_at` are set only for accepted or rejected proposals.
 - A decision conditionally changes `status = submitted` and writes `decision_email_delivery_id` plus `decision_email_state = pending` in the same row update.
 - Delivery state, attempt counters, and expiring enqueue/delivery leases make producer recovery and concurrent queue consumption durable without a separate public delivery record.

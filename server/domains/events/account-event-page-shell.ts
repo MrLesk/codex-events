@@ -19,6 +19,7 @@ import {
 import { hasEventPhotos } from '#server/domains/events/photos'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { getOwnTalkProposal } from '#server/domains/talk-proposals'
+import { parseTalkProposalQuestionsJson } from '#shared/domains/talk-proposals/questions'
 import {
   getAccountEventPageAccess,
   type AccountEventPageContext
@@ -232,6 +233,8 @@ export async function loadAccountEventPageShell(
     discordServerUrl: canViewRestrictedDetails ? context.event.discordServerUrl : null,
     slidesUrl: canViewRestrictedDetails ? context.event.slidesUrl : null,
     simplifiedClaimingEnabled: context.event.simplifiedClaimingEnabled,
+    talkProposalQuestions: parseTalkProposalQuestionsJson(context.event.talkProposalQuestionsJson),
+    talkProposalQuestionsRevision: context.event.talkProposalQuestionsRevision,
     hasGallery: galleryExists
   }
   const hasCreditInventory = creditInventory.length > 0

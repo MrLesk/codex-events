@@ -4,7 +4,13 @@ import { useForm } from 'vee-validate'
 
 import type { ApiDataResponse } from '~/lib/api'
 import type { AccountEventEntryTalkProposal } from '#shared/domains/events/account-event-entry-page'
+import type {
+  TalkProposalAnswer,
+  TalkProposalQuestionDefinition
+} from '#shared/domains/talk-proposals/questions'
+import { getTalkProposalAnswerIssues } from '#shared/domains/talk-proposals/questions'
 import { normalizeApiError } from '~/lib/api'
+import TalkProposalQuestionInput from '~/components/talk-proposals/molecules/TalkProposalQuestionInput.vue'
 import {
   isTalkProposalWindowOpen,
   talkProposalFormSchema,
@@ -17,6 +23,8 @@ const props = defineProps<{
   applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null
   opensAt: string | null
   closesAt: string | null
+  questions: TalkProposalQuestionDefinition[]
+  questionSetRevision: number
   proposal: AccountEventEntryTalkProposal | null
 }>()
 const emit = defineEmits<{
@@ -35,18 +43,38 @@ const { errors, defineField, handleSubmit, resetForm, submitCount } = useForm({
   initialValues: {
     title: '',
     abstract: '',
-    demoOrSlidesUrl: ''
+    demoOrSlidesUrl: '',
+    questionSetRevision: props.questionSetRevision,
+    answers: []
   }
 })
 const [title] = defineField('title')
 const [abstract] = defineField('abstract')
 const [demoOrSlidesUrl] = defineField('demoOrSlidesUrl')
+const [answers] = defineField('answers')
+const proposalAnswers = computed(() => answers.value ?? [])
 
 const hasEligibleRegistration = computed(() => props.applicationStatus === 'submitted' || props.applicationStatus === 'approved')
 const windowOpen = computed(() => isTalkProposalWindowOpen(props.opensAt, props.closesAt))
 const canMutate = computed(() => hasEligibleRegistration.value && windowOpen.value)
 const canEdit = computed(() => canMutate.value && (!proposal.value || proposal.value.status === 'draft'))
 const statusLabel = computed(() => proposal.value ? talkProposalStatusLabels[proposal.value.status] : '')
+const questionErrors = ref<Record<string, string>>({})
+
+function answersForQuestions(source: TalkProposalAnswer[]) {
+  const sourceById = new Map(source.map(answer => [answer.questionId, answer]))
+  return props.questions.map(question => sourceById.get(question.id) ?? {
+    questionId: question.id,
+    value: question.type === 'acknowledgement' ? false : ''
+  })
+}
+
+function updateAnswer(index: number, value: string | boolean) {
+  answers.value = proposalAnswers.value.map((answer, currentIndex) => currentIndex === index
+    ? { ...answer, value }
+    : answer)
+  Reflect.deleteProperty(questionErrors.value, props.questions[index]?.id ?? '')
+}
 
 function applyProposal(nextProposal: AccountEventEntryTalkProposal | null) {
   proposal.value = nextProposal
@@ -55,7 +83,9 @@ function applyProposal(nextProposal: AccountEventEntryTalkProposal | null) {
     values: {
       title: nextProposal?.title ?? '',
       abstract: nextProposal?.abstract ?? '',
-      demoOrSlidesUrl: nextProposal?.demoOrSlidesUrl ?? ''
+      demoOrSlidesUrl: nextProposal?.demoOrSlidesUrl ?? '',
+      questionSetRevision: nextProposal?.questionSetRevision ?? props.questionSetRevision,
+      answers: answersForQuestions(nextProposal?.answers ?? [])
     }
   })
 }
@@ -83,6 +113,11 @@ const saveDraft = handleSubmit(async (values) => {
 })
 
 async function runAction(action: 'submit' | 'withdraw' | 'revise') {
+  if (action === 'submit') {
+    const issues = getTalkProposalAnswerIssues(props.questions, proposalAnswers.value, true)
+    questionErrors.value = Object.fromEntries(issues.map(issue => [issue.questionId, issue.message]))
+    if (issues.length > 0) return
+  }
   actionPending.value = true
   errorMessage.value = ''
   try {
@@ -212,6 +247,16 @@ async function runAction(action: 'submit' | 'withdraw' | 'revise') {
           {{ errors.demoOrSlidesUrl }}
         </p>
       </AppFormField>
+
+      <TalkProposalQuestionInput
+        v-for="(question, index) in props.questions"
+        :key="question.id"
+        :question="question"
+        :model-value="proposalAnswers[index]?.value ?? (question.type === 'acknowledgement' ? false : '')"
+        :disabled="!canEdit"
+        :error="questionErrors[question.id]"
+        @update:model-value="updateAnswer(index, $event)"
+      />
 
       <div class="flex flex-wrap gap-3 border-t border-black/8 pt-5 dark:border-white/[0.08]">
         <AppButton

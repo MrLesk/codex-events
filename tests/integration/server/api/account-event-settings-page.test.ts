@@ -227,6 +227,8 @@ describe('GET /api/account/events/:slug/settings', () => {
       event: {
         id: 'event_settings',
         description: 'A complete settings page fixture.',
+        talkProposalQuestions: [],
+        talkProposalQuestionsRevision: 0,
         tracks: [{ id: 'track_1', staffInstructions: 'Keep this track moving.' }]
       },
       criteria: [{ id: 'criterion_1', weight: 100 }],

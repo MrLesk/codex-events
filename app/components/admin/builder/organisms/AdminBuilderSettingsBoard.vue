@@ -593,6 +593,7 @@ const lumaWebhookStatusColor = computed(() => {
           v-model:enabled="form.talkProposalsEnabled"
           v-model:opens-at="form.talkProposalOpensAt"
           v-model:closes-at="form.talkProposalClosesAt"
+          v-model:questions="form.talkProposalQuestions"
           :has-existing-proposal="props.hasExistingTalkProposal ?? false"
         />
       </AdminBuilderSettingsGroupCard>

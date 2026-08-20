@@ -11,12 +11,16 @@ describe('talk proposal workspace contracts', () => {
     expect(talkProposalFormSchema.safeParse({
       title: 'Building reliable agents',
       abstract: 'A practical field guide.',
-      demoOrSlidesUrl: 'https://example.com/slides'
+      demoOrSlidesUrl: 'https://example.com/slides',
+      questionSetRevision: 0,
+      answers: []
     }).success).toBe(true)
     expect(talkProposalFormSchema.safeParse({
       title: 'Building reliable agents',
       abstract: 'A practical field guide.',
-      demoOrSlidesUrl: 'file:///tmp/slides.pdf'
+      demoOrSlidesUrl: 'file:///tmp/slides.pdf',
+      questionSetRevision: 0,
+      answers: []
     }).success).toBe(false)
   })
 

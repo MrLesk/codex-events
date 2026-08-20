@@ -1,4 +1,8 @@
 import { z } from 'zod'
+import {
+  talkProposalAnswersSchema,
+  type TalkProposalAnswer
+} from '#shared/domains/talk-proposals/questions'
 
 export const talkProposalFormSchema = z.object({
   title: z.string().trim().min(1, 'Enter a talk title.').max(200, 'Keep the title under 200 characters.'),
@@ -6,7 +10,9 @@ export const talkProposalFormSchema = z.object({
   demoOrSlidesUrl: z.union([
     z.literal(''),
     z.string().trim().url('Enter a valid HTTP(S) URL.').refine(value => /^https?:\/\//i.test(value), 'Enter a valid HTTP(S) URL.')
-  ])
+  ]),
+  questionSetRevision: z.number().int().min(0),
+  answers: talkProposalAnswersSchema
 })
 
 export type TalkProposalStatus = 'draft' | 'submitted' | 'withdrawn' | 'accepted' | 'rejected'
@@ -19,6 +25,8 @@ export interface TalkProposalRecord {
   title: string
   abstract: string
   demoOrSlidesUrl: string | null
+  questionSetRevision: number
+  answers: TalkProposalAnswer[]
   decisionMessage: string | null
   reviewedByUserId: string | null
   submittedAt: string | null

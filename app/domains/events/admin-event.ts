@@ -4,6 +4,10 @@ import type {
   EventRecord,
   EventType
 } from '~/domains/events/records'
+import {
+  talkProposalQuestionsSchema,
+  type TalkProposalQuestionDefinition
+} from '#shared/domains/talk-proposals/questions'
 
 export interface EventFormState {
   eventType: EventType
@@ -33,6 +37,7 @@ export interface EventFormState {
   talkProposalsEnabled: boolean
   talkProposalOpensAt: string
   talkProposalClosesAt: string
+  talkProposalQuestions: TalkProposalQuestionDefinition[]
   blindReviewCount: number
   pitchReviewEnabled: boolean
   blindScoreWeightPercent: number
@@ -330,7 +335,10 @@ function normalizeEventConfigFormInput(candidate: unknown) {
     requireSubmissionDemoUrl: false,
     talkProposalsEnabled: input.eventType === 'meetup' && input.talkProposalsEnabled === true,
     talkProposalOpensAt: input.eventType === 'meetup' ? input.talkProposalOpensAt : '',
-    talkProposalClosesAt: input.eventType === 'meetup' ? input.talkProposalClosesAt : ''
+    talkProposalClosesAt: input.eventType === 'meetup' ? input.talkProposalClosesAt : '',
+    talkProposalQuestions: input.eventType === 'meetup' && input.talkProposalsEnabled === true
+      ? input.talkProposalQuestions
+      : []
   }
 }
 
@@ -362,6 +370,7 @@ const eventConfigFormBaseSchema = z.object({
   talkProposalsEnabled: z.boolean(),
   talkProposalOpensAt: z.string().trim(),
   talkProposalClosesAt: z.string().trim(),
+  talkProposalQuestions: talkProposalQuestionsSchema,
   blindReviewCount: z.number().int().min(0).max(2),
   pitchReviewEnabled: z.boolean(),
   blindScoreWeightPercent: z.number().int().min(0).max(100),
@@ -663,6 +672,7 @@ export function createEmptyEventFormState(): EventFormState {
     talkProposalsEnabled: false,
     talkProposalOpensAt: '',
     talkProposalClosesAt: '',
+    talkProposalQuestions: [],
     blindReviewCount: 1,
     pitchReviewEnabled: false,
     blindScoreWeightPercent: 70,
@@ -781,6 +791,7 @@ export function createEventFormState(event: EventRecord): EventFormState {
     talkProposalsEnabled: event.talkProposalsEnabled ?? false,
     talkProposalOpensAt: toDateTimeLocalValue(event.talkProposalOpensAt),
     talkProposalClosesAt: toDateTimeLocalValue(event.talkProposalClosesAt),
+    talkProposalQuestions: event.talkProposalQuestions ?? [],
     blindReviewCount: event.blindReviewCount,
     pitchReviewEnabled: event.pitchReviewEnabled,
     blindScoreWeightPercent: event.blindScoreWeightPercent,
@@ -842,6 +853,9 @@ export function buildEventConfigurationPatch(configForm: EventFormState, eventTy
     talkProposalClosesAt: eventType === 'meetup' && configForm.talkProposalsEnabled
       ? fromDateTimeLocalValue(configForm.talkProposalClosesAt)
       : null,
+    talkProposalQuestions: eventType === 'meetup' && configForm.talkProposalsEnabled
+      ? configForm.talkProposalQuestions
+      : [],
     inPersonEvent: configForm.inPersonEvent,
     applicationXProfileVisible: configForm.applicationXProfileVisible,
     applicationLinkedinProfileVisible: configForm.applicationLinkedinProfileVisible,
@@ -920,6 +934,9 @@ export function buildEventCreateBody(form: EventFormState) {
     talkProposalClosesAt: form.eventType === 'meetup' && form.talkProposalsEnabled
       ? fromDateTimeLocalValue(form.talkProposalClosesAt)
       : null,
+    talkProposalQuestions: form.eventType === 'meetup' && form.talkProposalsEnabled
+      ? form.talkProposalQuestions
+      : [],
     inPersonEvent: form.inPersonEvent,
     applicationXProfileVisible: form.applicationXProfileVisible,
     applicationLinkedinProfileVisible: form.applicationLinkedinProfileVisible,

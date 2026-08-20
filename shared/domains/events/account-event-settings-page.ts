@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { talkProposalQuestionsSchema } from '#shared/domains/talk-proposals/questions'
+
 const eventTypeSchema = z.enum(['hackathon', 'meetup', 'build'])
 const eventStateSchema = z.enum([
   'draft',
@@ -101,6 +103,8 @@ export const accountEventSettingsEventSchema = z.object({
   talkProposalsEnabled: z.boolean().optional(),
   talkProposalOpensAt: z.string().nullable().optional(),
   talkProposalClosesAt: z.string().nullable().optional(),
+  talkProposalQuestions: talkProposalQuestionsSchema,
+  talkProposalQuestionsRevision: z.number().int().nonnegative(),
   blindReviewCount: z.number().int(),
   pitchReviewEnabled: z.boolean(),
   blindScoreWeightPercent: z.number().int(),

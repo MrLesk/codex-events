@@ -48,6 +48,7 @@ import {
 import { defineAccountEventPageRoute } from './account-event-page-contract'
 import { resolveEventCertificateDateIso } from '#shared/domains/events/certificates'
 import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
+import { parseTalkProposalQuestionsJson } from '#shared/domains/talk-proposals/questions'
 
 type EventRecord = typeof events.$inferSelect
 type ApplicationRecord = typeof userApplications.$inferSelect
@@ -523,6 +524,8 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
       discordServerUrl: canViewRestrictedDetails ? event.discordServerUrl : null,
       slidesUrl: canViewRestrictedDetails ? event.slidesUrl : null,
       simplifiedClaimingEnabled: event.simplifiedClaimingEnabled,
+      talkProposalQuestions: parseTalkProposalQuestionsJson(event.talkProposalQuestionsJson),
+      talkProposalQuestionsRevision: event.talkProposalQuestionsRevision,
       hasGallery: galleryExists
     }
     const participationRecord = participation.record

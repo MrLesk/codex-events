@@ -150,7 +150,9 @@ describe('account-event page shell request topology', () => {
         discordServerUrl: null,
         slidesUrl: null,
         simplifiedClaimingEnabled: false,
-        talkProposalsEnabled: true
+        talkProposalsEnabled: true,
+        talkProposalQuestionsJson: '[]',
+        talkProposalQuestionsRevision: 0
       }
     } as never
 

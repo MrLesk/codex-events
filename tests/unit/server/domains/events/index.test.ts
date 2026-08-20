@@ -62,6 +62,11 @@ function buildEventRecord(
     participantsLimit: null,
     autoApproveApplications: false,
     simplifiedClaimingEnabled: false,
+    talkProposalsEnabled: false,
+    talkProposalOpensAt: null,
+    talkProposalClosesAt: null,
+    talkProposalQuestionsJson: '[]',
+    talkProposalQuestionsRevision: 0,
     inPersonEvent: false,
     applicationXProfileVisible: true,
     applicationLinkedinProfileVisible: true,
@@ -225,6 +230,11 @@ describe('event management utilities', () => {
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
       submissionOpensAt: '2026-03-23T12:00:00.000Z',
       submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      talkProposalsEnabled: false,
+      talkProposalOpensAt: null,
+      talkProposalClosesAt: null,
+      talkProposalQuestionsJson: '[]',
+      talkProposalQuestionsRevision: 0,
       state: 'registration_open',
       maxTeamMembers: 5,
       participantsLimit: null,
@@ -389,6 +399,11 @@ describe('event management utilities', () => {
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
       submissionOpensAt: '2026-03-23T12:00:00.000Z',
       submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      talkProposalsEnabled: false,
+      talkProposalOpensAt: null,
+      talkProposalClosesAt: null,
+      talkProposalQuestionsJson: '[]',
+      talkProposalQuestionsRevision: 0,
       state: 'registration_open',
       maxTeamMembers: 5,
       participantsLimit: null,
@@ -1203,6 +1218,23 @@ describe('event builder metadata', () => {
     expect(serializeAdminEvent(buildEventRecord()).balanceScore).toBeNull()
     expect(serializeAdminEvent(buildEventRecord()).balanceBreakdown).toBeNull()
     expect(serializeAdminEvent(buildEventRecord({ balanceBreakdownJson: '{not json' })).balanceBreakdown).toBeNull()
+  })
+
+  test('keeps Call for talks questions private to admin and account contracts', () => {
+    const questions = [{ id: 'phone', type: 'short_text', prompt: 'Phone number', required: true, options: [] }]
+    const record = buildEventRecord({
+      eventType: 'meetup',
+      talkProposalsEnabled: true,
+      talkProposalQuestionsJson: JSON.stringify(questions),
+      talkProposalQuestionsRevision: 2
+    })
+
+    expect(serializeAdminEvent(record)).toMatchObject({
+      talkProposalQuestions: questions,
+      talkProposalQuestionsRevision: 2
+    })
+    expect(serializeEvent(record)).not.toHaveProperty('talkProposalQuestions')
+    expect(serializePublicEvent(record)).not.toHaveProperty('talkProposalQuestions')
   })
 
   test('public payloads never expose builder metadata', () => {

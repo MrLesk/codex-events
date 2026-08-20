@@ -68,14 +68,22 @@ describe('event config form schema', () => {
       eventType: 'meetup' as const,
       talkProposalsEnabled: true,
       talkProposalOpensAt: '2026-03-20T12:00',
-      talkProposalClosesAt: '2026-03-21T12:00'
+      talkProposalClosesAt: '2026-03-21T12:00',
+      talkProposalQuestions: [{
+        id: 'phone',
+        type: 'short_text' as const,
+        prompt: 'Phone number',
+        required: true,
+        options: []
+      }]
     }
 
     expect(eventConfigFormSchema.safeParse(meetup).success).toBe(true)
     expect(buildEventConfigurationPatch(meetup, 'meetup')).toMatchObject({
       talkProposalsEnabled: true,
       talkProposalOpensAt: expect.any(String),
-      talkProposalClosesAt: expect.any(String)
+      talkProposalClosesAt: expect.any(String),
+      talkProposalQuestions: meetup.talkProposalQuestions
     })
     expect(eventConfigFormSchema.safeParse({
       ...meetup,
@@ -87,7 +95,8 @@ describe('event config form schema', () => {
     }, 'build')).toMatchObject({
       talkProposalsEnabled: false,
       talkProposalOpensAt: null,
-      talkProposalClosesAt: null
+      talkProposalClosesAt: null,
+      talkProposalQuestions: []
     })
   })
 

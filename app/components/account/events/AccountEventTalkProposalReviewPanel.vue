@@ -3,15 +3,18 @@ import type { ApiDataResponse } from '~/lib/api'
 import type { PublicEventState } from '~/domains/events/presentation'
 import type { TalkProposalStatus } from '~/domains/talk-proposals'
 import type { AccountEventEntryTalkProposalReview } from '#shared/domains/events/account-event-entry-page'
+import type { TalkProposalQuestionDefinition } from '#shared/domains/talk-proposals/questions'
 import { normalizeApiError } from '~/lib/api'
 import { talkProposalStatusLabels } from '~/domains/talk-proposals'
 import { useApiClient } from '~/composables/useApiClient'
+import TalkProposalAnswerReview from '~/components/talk-proposals/molecules/TalkProposalAnswerReview.vue'
 
 const props = defineProps<{
   eventId: string
   eventState: PublicEventState
   canDecide: boolean
   entries: AccountEventEntryTalkProposalReview[]
+  questions: TalkProposalQuestionDefinition[]
 }>()
 const emit = defineEmits<{
   updated: []
@@ -36,6 +39,10 @@ function ownerName(entry: AccountEventEntryTalkProposalReview) {
   return entry.owner.displayName.trim()
     || `${entry.owner.firstName} ${entry.owner.familyName}`.trim()
     || entry.owner.email
+}
+
+function answerFor(questionId: string) {
+  return selectedEntry.value?.proposal.answers.find(answer => answer.questionId === questionId)
 }
 
 watch(() => props.entries, (nextEntries) => {
@@ -88,19 +95,22 @@ watch(selectedId, () => {
         <h2 class="text-lg font-semibold text-highlighted">
           Talk proposals
         </h2>
-        <label class="flex items-center gap-2 text-sm text-muted">
+        <label class="flex items-center gap-3 text-sm text-muted">
           Status
-          <select
-            v-model="statusFilter"
-            class="rounded-lg border border-black/10 bg-default px-3 py-2 text-sm text-highlighted dark:border-white/[0.12]"
-          >
-            <option value="all">All</option>
-            <option
-              v-for="(label, status) in talkProposalStatusLabels"
-              :key="status"
-              :value="status"
-            >{{ label }}</option>
-          </select>
+          <span class="w-36">
+            <AppSelect
+              v-model="statusFilter"
+              size="sm"
+              aria-label="Status"
+            >
+              <option value="all">All</option>
+              <option
+                v-for="(label, status) in talkProposalStatusLabels"
+                :key="status"
+                :value="status"
+              >{{ label }}</option>
+            </AppSelect>
+          </span>
         </label>
       </div>
     </template>
@@ -170,6 +180,18 @@ watch(selectedId, () => {
           <p class="whitespace-pre-wrap text-sm leading-6 text-toned">
             {{ selectedEntry.proposal.abstract }}
           </p>
+        </div>
+
+        <div
+          v-if="props.questions.length > 0"
+          class="space-y-5 border-t border-black/8 pt-5 dark:border-white/[0.08]"
+        >
+          <TalkProposalAnswerReview
+            v-for="question in props.questions"
+            :key="question.id"
+            :question="question"
+            :answer="answerFor(question.id)"
+          />
         </div>
 
         <AppButton
