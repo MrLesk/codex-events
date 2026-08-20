@@ -161,10 +161,18 @@ const entryPageRequest = useAccountEventPageRequest<AccountEventEntryPage>(slug,
     ? { includeAdminEventConfiguration: true }
     : {})
 })
+const directPageQuery = computed(() => shouldIncludeAccountEventShell({
+  isHardDirectNavigation: route.fullPath === initialRouteFullPath,
+  isNonEntryNavigation: isDirectNonEntryNavigation.value,
+  hasEntryState: Boolean(entryPageRequest.data.value?.page)
+})
+  ? { includeEventShell: true }
+  : {})
 const prizesPageRequest = useAccountEventPageRequest<AccountEventPrizesPage>(slug, 'prizes', {
   immediate: false,
   query: computed(() => ({
-    ...(requestedTab.value === 'prizes' ? { includeAdminEventConfiguration: true } : {})
+    ...(requestedTab.value === 'prizes' ? { includeAdminEventConfiguration: true } : {}),
+    ...directPageQuery.value
   }))
 })
 const entryPage = computed(() => entryPageRequest.data.value?.page ?? null)
@@ -471,13 +479,6 @@ const activeSection = computed<AccountEventWorkspaceTab>(() => {
 
   return resolveTabQueryValue(route.query.tab, availableTabs.value, 'overview')
 })
-const directPageQuery = computed(() => shouldIncludeAccountEventShell({
-  isHardDirectNavigation: route.fullPath === initialRouteFullPath,
-  isNonEntryNavigation: isDirectNonEntryNavigation.value,
-  hasEntryState: Boolean(entryPage.value)
-})
-  ? { includeEventShell: true }
-  : {})
 const settingsPageRequest = useAccountEventPageRequest<AccountEventSettingsPage>(slug, 'settings', {
   immediate: false,
   query: directPageQuery

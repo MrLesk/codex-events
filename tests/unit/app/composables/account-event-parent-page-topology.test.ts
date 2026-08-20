@@ -69,9 +69,14 @@ describe('account event parent page request topology', () => {
   test('uses one selected direct-link read with a concurrent event shell', () => {
     expect(pageSource).toContain('} from \'~/domains/events/account-workspace-page\'')
     expect(pageSource).toContain('const isDirectNonEntryNavigation = computed(() =>')
+    const prizesRequestSource = pageSource.slice(
+      pageSource.indexOf('const prizesPageRequest'),
+      pageSource.indexOf('const entryPage =')
+    )
+    expect(prizesRequestSource).toContain('...directPageQuery.value')
     expect(pageSource).toContain('const directPageQuery = computed(() => shouldIncludeAccountEventShell({')
     expect(pageSource).toContain('isHardDirectNavigation: route.fullPath === initialRouteFullPath')
-    expect(pageSource).toContain('hasEntryState: Boolean(entryPage.value)')
+    expect(pageSource).toContain('hasEntryState: Boolean(entryPageRequest.data.value?.page)')
     expect(pageSource).toContain('{ includeEventShell: true }')
     expect(pageSource).toContain('immediate: false')
     expect(pageSource).toContain('selectedParticipantsResponse?.visibility.canManage')
