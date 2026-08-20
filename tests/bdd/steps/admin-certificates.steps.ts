@@ -17,8 +17,7 @@ When('I open the certificates tab for event {string} with the saved {string} ses
     page.waitForResponse((response) => {
       const url = new URL(response.url())
 
-      return url.pathname === `/api/events/${eventId}/applications`
-        && url.searchParams.get('status') === 'approved'
+      return url.pathname === `/api/account/events/${eventSlug}/certificates`
         && response.ok()
     }),
     page.goto(`/account/events/${eventSlug}?tab=certificates`)

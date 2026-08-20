@@ -60,20 +60,9 @@ async function isDecisionButtonActive(button: ReturnType<Page['getByTestId']>, d
   return className?.includes(decisionButtonActiveClass(decision)) ?? false
 }
 
-function getCurrentEventId(page: Page) {
+function getCurrentEventSlug(page: Page) {
   const segments = new URL(page.url()).pathname.split('/').filter(Boolean)
   return segments[segments.indexOf('events') + 1] ?? ''
-}
-
-function resolveEventId(eventSlug: string) {
-  switch (eventSlug) {
-    case 'e2e-fixture-event':
-      return 'event_e2e_fixture'
-    case 'operations-fixture-event':
-      return 'event_e2e_operations_fixture'
-    default:
-      throw new Error(`No API event id mapping is configured for workspace slug "${eventSlug}".`)
-  }
 }
 
 export function resolveEventSlug(eventId: string) {
@@ -89,24 +78,28 @@ export function resolveEventSlug(eventId: string) {
 
 async function waitForStagedApplicationDecision(page: Page, applicationId: string, decision: 'approved' | 'rejected') {
   const apiClient = await createAuthenticatedApiClient('event_admin')
-  const eventId = resolveEventId(getCurrentEventId(page))
+  const eventSlug = getCurrentEventSlug(page)
 
   try {
     await expect.poll(async () => {
-      const response = await apiClient.get(`/api/events/${eventId}/applications`)
+      const response = await apiClient.get(`/api/account/events/${eventSlug}/participants`)
 
       if (!response.ok()) {
         return null
       }
 
       const payload = await response.json() as {
-        data?: Array<{
-          id?: string
-          preApprovalStatus?: 'approved' | 'rejected' | null
-        }>
+        data?: {
+          page?: {
+            applications?: Array<{
+              id?: string
+              preApprovalStatus?: 'approved' | 'rejected' | null
+            }>
+          }
+        }
       }
 
-      return payload.data?.find(application => application.id === applicationId)?.preApprovalStatus ?? null
+      return payload.data?.page?.applications?.find(application => application.id === applicationId)?.preApprovalStatus ?? null
     }, {
       timeout: 10_000
     }).toBe(decision)
@@ -117,24 +110,28 @@ async function waitForStagedApplicationDecision(page: Page, applicationId: strin
 
 async function waitForApplicationStatus(page: Page, applicationId: string, status: 'submitted' | 'approved' | 'rejected' | 'withdrawn') {
   const apiClient = await createAuthenticatedApiClient('event_admin')
-  const eventId = resolveEventId(getCurrentEventId(page))
+  const eventSlug = getCurrentEventSlug(page)
 
   try {
     await expect.poll(async () => {
-      const response = await apiClient.get(`/api/events/${eventId}/applications`)
+      const response = await apiClient.get(`/api/account/events/${eventSlug}/participants`)
 
       if (!response.ok()) {
         return null
       }
 
       const payload = await response.json() as {
-        data?: Array<{
-          id?: string
-          status?: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null
-        }>
+        data?: {
+          page?: {
+            applications?: Array<{
+              id?: string
+              status?: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null
+            }>
+          }
+        }
       }
 
-      return payload.data?.find(application => application.id === applicationId)?.status ?? null
+      return payload.data?.page?.applications?.find(application => application.id === applicationId)?.status ?? null
     }, {
       timeout: 10_000
     }).toBe(status)
@@ -208,8 +205,7 @@ When('I open the admin operations page for event {string} with the saved {string
     page.waitForResponse((response) => {
       const url = new URL(response.url())
 
-      return url.pathname === `/api/events/${eventId}/applications`
-        && url.searchParams.get('page') === '1'
+      return url.pathname === `/api/account/events/${eventSlug}/participants`
         && response.ok()
     }),
     page.goto(`/account/events/${eventSlug}?tab=participants`)
@@ -292,7 +288,7 @@ Then('I should not see the admin team {string}', async ({ page }, teamId: string
 
 When('I load more admin teams', async ({ page }) => {
   const loadMoreButton = page.getByTestId('admin-operations-load-more-teams')
-  const eventId = getCurrentEventId(page)
+  const eventId = getCurrentEventSlug(page)
 
   await expect(loadMoreButton).toBeVisible()
   await Promise.all([

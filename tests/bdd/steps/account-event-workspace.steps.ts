@@ -8,6 +8,7 @@ import {
   assertExactPathCount,
   assertForbiddenJsonApiRecord,
   assertJsonApiRecord,
+  assertNoLegacyParticipantWorkspaceReads,
   assertNoUnexpectedBrowserErrors,
   assertNoEditorOrSortableRequests,
   assertNoLegacyFanOut,
@@ -410,6 +411,9 @@ Then('the direct account event topology should have one bootstrap and one select
   assertJsonApiRecord(capture, selectedRead, 'Selected account event read', measurement.pageFamily)
   if (measurement.pageFamily === 'rosters') {
     assertPublishedRosterPrivacy(capture, selectedRead)
+  }
+  if (measurement.pageFamily === 'participants' || measurement.pageFamily === 'certificates') {
+    assertNoLegacyParticipantWorkspaceReads(capture, measurement.slug)
   }
 })
 

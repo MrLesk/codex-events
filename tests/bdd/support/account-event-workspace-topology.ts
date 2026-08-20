@@ -378,6 +378,23 @@ export function pathRecords(capture: AccountEventTopologyCapture, path: string) 
   return apiRecords(capture).filter(record => record.path === path)
 }
 
+export function assertNoLegacyParticipantWorkspaceReads(
+  capture: AccountEventTopologyCapture,
+  slug: string
+) {
+  const operationsPath = `/api/account/events/${encodeURIComponent(slug)}/operations`
+  const legacyReads = apiRecords(capture).filter(record =>
+    record.path.endsWith('/applications') || record.path === operationsPath
+  )
+
+  if (legacyReads.length) {
+    throw topologyFailure(
+      capture,
+      `Unexpected participant workspace read(s): ${legacyReads.map(record => record.path).join(', ')}.`
+    )
+  }
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null
     ? value as Record<string, unknown>
