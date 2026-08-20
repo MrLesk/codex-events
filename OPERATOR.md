@@ -49,6 +49,14 @@ In the Cloudflare account that will host the platform:
 
 You do not set up the D1 database, R2 buckets, or Queues yourself — the deploy workflow creates them when they do not already exist. The Cloudflare API token is created later, in the GitHub step (section 4), where it is pasted straight in.
 
+D1 provisioning requires exactly one explicit placement variable in each GitHub
+environment: `CF_D1_JURISDICTION` or `CF_D1_PRIMARY_LOCATION_HINT`. The workflow
+inspects an existing database and stops with replacement guidance when its
+observed placement does not match. It never deletes or silently replaces an
+existing database. See [D1 placement and recoverable replacement](docs/d1-placement-and-replacement.md)
+for the contract, the test/production EU settings, and the non-destructive test
+replacement procedure.
+
 ### D1 read replication
 
 The checked-in Wrangler configuration declares the D1 binding only. After the deployment workflow creates each environment's D1 database, enable read replication separately in the database's Cloudflare dashboard under **Settings → Enable Read Replication**. Repeat this for production and the optional test database when both environments are used.
@@ -134,6 +142,7 @@ Variable names follow a convention worth knowing:
 | Key                               | Platform   | Where to find it                                                                        |
 |-----------------------------------|------------|-----------------------------------------------------------------------------------------|
 | `CF_ZONE_NAME`                    | Cloudflare | Your Cloudflare DNS zone — usually the parent domain, e.g. `example.com`                |
+| `CF_D1_JURISDICTION` or `CF_D1_PRIMARY_LOCATION_HINT` | Cloudflare | Set exactly one per environment; use `eu` for the repository's test and production environments, or choose a supported self-hosted placement |
 | `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`  | Cloudflare | Any address on the domain you onboarded to Cloudflare Email (section 2) — you choose it |
 | `AUTH0_MANAGEMENT_DOMAIN`         | Auth0      | The tenant domain from section 3.1, e.g. `your-tenant.eu.auth0.com`                     |
 | `BASE_DOMAIN`                     | -          | The hostname the app runs on, e.g. `events.example.com`                                 |
@@ -414,6 +423,8 @@ Deployment defaults and resource names:
 | `RESOURCE_PREFIX`                   | Resource-name prefix. Defaults to `codex-events`                                     |
 | `CF_WORKER_NAME`                    | Worker name                                                                          |
 | `CF_D1_DATABASE_NAME`               | D1 database name; created if it does not exist                                       |
+| `CF_D1_JURISDICTION`                | D1 creation jurisdiction; mutually exclusive with `CF_D1_PRIMARY_LOCATION_HINT`    |
+| `CF_D1_PRIMARY_LOCATION_HINT`       | D1 primary location hint; mutually exclusive with `CF_D1_JURISDICTION`              |
 | `CF_PROFILE_ICONS_BUCKET`           | Profile-icons R2 bucket name; created if it does not exist                           |
 | `CF_EVENT_IMAGES_BUCKET`            | Event-images R2 bucket name; created if it does not exist                            |
 | `CF_APPLICATION_REVIEW_EMAIL_QUEUE` | Application decision email queue name                                                |

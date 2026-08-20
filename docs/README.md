@@ -14,6 +14,7 @@ This directory contains the canonical product and engineering documentation for 
 
 - [api-surface.md](api-surface.md): canonical backend API domains, operations, contract conventions, and validation expectations
 - [database-query-plan-audit.md](database-query-plan-audit.md): measured `EXPLAIN QUERY PLAN` audit for release hot paths on the current migrated SQLite schema
+- [d1-placement-and-replacement.md](d1-placement-and-replacement.md): explicit D1 placement contract, inspection behavior, and recoverable replacement procedure
 - [domain-model.md](domain-model.md): core entities, relationships, permissions, and business invariants
 - [lifecycle-and-state-machines.md](lifecycle-and-state-machines.md): lifecycle states, transitions, and transition guards
 - [mcp.md](mcp.md): bearer-authenticated MCP contracts, operation eligibility, security, auditing, and deployment rules

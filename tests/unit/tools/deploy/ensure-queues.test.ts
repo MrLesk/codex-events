@@ -9,6 +9,7 @@ function createEnvironment(overrides: Record<string, string | undefined> = {}) {
   return {
     BASE_DOMAIN: 'test.example.com',
     CF_ZONE_NAME: 'example.com',
+    CF_D1_JURISDICTION: 'eu',
     RESOLVED_D1_DATABASE_ID: '11111111-1111-4111-8111-111111111111',
     NUXT_OUTBOUND_EMAIL_FROM_EMAIL: 'notifications@example.com',
     ...overrides

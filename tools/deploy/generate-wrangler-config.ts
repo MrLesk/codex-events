@@ -9,6 +9,19 @@ export type DeployTarget = (typeof deployTargets)[number]
 
 export type EnvironmentValues = Record<string, string | undefined>
 
+export const d1Jurisdictions = ['eu', 'fedramp'] as const
+
+export type D1Jurisdiction = (typeof d1Jurisdictions)[number]
+
+export const d1PrimaryLocationHints = ['weur', 'eeur', 'apac', 'oc', 'wnam', 'enam'] as const
+
+export type D1PrimaryLocationHint = (typeof d1PrimaryLocationHints)[number]
+
+export interface D1PlacementConfiguration {
+  jurisdiction?: D1Jurisdiction
+  primaryLocationHint?: D1PrimaryLocationHint
+}
+
 interface QueueConfig {
   binding: string
   queue: string
@@ -49,6 +62,7 @@ export interface ResolvedDeployConfigInput {
   workerName: string
   d1DatabaseName: string
   d1DatabaseId: string
+  d1Placement: D1PlacementConfiguration
   profileIconsBucket: string
   eventImagesBucket: string
   outboundEmailBinding: string
@@ -185,6 +199,37 @@ function readRequiredEnvironmentValue(environment: EnvironmentValues, name: stri
   }
 
   return value
+}
+
+function parseD1PlacementValue<T extends string>(value: string, name: string, allowedValues: readonly T[]) {
+  if (!allowedValues.includes(value as T)) {
+    throw new Error(`${name} must be one of: ${allowedValues.join(', ')}.`)
+  }
+
+  return value as T
+}
+
+export function resolveD1PlacementConfiguration(environment: EnvironmentValues): D1PlacementConfiguration {
+  const jurisdiction = readOptionalEnvironmentValue(environment, 'CF_D1_JURISDICTION').toLowerCase()
+  const primaryLocationHint = readOptionalEnvironmentValue(environment, 'CF_D1_PRIMARY_LOCATION_HINT').toLowerCase()
+
+  if (!jurisdiction && !primaryLocationHint) {
+    throw new Error('Set exactly one of CF_D1_JURISDICTION or CF_D1_PRIMARY_LOCATION_HINT for D1 placement.')
+  }
+
+  if (jurisdiction && primaryLocationHint) {
+    throw new Error('Set only one of CF_D1_JURISDICTION or CF_D1_PRIMARY_LOCATION_HINT for D1 placement; Cloudflare ignores the location hint when jurisdiction is set.')
+  }
+
+  if (jurisdiction) {
+    return {
+      jurisdiction: parseD1PlacementValue(jurisdiction, 'CF_D1_JURISDICTION', d1Jurisdictions)
+    }
+  }
+
+  return {
+    primaryLocationHint: parseD1PlacementValue(primaryLocationHint, 'CF_D1_PRIMARY_LOCATION_HINT', d1PrimaryLocationHints)
+  }
 }
 
 function normalizeHostname(value: string, name: string) {
@@ -349,6 +394,7 @@ export function resolveDeployConfigInput(
     workerName: resolveResourceName(environment, 'CF_WORKER_NAME', resourceBaseName),
     d1DatabaseName,
     d1DatabaseId: readRequiredEnvironmentValue(environment, 'RESOLVED_D1_DATABASE_ID'),
+    d1Placement: resolveD1PlacementConfiguration(environment),
     profileIconsBucket,
     eventImagesBucket,
     outboundEmailBinding: readOptionalEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_BINDING') || 'EMAIL',

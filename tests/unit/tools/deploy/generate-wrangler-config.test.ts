@@ -7,6 +7,7 @@ import {
   buildDeployWranglerConfig,
   buildDeployQueueResourceNames,
   parseDeployTarget,
+  resolveD1PlacementConfiguration,
   resolveDeployConfigInput,
   resolveDeployResourceNames
 } from '../../../../tools/deploy/generate-wrangler-config'
@@ -15,6 +16,7 @@ function createEnvironment(overrides: Record<string, string | undefined> = {}) {
   return {
     BASE_DOMAIN: 'events.example.com',
     CF_ZONE_NAME: 'example.com',
+    CF_D1_JURISDICTION: 'eu',
     RESOLVED_D1_DATABASE_ID: '11111111-1111-4111-8111-111111111111',
     NUXT_OUTBOUND_EMAIL_FROM_EMAIL: 'notifications@example.com',
     NUXT_OUTBOUND_EMAIL_REPLY_TO: 'support@example.com',
@@ -23,6 +25,36 @@ function createEnvironment(overrides: Record<string, string | undefined> = {}) {
 }
 
 describe('deploy Wrangler config generator', () => {
+  test('requires exactly one explicit D1 placement selector', () => {
+    expect(resolveD1PlacementConfiguration({
+      CF_D1_JURISDICTION: 'eu'
+    })).toEqual({
+      jurisdiction: 'eu'
+    })
+    expect(resolveD1PlacementConfiguration({
+      CF_D1_PRIMARY_LOCATION_HINT: 'eeur'
+    })).toEqual({
+      primaryLocationHint: 'eeur'
+    })
+
+    expect(() => resolveD1PlacementConfiguration({})).toThrow(
+      'Set exactly one of CF_D1_JURISDICTION or CF_D1_PRIMARY_LOCATION_HINT'
+    )
+    expect(() => resolveD1PlacementConfiguration({
+      CF_D1_JURISDICTION: 'eu',
+      CF_D1_PRIMARY_LOCATION_HINT: 'eeur'
+    })).toThrow('Set only one of CF_D1_JURISDICTION or CF_D1_PRIMARY_LOCATION_HINT')
+  })
+
+  test('rejects unsupported D1 placement values', () => {
+    expect(() => resolveD1PlacementConfiguration({
+      CF_D1_JURISDICTION: 'us'
+    })).toThrow('CF_D1_JURISDICTION must be one of: eu, fedramp.')
+    expect(() => resolveD1PlacementConfiguration({
+      CF_D1_PRIMARY_LOCATION_HINT: 'vienna'
+    })).toThrow('CF_D1_PRIMARY_LOCATION_HINT must be one of: weur, eeur, apac, oc, wnam, enam.')
+  })
+
   test('parses explicit deployment targets', () => {
     expect(parseDeployTarget('test')).toBe('test')
     expect(parseDeployTarget('production')).toBe('production')
@@ -40,6 +72,7 @@ describe('deploy Wrangler config generator', () => {
     expect(input.resourcePrefix).toBe('codex-events')
     expect(input.appBaseUrl).toBe('https://test.example.com')
     expect(input.auth0CustomDomain).toBe('auth.test.example.com')
+    expect(input.d1Placement).toEqual({ jurisdiction: 'eu' })
     expect(config.name).toBe('codex-events-test')
     expect(config.main).toBe('../../.output/server/index.mjs')
     expect(config.assets.directory).toBe('../../.output/public')
