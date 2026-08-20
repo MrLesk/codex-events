@@ -131,20 +131,20 @@ function isPlainObject(value: object) {
   return prototype === Object.prototype || prototype === null
 }
 
-function unwrapRuntimeValue(value: unknown): unknown {
+function unwrapRuntimeValue(value: unknown, unwrapBuilderFacades = false): unknown {
   if (isObjectLike(value)) {
     const target = targetByFacade.get(value)
     if (target) {
-      return target
+      return unwrapBuilderFacades || !hasDangerousBuilderCapability(target) ? target : value
     }
   }
 
   if (Array.isArray(value)) {
-    return value.map(unwrapRuntimeValue)
+    return value.map(entry => unwrapRuntimeValue(entry, unwrapBuilderFacades))
   }
 
   if (isObjectLike(value) && isPlainObject(value)) {
-    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, unwrapRuntimeValue(entry)]))
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, unwrapRuntimeValue(entry, unwrapBuilderFacades)]))
   }
 
   return value
@@ -186,7 +186,7 @@ function getForwardedMethod(target: object, property: PropertyKey, method: (...a
   }
 
   const forwarded = (...args: unknown[]) => wrapBuilderResult(
-    Reflect.apply(method, target, args.map(unwrapRuntimeValue))
+    Reflect.apply(method, target, args.map(arg => unwrapRuntimeValue(arg)))
   )
   methods.set(property, forwarded)
   forwardedMethodsByTarget.set(target, methods)
@@ -283,7 +283,7 @@ function createQueryFacade(query: DrizzleDatabase['query']) {
 function forwardRootMethod<K extends RootMethodCapability>(database: DrizzleDatabase, capability: K) {
   const method = database[capability] as unknown as (...args: unknown[]) => unknown
   return ((...args: unknown[]) => wrapBuilderResult(
-    Reflect.apply(method, database, args.map(unwrapRuntimeValue))
+    Reflect.apply(method, database, args.map(arg => unwrapRuntimeValue(arg, capability === 'batch')))
   )) as DrizzleDatabase[K]
 }
 

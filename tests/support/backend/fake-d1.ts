@@ -48,6 +48,12 @@ export interface TestD1SessionRecord {
 type TestD1DatabaseIdentity = symbol
 type TestD1Mutation = <T>(execute: () => Promise<T>) => Promise<T>
 
+interface TestD1DatabaseOptions {
+  applyMigrations?: boolean
+  replicaStale?: boolean
+  beforeReplicaVersionPublication?: () => Promise<void>
+}
+
 const require = createRequire(import.meta.url)
 const sqlJsReady = initSqlJs({
   locateFile: file => require.resolve(`sql.js/dist/${file}`)
@@ -552,6 +558,8 @@ export class TestD1Database {
 
   private readonly replicaStale: boolean
 
+  private readonly beforeReplicaVersionPublication?: () => Promise<void>
+
   private replicaVersion = 0
 
   private databaseVersion = 0
@@ -578,8 +586,9 @@ export class TestD1Database {
 
   private closed = false
 
-  constructor(options?: { applyMigrations?: boolean, replicaStale?: boolean }) {
+  constructor(options?: TestD1DatabaseOptions) {
     this.replicaStale = options?.replicaStale ?? false
+    this.beforeReplicaVersionPublication = options?.beforeReplicaVersionPublication
     this.ready = (async () => {
       const database = await this.database
 
@@ -771,12 +780,16 @@ export class TestD1Database {
   }
 
   private async syncReplica() {
-    const primary = await this.getDatabase()
-    const previousReplica = await this.replicaDatabase
-    previousReplica.close()
-    this.replicaDatabase = createSqlJsDatabase(primary.export())
-    await this.replicaDatabase
-    this.replicaVersion = this.databaseVersion
+    await this.runMutation(async () => {
+      const primary = await this.getDatabase()
+      const replicaVersion = this.databaseVersion
+      const previousReplica = await this.replicaDatabase
+      previousReplica.close()
+      this.replicaDatabase = createSqlJsDatabase(primary.export())
+      await this.replicaDatabase
+      await this.beforeReplicaVersionPublication?.()
+      this.replicaVersion = replicaVersion
+    })
   }
 
   resolveSessionStart(constraintOrBookmark?: string) {
@@ -907,6 +920,6 @@ export class TestD1Database {
   }
 }
 
-export function createTestD1Database(options?: { applyMigrations?: boolean, replicaStale?: boolean }) {
+export function createTestD1Database(options?: TestD1DatabaseOptions) {
   return new TestD1Database(options)
 }

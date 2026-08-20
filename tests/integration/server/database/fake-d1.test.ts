@@ -597,4 +597,58 @@ describe('TestD1Database', () => {
       ['successful_concurrent_user']
     ])
   })
+
+  test('does not publish a replica snapshot with a concurrent write version', async () => {
+    let resolveReplicaPublication: () => void = () => {}
+    const replicaPublication = new Promise<void>((resolve) => {
+      resolveReplicaPublication = resolve
+    })
+    let resolveSnapshotCopied: () => void = () => {}
+    const snapshotCopied = new Promise<void>((resolve) => {
+      resolveSnapshotCopied = resolve
+    })
+    const d1Database = createTestD1Database({
+      replicaStale: true,
+      beforeReplicaVersionPublication: async () => {
+        resolveSnapshotCopied()
+        await replicaPublication
+      }
+    })
+    databases.push(d1Database)
+
+    await d1Database.prepare(`
+      insert into users (id, auth0_subject, email, display_name)
+      values ('replica_snapshot_user_1', 'auth0|replica_snapshot_user_1', 'replica-snapshot-1@example.com', 'Replica Snapshot User 1')
+    `).run()
+    await d1Database.prepare(`
+      insert into users (id, auth0_subject, email, display_name)
+      values ('replica_snapshot_user_2', 'auth0|replica_snapshot_user_2', 'replica-snapshot-2@example.com', 'Replica Snapshot User 2')
+    `).run()
+
+    const secondWriteBookmark = d1Database.getLatestBookmark()
+    const anchoredRead = d1Database.withSession(secondWriteBookmark ?? undefined)
+    const readPromise = anchoredRead.prepare('select id from users order by id').all()
+    await snapshotCopied
+
+    let concurrentWriteFinished = false
+    const concurrentWrite = d1Database.prepare(`
+      insert into users (id, auth0_subject, email, display_name)
+      values ('replica_snapshot_user_3', 'auth0|replica_snapshot_user_3', 'replica-snapshot-3@example.com', 'Replica Snapshot User 3')
+    `).run().then((result) => {
+      concurrentWriteFinished = true
+      return result
+    })
+
+    await Promise.resolve()
+    expect(concurrentWriteFinished).toBe(false)
+    resolveReplicaPublication()
+    await readPromise
+    await concurrentWrite
+
+    const concurrentWriteBookmark = d1Database.getLatestBookmark()
+    const currentRead = createNonHttpDatabase(d1Database.withSession(concurrentWriteBookmark ?? undefined) as never)
+    await expect(currentRead.query.users.findFirst({
+      where: eq(users.id, 'replica_snapshot_user_3')
+    })).resolves.toMatchObject({ id: 'replica_snapshot_user_3' })
+  })
 })

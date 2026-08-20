@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { eq, exists, sql } from 'drizzle-orm'
+import { union } from 'drizzle-orm/sqlite-core'
 
 import { createNonHttpDatabase } from '../../../../server/database/non-http'
 import { mcpAccessTokens, users } from '../../../../server/database/schema'
@@ -182,5 +183,68 @@ describe('AppDatabase facade', () => {
       return transactionResult
     })).not.toThrow()
     expect(transactionCallbackCalled).toBe(false)
+  })
+
+  test('keeps composed builders behind the facade boundary', async () => {
+    const d1Database = createTestD1Database()
+    databases.push(d1Database)
+    const database = createNonHttpDatabase(d1Database as never)
+
+    await database.insert(users).values({
+      id: 'composed_facade_user',
+      auth0Subject: 'auth0|composed_facade_user',
+      email: 'composed-facade@example.com',
+      displayName: 'Composed Facade User'
+    })
+
+    const left = database.select({ id: users.id }).from(users)
+    const right = database.select({ id: users.id }).from(users)
+    const composed = union(left, right)
+    const composedConfig = Object.getOwnPropertyDescriptor(composed, 'config')?.value as {
+      setOperators: Array<{ rightSelect: object }>
+    }
+    const storedRight = composedConfig.setOperators[0]?.rightSelect
+
+    expect(composed).toBe(left)
+    expect(storedRight).toBe(right)
+    expect(await composed).toEqual([{ id: 'composed_facade_user' }])
+
+    for (const builder of [left, right, composed, composed.$dynamic(), storedRight]) {
+      for (const capability of ['$client', 'client', 'prepare', 'batch', 'transaction', '_prepare', 'session']) {
+        expect(Reflect.get(builder, capability)).toBeUndefined()
+        expect(capability in builder).toBe(false)
+        expect(Object.getOwnPropertyDescriptor(builder, capability)).toBeUndefined()
+      }
+
+      expect(Reflect.get(builder, Symbol.for('drizzle:entityKind'))).toBeUndefined()
+      expect(Object.getOwnPropertySymbols(builder)).toEqual([])
+
+      const prototype = Object.getPrototypeOf(builder)
+      const constructor = Object.getOwnPropertyDescriptor(prototype, 'constructor')?.value
+      expect(constructor).toBeDefined()
+      expect(Reflect.get(constructor, 'prototype')).toBeUndefined()
+      expect(Reflect.get(constructor, 'session')).toBeUndefined()
+      expect(Reflect.get(constructor, 'client')).toBeUndefined()
+    }
+
+    const selectedFields = composed.getSelectedFields()
+    expect(Reflect.get(selectedFields, 'session')).toBeUndefined()
+    expect(Object.getOwnPropertyDescriptor(selectedFields, 'session')).toBeUndefined()
+    expect(Object.getOwnPropertySymbols(selectedFields)).toEqual([])
+
+    const sqlResult = composed.toSQL()
+    expect(sqlResult).toEqual(expect.objectContaining({ sql: expect.any(String) }))
+    expect(Reflect.get(sqlResult, 'session')).toBeUndefined()
+    expect(Reflect.get(sqlResult, 'client')).toBeUndefined()
+
+    const subquery = composed.as('composed_facade_users')
+    const subqueryRows = await database.select({ id: subquery.id }).from(subquery)
+    expect(subqueryRows).toEqual([{ id: 'composed_facade_user' }])
+
+    const existsRows = await database
+      .select({ id: users.id })
+      .from(users)
+      .where(exists(composed))
+    expect(existsRows).toEqual([{ id: 'composed_facade_user' }])
   })
 })
