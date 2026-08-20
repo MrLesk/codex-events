@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 import { describe, expect, test } from 'vitest'
 
 import {
@@ -41,7 +43,7 @@ describe('deploy Wrangler config generator', () => {
     expect(config.name).toBe('codex-events-test')
     expect(config.main).toBe('../../.output/server/index.mjs')
     expect(config.assets.directory).toBe('../../.output/public')
-    expect(config.cache).toEqual({ enabled: true })
+    expect(config.cache).toEqual({ enabled: false })
     expect(config.images).toEqual({ binding: 'IMAGES' })
     expect(config.routes).toEqual([
       {
@@ -141,6 +143,7 @@ describe('deploy Wrangler config generator', () => {
     expect(input.environmentName).toBe('prod')
     expect(input.appBaseUrl).toBe('https://events.example.com')
     expect(config.name).toBe('codex-events-prod')
+    expect(config.cache).toEqual({ enabled: false })
     expect(config.routes[0]?.pattern).toBe('events.example.com')
     expect(config.vars.NUXT_AUTH0_DOMAIN).toBe('auth.events.example.com')
     expect(config.d1_databases[0]?.database_name).toBe('codex-events-prod')
@@ -168,6 +171,19 @@ describe('deploy Wrangler config generator', () => {
       }
     })
     expect(config.triggers).toEqual({ crons: ['*/5 * * * *'] })
+  })
+
+  test('keeps Worker cache disabled in the tracked local and generated deployment configs', () => {
+    const localConfig = JSON.parse(readFileSync(new URL('../../../../wrangler.jsonc', import.meta.url), 'utf8')) as {
+      cache?: { enabled?: boolean }
+    }
+
+    expect(localConfig.cache).toEqual({ enabled: false })
+
+    for (const target of ['test', 'production'] as const) {
+      const config = buildDeployWranglerConfig(resolveDeployConfigInput(target, createEnvironment()))
+      expect(config.cache).toEqual({ enabled: false })
+    }
   })
 
   test('uses the outbound from email as reply-to when no reply-to override is configured', () => {

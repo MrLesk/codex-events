@@ -3,6 +3,7 @@ import { performance } from 'node:perf_hooks'
 
 import { expect, type Page, type Request, type Response } from '@playwright/test'
 
+import { isProtectedApiPath } from '../../../server/http/cache-policy'
 import {
   storageStatePathForPersona,
   type StablePersonaKey
@@ -100,6 +101,8 @@ export interface TopologyRequestEvidence {
   status: number | null
   failed: string | null
   contentType: string | null
+  cacheStatus: string | null
+  age: string | null
   bookmark: string | null
   hasDataEnvelope: boolean | null
   payload: unknown | null
@@ -217,6 +220,8 @@ export class AccountEventTopologyCapture {
       status: null,
       failed: null,
       contentType: null,
+      cacheStatus: null,
+      age: null,
       bookmark: null,
       hasDataEnvelope: null,
       payload: null,
@@ -241,6 +246,8 @@ export class AccountEventTopologyCapture {
     const inspection = (async () => {
       const headers = response.headers()
       record.contentType = headers['content-type'] ?? null
+      record.cacheStatus = headers['cf-cache-status'] ?? null
+      record.age = headers.age ?? null
       record.bookmark = headers['x-d1-bookmark'] ?? null
 
       if (!isApiPath(record.path) || !record.contentType?.includes('json')) {
@@ -434,6 +441,8 @@ export function formatTopologyEvidence(capture: AccountEventTopologyCapture) {
       status: record.status,
       failed: record.failed,
       contentType: record.contentType,
+      cfCacheStatus: record.cacheStatus,
+      age: record.age,
       bookmark: Boolean(record.bookmark),
       data: record.hasDataEnvelope,
       errorCode: record.errorCode,
@@ -475,6 +484,26 @@ export function topologyFailure(
   message: string
 ): Error {
   return new Error(`${message}\n${formatTopologyEvidence(capture)}`)
+}
+
+export function protectedApiCachePolicyViolations(
+  records: readonly Pick<TopologyRequestEvidence, 'path' | 'cacheStatus' | 'age'>[]
+) {
+  return records.filter(record =>
+    isProtectedApiPath(record.path)
+    && (record.cacheStatus?.trim().toUpperCase() === 'HIT' || record.age !== null)
+  )
+}
+
+export function assertNoProtectedApiCacheReuse(capture: AccountEventTopologyCapture) {
+  const violations = protectedApiCachePolicyViolations(capture.records)
+
+  if (violations.length) {
+    throw topologyFailure(
+      capture,
+      `Protected API response(s) were served with shared cache evidence: ${violations.map(record => `${record.path} (CF-Cache-Status=${record.cacheStatus ?? 'none'}, Age=${record.age ?? 'none'})`).join(', ')}.`
+    )
+  }
 }
 
 export function assertExactPathCount(
@@ -601,6 +630,8 @@ export function assertForbiddenJsonApiRecord(
 }
 
 export function assertNoUnexpectedBrowserErrors(capture: AccountEventTopologyCapture) {
+  assertNoProtectedApiCacheReuse(capture)
+
   const expectedConsoleErrors = capture.consoleErrors.filter(error =>
     expectedForbiddenConsoleErrorPattern.test(error)
   )

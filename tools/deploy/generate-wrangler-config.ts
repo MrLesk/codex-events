@@ -428,7 +428,7 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
       }
     },
     cache: {
-      enabled: true
+      enabled: false
     },
     triggers: {
       crons: ['*/5 * * * *']

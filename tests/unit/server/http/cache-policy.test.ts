@@ -1,0 +1,62 @@
+import { describe, expect, test } from 'vitest'
+
+import {
+  isProtectedApiPath,
+  isPublicCacheableApiPath,
+  protectedApiCacheControl,
+  protectedApiCdnCacheControl,
+  publicEventCacheControl,
+  publicEventCdnCacheControl
+} from '../../../../server/http/cache-policy'
+
+describe('API response cache policy classifier', () => {
+  test('has explicit protected and public cache contracts', () => {
+    expect(protectedApiCacheControl).toBe('private, no-store')
+    expect(protectedApiCdnCacheControl).toBe('private, no-store')
+    expect(publicEventCacheControl).toBe('public, max-age=30, stale-if-error=0')
+    expect(publicEventCdnCacheControl).toBe('public, max-age=30, stale-if-error=0')
+  })
+
+  test('allows only explicit public/versioned API families to remain cacheable', () => {
+    const publicPaths = [
+      '/api/public/events',
+      '/api/public/events/codex-spring',
+      '/api/public/events/codex-spring/evaluation-criteria',
+      '/api/public/events/codex-spring/photos',
+      '/api/public/events/codex-spring/photos/photo-1/image',
+      '/api/public/events/codex-spring/prizes',
+      '/api/public/events/codex-spring/published-projects',
+      '/api/public/events/codex-spring/winners',
+      '/api/public/events/codex-spring/images/background',
+      '/api/public/events/codex-spring/images/banner',
+      '/api/public/platform/event-default-background-image'
+    ]
+    const protectedPaths = [
+      '/api/session',
+      '/api/account/overview',
+      '/api/admin/events/event-1',
+      '/api/events/event-1/index',
+      '/api/platform-settings/current',
+      '/api/prize-redemptions/me',
+      '/api/public/events/codex-spring/participants/user-1/certificate',
+      '/api/public/events/codex-spring/published-projects/user-1/profile-icon'
+    ]
+
+    for (const path of publicPaths) {
+      expect(isPublicCacheableApiPath(path), path).toBe(true)
+      expect(isProtectedApiPath(path), path).toBe(false)
+    }
+
+    for (const path of protectedPaths) {
+      expect(isPublicCacheableApiPath(path), path).toBe(false)
+      expect(isProtectedApiPath(path), path).toBe(true)
+    }
+  })
+
+  test('normalizes trailing slashes without broadening the allowlist', () => {
+    expect(isPublicCacheableApiPath('/api/public/events/codex-spring/')).toBe(true)
+    expect(isProtectedApiPath('/api/session/')).toBe(true)
+    expect(isProtectedApiPath('/api/public/events/codex-spring/feedback')).toBe(true)
+    expect(isProtectedApiPath('/api/public/events/codex-spring/unknown')).toBe(true)
+  })
+})

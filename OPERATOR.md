@@ -208,6 +208,57 @@ confirm the response carries the documented `Cache-Control` and
 Worker; Cache API deletion is local to the executing data center and is not a
 global purge. The application has no runtime purge credential.
 
+#### Protected API edge smoke test
+
+Run this read-only check manually after a deployment when a remote release gate
+is explicitly requested. It is intentionally not part of deploy automation and
+does not deploy, mutate D1/R2, or purge Cloudflare objects.
+
+1. Use a clean client and set `EDGE_SMOKE_BASE_URL` to the deployed origin.
+Obtain a short-lived authenticated session cookie in the browser, then provide
+it interactively to the shell rather than committing or logging it:
+
+   ```bash
+   read -rs EDGE_SMOKE_COOKIE
+   printf '\n'
+   ```
+
+2. Request `/api/session` with that cookie and capture headers and the body.
+The response must carry `Cache-Control: private, no-store` and
+`Cloudflare-CDN-Cache-Control: private, no-store`; it must not show
+`CF-Cache-Status: HIT` or an `Age` header. Confirm the body belongs to the
+authenticated test actor.
+
+   ```bash
+   curl --fail-with-body -sS -D /tmp/codex-events-auth.headers \
+     -H "Cookie: ${EDGE_SMOKE_COOKIE}" \
+     "${EDGE_SMOKE_BASE_URL}/api/session" \
+     -o /tmp/codex-events-auth.json
+   ```
+
+3. Make the same request without a Cookie header from the clean client. It must
+return the canonical unauthenticated response (HTTP 401, no `data` actor
+payload) and the same two no-store directives. It must not inherit the
+authenticated body, `CF-Cache-Status: HIT`, or `Age`.
+
+   ```bash
+   curl -sS -D /tmp/codex-events-unauth.headers \
+     "${EDGE_SMOKE_BASE_URL}/api/session" \
+     -o /tmp/codex-events-unauth.json
+   ```
+
+4. Request one operator-supplied, immutable public event or media URL twice.
+Confirm both exact public 30-second directives and record `CF-Cache-Status`
+for the edge behavior. Do not treat a public HIT as evidence that protected
+APIs are safe to cache.
+
+5. In the Cloudflare zone, inspect Cache Rules for the deployed hostname.
+`/api/**` must bypass shared caching or honor the origin no-store directives;
+no rule may override them or use a cache key that ignores Cookie. The Worker
+configuration must show `cache.enabled=false` in both the tracked source and
+the generated target config. If either check is false, stop the release gate
+and remediate the zone/deployment configuration before investigating latency.
+
 The MCP rollout is additive. Migration `0071_mcp_access_tokens.sql` must finish
 before the Worker serving `/mcp` is deployed; the checked-in workflow already
 preserves that ordering. The Auth0 bootstrap creates the MCP resource server,

@@ -17,7 +17,7 @@
 		}
 	},
 	"cache": {
-		"enabled": true
+		"enabled": false
 	},
 	"triggers": {
 		"crons": [
