@@ -23,6 +23,11 @@ const revisionedMediaMigrationSql = readFileSync(
   join(process.cwd(), 'drizzle', revisionedMediaMigrationFileName),
   'utf8'
 ).replaceAll('--> statement-breakpoint', '\n')
+const managedMediaCleanupOutboxMigrationFileName = '0077_managed_media_cleanup_outbox.sql'
+const managedMediaCleanupOutboxMigrationSql = readFileSync(
+  join(process.cwd(), 'drizzle', managedMediaCleanupOutboxMigrationFileName),
+  'utf8'
+).replaceAll('--> statement-breakpoint', '\n')
 
 const judgeScaleMigrationFileName = '0040_judge_score_scale_1_to_5.sql'
 const preJudgeScaleMigrationSql = readdirSync(join(process.cwd(), 'drizzle'))
@@ -188,6 +193,28 @@ describe('shared database migration', () => {
     })
 
     await legacyDatabase.close()
+  })
+
+  test('applies the media cleanup outbox after revisioned media without depending on adjacent migrations', async () => {
+    const migrationDatabase = createTestD1Database({
+      applyMigrations: false
+    })
+
+    try {
+      await migrationDatabase.exec(preRevisionedMediaMigrationSql)
+      await migrationDatabase.exec(revisionedMediaMigrationSql)
+      await migrationDatabase.exec(managedMediaCleanupOutboxMigrationSql)
+
+      await expect(migrationDatabase.prepare(`
+        select name
+        from sqlite_master
+        where type = 'table' and name = ?
+      `).all('media_cleanup_outbox')).resolves.toMatchObject({
+        results: [{ name: 'media_cleanup_outbox' }]
+      })
+    } finally {
+      await migrationDatabase.close()
+    }
   })
 
   test('allows duplicate Auth0 subjects only after soft deletion', async () => {

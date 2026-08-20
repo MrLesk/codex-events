@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 
 import accountEventsGetHandler from '../../../../server/api/account/events.get'
 import eventsGetHandler from '../../../../server/api/events/index.get'
@@ -58,6 +58,7 @@ import {
   events,
   judgeAssignments,
   judgeCriterionScores,
+  mediaCleanupOutbox,
   platformDocuments,
   platformSettings,
   prizes,
@@ -4607,9 +4608,6 @@ describe('TASK-3.5 event CRUD routes', () => {
 
   test('event image routes upload, read, and remove event background and banner images', async () => {
     const eventImagesBucket = new InMemoryR2Bucket()
-    const mediaCleanupQueue = {
-      send: vi.fn(async () => undefined)
-    }
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/api/events/:eventId/images/background', handler: eventBackgroundImagePostHandler },
@@ -4626,34 +4624,24 @@ describe('TASK-3.5 event CRUD routes', () => {
       },
       cloudflareEnv: {
         [eventImagesBindingName]: eventImagesBucket,
-        MEDIA_CLEANUP_QUEUE: mediaCleanupQueue,
         IMAGES: createImagesBinding(),
         [authenticatedUploadRateLimitBindingName]: createRateLimiter()
       },
       runtimeConfig: {
         eventImages: {
           binding: eventImagesBindingName
-        },
-        mediaCleanup: {
-          queueBinding: 'MEDIA_CLEANUP_QUEUE'
         }
       }
     })
     harnesses.push(harness)
 
-    const expectCleanupQueued = async (objectKey: string) => {
-      await vi.waitFor(() => {
-        expect(mediaCleanupQueue.send).toHaveBeenCalledWith(
-          expect.objectContaining({
-            kind: 'event_image',
-            objectKey
-          }),
-          {
-            contentType: 'json',
-            delaySeconds: 30
-          }
-        )
-      })
+    const expectCleanupRecorded = async (objectKey: string) => {
+      const rows = await harness.database.select().from(mediaCleanupOutbox).where(and(
+        eq(mediaCleanupOutbox.kind, 'event_image'),
+        eq(mediaCleanupOutbox.objectKey, objectKey)
+      ))
+
+      expect(rows).toHaveLength(1)
     }
 
     await harness.database.insert(users).values([
@@ -4765,7 +4753,7 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect(replacedBackgroundEvent?.backgroundImageRevision).toBe(backgroundEvent!.backgroundImageRevision + 1)
     expect(replacedBackgroundEvent?.backgroundImageObjectKey).not.toBe(backgroundEvent!.backgroundImageObjectKey)
     expect(await eventImagesBucket.get(backgroundEvent!.backgroundImageObjectKey!)).not.toBeNull()
-    await expectCleanupQueued(backgroundEvent!.backgroundImageObjectKey!)
+    await expectCleanupRecorded(backgroundEvent!.backgroundImageObjectKey!)
 
     const concurrentBackgroundUploads = await Promise.all([1, 2].map(async (index) => {
       const form = new FormData()
@@ -4877,7 +4865,7 @@ describe('TASK-3.5 event CRUD routes', () => {
 
     expect(staleBackgroundResponse.status).toBe(404)
     expect(await eventImagesBucket.get(concurrentlyReplacedBackgroundEvent!.backgroundImageObjectKey!)).not.toBeNull()
-    await expectCleanupQueued(concurrentlyReplacedBackgroundEvent!.backgroundImageObjectKey!)
+    await expectCleanupRecorded(concurrentlyReplacedBackgroundEvent!.backgroundImageObjectKey!)
 
     const beforeFailedUpload = await harness.database.query.events.findFirst({
       where: eq(events.id, 'event_images')
@@ -4962,7 +4950,7 @@ describe('TASK-3.5 event CRUD routes', () => {
       }
     })
     expect(await eventImagesBucket.get(bannerObjectKey)).not.toBeNull()
-    await expectCleanupQueued(bannerObjectKey)
+    await expectCleanupRecorded(bannerObjectKey)
 
     const missingBannerResponse = await harness.request('/api/public/events/image-event/images/banner')
 
@@ -5279,9 +5267,6 @@ describe('TASK-3.5 event CRUD routes', () => {
 
   test('event photo routes let judges upload and delete gallery photos', async () => {
     const eventImagesBucket = new InMemoryR2Bucket()
-    const mediaCleanupQueue = {
-      send: vi.fn(async () => undefined)
-    }
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/events/:eventId/photos', handler: eventPhotosGetHandler },
@@ -5296,16 +5281,12 @@ describe('TASK-3.5 event CRUD routes', () => {
       },
       cloudflareEnv: {
         [eventImagesBindingName]: eventImagesBucket,
-        MEDIA_CLEANUP_QUEUE: mediaCleanupQueue,
         IMAGES: createImagesBinding(),
         [authenticatedUploadRateLimitBindingName]: createRateLimiter()
       },
       runtimeConfig: {
         eventImages: {
           binding: eventImagesBindingName
-        },
-        mediaCleanup: {
-          queueBinding: 'MEDIA_CLEANUP_QUEUE'
         }
       }
     })
@@ -5446,18 +5427,11 @@ describe('TASK-3.5 event CRUD routes', () => {
     const remainingPhotos = await harness.database.select().from(eventPhotos)
     expect(remainingPhotos).toEqual([])
     expect(await eventImagesBucket.get(storedPhoto!.objectKey!)).not.toBeNull()
-    await vi.waitFor(() => {
-      expect(mediaCleanupQueue.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          kind: 'event_photo',
-          objectKey: storedPhoto!.objectKey
-        }),
-        {
-          contentType: 'json',
-          delaySeconds: 30
-        }
-      )
-    })
+    const cleanupRows = await harness.database.select().from(mediaCleanupOutbox).where(and(
+      eq(mediaCleanupOutbox.kind, 'event_photo'),
+      eq(mediaCleanupOutbox.objectKey, storedPhoto!.objectKey!)
+    ))
+    expect(cleanupRows).toHaveLength(1)
 
     const auditEntries = await harness.database.select().from(auditLogs)
     expect(auditEntries).toEqual([

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 
 import accountDeleteHandler from '../../../../server/api/account.delete'
 import accountEmailVerificationPostHandler from '../../../../server/api/account/email-verification.post'
@@ -27,6 +27,7 @@ import {
   eventRoleAssignments,
   eventTermsDocuments,
   mcpAccessTokens,
+  mediaCleanupOutbox,
   platformDocuments,
   platformLegalSettings,
   platformSettings,
@@ -1358,9 +1359,6 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
 
     const eventImagesBucket = new InMemoryR2Bucket()
-    const mediaCleanupQueue = {
-      send: vi.fn(async () => undefined)
-    }
     const adminHarness = createApiRouteTestHarness({
       routes: [
         {
@@ -1385,33 +1383,23 @@ describe('TASK-3.5 actor-facing API routes', () => {
       },
       cloudflareEnv: {
         [eventImagesBindingName]: eventImagesBucket,
-        MEDIA_CLEANUP_QUEUE: mediaCleanupQueue,
         IMAGES: createImagesBinding(),
         [authenticatedUploadRateLimitBindingName]: createRateLimiter()
       },
       runtimeConfig: {
         eventImages: {
           binding: eventImagesBindingName
-        },
-        mediaCleanup: {
-          queueBinding: 'MEDIA_CLEANUP_QUEUE'
         }
       }
     })
     databases.push(adminHarness)
-    const expectCleanupQueued = async (objectKey: string) => {
-      await vi.waitFor(() => {
-        expect(mediaCleanupQueue.send).toHaveBeenCalledWith(
-          expect.objectContaining({
-            kind: 'platform_default_event_background',
-            objectKey
-          }),
-          {
-            contentType: 'json',
-            delaySeconds: 30
-          }
-        )
-      })
+    const expectCleanupRecorded = async (objectKey: string) => {
+      const rows = await adminHarness.database.select().from(mediaCleanupOutbox).where(and(
+        eq(mediaCleanupOutbox.kind, 'platform_default_event_background'),
+        eq(mediaCleanupOutbox.objectKey, objectKey)
+      ))
+
+      expect(rows).toHaveLength(1)
     }
     await seedAcceptedPlatformUser(adminHarness, {
       id: 'platform_background_admin',
@@ -1497,7 +1485,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(replacedSettings?.defaultEventBackgroundImageRevision).toBe(storedSettings!.defaultEventBackgroundImageRevision + 1)
     expect(replacedSettings?.defaultEventBackgroundImageObjectKey).not.toBe(storedSettings!.defaultEventBackgroundImageObjectKey)
     expect(await eventImagesBucket.get(storedSettings!.defaultEventBackgroundImageObjectKey!)).not.toBeNull()
-    await expectCleanupQueued(storedSettings!.defaultEventBackgroundImageObjectKey!)
+    await expectCleanupRecorded(storedSettings!.defaultEventBackgroundImageObjectKey!)
     expect((await adminHarness.request(
       `/api/public/platform/event-default-background-image?variant=background&v=${storedSettings!.defaultEventBackgroundImageRevision}`
     )).status).toBe(404)
@@ -1523,7 +1511,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       defaultEventBackgroundImageRevision: replacedSettings!.defaultEventBackgroundImageRevision + 1
     })
     expect(await eventImagesBucket.get(replacedSettings!.defaultEventBackgroundImageObjectKey!)).not.toBeNull()
-    await expectCleanupQueued(replacedSettings!.defaultEventBackgroundImageObjectKey!)
+    await expectCleanupRecorded(replacedSettings!.defaultEventBackgroundImageObjectKey!)
 
     const removedImageResponse = await adminHarness.request('/api/public/platform/event-default-background-image')
     const auditRows = await adminHarness.database.select().from(auditLogs)
@@ -3217,9 +3205,6 @@ describe('TASK-3.5 actor-facing API routes', () => {
 
   test('profile-icon account routes upload, read, and remove the caller profile icon', async () => {
     const profileIconsBucket = new InMemoryR2Bucket()
-    const mediaCleanupQueue = {
-      send: vi.fn(async () => undefined)
-    }
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/api/account/profile-icon', handler: accountProfileIconPostHandler },
@@ -3234,32 +3219,22 @@ describe('TASK-3.5 actor-facing API routes', () => {
       },
       cloudflareEnv: {
         [profileIconBindingName]: profileIconsBucket,
-        MEDIA_CLEANUP_QUEUE: mediaCleanupQueue,
         [authenticatedUploadRateLimitBindingName]: createRateLimiter()
       },
       runtimeConfig: {
         profileIcons: {
           binding: profileIconBindingName
-        },
-        mediaCleanup: {
-          queueBinding: 'MEDIA_CLEANUP_QUEUE'
         }
       }
     })
     databases.push(harness)
-    const expectCleanupQueued = async (objectKey: string) => {
-      await vi.waitFor(() => {
-        expect(mediaCleanupQueue.send).toHaveBeenCalledWith(
-          expect.objectContaining({
-            kind: 'profile_icon',
-            objectKey
-          }),
-          {
-            contentType: 'json',
-            delaySeconds: 30
-          }
-        )
-      })
+    const expectCleanupRecorded = async (objectKey: string) => {
+      const rows = await harness.database.select().from(mediaCleanupOutbox).where(and(
+        eq(mediaCleanupOutbox.kind, 'profile_icon'),
+        eq(mediaCleanupOutbox.objectKey, objectKey)
+      ))
+
+      expect(rows).toHaveLength(1)
     }
 
     await harness.database.insert(users).values({
@@ -3317,7 +3292,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(replacedUser?.profileIconRevision).toBe(2)
     expect(replacedUser?.profileIconObjectKey).not.toBe(uploadedUser?.profileIconObjectKey)
     expect(await profileIconsBucket.get(uploadedUser!.profileIconObjectKey!)).not.toBeNull()
-    await expectCleanupQueued(uploadedUser!.profileIconObjectKey!)
+    await expectCleanupRecorded(uploadedUser!.profileIconObjectKey!)
 
     const iconResponse = await harness.request('/api/account/profile-icon')
 
@@ -3363,7 +3338,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(removedUser?.profileIconRevision).toBe(3)
     expect(removedUser?.profileIconObjectKey).toBeNull()
     expect(await profileIconsBucket.get(replacedUser!.profileIconObjectKey!)).not.toBeNull()
-    await expectCleanupQueued(replacedUser!.profileIconObjectKey!)
+    await expectCleanupRecorded(replacedUser!.profileIconObjectKey!)
 
     const removedIconResponse = await harness.request('/api/account/profile-icon')
 
@@ -3796,9 +3771,6 @@ describe('TASK-3.5 actor-facing API routes', () => {
 
   test('DELETE /api/account soft-deletes the user and writes an audit record', async () => {
     const profileIconsBucket = new InMemoryR2Bucket()
-    const mediaCleanupQueue = {
-      send: vi.fn(async () => undefined)
-    }
     await profileIconsBucket.put(
       'users/user_delete/profile-icon/fixture-1',
       new Uint8Array([9, 9, 9]),
@@ -3819,15 +3791,11 @@ describe('TASK-3.5 actor-facing API routes', () => {
       },
       cloudflareEnv: {
         [profileIconBindingName]: profileIconsBucket,
-        MEDIA_CLEANUP_QUEUE: mediaCleanupQueue,
         [authenticatedUploadRateLimitBindingName]: createRateLimiter()
       },
       runtimeConfig: {
         profileIcons: {
           binding: profileIconBindingName
-        },
-        mediaCleanup: {
-          queueBinding: 'MEDIA_CLEANUP_QUEUE'
         }
       }
     })
@@ -3920,18 +3888,11 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(deletedAssignments).toHaveLength(0)
     expect(deletedMcpTokens).toHaveLength(0)
     expect(await profileIconsBucket.get('users/user_delete/profile-icon/fixture-1')).not.toBeNull()
-    await vi.waitFor(() => {
-      expect(mediaCleanupQueue.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          kind: 'profile_icon',
-          objectKey: 'users/user_delete/profile-icon/fixture-1'
-        }),
-        {
-          contentType: 'json',
-          delaySeconds: 30
-        }
-      )
-    })
+    const cleanupRows = await harness.database.select().from(mediaCleanupOutbox).where(and(
+      eq(mediaCleanupOutbox.kind, 'profile_icon'),
+      eq(mediaCleanupOutbox.objectKey, 'users/user_delete/profile-icon/fixture-1')
+    ))
+    expect(cleanupRows).toHaveLength(1)
     expect(auditEntries).toEqual([
       expect.objectContaining({
         actorUserId: 'user_delete',

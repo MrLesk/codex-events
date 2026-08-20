@@ -332,6 +332,28 @@ export const eventPhotos = sqliteTable(
   ]
 )
 
+export const mediaCleanupOutbox = sqliteTable(
+  'media_cleanup_outbox',
+  {
+    id: idColumn(),
+    kind: text('kind').notNull(),
+    objectKey: text('object_key').notNull(),
+    availableAt: text('available_at').notNull(),
+    attemptCount: integer('attempt_count').notNull().default(0),
+    lastAttemptedAt: text('last_attempted_at'),
+    createdAt: createdAtColumn()
+  },
+  table => [
+    uniqueIndex('media_cleanup_outbox_kind_object_idx').on(table.kind, table.objectKey),
+    index('media_cleanup_outbox_available_idx').on(table.availableAt, table.createdAt),
+    check(
+      'media_cleanup_outbox_kind_check',
+      sql`${table.kind} in ('event_image', 'event_photo', 'platform_default_event_background', 'profile_icon')`
+    ),
+    check('media_cleanup_outbox_attempt_count_check', sql`${table.attemptCount} >= 0`)
+  ]
+)
+
 export const eventFeedback = sqliteTable(
   'event_feedback',
   {

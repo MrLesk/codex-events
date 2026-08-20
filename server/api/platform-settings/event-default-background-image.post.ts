@@ -9,7 +9,6 @@ import {
   platformDefaultEventBackgroundImageObjectKey,
   putPlatformDefaultEventBackgroundImageObject
 } from '#server/domains/events/images'
-import { scheduleManagedMediaCleanup } from '#server/domains/media/cleanup-queue'
 import {
   getPlatformSettings,
   serializePlatformSettings,
@@ -46,13 +45,6 @@ export default defineApiHandler(async (h3Event) => {
       objectKey: existingSettings?.defaultEventBackgroundImageObjectKey ?? null
     }
   )
-
-  if (existingSettings?.defaultEventBackgroundImageObjectKey) {
-    scheduleManagedMediaCleanup(h3Event, {
-      kind: 'platform_default_event_background',
-      objectKey: existingSettings.defaultEventBackgroundImageObjectKey
-    })
-  }
 
   return apiData(serializePlatformSettings(settings))
 })

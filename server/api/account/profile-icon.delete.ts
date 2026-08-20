@@ -8,7 +8,6 @@ import {
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
 import { assertGuard } from '#server/domains/lifecycle-guard'
-import { scheduleManagedMediaCleanup } from '#server/domains/media/cleanup-queue'
 
 export default defineApiHandler(async (h3Event) => {
   const actor = await requirePlatformActor(h3Event)
@@ -37,13 +36,6 @@ export default defineApiHandler(async (h3Event) => {
       expectedProfileIconObjectKey: currentUser!.profileIconObjectKey
     }
   )
-
-  if (currentUser!.profileIconObjectKey) {
-    scheduleManagedMediaCleanup(h3Event, {
-      kind: 'profile_icon',
-      objectKey: currentUser!.profileIconObjectKey
-    })
-  }
 
   return apiData({
     user

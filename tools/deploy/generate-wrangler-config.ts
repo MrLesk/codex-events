@@ -15,11 +15,16 @@ interface QueueConfig {
   retryDelaySeconds: number
 }
 
+interface MediaCleanupQueueConfig extends QueueConfig {
+  deadLetterQueue: string
+}
+
 export interface QueueConsumerConfig {
   queue: string
   max_batch_size: number
   max_batch_timeout: number
   max_retries: number
+  dead_letter_queue?: string
   retry_delay: number
 }
 
@@ -55,7 +60,7 @@ export interface ResolvedDeployConfigInput {
   talkProposalDecisionEmails: QueueConfig
   eventOutcomeEmails: QueueConfig
   lumaSync: QueueConfig
-  mediaCleanup: QueueConfig
+  mediaCleanup: MediaCleanupQueueConfig
   mcpAllowedHostnames: string
   mcpAllowedOriginHostnames: string
   mcpResourceUrl: string
@@ -241,6 +246,14 @@ function resolveQueueConfig(environment: EnvironmentValues, options: {
   } satisfies QueueConfig
 }
 
+function resolveMediaCleanupDeadLetterQueue(environment: EnvironmentValues, environmentName: string, resourcePrefix: string) {
+  return resolveResourceName(
+    environment,
+    'CF_MEDIA_CLEANUP_DLQ_QUEUE',
+    buildDefaultResourceName(environmentName, resourcePrefix, 'media-cleanup-dlq')
+  )
+}
+
 function resolveDeployEnvironmentName(target: DeployTarget, environment: EnvironmentValues) {
   return normalizeResourceName(
     readOptionalEnvironmentValue(environment, 'ENV_NAME') || defaultDeployEnvironmentNameByTarget[target],
@@ -371,13 +384,16 @@ export function resolveDeployConfigInput(
       defaultBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
       defaultQueue: buildDefaultResourceName(environmentName, resourcePrefix, 'application-luma-sync')
     }),
-    mediaCleanup: resolveQueueConfig(environment, {
-      bindingEnvName: 'NUXT_MEDIA_CLEANUP_QUEUE_BINDING',
-      queueEnvName: 'CF_MEDIA_CLEANUP_QUEUE',
-      retryDelayEnvName: 'NUXT_MEDIA_CLEANUP_RETRY_DELAY_SECONDS',
-      defaultBinding: 'MEDIA_CLEANUP_QUEUE',
-      defaultQueue: buildDefaultResourceName(environmentName, resourcePrefix, 'media-cleanup')
-    }),
+    mediaCleanup: {
+      ...resolveQueueConfig(environment, {
+        bindingEnvName: 'NUXT_MEDIA_CLEANUP_QUEUE_BINDING',
+        queueEnvName: 'CF_MEDIA_CLEANUP_QUEUE',
+        retryDelayEnvName: 'NUXT_MEDIA_CLEANUP_RETRY_DELAY_SECONDS',
+        defaultBinding: 'MEDIA_CLEANUP_QUEUE',
+        defaultQueue: buildDefaultResourceName(environmentName, resourcePrefix, 'media-cleanup')
+      }),
+      deadLetterQueue: resolveMediaCleanupDeadLetterQueue(environment, environmentName, resourcePrefix)
+    },
     mcpAllowedHostnames: readOptionalEnvironmentValue(environment, 'NUXT_MCP_ALLOWED_HOSTNAMES') || baseDomain,
     mcpAllowedOriginHostnames: readOptionalEnvironmentValue(environment, 'NUXT_MCP_ALLOWED_ORIGIN_HOSTNAMES') || baseDomain,
     mcpResourceUrl: readOptionalEnvironmentValue(environment, 'NUXT_MCP_RESOURCE_URL') || `${appBaseUrl}/mcp`
@@ -590,9 +606,24 @@ export function buildDeployQueueConsumerConfigs(input: ResolvedDeployConfigInput
       max_batch_size: 10,
       max_batch_timeout: 5,
       max_retries: 10,
+      dead_letter_queue: input.mediaCleanup.deadLetterQueue,
       retry_delay: input.mediaCleanup.retryDelaySeconds
     }
   ]
+}
+
+export function buildDeployQueueResourceNames(input: ResolvedDeployConfigInput) {
+  const consumers = buildDeployQueueConsumerConfigs(input)
+  const names = [
+    input.applicationReviewEmails.queue,
+    input.talkProposalDecisionEmails.queue,
+    input.eventOutcomeEmails.queue,
+    input.lumaSync.queue,
+    input.mediaCleanup.queue,
+    ...consumers.map(consumer => consumer.dead_letter_queue).filter((name): name is string => Boolean(name))
+  ]
+
+  return [...new Set(names)]
 }
 
 export async function writeDeployWranglerConfig(target: DeployTarget, environment: EnvironmentValues = process.env) {

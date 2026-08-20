@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest'
 import {
   buildDeployQueueConsumerConfigs,
   buildDeployWranglerConfig,
+  buildDeployQueueResourceNames,
   parseDeployTarget,
   resolveDeployConfigInput,
   resolveDeployResourceNames
@@ -125,9 +126,12 @@ describe('deploy Wrangler config generator', () => {
         max_batch_size: 10,
         max_batch_timeout: 5,
         max_retries: 10,
+        dead_letter_queue: 'codex-events-test-media-cleanup-dlq',
         retry_delay: 45
       }
     ])
+
+    expect(buildDeployQueueResourceNames(input)).toContain('codex-events-test-media-cleanup-dlq')
   })
 
   test('generates production config from environment-local domain and prod resource defaults', () => {
@@ -228,6 +232,7 @@ describe('deploy Wrangler config generator', () => {
       CF_EVENT_OUTCOME_EMAIL_QUEUE: 'custom-event-outcome',
       CF_LUMA_SYNC_QUEUE: 'custom-luma-sync',
       CF_MEDIA_CLEANUP_QUEUE: 'custom-media-cleanup',
+      CF_MEDIA_CLEANUP_DLQ_QUEUE: 'custom-media-cleanup-dlq',
       NUXT_MEDIA_CLEANUP_QUEUE_BINDING: 'CUSTOM_MEDIA_CLEANUP_QUEUE',
       NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'custom-users'
     }))
@@ -245,6 +250,7 @@ describe('deploy Wrangler config generator', () => {
     expect(input.lumaSync.queue).toBe('custom-luma-sync')
     expect(input.mediaCleanup.binding).toBe('CUSTOM_MEDIA_CLEANUP_QUEUE')
     expect(input.mediaCleanup.queue).toBe('custom-media-cleanup')
+    expect(input.mediaCleanup.deadLetterQueue).toBe('custom-media-cleanup-dlq')
     expect(input.auth0DatabaseConnectionName).toBe('custom-users')
   })
 })

@@ -1,7 +1,6 @@
 import { requirePlatformActor } from '#server/auth/actor'
 import { assertPlatformAdminAccess } from '#server/auth/authorization'
 import { getDatabase } from '#server/database/client'
-import { scheduleManagedMediaCleanup } from '#server/domains/media/cleanup-queue'
 import {
   clearDefaultEventBackgroundImageUrl,
   getPlatformSettings,
@@ -24,13 +23,6 @@ export default defineApiHandler(async (h3Event) => {
       objectKey: existingSettings?.defaultEventBackgroundImageObjectKey ?? null
     }
   )
-
-  if (settings && existingSettings?.defaultEventBackgroundImageObjectKey) {
-    scheduleManagedMediaCleanup(h3Event, {
-      kind: 'platform_default_event_background',
-      objectKey: existingSettings.defaultEventBackgroundImageObjectKey
-    })
-  }
 
   return apiData(settings ? serializePlatformSettings(settings) : null)
 })

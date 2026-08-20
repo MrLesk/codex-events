@@ -15,7 +15,6 @@ import {
   profileIconObjectKey,
   putProfileIconObject
 } from '#server/domains/accounts/profile-icons'
-import { scheduleManagedMediaCleanup } from '#server/domains/media/cleanup-queue'
 import { assertGuard } from '#server/domains/lifecycle-guard'
 import { assertAuthenticatedUploadRateLimit } from '#server/utils/rate-limit'
 
@@ -57,13 +56,6 @@ export default defineApiHandler(async (h3Event) => {
       expectedProfileIconObjectKey: currentUser!.profileIconObjectKey
     }
   )
-
-  if (currentUser!.profileIconObjectKey) {
-    scheduleManagedMediaCleanup(h3Event, {
-      kind: 'profile_icon',
-      objectKey: currentUser!.profileIconObjectKey
-    })
-  }
 
   return apiData({
     user

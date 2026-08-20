@@ -115,7 +115,7 @@
 			},
 			{
 				"binding": "MEDIA_CLEANUP_QUEUE",
-				"queue": "codex-events-media-cleanup"
+				"queue": "codex-events-dev-media-cleanup"
 			}
 		],
 		"consumers": [
@@ -148,11 +148,12 @@
 				"retry_delay": 120
 			},
 			{
-				"queue": "codex-events-media-cleanup",
+				"queue": "codex-events-dev-media-cleanup",
 				"max_batch_size": 10,
 				"max_batch_timeout": 5,
 				"max_retries": 10,
-				"retry_delay": 120
+				"retry_delay": 120,
+				"dead_letter_queue": "codex-events-dev-media-cleanup-dlq"
 			}
 		]
 	}

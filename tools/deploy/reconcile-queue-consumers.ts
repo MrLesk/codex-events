@@ -140,7 +140,7 @@ function createCloudflareQueueConsumerApi(environment: EnvironmentValues): Queue
 }
 
 function buildAddConsumerArgs(consumer: QueueConsumerConfig, workerName: string, configPath: string) {
-  return [
+  const args = [
     'wrangler',
     'queues',
     'consumer',
@@ -152,12 +152,21 @@ function buildAddConsumerArgs(consumer: QueueConsumerConfig, workerName: string,
     '--batch-timeout',
     String(consumer.max_batch_timeout),
     '--message-retries',
-    String(consumer.max_retries),
+    String(consumer.max_retries)
+  ]
+
+  if (consumer.dead_letter_queue) {
+    args.push('--dead-letter-queue', consumer.dead_letter_queue)
+  }
+
+  args.push(
     '--retry-delay-secs',
     String(consumer.retry_delay),
     '--config',
     configPath
-  ]
+  )
+
+  return args
 }
 
 export async function reconcileDeployQueueConsumers(options: {

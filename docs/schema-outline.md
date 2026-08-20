@@ -55,7 +55,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `deleted_at` supports GDPR-compliant account lifecycle handling.
 - `is_platform_admin` replaces a separate platform role entity.
 - `is_event_organizer` grants event creation access without platform-wide or unrelated-event admin visibility.
-- `profile_icon_object_key` points to the current immutable private R2 object for the user's profile icon. `profile_icon_revision` increments when the pointer changes and is the only profile-icon URL version guard. `profile_icon_updated_at` remains replacement metadata. Profile-icon responses are private and `no-store`.
+- `profile_icon_object_key` points to the current immutable private R2 object for the user's profile icon. `profile_icon_revision` increments when the pointer changes and is the only profile-icon URL version guard. `profile_icon_updated_at` remains replacement metadata. Profile-icon responses are private and `no-store`; pointer replacement and removal record cleanup intent in the managed-media outbox.
 - Platform actor resolution uses `UserAuthIdentity` records so multiple linked Auth0 subjects can resolve to the same user.
 - `luma_username` is retained only as legacy migration data for users who registered before Luma email became the canonical profile field.
 
@@ -243,7 +243,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `slides_url` is optional because not every event has participant-facing slides, and when present it is returned only in account-scoped detail reads for approved participants plus judges, staff, event admins, and platform admins.
 - `background_image_url` stores only the event-specific uploaded background image URL. Event read serializers expose a separate `displayBackgroundImageUrl` derived from this field or from the platform default event background image.
 - `banner_image_url` stores only the event-specific uploaded banner image URL.
-- `background_image_object_key` and `banner_image_object_key` point to independent immutable private R2 objects. Their corresponding revisions increment whenever the active pointer is replaced or cleared. `public_content_revision` is an independent non-negative revision for public event HTML/JSON visibility; it rotates for public media, gallery visibility/removal, submission public visibility, completion, and hide/unhide. Versioned public URLs must contain the exact current resource revision and consumer variant; `updated_at` is not a revision. Replaced or cleared objects are sent to fixed-kind delayed cleanup after the D1 mutation.
+- `background_image_object_key` and `banner_image_object_key` point to independent immutable private R2 objects. Their corresponding revisions increment whenever the active pointer is replaced or cleared. `public_content_revision` is an independent non-negative revision for public event HTML/JSON visibility; it rotates for public media, gallery visibility/removal, submission public visibility, completion, and hide/unhide. Versioned public URLs must contain the exact current resource revision and consumer variant; `updated_at` is not a revision. Replaced or cleared objects are recorded as fixed-kind outbox intents in the same D1 mutation and dispatched after the 30-second safety window.
 - `luma_event_url` is optional because not every event has a public Luma event page to link.
 - `luma_event_api_id` and `luma_api_key` are optional because not every event has Luma configured for approval, rejection, and attendance sync.
 - Luma email visibility and requirement are enabled together when an event uses Luma Sync because guest sync matches Codex participants to Luma guests by that email.
@@ -308,7 +308,7 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Notes
 
 - Each row records one protected gallery photo for an event.
-- `object_key` points to the current immutable private R2 object. `image_revision` increments whenever the photo's public visibility or active object pointer changes.
+- `object_key` points to the current immutable private R2 object. `image_revision` increments whenever the photo's public visibility or active object pointer changes. Replaced or removed objects are recorded as `event_photo` cleanup intents in the managed-media outbox.
 - `file_name` is optional because the upload can succeed even when the client omits a stable file name.
 - `created_at` stores the image creation time when the upload can read it from image metadata, otherwise the upload time.
 - `is_publicly_visible` controls whether a gallery photo appears in the public event Gallery tab.
@@ -437,8 +437,33 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - This singleton stores deployment-wide presentation defaults.
 - `default_event_background_image_url` points to the managed public platform default event background image endpoint when configured.
-- `default_event_background_image_object_key` points to the current immutable private R2 object. `default_event_background_image_revision` increments whenever the active pointer is replaced or cleared. Versioned public default-image URLs include the exact revision and `variant=background`; `updated_at` is not a revision.
+- `default_event_background_image_object_key` points to the current immutable private R2 object. `default_event_background_image_revision` increments whenever the active pointer is replaced or cleared. Versioned public default-image URLs include the exact revision and `variant=background`; `updated_at` is not a revision. Pointer replacement and removal record a `platform_default_event_background` cleanup intent in the same D1 mutation.
 - Event-specific `background_image_url` values remain stored on `Event` and override this default in event display payloads.
+
+## MediaCleanupOutbox
+
+### Key Fields
+
+- `id`
+- `kind`
+- `object_key`
+- `available_at`
+- `attempt_count`
+- `last_attempted_at`
+- `created_at`
+
+### Constraints
+
+- `kind` is one of `event_image`, `event_photo`, `platform_default_event_background`, or `profile_icon`.
+- `(kind, object_key)` is unique.
+- `available_at` uses sortable UTC ISO-8601 text and is at least 30 seconds after the pointer mutation.
+
+### Notes
+
+- Pointer replacement, pointer removal, and gallery-row deletion write one durable cleanup intent in the same D1 mutation that changes or removes the pointer.
+- The scheduled Worker dispatches eligible rows to the managed-media Queue without adding request fan-out, then removes the row only after the Queue send succeeds. Failed dispatches remain durable with an incremented attempt count.
+- The Queue consumer retries transient R2 failures; messages that exhaust the configured retry count are routed to the managed-media dead-letter queue for operator recovery.
+- Immutable current keys and migration-era stable keys are valid cleanup targets.
 
 ## PlatformDocument
 

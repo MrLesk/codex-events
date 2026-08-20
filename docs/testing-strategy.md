@@ -31,9 +31,12 @@ streamed responses. Public gallery `original` tests verify the bounded
 full-display transform and never expect raw R2 bytes.
 
 Managed-media cleanup tests verify that replacement, removal, and account
-deletion enqueue the fixed cleanup kind with an explicit delay of at least 30
-seconds after the D1 mutation, without awaiting delivery. Consumer tests verify
-safe kind-to-bucket mapping, per-message acknowledgement, and retry behavior.
+deletion record the fixed cleanup kind in the D1 outbox atomically with the
+pointer mutation, that dispatch is empty before 30 seconds and sends at or after
+the boundary, and that HTTP paths do not await delivery. Consumer tests verify
+safe kind-to-bucket mapping, per-message acknowledgement, retry behavior, and
+DLQ-backed exhaustion. Migration tests cover immutable and migration-era stable
+keys.
 
 Local integration tests verify response headers, streaming bodies, object-write
 ordering, revision checks, and transform configuration. They do not pretend to

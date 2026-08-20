@@ -9,7 +9,6 @@ import {
   eventPhotoParamsSchema,
   requireEventPhotoManageAccess
 } from '#server/domains/events/photos'
-import { scheduleManagedMediaCleanup } from '#server/domains/media/cleanup-queue'
 import { parseValidatedParams } from '#server/http/validation'
 
 export const applicationOperation = defineStructuredRouteOperation({
@@ -40,13 +39,6 @@ export const applicationOperation = defineStructuredRouteOperation({
       })
       .where(eq(events.id, event.id))
   ])
-
-  if (photo.objectKey) {
-    scheduleManagedMediaCleanup(h3Event, {
-      kind: 'event_photo',
-      objectKey: photo.objectKey
-    })
-  }
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,

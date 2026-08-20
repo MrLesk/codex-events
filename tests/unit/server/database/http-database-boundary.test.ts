@@ -20,6 +20,7 @@ const explicitNonHttpImporters = new Map<string, Set<string>>([
   ['server/middleware/local-d1-binding.ts', new Set(['D1DatabaseBinding'])],
   ['server/plugins/application-luma-sync-queue.ts', new Set(['createNonHttpDatabase', 'resolveNonHttpD1Binding'])],
   ['server/plugins/event-outcome-email-queue.ts', new Set(['createNonHttpDatabase', 'resolveNonHttpD1Binding'])],
+  ['server/plugins/media-cleanup-queue.ts', new Set(['createNonHttpDatabase', 'resolveNonHttpD1Binding'])],
   ['server/plugins/talk-proposal-decision-email-queue.ts', new Set(['createNonHttpDatabase', 'resolveNonHttpD1Binding'])]
 ])
 
@@ -402,8 +403,10 @@ describe('HTTP database boundary', () => {
 
     const talkPluginSource = readFileSync(join(serverRoot, 'plugins/talk-proposal-decision-email-queue.ts'), 'utf8')
     const lumaPluginSource = readFileSync(join(serverRoot, 'plugins/application-luma-sync-queue.ts'), 'utf8')
+    const mediaCleanupPluginSource = readFileSync(join(serverRoot, 'plugins/media-cleanup-queue.ts'), 'utf8')
     expect(talkPluginSource).toMatch(/hooks\.hook\(['"]cloudflare:scheduled['"][\s\S]*?createNonHttpDatabase\([\s\S]*?reconcilePendingTalkProposalDecisionEmails\([\s\S]*?trigger:\s*['"]scheduled['"]/u)
     expect(lumaPluginSource).toMatch(/hooks\.hook\(['"]cloudflare:scheduled['"][\s\S]*?createNonHttpDatabase\([\s\S]*?recoverStaleApplicationLumaSyncMessages\(/u)
+    expect(mediaCleanupPluginSource).toMatch(/hooks\.hook\(['"]cloudflare:scheduled['"][\s\S]*?createNonHttpDatabase\([\s\S]*?dispatchManagedMediaCleanupOutbox\(/u)
     expect(talkPluginSource).not.toMatch(/defineEventHandler|eventHandler/u)
     expect(lumaPluginSource).not.toMatch(/defineEventHandler|eventHandler/u)
   })

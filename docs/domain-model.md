@@ -78,7 +78,7 @@ Key characteristics:
 - Multiple events can exist in parallel.
 - Each event has an `eventType` of `hackathon`, `meetup`, or `build`.
 - Each event can define an event-specific background image and a banner image.
-- Each managed event image has its own immutable private R2 object pointer and numeric revision. Uploads write a new object before changing the active D1 pointer; removals clear the pointer before enqueueing fixed-kind cleanup with an explicit delay of at least 30 seconds, and cleanup failures leave bytes private.
+- Each managed event image has its own immutable private R2 object pointer and numeric revision. Uploads write a new object before changing the active D1 pointer; replacements and removals atomically record fixed-kind cleanup intent with the pointer mutation, and scheduled dispatch waits at least 30 seconds before publishing it. Cleanup failures leave bytes private.
 - Event public HTML and JSON use an independent public-content revision that rotates when public media, public gallery visibility/removal, submission public visibility, completion, or hide/unhide changes.
 - An event-specific background image overrides the platform default event background image.
 - When an event has no event-specific background image, event detail backgrounds use the platform default event background image when one is configured, even if the event has a banner image.

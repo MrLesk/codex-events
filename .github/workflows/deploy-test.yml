@@ -79,6 +79,7 @@ jobs:
       CF_TALK_PROPOSAL_DECISION_EMAIL_QUEUE: ${{ vars.CF_TALK_PROPOSAL_DECISION_EMAIL_QUEUE }}
       CF_EVENT_OUTCOME_EMAIL_QUEUE: ${{ vars.CF_EVENT_OUTCOME_EMAIL_QUEUE }}
       CF_LUMA_SYNC_QUEUE: ${{ vars.CF_LUMA_SYNC_QUEUE }}
+      CF_MEDIA_CLEANUP_DLQ_QUEUE: ${{ vars.CF_MEDIA_CLEANUP_DLQ_QUEUE }}
       # Auth0 bootstrap settings.
       AUTH0_MANAGEMENT_DOMAIN: ${{ vars.AUTH0_MANAGEMENT_DOMAIN }}
       AUTH0_APP_BASE_URL: https://${{ vars.BASE_DOMAIN }}
@@ -175,17 +176,7 @@ jobs:
 
       - name: Ensure test Cloudflare Queues
         if: ${{ steps.test_deploy_config.outputs.enabled == 'true' }}
-        run: |
-          set -euo pipefail
-          bun run deploy:config:test
-          while IFS= read -r queue_name; do
-            [ -n "$queue_name" ] || continue
-            if bunx wrangler queues info "$queue_name" --config .wrangler/generated/test.jsonc >/dev/null 2>&1; then
-              echo "Queue ${queue_name} already exists."
-            else
-              bunx wrangler queues create "$queue_name" --config .wrangler/generated/test.jsonc
-            fi
-          done < <(jq -r '.queues.producers[].queue' .wrangler/generated/test.jsonc)
+        run: bun run deploy:config:test && bun run deploy:ensure-queues:test
 
       - name: Upload test Worker secrets
         if: ${{ steps.test_deploy_config.outputs.enabled == 'true' }}

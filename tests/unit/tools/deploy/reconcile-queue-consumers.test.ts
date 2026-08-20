@@ -253,6 +253,8 @@ describe('deploy Queue consumer reconciliation', () => {
           '5',
           '--message-retries',
           '10',
+          '--dead-letter-queue',
+          'codex-events-test-media-cleanup-dlq',
           '--retry-delay-secs',
           '120',
           '--config',

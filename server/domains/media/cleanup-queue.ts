@@ -1,9 +1,8 @@
-import type { H3Event } from 'h3'
-
 import { z } from 'zod'
 
 export const defaultManagedMediaCleanupQueueBinding = 'MEDIA_CLEANUP_QUEUE'
 export const defaultManagedMediaCleanupQueueName = 'codex-events-dev-media-cleanup'
+export const defaultManagedMediaCleanupDeadLetterQueueName = 'codex-events-dev-media-cleanup-dlq'
 export const managedMediaCleanupDelaySeconds = 30
 export const defaultManagedMediaCleanupRetryDelaySeconds = 120
 
@@ -26,23 +25,23 @@ export type ManagedMediaCleanupQueueMessage = z.infer<typeof managedMediaCleanup
 
 export type ManagedMediaCleanupQueueInput = Pick<ManagedMediaCleanupQueueMessage, 'kind' | 'objectKey'>
 
-interface QueueProducerLike {
+export interface ManagedMediaCleanupQueueProducer {
   send: (message: unknown, options?: {
     contentType?: 'text' | 'json' | 'bytes' | 'v8'
     delaySeconds?: number
-  }) => Promise<void>
+  }) => Promise<unknown>
 }
 
-interface QueueMessageLike {
+export interface ManagedMediaCleanupQueueMessageLike {
   id: string
   body: unknown
   ack: () => void
   retry: (options?: { delaySeconds?: number }) => void
 }
 
-interface QueueBatchLike {
+export interface ManagedMediaCleanupQueueBatchLike {
   queue: string
-  messages: readonly QueueMessageLike[]
+  messages: readonly ManagedMediaCleanupQueueMessageLike[]
 }
 
 interface R2BucketLike {
@@ -66,10 +65,10 @@ type RuntimeConfigShape = {
 type CloudflareEnvShape = Record<string, unknown> | undefined
 
 const objectKeyPatterns: Record<ManagedMediaCleanupKind, RegExp> = {
-  event_image: /^events\/[^/]+\/(?:background|banner)\/[^/]+$/,
-  event_photo: /^events\/[^/]+\/photos\/[^/]+\/[^/]+$/,
-  platform_default_event_background: /^platform\/default-event-background\/[^/]+$/,
-  profile_icon: /^users\/[^/]+\/profile-icon\/[^/]+$/
+  event_image: /^events\/[^/]+\/(?:background(?:\/[^/]+|-image)|banner(?:\/[^/]+|-image))$/,
+  event_photo: /^events\/[^/]+\/photos\/[^/]+(?:\/[^/]+)?$/,
+  platform_default_event_background: /^platform\/default-event-background(?:\/[^/]+|-image)$/,
+  profile_icon: /^users\/[^/]+\/profile-icon(?:\/[^/]+)?$/
 }
 
 const defaultBucketBindingByKind: Record<ManagedMediaCleanupKind, 'EVENT_IMAGES' | 'PROFILE_ICONS'> = {
@@ -77,14 +76,6 @@ const defaultBucketBindingByKind: Record<ManagedMediaCleanupKind, 'EVENT_IMAGES'
   event_photo: 'EVENT_IMAGES',
   platform_default_event_background: 'EVENT_IMAGES',
   profile_icon: 'PROFILE_ICONS'
-}
-
-function resolveRuntimeConfig(event: H3Event): RuntimeConfigShape {
-  const eventRuntimeConfig = (event.context as H3Event['context'] & { runtimeConfig?: unknown }).runtimeConfig
-  const runtimeConfigGetter = (globalThis as { useRuntimeConfig?: (event: H3Event) => unknown }).useRuntimeConfig
-  const candidate = eventRuntimeConfig ?? runtimeConfigGetter?.(event) ?? {}
-
-  return isRuntimeConfigShape(candidate) ? candidate : {}
 }
 
 function resolveRuntimeConfigFromUnknown(candidate: unknown): RuntimeConfigShape {
@@ -95,12 +86,12 @@ function isRuntimeConfigShape(value: unknown): value is RuntimeConfigShape {
   return Boolean(value && typeof value === 'object')
 }
 
-function isQueueProducerLike(value: unknown): value is QueueProducerLike {
+function isQueueProducerLike(value: unknown): value is ManagedMediaCleanupQueueProducer {
   if (!value || typeof value !== 'object') {
     return false
   }
 
-  return typeof (value as Partial<QueueProducerLike>).send === 'function'
+  return typeof (value as Partial<ManagedMediaCleanupQueueProducer>).send === 'function'
 }
 
 function isR2BucketLike(value: unknown): value is R2BucketLike {
@@ -158,10 +149,12 @@ export function buildManagedMediaCleanupQueueMessage(
   return parsed
 }
 
-export function getManagedMediaCleanupQueueProducer(event: H3Event) {
-  const config = resolveRuntimeConfig(event)
+export function getManagedMediaCleanupQueueProducer(
+  runtimeConfig: unknown,
+  cloudflareEnv: CloudflareEnvShape
+) {
+  const config = resolveRuntimeConfigFromUnknown(runtimeConfig)
   const bindingName = getQueueBindingName(config)
-  const cloudflareEnv = event.context.cloudflare?.env as CloudflareEnvShape
   const producerCandidate = cloudflareEnv?.[bindingName]
 
   return {
@@ -170,98 +163,16 @@ export function getManagedMediaCleanupQueueProducer(event: H3Event) {
   }
 }
 
-export type ManagedMediaCleanupEnqueueResult = {
-  status: 'enqueued'
-} | {
-  status: 'skipped'
-  reason: string
-} | {
-  status: 'failed'
-  reason: string
-  errorMessage: string
-}
-
-export async function enqueueManagedMediaCleanupMessage(
-  event: H3Event,
-  input: ManagedMediaCleanupQueueInput
-): Promise<ManagedMediaCleanupEnqueueResult> {
-  let message: ManagedMediaCleanupQueueMessage
-
-  try {
-    message = buildManagedMediaCleanupQueueMessage(input)
-  } catch {
-    return {
-      status: 'skipped',
-      reason: 'queue_message_invalid'
-    }
-  }
-
-  const { producer, bindingName } = getManagedMediaCleanupQueueProducer(event)
-
-  if (!producer) {
-    return {
-      status: 'skipped',
-      reason: `queue_binding_missing:${bindingName}`
-    }
-  }
-
-  try {
-    await producer.send(message, {
-      contentType: 'json',
-      delaySeconds: managedMediaCleanupDelaySeconds
-    })
-  } catch (error) {
-    return {
-      status: 'failed',
-      reason: 'queue_send_error',
-      errorMessage: error instanceof Error ? error.message : 'Unexpected queue send error'
-    }
-  }
-
-  return {
-    status: 'enqueued'
-  }
-}
-
-export function scheduleManagedMediaCleanup(
-  event: H3Event,
-  input: ManagedMediaCleanupQueueInput
+export async function sendManagedMediaCleanupMessage(
+  producer: ManagedMediaCleanupQueueProducer,
+  input: ManagedMediaCleanupQueueInput,
+  enqueuedAt = new Date()
 ) {
-  const sendPromise = enqueueManagedMediaCleanupMessage(event, input)
-    .then((result) => {
-      if (result.status !== 'enqueued') {
-        console.error('Managed media cleanup was not queued.', {
-          kind: input.kind,
-          objectKey: input.objectKey,
-          reason: result.reason
-        })
-      }
-    })
-    .catch((error) => {
-      console.error('Managed media cleanup queue scheduling failed.', {
-        kind: input.kind,
-        objectKey: input.objectKey,
-        error
-      })
-    })
-  const waitUntil = (event as H3Event & {
-    waitUntil?: (promise: Promise<unknown>) => void
-  }).waitUntil
+  const message = buildManagedMediaCleanupQueueMessage(input, enqueuedAt)
 
-  if (typeof waitUntil === 'function') {
-    try {
-      waitUntil(sendPromise)
-      return
-    } catch (error) {
-      console.error('Managed media cleanup waitUntil registration failed.', {
-        kind: input.kind,
-        objectKey: input.objectKey,
-        error
-      })
-    }
-  }
-
-  void sendPromise
+  await producer.send(message, {
+    contentType: 'json'
+  })
 }
 
 function getBucketBindingName(kind: ManagedMediaCleanupKind, config: RuntimeConfigShape) {
@@ -291,7 +202,7 @@ export type ManagedMediaCleanupQueueMessageOutcome = {
 }
 
 export async function processManagedMediaCleanupQueueMessage(
-  message: QueueMessageLike,
+  message: ManagedMediaCleanupQueueMessageLike,
   options?: {
     runtimeConfig?: unknown
     cloudflareEnv?: CloudflareEnvShape
@@ -346,7 +257,7 @@ export async function processManagedMediaCleanupQueueMessage(
 }
 
 export async function processManagedMediaCleanupQueueBatch(
-  batch: QueueBatchLike,
+  batch: ManagedMediaCleanupQueueBatchLike,
   options?: {
     runtimeConfig?: unknown
     cloudflareEnv?: CloudflareEnvShape

@@ -14,7 +14,6 @@ import {
   eventImageObjectKey,
   putEventImageObject
 } from '#server/domains/events/images'
-import { scheduleManagedMediaCleanup } from '#server/domains/media/cleanup-queue'
 import {
   requireEventAdmin,
   routeIdParamsSchema,
@@ -71,13 +70,6 @@ export default defineApiHandler(async (h3Event) => {
       eventId: event.id
     }
   })
-
-  if (previousObjectKey) {
-    scheduleManagedMediaCleanup(h3Event, {
-      kind: 'event_image',
-      objectKey: previousObjectKey
-    })
-  }
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,

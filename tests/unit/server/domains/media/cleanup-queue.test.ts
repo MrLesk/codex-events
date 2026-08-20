@@ -1,26 +1,15 @@
-import type { H3Event } from 'h3'
+import { readFileSync } from 'node:fs'
 
 import { describe, expect, test, vi } from 'vitest'
 
 import {
   buildManagedMediaCleanupQueueMessage,
-  enqueueManagedMediaCleanupMessage,
+  getManagedMediaCleanupQueueName,
   managedMediaCleanupDelaySeconds,
   parseManagedMediaCleanupMessage,
   processManagedMediaCleanupQueueMessage,
-  scheduleManagedMediaCleanup
+  sendManagedMediaCleanupMessage
 } from '../../../../../server/domains/media/cleanup-queue'
-
-function createEvent(cloudflareEnv: Record<string, unknown>, runtimeConfig: Record<string, unknown> = {}) {
-  return {
-    context: {
-      cloudflare: {
-        env: cloudflareEnv
-      },
-      runtimeConfig
-    }
-  } as H3Event
-}
 
 function createMessage(body: unknown) {
   return {
@@ -32,7 +21,15 @@ function createMessage(body: unknown) {
 }
 
 describe('managed media cleanup queue', () => {
-  test('builds fixed-kind messages and rejects unsafe object keys', () => {
+  test('keeps the local Nuxt queue name aligned with the Wrangler producer and consumer', () => {
+    const localWranglerConfig = readFileSync(new URL('../../../../../wrangler.jsonc', import.meta.url), 'utf8')
+
+    expect(getManagedMediaCleanupQueueName({})).toBe('codex-events-dev-media-cleanup')
+    expect(localWranglerConfig).toMatch(/"binding": "MEDIA_CLEANUP_QUEUE",\s*"queue": "codex-events-dev-media-cleanup"/u)
+    expect(localWranglerConfig).toMatch(/"queue": "codex-events-dev-media-cleanup",[\s\S]*?"dead_letter_queue": "codex-events-dev-media-cleanup-dlq"/u)
+  })
+
+  test('accepts immutable and migration-era stable object keys while rejecting unsafe keys', () => {
     expect(buildManagedMediaCleanupQueueMessage({
       kind: 'event_image',
       objectKey: 'events/event_1/background/object_1'
@@ -46,45 +43,35 @@ describe('managed media cleanup queue', () => {
       objectKey: 'events/event_1/background/object_1',
       enqueuedAt: '2026-08-20T12:00:00.000Z'
     })).toBeNull()
+
+    for (const message of [
+      { kind: 'event_image', objectKey: 'events/event_1/background-image' },
+      { kind: 'event_image', objectKey: 'events/event_1/banner-image' },
+      { kind: 'event_photo', objectKey: 'events/event_1/photos/photo_1' },
+      { kind: 'platform_default_event_background', objectKey: 'platform/default-event-background-image' },
+      { kind: 'profile_icon', objectKey: 'users/user_1/profile-icon' }
+    ] as const) {
+      expect(parseManagedMediaCleanupMessage({
+        ...message,
+        enqueuedAt: '2026-08-20T12:00:00.000Z'
+      })).toMatchObject(message)
+    }
   })
 
-  test('sends cleanup with an explicit delayed delivery', async () => {
+  test('sends validated cleanup without request fan-out or a second queue delay', async () => {
     const send = vi.fn(async () => undefined)
-    const result = await enqueueManagedMediaCleanupMessage(
-      createEvent({ MEDIA_CLEANUP_QUEUE: { send } }),
-      {
-        kind: 'event_photo',
-        objectKey: 'events/event_1/photos/photo_1/object_1'
-      }
-    )
+    await sendManagedMediaCleanupMessage({ send }, {
+      kind: 'event_photo',
+      objectKey: 'events/event_1/photos/photo_1/object_1'
+    }, new Date('2026-08-20T12:00:00.000Z'))
 
-    expect(result).toEqual({ status: 'enqueued' })
     expect(send).toHaveBeenCalledWith(expect.objectContaining({
       kind: 'event_photo',
       objectKey: 'events/event_1/photos/photo_1/object_1'
     }), {
-      contentType: 'json',
-      delaySeconds: managedMediaCleanupDelaySeconds
+      contentType: 'json'
     })
     expect(managedMediaCleanupDelaySeconds).toBeGreaterThanOrEqual(30)
-  })
-
-  test('schedules after the response boundary without awaiting the queue send', async () => {
-    const send = vi.fn(async () => undefined)
-    const waitUntil = vi.fn()
-    const event = Object.assign(createEvent({ MEDIA_CLEANUP_QUEUE: { send } }), { waitUntil }) as H3Event & {
-      waitUntil: (promise: Promise<unknown>) => void
-    }
-
-    scheduleManagedMediaCleanup(event, {
-      kind: 'profile_icon',
-      objectKey: 'users/user_1/profile-icon/object_1'
-    })
-
-    expect(waitUntil).toHaveBeenCalledTimes(1)
-    expect(send).toHaveBeenCalledTimes(1)
-    await waitUntil.mock.calls[0]![0]
-    expect(send).toHaveBeenCalledTimes(1)
   })
 
   test('maps fixed kinds to the correct bucket and acknowledges successful deletion', async () => {

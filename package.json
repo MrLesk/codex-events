@@ -15,6 +15,8 @@
     "deploy:ensure-d1:production": "bun tools/deploy/ensure-d1-database.ts production",
     "deploy:ensure-r2:test": "bun tools/deploy/ensure-r2-buckets.ts test",
     "deploy:ensure-r2:production": "bun tools/deploy/ensure-r2-buckets.ts production",
+    "deploy:ensure-queues:test": "bun tools/deploy/ensure-queues.ts test",
+    "deploy:ensure-queues:production": "bun tools/deploy/ensure-queues.ts production",
     "deploy:queue-consumers:test": "bun tools/deploy/reconcile-queue-consumers.ts test",
     "deploy:queue-consumers:production": "bun tools/deploy/reconcile-queue-consumers.ts production",
     "db:migrate:test": "bun run deploy:ensure-d1:test && bun run deploy:config:test && bun tools/deploy/run-wrangler.ts d1 migrations apply DB --remote --config .wrangler/generated/test.jsonc",
