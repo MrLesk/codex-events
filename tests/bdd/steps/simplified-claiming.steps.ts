@@ -144,7 +144,7 @@ Then('I should see that redemption has closed', async ({ page }) => {
 })
 
 Then('I should see the attendee claiming QR settings', async ({ page }) => {
-  const redemptionUrl = `${new URL(page.url()).origin}/events/${fixtureSlug}/redeem`
+  const redemptionUrl = `/events/${fixtureSlug}/redeem`
   const checkbox = page.getByRole('checkbox', { name: 'Simplified attendee claiming' })
   const compoundControl = page.getByTestId('simplified-claiming-control')
   const inlinePanel = compoundControl.getByTestId('simplified-claiming-settings-panel')
