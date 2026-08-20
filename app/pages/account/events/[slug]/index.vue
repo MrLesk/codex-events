@@ -33,7 +33,10 @@ import type {
 } from '#shared/domains/events/account-event-judging-page'
 import type { AccountEventSettingsPage } from '#shared/domains/events/account-event-settings-page'
 import type { AccountEventPageShell } from '#shared/domains/events/account-event-page-shell'
-import type { AccountEventPageVisibility } from '~/domains/events/account-workspace-page'
+import {
+  shouldIncludeAccountEventShell,
+  type AccountEventPageVisibility
+} from '~/domains/events/account-workspace-page'
 import {
   buildVersionedEventImageUrl,
   formatAccountEventHeaderSummary,
@@ -127,6 +130,7 @@ type AccountWorkspaceEvent = AccountEventEntryEvent
 type AccountEventAccessRecord = AccountEventEntryAccess
 
 const route = useRoute()
+const initialRouteFullPath = route.fullPath
 const slug = computed(() => String(route.params.slug ?? '').trim())
 const { actor, refresh: refreshActor } = useAccountLifecycleActor()
 
@@ -160,8 +164,7 @@ const entryPageRequest = useAccountEventPageRequest<AccountEventEntryPage>(slug,
 const prizesPageRequest = useAccountEventPageRequest<AccountEventPrizesPage>(slug, 'prizes', {
   immediate: false,
   query: computed(() => ({
-    ...(requestedTab.value === 'prizes' ? { includeAdminEventConfiguration: true } : {}),
-    ...(isDirectNonEntryNavigation.value ? { includeEventShell: true } : {})
+    ...(requestedTab.value === 'prizes' ? { includeAdminEventConfiguration: true } : {})
   }))
 })
 const entryPage = computed(() => entryPageRequest.data.value?.page ?? null)
@@ -468,7 +471,11 @@ const activeSection = computed<AccountEventWorkspaceTab>(() => {
 
   return resolveTabQueryValue(route.query.tab, availableTabs.value, 'overview')
 })
-const directPageQuery = computed(() => isDirectNonEntryNavigation.value
+const directPageQuery = computed(() => shouldIncludeAccountEventShell({
+  isHardDirectNavigation: route.fullPath === initialRouteFullPath,
+  isNonEntryNavigation: isDirectNonEntryNavigation.value,
+  hasEntryState: Boolean(entryPage.value)
+})
   ? { includeEventShell: true }
   : {})
 const settingsPageRequest = useAccountEventPageRequest<AccountEventSettingsPage>(slug, 'settings', {

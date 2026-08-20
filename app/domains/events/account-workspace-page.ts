@@ -54,3 +54,13 @@ export type AccountEventRostersPage<TPage> = AccountEventPageResponse<TPage>
 export type AccountEventGalleryPage<TPage> = AccountEventPageResponse<TPage>
 export type AccountEventFeedbackPage<TPage> = AccountEventPageResponse<TPage>
 export type AccountEventCertificatesPage<TPage> = AccountEventPageResponse<TPage>
+
+export function shouldIncludeAccountEventShell(input: {
+  isHardDirectNavigation: boolean
+  isNonEntryNavigation: boolean
+  hasEntryState: boolean
+}) {
+  return input.isHardDirectNavigation
+    && input.isNonEntryNavigation
+    && !input.hasEntryState
+}

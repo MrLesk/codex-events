@@ -17,6 +17,15 @@ import { useApiData } from './useApiData'
 import { useAuthorizationCache } from './useAuthorizationCache'
 import { useSessionActor } from './useSessionActor'
 
+function areAccountEventPageQueriesEqual(
+  left: AccountEventPageQuery | undefined,
+  right: AccountEventPageQuery
+) {
+  return left?.selectedTeamSlug === right.selectedTeamSlug
+    && left?.includeAdminEventConfiguration === right.includeAdminEventConfiguration
+    && left?.includeEventShell === right.includeEventShell
+}
+
 export interface UseAccountEventPageRequestOptions<TPage> {
   default?: () => AccountEventPageResponse<TPage>
   immediate?: boolean
@@ -123,7 +132,15 @@ export function useAccountEventPageRequest<TPage>(
   const authorizationCache = useAuthorizationCache()
   const resolvedSlug = computed(() => toValue(slug))
   const resolvedPage = computed(() => toValue(page))
-  const resolvedQuery = computed(() => normalizeAccountEventPageQuery(toValue(options.query)))
+  const resolvedQuery = computed<AccountEventPageQuery>((previous) => {
+    const next = normalizeAccountEventPageQuery(toValue(options.query))
+
+    if (previous && areAccountEventPageQueriesEqual(previous, next)) {
+      return previous
+    }
+
+    return next
+  })
   const requestKey = computed(() => buildAccountEventPageCacheKey(
     resolvedSlug.value,
     resolvedPage.value,

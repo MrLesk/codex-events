@@ -210,6 +210,24 @@ describe('useAccountEventPageRequest', () => {
     expect(apiFetch).toHaveBeenCalledOnce()
   })
 
+  test('keeps semantically unchanged query state stable across tab-only navigation', async () => {
+    const { useAccountEventPageRequest } = await import('../../../../app/composables/useAccountEventPageRequest')
+    const query = ref<{ selectedTeamSlug?: string }>({})
+    const request = useAccountEventPageRequest('fixture-event', 'operations', {
+      query
+    })
+    const initialQuery = toValue(request.query)
+
+    query.value = {}
+
+    expect(toValue(request.query)).toBe(initialQuery)
+
+    query.value = { selectedTeamSlug: 'team-beta' }
+
+    expect(toValue(request.query)).not.toBe(initialQuery)
+    expect(toValue(request.query)).toEqual({ selectedTeamSlug: 'team-beta' })
+  })
+
   test('cancels the prior selected-team read when query-only navigation changes the slug', async () => {
     const { useAccountEventPageRequest } = await import('../../../../app/composables/useAccountEventPageRequest')
     const selectedTeamSlug = ref('team-alpha')
