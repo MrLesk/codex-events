@@ -39,23 +39,29 @@ const configurationLocked = computed(() => props.hasExistingProposal)
       class="space-y-5"
     >
       <div class="grid gap-5 md:grid-cols-2">
-        <label class="grid gap-2">
-          <span class="text-sm font-medium text-toned">Opens</span>
-          <AppDateTimeInput
+        <AppFormField
+          name="talk-proposal-opens-at"
+          label="Opens"
+        >
+          <AppDateTimePicker
+            id="talk-proposal-opens-at"
             v-model="opensAt"
             picker-aria-label="Choose Call for talks open date and time"
-            required
+            data-testid="talk-proposal-opens-at"
           />
-        </label>
+        </AppFormField>
 
-        <label class="grid gap-2">
-          <span class="text-sm font-medium text-toned">Closes</span>
-          <AppDateTimeInput
+        <AppFormField
+          name="talk-proposal-closes-at"
+          label="Closes"
+        >
+          <AppDateTimePicker
+            id="talk-proposal-closes-at"
             v-model="closesAt"
             picker-aria-label="Choose Call for talks close date and time"
-            required
+            data-testid="talk-proposal-closes-at"
           />
-        </label>
+        </AppFormField>
       </div>
 
       <AdminTalkProposalQuestionEditor
