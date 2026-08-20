@@ -1,9 +1,27 @@
 <script setup lang="ts">
+import hljs from 'highlight.js/lib/common'
+import 'highlight.js/styles/github-dark.css'
+import 'highlight.js/styles/github.css'
 import { MdEditor, config } from 'md-editor-v3'
 import type { Themes, ToolbarNames } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
+import * as parserMarkdown from 'prettier/plugins/markdown'
+import * as prettier from 'prettier/standalone'
+import screenfull from 'screenfull'
 
 config({
+  editorExtensions: {
+    highlight: {
+      instance: hljs
+    },
+    prettier: {
+      parserMarkdownInstance: parserMarkdown,
+      prettierInstance: prettier
+    },
+    screenfull: {
+      instance: screenfull
+    }
+  },
   markdownItConfig(markdown) {
     markdown.set({
       html: false,
