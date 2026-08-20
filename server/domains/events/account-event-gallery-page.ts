@@ -1,9 +1,9 @@
-import { getOwnUserApplication } from '#server/domains/applications'
 import { listEventPhotoRecords } from '#server/domains/events/photos'
 import type { AccountEventGalleryPage } from '#shared/domains/events/account-event-gallery-page'
 import { accountEventGalleryPageSchema } from '#shared/domains/events/account-event-gallery-page'
 import { assertGuard } from '#server/domains/lifecycle-guard'
 import { defineAccountEventPageRoute } from './account-event-page-contract'
+import { getAccountEventPageAccess } from './account-event-page-context'
 
 export const accountEventGalleryPageRoute = defineAccountEventPageRoute({
   page: 'gallery',
@@ -16,12 +16,8 @@ export const accountEventGalleryPageRoute = defineAccountEventPageRoute({
       return
     }
 
-    const application = await getOwnUserApplication(
-      context.database,
-      context.event.id,
-      context.actor.platformUser.id
-    )
-    assertGuard(application?.status === 'approved', {
+    const access = await getAccountEventPageAccess(context)
+    assertGuard(access.application?.status === 'approved', {
       statusCode: 403,
       code: 'event_photo_access_required',
       message: 'This operation requires approved participant access or an explicit event role.',
