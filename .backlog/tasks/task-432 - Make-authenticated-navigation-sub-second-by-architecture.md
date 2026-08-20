@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@luna-architecture'
 created_date: '2026-08-19 06:18'
-updated_date: '2026-08-19 06:23'
+updated_date: '2026-08-20 21:47'
 labels: []
 dependencies: []
 references:
@@ -57,3 +57,9 @@ Refactor the Codex Events runtime so account, admin, event-workspace, and public
 4. Add signed-in browser topology and latency budgets.
 5. Validate only against local D1, review all commits, and stop before push or test deployment.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Exact local candidate dfe6fb6d0c4f972b9a0040be71e6bcfe0501d483: MCP generators clean; bun run lint and bun run typecheck pass; unit 155 files/1047 tests; integration 40 files/455 tests; Cloudflare build pass; workflow topology 2/2; focused Chromium topology 22/22 with zero API, console, or page errors, usable timings about 171-655ms, Settings local editor with zero CDN requests, and one intentional cancellation abort; full BDD 85/85 and destructive BDD 2/2. No remote deployment, CI, test URL, CF-Cache-Status, or remote cache evidence exists. Independent review found no P0, P1, or P2; nonblocking P3: an invalid or denied entry-family tab query may remain in the URL after a 403/404 entry response, without a data leak. Root remains In Progress. Remaining root evidence is a pushed test deployment, CI result, deployed real-browser timings, deployed CF-Cache-Status and revision behavior, and remote cache/revocation verification.
+<!-- SECTION:NOTES:END -->

@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@luna-workspace'
 created_date: '2026-08-19 19:55'
-updated_date: '2026-08-20 21:19'
+updated_date: '2026-08-20 21:47'
 labels:
   - testing
   - performance
@@ -103,22 +103,22 @@ Required validation
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 Real local-browser request logs prove one bootstrap plus one critical page read for every owned workspace/page family and prove the old fan-out URLs are absent.
-- [ ] #2 Unit and integration tests cover typed response envelopes, permissions/privacy, one actor/authorization/session topology, cancellation, stale-response suppression, and authorization-generation invalidation.
-- [ ] #3 BDD scenarios exercise account-event entry, all data-heavy tabs, judge inbox/assignment, settings/editor, remaining account workspaces, mutations, and rapid navigation against local Nuxt + local D1.
-- [ ] #4 Lazy local editor/sortable behavior and absence of runtime unpkg/CDN requests are asserted.
-- [ ] #5 No production/test code is changed in the inventory phase; the eventual implementation remains local-only until explicitly authorized.
+- [x] #2 Unit and integration tests cover typed response envelopes, permissions/privacy, one actor/authorization/session topology, cancellation, stale-response suppression, and authorization-generation invalidation.
+- [x] #3 BDD scenarios exercise account-event entry, all data-heavy tabs, judge inbox/assignment, settings/editor, remaining account workspaces, mutations, and rapid navigation against local Nuxt + local D1.
+- [x] #4 Lazy local editor/sortable behavior and absence of runtime unpkg/CDN requests are asserted.
+- [x] #5 No production/test code is changed in the inventory phase; the eventual implementation remains local-only until explicitly authorized.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Canonical docs were updated or confirmed unchanged
-- [ ] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
-- [ ] #4 Tests were added or updated when behavior changed
-- [ ] #5 Test gaps are documented when automation is not practical
-- [ ] #6 Config and developer workflow docs were updated when setup changed
-- [ ] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #1 Canonical docs were updated or confirmed unchanged
+- [x] #2 Code behavior matches canonical docs
+- [x] #3 Relevant validation commands pass
+- [x] #4 Tests were added or updated when behavior changed
+- [x] #5 Test gaps are documented when automation is not practical
+- [x] #6 Config and developer workflow docs were updated when setup changed
+- [x] #7 Auth and permissions changes follow the documented platform model
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -135,4 +135,6 @@ Owned production route/component/composable/server-domain files: none. This chil
 Baseline reproduction: at 0760b571, focused Talk BDD failed scenarios 1, 3, and 4 because direct ?tab=call-for-talks resolved activeSection to provisional Overview before the entry page returned tabVisibility; the public schedule scenario passed. The preserved dirty correction passes all four focused Talk scenarios and all Talk scenarios in the full gate; full gate also has unrelated admin certificate, admin operations, and simplified-claiming failures.
 
 Final validation: focused Talk BDD 4/4 passed (31.7s); full BDD 81/85 passed, with four unrelated failures in admin certificates, admin operations, and simplified claiming; lint, typecheck, full unit 155 files/1047 tests, focused workspace unit 40 tests, and focused workspace/Talk integration 12 tests all passed. Browser QA confirmed one session bootstrap plus one entry request, no failed requests or page errors, and the direct Talk URL/aria-selected state remained correct; only the existing Vue toRefs warning appeared.
+
+Exact local candidate dfe6fb6d0c4f972b9a0040be71e6bcfe0501d483: MCP generators clean; bun run lint and bun run typecheck pass; unit 155 files/1047 tests; integration 40 files/455 tests; Cloudflare build pass; workflow topology 2/2; focused Chromium topology 22/22 with zero API, console, or page errors, usable timings about 171-655ms, Settings local editor with zero CDN requests, and one intentional cancellation abort; full BDD 85/85 and destructive BDD 2/2. No remote deployment, CI, test URL, CF-Cache-Status, or remote cache evidence exists. Independent review found no P0, P1, or P2; nonblocking P3: an invalid or denied entry-family tab query may remain in the URL after a 403/404 entry response, without a data leak. The 22-scenario browser matrix covers the account-event tabs, settings/editor, global overview/judging/redemption workspaces, direct denied Teams, SPA reuse, and cancellation. A stable global staff-dashboard persona is not present; docs/testing-strategy.md records server integration as the current gap, so AC #1 remains unchecked and this task remains In Progress. No remote deployment or CI evidence is claimed.
 <!-- SECTION:NOTES:END -->

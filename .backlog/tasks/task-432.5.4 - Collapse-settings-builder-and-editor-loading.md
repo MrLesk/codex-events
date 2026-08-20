@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@luna-workspace'
 created_date: '2026-08-19 19:53'
-updated_date: '2026-08-19 21:15'
+updated_date: '2026-08-20 21:47'
 labels:
   - architecture
   - performance
@@ -120,20 +120,20 @@ Validation
 <!-- AC:BEGIN -->
 - [x] #1 The settings surface uses one typed page read after bootstrap and removes the current event/criteria/prizes/terms/roles request fan-out.
 - [x] #2 Builder and editor pages preserve the atomic component tree and use local lazy bundles for md-editor-v3 and sortablejs; runtime unpkg/CDN dependencies are absent.
-- [ ] #3 The settings page handler performs one actor resolution, one event-admin authorization resolution, and one shared strong D1 session.
+- [x] #3 The settings page handler performs one actor resolution, one event-admin authorization resolution, and one shared strong D1 session.
 - [x] #4 Settings mutations remain separate canonical actions and cannot cause a full bootstrap or multi-endpoint reload.
-- [ ] #5 Aborted settings/editor navigation cannot overwrite newer draft or active-page state.
+- [x] #5 Aborted settings/editor navigation cannot overwrite newer draft or active-page state.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [x] #1 Canonical docs were updated or confirmed unchanged
 - [x] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
+- [x] #3 Relevant validation commands pass
 - [x] #4 Tests were added or updated when behavior changed
 - [x] #5 Test gaps are documented when automation is not practical
 - [x] #6 Config and developer workflow docs were updated when setup changed
-- [ ] #7 Auth and permissions changes follow the documented platform model
+- [x] #7 Auth and permissions changes follow the documented platform model
 - [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
 
@@ -156,6 +156,8 @@ Request topology: settings first render 6 legacy reads -> 1 settings page read; 
 Registry handoff (not edited because generated catalogs/manifest are shared .5.1 scope): id=get.account.events.by-slug.settings; toolName=get_account_events_by_slug_settings; description=GET /api/account/events/:slug/settings; rest.method=GET; rest.path=/api/account/events/:slug/settings; input.params=routeSlugParamsSchema; output=data; capabilities=[event_admin]; effect=read. Attach this metadata and regenerate the shared operation outputs/catalog/eligibility manifest in the integrator. The account-event parent should pass eventSlug explicitly to AccountEventAdminSettingsPanel when its shared shell is integrated; this slice keeps a route-param fallback.
 
 Validation: scoped eslint passed; focused settings/lazy unit tests passed (3 files, 6 tests). Full typecheck, lint, unit, integration, and BDD were run but are blocked/failing in the concurrent shared worktree. Integration fails before settings authorization at server/domains/accounts/auth-identities.ts:46 because the .5.1 AppDatabase facade no longer exposes query-builder .get(); full integration reported 320 failed and 87 passed. Full unit reported 972 passed and 7 concurrent failures (D1 facade expectations, talk-proposals raw get, useTeamFormationWorkspace, and generated operation manifest). BDD reported 4 passed and 59 broad local-runtime/auth failures, including ERR_ABORTED/connection-refused and HTTP 500s. No failure implicated a changed .5.4 file. No remote D1, deploy, push, foundation/generated-registry/media/D1 edits were made.
+
+Exact local candidate dfe6fb6d0c4f972b9a0040be71e6bcfe0501d483: MCP generators clean; bun run lint and bun run typecheck pass; unit 155 files/1047 tests; integration 40 files/455 tests; Cloudflare build pass; workflow topology 2/2; focused Chromium topology 22/22 with zero API, console, or page errors, usable timings about 171-655ms, Settings local editor with zero CDN requests, and one intentional cancellation abort; full BDD 85/85 and destructive BDD 2/2. No remote deployment, CI, test URL, CF-Cache-Status, or remote cache evidence exists. Independent review found no P0, P1, or P2; nonblocking P3: an invalid or denied entry-family tab query may remain in the URL after a 403/404 entry response, without a data leak.
 <!-- SECTION:NOTES:END -->
 
 ## Comments
@@ -177,5 +179,5 @@ Scoped implementation and focused validation are complete. Full-suite blockers a
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Implemented TASK-432.5.4 with a typed AccountEventSettingsPage contract and one protected GET /api/account/events/:slug/settings read for the settings surface and existing-event builder. Preserved canonical mutation routes, local lazy md-editor-v3/sortablejs boundaries, atomic builder composition, and abort-on-unmount behavior. Focused lint and 3 unit files/6 tests pass. Full validation was run and its concurrent-worktree blockers are documented in Implementation Notes; the settings integration test is blocked before authorization by the shared .5.1 AppDatabase .get() migration. Shared operation-registry metadata is recorded for the parent integrator; no generated registry, foundation, D1, media, remote, deployment, or push changes were made.
+Settings, builder, and editor loading are complete at dfe6fb6d. Settings uses one protected page read, canonical mutations remain separate, editor and sortable code stays local and lazy, and cancellation cannot commit stale state. The focused Settings browser trace used local assets with zero CDN requests; the final local gate passed.
 <!-- SECTION:FINAL_SUMMARY:END -->

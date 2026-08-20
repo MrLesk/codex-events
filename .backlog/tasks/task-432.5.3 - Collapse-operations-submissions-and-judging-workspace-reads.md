@@ -1,11 +1,11 @@
 ---
 id: TASK-432.5.3
 title: 'Collapse operations, submissions, and judging workspace reads'
-status: In Progress
+status: Done
 assignee:
   - '@luna-workspace'
 created_date: '2026-08-19 19:52'
-updated_date: '2026-08-19 22:59'
+updated_date: '2026-08-20 21:47'
 labels:
   - architecture
   - performance
@@ -109,7 +109,7 @@ Validation
 <!-- AC:BEGIN -->
 - [x] #1 Operations, submissions, and event judging tabs each use one concrete page-shaped read after bootstrap; the global judge inbox and assignment workspace also each use one read.
 - [x] #2 The listed existing fan-out reads are replaced in the owned client surfaces without server-side HTTP chaining or a generic graph contract.
-- [ ] #3 Each page and assignment handler performs one actor resolution, one authorization resolution, and one shared strong D1 session, with role/blind-review visibility enforced server-side.
+- [x] #3 Each page and assignment handler performs one actor resolution, one authorization resolution, and one shared strong D1 session, with role/blind-review visibility enforced server-side.
 - [x] #4 Mutation behavior remains on existing action routes and refreshes only the active typed page state.
 - [x] #5 Tab, inbox, and assignment navigation aborts abandoned work and cannot commit stale responses.
 <!-- AC:END -->
@@ -118,7 +118,7 @@ Validation
 <!-- DOD:BEGIN -->
 - [x] #1 Canonical docs were updated or confirmed unchanged
 - [x] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
+- [x] #3 Relevant validation commands pass
 - [x] #4 Tests were added or updated when behavior changed
 - [x] #5 Test gaps are documented when automation is not practical
 - [x] #6 Config and developer workflow docs were updated when setup changed
@@ -158,10 +158,12 @@ Panel boundary handoff: AccountEventAdminOperationsPanel now requires page: Acco
 Post-refactor typecheck confirms the expected integrator boundary: the untouched parent app/pages/account/events/[slug]/index.vue reports four missing typed page props at lines 1644, 1658, 1714, and 1727 for the new judge/operations/submissions panels. It also retains the unrelated concurrent server/api/events/[eventId]/index.patch.ts talkProposalQuestionsRevision type error.
 
 Server contract checkpoint: judging assignment detail and global judge inbox now use named executors with mandatory authorization before page loaders; global overview/staff/prize workspaces use the same actor/database/authorize/load/parse executor boundary. Owned operations, submissions, judging, entry, and prizes payloads now use concrete Zod schemas with no z.unknown/passthrough output escape hatches or unknown casts in server assemblers. Added exact authorization-order/output-rejection/context-count/route-registry tests and corrected the topology test to assert the new inbox boundary. Focused validation: bun run lint passed; bun run typecheck passed; 5 focused unit files/13 tests passed; 2 focused integration files/8 tests passed. Full unit remains 147 files/1009 tests with only the pre-existing useTeamFormationWorkspace timeout and generated-operation inventory mismatch; full integration retains pre-existing media/profile-revision and API-envelope assertion failures; BDD was blocked by localhost:3100 already being used. Generated catalogs/manifests remain intentionally untouched for TASK-432.5.1 integration. No remote D1, deploy, or push.
+
+Exact local candidate dfe6fb6d0c4f972b9a0040be71e6bcfe0501d483: MCP generators clean; bun run lint and bun run typecheck pass; unit 155 files/1047 tests; integration 40 files/455 tests; Cloudflare build pass; workflow topology 2/2; focused Chromium topology 22/22 with zero API, console, or page errors, usable timings about 171-655ms, Settings local editor with zero CDN requests, and one intentional cancellation abort; full BDD 85/85 and destructive BDD 2/2. No remote deployment, CI, test URL, CF-Cache-Status, or remote cache evidence exists. Independent review found no P0, P1, or P2; nonblocking P3: an invalid or denied entry-family tab query may remain in the URL after a 403/404 entry response, without a data leak.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Corrected protected page execution and concrete output contracts for operations, submissions, judging, assignment, entry, prizes, the global judge inbox, and global account workspaces. Added route/authorization/contract tests and verified lint, typecheck, and focused unit/integration suites; generated operation files remain an explicit integrator handoff.
+Operations, submissions, judging, judge inbox, and assignment page reads are complete at dfe6fb6d. Named executors authorize before loading, use concrete contracts and the shared strong request session, preserve blind-review visibility, and keep mutations separate. The final local gate passed; no remote deployment or CI evidence is claimed.
 <!-- SECTION:FINAL_SUMMARY:END -->

@@ -3,11 +3,11 @@ id: TASK-432.5.6
 title: >-
   Collapse remaining account overview, staff dashboard, and prize-redemption
   reads
-status: In Progress
+status: Done
 assignee:
   - '@luna-workspace'
 created_date: '2026-08-19 19:54'
-updated_date: '2026-08-19 22:41'
+updated_date: '2026-08-20 21:47'
 labels:
   - architecture
   - performance
@@ -78,9 +78,9 @@ Validation
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Account overview, staff dashboard, and prize-redemption workspaces each have one concrete first-render read after bootstrap.
+- [x] #1 Account overview, staff dashboard, and prize-redemption workspaces each have one concrete first-render read after bootstrap.
 - [x] #2 Prize-redemption terms are composed into the workspace response and the per-redemption Promise.all fan-out is removed.
-- [ ] #3 Each handler resolves actor/authorization once and uses one strong request-scoped D1 session with server-enforced visibility and consent.
+- [x] #3 Each handler resolves actor/authorization once and uses one strong request-scoped D1 session with server-enforced visibility and consent.
 - [x] #4 Redemption actions remain separate and refresh only the redemption workspace; stale navigation responses cannot commit.
 <!-- AC:END -->
 
@@ -88,7 +88,7 @@ Validation
 <!-- DOD:BEGIN -->
 - [x] #1 Canonical docs were updated or confirmed unchanged
 - [x] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
+- [x] #3 Relevant validation commands pass
 - [x] #4 Tests were added or updated when behavior changed
 - [x] #5 Test gaps are documented when automation is not practical
 - [x] #6 Config and developer workflow docs were updated when setup changed
@@ -124,10 +124,12 @@ Implementation and validation update:
 Correction requested: account overview still performs per-event outcome reads. Scope is participation/outcomes helper/tests only; no remote database, deployment, or push.
 
 Correction validation: focused participation/outcome integration test passes with one versus five completed events at a constant query count, correct ranks/prizes, one request session, and no SQL IN predicate; legacy participation integration test passes; outcomes unit tests pass; scoped ESLint and full lint pass; Cloudflare build passes. Full typecheck remains blocked by two unrelated dirty-worktree UI type errors. Full unit has one unrelated useTeamFormationWorkspace timeout (1008/1009 passed); full integration has three unrelated dirty-worktree failures (consent envelope, profile-icon revision expectation, and outcome profile-icon expectation). BDD could not start because localhost:3100 was already occupied. No remote database, deployment, or push.
+
+Exact local candidate dfe6fb6d0c4f972b9a0040be71e6bcfe0501d483: MCP generators clean; bun run lint and bun run typecheck pass; unit 155 files/1047 tests; integration 40 files/455 tests; Cloudflare build pass; workflow topology 2/2; focused Chromium topology 22/22 with zero API, console, or page errors, usable timings about 171-655ms, Settings local editor with zero CDN requests, and one intentional cancellation abort; full BDD 85/85 and destructive BDD 2/2. No remote deployment, CI, test URL, CF-Cache-Status, or remote cache evidence exists. Independent review found no P0, P1, or P2; nonblocking P3: an invalid or denied entry-family tab query may remain in the URL after a 403/404 entry response, without a data leak. Account overview, staff workspace, and prize redemption have server/integration coverage for one page read and one actor/authorization/session path. The stable browser persona matrix does not include a staff-dashboard persona; docs/testing-strategy.md records that fixture gap while the final integration gate passed.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Implemented the remaining account page-shaped reads locally. Account overview, staff dashboard, and prize-redemption now use named protected page contracts and one signal-aware read after the shared session bootstrap; prize terms are joined server-side, browser staff filtering and per-redemption terms fan-out are removed, and redemption refresh remains scoped to the workspace. Added focused topology/unit/integration/BDD coverage. Scoped lint and focused unit tests pass. Full validation was attempted locally but is recorded as blocked by concurrent shared-worktree facade/export/type/registry changes; the exact operation metadata is in the task notes for TASK-432.5.1 integration. No remote database, deployment, or push was used.
+Account overview, staff dashboard, and prize-redemption page reads are complete at dfe6fb6d. The workspace contracts join redemption terms, remove per-redemption fan-out, preserve separate redemption mutations, and use bounded protected reads. The final local gate passed; staff-dashboard browser coverage remains a documented stable-fixture gap and no remote deployment or CI evidence is claimed.
 <!-- SECTION:FINAL_SUMMARY:END -->

@@ -1,11 +1,11 @@
 ---
 id: TASK-432.5.1
 title: Shared account-event page-shaped contract and route/client foundation
-status: In Progress
+status: Done
 assignee:
   - '@luna-workspace'
 created_date: '2026-08-19 19:51'
-updated_date: '2026-08-19 22:59'
+updated_date: '2026-08-20 21:47'
 labels:
   - architecture
   - performance
@@ -78,9 +78,9 @@ Validation
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 A shared typed account-event page envelope and request composable exist, with one concrete contract per page and no generic graph/include API.
-- [ ] #2 Every child page route can resolve actor and authorization once and use one request-scoped strong D1 database/session without raw binding access or internal HTTP fan-out.
+- [x] #2 Every child page route can resolve actor and authorization once and use one request-scoped strong D1 database/session without raw binding access or internal HTTP fan-out.
 - [x] #3 Protected page requests use the existing bootstrap authorization generation and shared signal-aware cancellation; aborted or stale responses never commit.
-- [ ] #4 The shared admin workspace fetch file, route registry integration, and API-surface documentation have one explicit owner and no child write-scope ambiguity.
+- [x] #4 The shared admin workspace fetch file, route registry integration, and API-surface documentation have one explicit owner and no child write-scope ambiguity.
 - [x] #5 No changes are made to TASK-432.2 bootstrap/cancellation, TASK-432.4 D1/session, or TASK-432.6 media behavior.
 <!-- AC:END -->
 
@@ -88,10 +88,10 @@ Validation
 <!-- DOD:BEGIN -->
 - [x] #1 Canonical docs were updated or confirmed unchanged
 - [x] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
+- [x] #3 Relevant validation commands pass
 - [x] #4 Tests were added or updated when behavior changed
 - [x] #5 Test gaps are documented when automation is not practical
-- [ ] #6 Config and developer workflow docs were updated when setup changed
+- [x] #6 Config and developer workflow docs were updated when setup changed
 - [x] #7 Auth and permissions changes follow the documented platform model
 - [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
@@ -149,10 +149,12 @@ Unresolved generated application-operation registry handoff (generated files int
 No duplicate compatibility adapters are to be added; reconcile the generated source later.
 
 Server contract checkpoint: added the global account-page executor/context and registry for overview, judging inbox, staff workspace, and prize-redemption workspace; added concrete runtime schemas for global and owned event page payloads; registered all 13 event page definitions without editing generated operation catalogs. Added route/registry parity coverage and preserved the generated-catalog integrator handoff. Validation in this slice: bun run lint passed; bun run typecheck passed; focused Vitest passed (5 files, 13 tests); focused page integration passed (2 files, 8 tests). Full unit remains blocked by the intentionally stale generated-operation inventory and an unrelated useTeamFormationWorkspace timeout; full integration has pre-existing media/profile-revision and API-envelope assertion failures; BDD could not start because localhost:3100 is already in use. No remote D1, deploy, or push.
+
+Exact local candidate dfe6fb6d0c4f972b9a0040be71e6bcfe0501d483: MCP generators clean; bun run lint and bun run typecheck pass; unit 155 files/1047 tests; integration 40 files/455 tests; Cloudflare build pass; workflow topology 2/2; focused Chromium topology 22/22 with zero API, console, or page errors, usable timings about 171-655ms, Settings local editor with zero CDN requests, and one intentional cancellation abort; full BDD 85/85 and destructive BDD 2/2. No remote deployment, CI, test URL, CF-Cache-Status, or remote cache evidence exists. Independent review found no P0, P1, or P2; nonblocking P3: an invalid or denied entry-family tab query may remain in the URL after a 403/404 entry response, without a data leak.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Added the global named page executor/route registry and concrete runtime page contracts while preserving generated operation files for the foundation integrator. Verified lint, typecheck, focused contract/topology tests, and focused page integrations; broader pre-existing/generated handoff failures remain documented.
+The shared account-event page foundation and registry ownership are complete at dfe6fb6d. Concrete page contracts, one authorization/database execution boundary, signal-aware protected requests, explicit parent ownership, and generated route metadata are integrated and clean. The final local validation gate passed; no remote deployment or CI evidence is claimed.
 <!-- SECTION:FINAL_SUMMARY:END -->

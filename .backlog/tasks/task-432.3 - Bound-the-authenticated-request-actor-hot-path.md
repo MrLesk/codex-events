@@ -1,11 +1,11 @@
 ---
 id: TASK-432.3
 title: Bound the authenticated request actor hot path
-status: In Progress
+status: Done
 assignee:
   - '@luna-auth'
 created_date: '2026-08-19 06:22'
-updated_date: '2026-08-19 18:10'
+updated_date: '2026-08-20 21:47'
 labels: []
 dependencies:
   - TASK-432.1
@@ -76,10 +76,12 @@ Verification evidence: actor-hot-path integration tests cover one first-primary 
 Correction scope reopened after review: remove the remaining Auth0 userinfo hot path, add negative no-network coverage, and test the real link-completion route with durable persistence. Preserve 14ad8b77, 0d7d908f, and 227e96ea; do not touch Poincare-owned bootstrap/client conversion files or D1 session files unless a test requires it.
 
 Correction validation: ordinary actor resolution no longer contains Auth0 /userinfo, access-token, or fetch code; the focused actor unit cases cover false and missing email_verified claims with an unpersisted subject and assert no token/fetch calls. The real /auth/link/complete integration route persists the primary and secondary subjects through two first-primary request sessions and succeeds on a repeated completion without duplicate identities. Full gates pass: lint, typecheck, unit 129 files / 944 tests, integration 32 files / 398 tests, plus focused actor/link unit and integration tests. Focused authenticated BDD fixture bootstrap and bddgen succeeded, but Playwright could not start because another Nuxt process owns localhost:3100 (PID 50007); task remains In Progress pending browser validation. No remote database, deployment, or push.
+
+Exact local candidate dfe6fb6d0c4f972b9a0040be71e6bcfe0501d483: MCP generators clean; bun run lint and bun run typecheck pass; unit 155 files/1047 tests; integration 40 files/455 tests; Cloudflare build pass; workflow topology 2/2; focused Chromium topology 22/22 with zero API, console, or page errors, usable timings about 171-655ms, Settings local editor with zero CDN requests, and one intentional cancellation abort; full BDD 85/85 and destructive BDD 2/2. No remote deployment, CI, test URL, CF-Cache-Status, or remote cache evidence exists. Independent review found no P0, P1, or P2; nonblocking P3: an invalid or denied entry-family tab query may remain in the URL after a 403/404 entry response, without a data leak.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Corrected TASK-432.3 structural regressions: durable linked-identity persistence now occurs in account-link completion, actor/consent/permission reads use one strong request-scoped D1 session, first-admin promotion is confined to registration/setup, and fake-D1 topology instrumentation enforces bounded reads. Verified with full lint, typecheck, 942 unit tests, 397 integration tests, and focused Auth0/link tests; local BDD startup remained blocked by another worker's Nuxt lock.
+Bounded actor resolution and account-link lifecycle behavior are complete at dfe6fb6d. Strong request-scoped actor, consent, and permission reads, no ordinary Auth0 network reconciliation, linked-identity persistence, and negative no-network coverage are validated by the final local lint/type/unit/integration/BDD gate. No remote evidence is claimed.
 <!-- SECTION:FINAL_SUMMARY:END -->

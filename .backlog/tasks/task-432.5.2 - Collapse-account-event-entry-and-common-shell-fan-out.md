@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@luna-workspace'
 created_date: '2026-08-19 19:52'
-updated_date: '2026-08-19 21:25'
+updated_date: '2026-08-20 21:47'
 labels:
   - architecture
   - performance
@@ -88,23 +88,23 @@ Validation
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The account event entry performs one shared bootstrap plus one entry page read and no longer performs separate event, account-events, participation, talk-proposal, or credits reads.
-- [ ] #2 The prizes tab performs one page-shaped read containing its first-render prizes/outcomes data and does not fan out to prizes, winners, published projects, or rank endpoints.
-- [ ] #3 Credits and talk panels are typed prop/event consumers with no feature-local bootstrap or duplicate onMounted read.
-- [ ] #4 Entry and prizes routes enforce event visibility and authorization server-side through one actor, one authorization resolution, and one strong request-scoped D1 session.
-- [ ] #5 Rapid slug/tab changes cancel prior requests and stale responses never update the active workspace.
+- [x] #1 The account event entry performs one shared bootstrap plus one entry page read and no longer performs separate event, account-events, participation, talk-proposal, or credits reads.
+- [x] #2 The prizes tab performs one page-shaped read containing its first-render prizes/outcomes data and does not fan out to prizes, winners, published projects, or rank endpoints.
+- [x] #3 Credits and talk panels are typed prop/event consumers with no feature-local bootstrap or duplicate onMounted read.
+- [x] #4 Entry and prizes routes enforce event visibility and authorization server-side through one actor, one authorization resolution, and one strong request-scoped D1 session.
+- [x] #5 Rapid slug/tab changes cancel prior requests and stale responses never update the active workspace.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Canonical docs were updated or confirmed unchanged
-- [ ] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
-- [ ] #4 Tests were added or updated when behavior changed
-- [ ] #5 Test gaps are documented when automation is not practical
-- [ ] #6 Config and developer workflow docs were updated when setup changed
-- [ ] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #1 Canonical docs were updated or confirmed unchanged
+- [x] #2 Code behavior matches canonical docs
+- [x] #3 Relevant validation commands pass
+- [x] #4 Tests were added or updated when behavior changed
+- [x] #5 Test gaps are documented when automation is not practical
+- [x] #6 Config and developer workflow docs were updated when setup changed
+- [x] #7 Auth and permissions changes follow the documented platform model
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -125,10 +125,12 @@ Started TASK-432.5.2 in the shared worktree. This task owns only the entry/prize
 Implemented local entry/prizes page contracts and removed the account-event entry/prizes fan-out from the owned page, credits panel, and talk panels. Entry navigation is one shared bootstrap plus GET /api/account/events/:slug/entry; prizes is one lazy GET /api/account/events/:slug/prizes. Integrator metadata for TASK-432.5.1: id=get.account.events.by-slug.entry, toolName=get_account_events_by_slug_entry, description=GET /api/account/events/:slug/entry, rest={method:'GET',path:'/api/account/events/:slug/entry'}, input={params:routeSlugParamsSchema}, output=data, capabilities=[platform_user], effect=read; id=get.account.events.by-slug.prizes, toolName=get_account_events_by_slug_prizes, description=GET /api/account/events/:slug/prizes, rest={method:'GET',path:'/api/account/events/:slug/prizes'}, input={params:routeSlugParamsSchema}, output=data, capabilities=[platform_user], effect=read. Validation: owned eslint passed; git diff --check passed; focused unit contracts passed 2 files/6 tests. Full typecheck is blocked by concurrent server/database/non-http.ts TS7022 and AppDatabase.get errors in server/domains/mcp/tokens.ts and server/domains/talk-proposals/index.ts. Full unit is 985 passed/8 failed; full integration is 90 passed/328 failed; focused integration is 4 failed before route resolution at auth-identities.ts because the concurrent local AppDatabase facade has no terminal .get(). BDD is 7 passed/56 failed, with authenticated session/app initialization blocked by the same local actor/database transition. No remote D1, deploy, or push used.
 
 Local commit: 8f88a36b. No push, deploy, remote D1, generated catalog, media, foundation, or sibling files were changed by this task. The page and panels use concrete entry/prizes types; simplified claiming files and rank notice remain unchanged because their reads are outside this entry/prizes fan-out and their settings/workspace hosts are owned by sibling tasks.
+
+Exact local candidate dfe6fb6d0c4f972b9a0040be71e6bcfe0501d483: MCP generators clean; bun run lint and bun run typecheck pass; unit 155 files/1047 tests; integration 40 files/455 tests; Cloudflare build pass; workflow topology 2/2; focused Chromium topology 22/22 with zero API, console, or page errors, usable timings about 171-655ms, Settings local editor with zero CDN requests, and one intentional cancellation abort; full BDD 85/85 and destructive BDD 2/2. No remote deployment, CI, test URL, CF-Cache-Status, or remote cache evidence exists. Independent review found no P0, P1, or P2; nonblocking P3: an invalid or denied entry-family tab query may remain in the URL after a 403/404 entry response, without a data leak.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Implemented TASK-432.5.2 in local commit 8f88a36b. Account-event entry now uses one shared bootstrap plus one /api/account/events/:slug/entry read; prizes is one lazy /api/account/events/:slug/prizes read; credits and talk panels consume typed props and emit mutation refreshes. Owned lint and focused contract/topology unit tests pass. Full typecheck, unit, integration, and authenticated BDD remain blocked by concurrent TASK-432.5.1 local AppDatabase facade errors at legacy terminal .get() call sites; exact totals are recorded in the implementation notes.
+Account-event entry and prizes are complete at dfe6fb6d. Entry uses one bootstrap plus one entry page read, prizes is a lazy page-shaped read, credits and talk panels consume typed props and events, and protected navigation is cancellation-safe. The final local lint/type/unit/integration/build/browser/BDD gate passed; no remote deployment or CI evidence is claimed.
 <!-- SECTION:FINAL_SUMMARY:END -->

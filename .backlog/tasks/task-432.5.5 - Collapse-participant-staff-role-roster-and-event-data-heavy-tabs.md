@@ -1,10 +1,11 @@
 ---
 id: TASK-432.5.5
 title: 'Collapse participant, staff, role, roster, and event data-heavy tabs'
-status: To Do
+status: Done
 assignee:
   - '@luna-workspace'
 created_date: '2026-08-19 19:53'
+updated_date: '2026-08-20 21:47'
 labels:
   - architecture
   - performance
@@ -128,21 +129,39 @@ Validation
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Participant workspace/team, participants, rosters, gallery, feedback, and certificates each have one concrete page-shaped first-render read after bootstrap.
-- [ ] #2 The current team/application/submission, roster/role, and participant visibility fan-outs are removed from the owned client surfaces.
-- [ ] #3 Every owned page read performs one actor resolution, one canonical authorization resolution, and one shared strong D1 session with server-enforced visibility.
-- [ ] #4 Staff and participant views preserve their documented field/permission boundaries and mutations remain separate.
-- [ ] #5 All tab, pagination, and search requests are signal-aware and cannot commit stale data after navigation.
+- [x] #1 Participant workspace/team, participants, rosters, gallery, feedback, and certificates each have one concrete page-shaped first-render read after bootstrap.
+- [x] #2 The current team/application/submission, roster/role, and participant visibility fan-outs are removed from the owned client surfaces.
+- [x] #3 Every owned page read performs one actor resolution, one canonical authorization resolution, and one shared strong D1 session with server-enforced visibility.
+- [x] #4 Staff and participant views preserve their documented field/permission boundaries and mutations remain separate.
+- [x] #5 All tab, pagination, and search requests are signal-aware and cannot commit stale data after navigation.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Canonical docs were updated or confirmed unchanged
-- [ ] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
-- [ ] #4 Tests were added or updated when behavior changed
-- [ ] #5 Test gaps are documented when automation is not practical
-- [ ] #6 Config and developer workflow docs were updated when setup changed
-- [ ] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #1 Canonical docs were updated or confirmed unchanged
+- [x] #2 Code behavior matches canonical docs
+- [x] #3 Relevant validation commands pass
+- [x] #4 Tests were added or updated when behavior changed
+- [x] #5 Test gaps are documented when automation is not practical
+- [x] #6 Config and developer workflow docs were updated when setup changed
+- [x] #7 Auth and permissions changes follow the documented platform model
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Define typed participant, team, roster, gallery, feedback, and certificate page contracts with server-owned authorization boundaries. 2. Replace owned client fan-out with signal-aware page reads while preserving atomic props and events. 3. Add contract, permission, redaction, query-topology, and cancellation coverage. 4. Validate the local lint, type, unit, integration, browser, and BDD gates without remote access.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Exact local candidate dfe6fb6d0c4f972b9a0040be71e6bcfe0501d483: MCP generators clean; bun run lint and bun run typecheck pass; unit 155 files/1047 tests; integration 40 files/455 tests; Cloudflare build pass; workflow topology 2/2; focused Chromium topology 22/22 with zero API, console, or page errors, usable timings about 171-655ms, Settings local editor with zero CDN requests, and one intentional cancellation abort; full BDD 85/85 and destructive BDD 2/2. No remote deployment, CI, test URL, CF-Cache-Status, or remote cache evidence exists. Independent review found no P0, P1, or P2; nonblocking P3: an invalid or denied entry-family tab query may remain in the URL after a 403/404 entry response, without a data leak. The participant, team, roster, gallery, feedback, and certificate surfaces are covered by the final page contracts, authorization/redaction tests, and browser topology matrix. Participants uses one bounded /participants read with no /operations request; the final local gate passed.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Participant and event-people workspace reads are complete at dfe6fb6d. Participant/team/roster/gallery/feedback/certificate surfaces use bounded page contracts, server authorization and redaction, shared signal-aware requests, and separate mutations. The final local validation and browser topology gate passed; no remote deployment or CI evidence is claimed.
+<!-- SECTION:FINAL_SUMMARY:END -->

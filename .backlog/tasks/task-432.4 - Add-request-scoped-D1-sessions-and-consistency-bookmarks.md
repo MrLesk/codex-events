@@ -1,11 +1,11 @@
 ---
 id: TASK-432.4
 title: Add request-scoped D1 sessions and consistency bookmarks
-status: In Progress
+status: Done
 assignee:
   - '@luna-d1'
 created_date: '2026-08-19 06:22'
-updated_date: '2026-08-19 22:29'
+updated_date: '2026-08-20 21:47'
 labels: []
 dependencies:
   - TASK-432.1
@@ -39,14 +39,14 @@ Introduce a shared request-scoped Cloudflare D1 Sessions access path with strong
 - [x] #10 Strong consistency is the only production HTTP database path; no generic consistency option or public-replica accessor is exposed; actor, consent, permission, lifecycle, mutation, and read-after-write paths use request-scoped primary or bookmarked sessions.
 - [x] #11 The returned application database does not expose a public Drizzle $client or raw binding/session capabilities; raw prepare and batch access is available only through the request-scoped session accessor.
 - [x] #12 HTTP-triggered queue, startup, and recovery paths cannot construct a standalone non-HTTP database; they receive the request-scoped AppDatabase or use an explicit non-HTTP execution entrypoint.
-- [ ] #13 AppDatabase blocks raw D1 binding/client/session construction and any capability that can create, replace, or bypass the request session/bookmark; harmless Drizzle builder metadata such as dialect, $dynamic, and toSQL may remain reachable when it cannot reach those capabilities.
+- [x] #13 AppDatabase blocks raw D1 binding/client/session construction and any capability that can create, replace, or bypass the request session/bookmark; harmless Drizzle builder metadata such as dialect, $dynamic, and toSQL may remain reachable when it cannot reach those capabilities.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [x] #1 Canonical docs were updated or confirmed unchanged
 - [x] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
+- [x] #3 Relevant validation commands pass
 - [x] #4 Tests were added or updated when behavior changed
 - [x] #5 Test gaps are documented when automation is not practical
 - [x] #6 Config and developer workflow docs were updated when setup changed
@@ -123,6 +123,8 @@ Adversarial review of 2d4fd4d found two P1 runtime leaks: getOwnPropertyDescript
 Narrow correction 2026-08-20: removed transaction from AppDatabase, wrapped configurable own-property descriptor values while preserving Proxy invariants, enforced fake-D1 statement ownership through bind, and serialized atomic batches to prevent rollback clobbering.
 
 Validation: focused D1 integration passed 2 files/15 tests; focused database unit/boundary passed 2 files/18 tests; targeted ESLint and git diff --check passed. Full nuxt typecheck remains blocked by concurrent TASK-432.5 page/operation-registry errors; no BDD was run.
+
+Exact local candidate dfe6fb6d0c4f972b9a0040be71e6bcfe0501d483: MCP generators clean; bun run lint and bun run typecheck pass; unit 155 files/1047 tests; integration 40 files/455 tests; Cloudflare build pass; workflow topology 2/2; focused Chromium topology 22/22 with zero API, console, or page errors, usable timings about 171-655ms, Settings local editor with zero CDN requests, and one intentional cancellation abort; full BDD 85/85 and destructive BDD 2/2. No remote deployment, CI, test URL, CF-Cache-Status, or remote cache evidence exists. Independent review found no P0, P1, or P2; nonblocking P3: an invalid or denied entry-family tab query may remain in the URL after a 403/404 entry response, without a data leak.
 <!-- SECTION:NOTES:END -->
 
 ## Comments
@@ -197,5 +199,5 @@ Fresh corrective review found descriptor and transaction capability leaks. Persi
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Closed TASK-432.4 nested D1 capability and HTTP queue-recovery boundaries. AppDatabase is a private Drizzle facade with fail-closed nested capability paths, safe Drizzle helper identity, transparent result shapes, builder execute, and same-session batch/query behavior; HTTP recovery receives getDatabase(event), and non-HTTP construction is limited to explicit queue or scheduled plugins with source-boundary coverage. Verified with lint, 136 unit files and 970 tests, 32 integration files and 400 tests, focused capability/result/session regressions, and git diff --check. Task remains In Progress because concurrent dirty app typecheck errors remain and BDD was skipped due port 3100 occupancy. No push or remote access.
+Request-scoped D1 sessions, bookmark transport, fake-D1 consistency, and the fail-closed AppDatabase capability boundary are complete at dfe6fb6d. The final local gate passed: lint, typecheck, unit 155/1047, integration 40/455, Cloudflare build, full BDD 85/85, destructive BDD 2/2, and workflow topology 2/2. No raw client or session bypass remains in the application database. Remote deployment and CI evidence remain outside this task.
 <!-- SECTION:FINAL_SUMMARY:END -->

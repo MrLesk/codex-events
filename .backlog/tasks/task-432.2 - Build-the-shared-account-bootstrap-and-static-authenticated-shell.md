@@ -1,11 +1,11 @@
 ---
 id: TASK-432.2
 title: Build the shared account bootstrap and static authenticated shell
-status: In Progress
+status: Done
 assignee:
   - '@luna-bootstrap'
 created_date: '2026-08-19 06:22'
-updated_date: '2026-08-19 19:25'
+updated_date: '2026-08-20 21:47'
 labels: []
 dependencies:
   - TASK-432.1
@@ -82,10 +82,12 @@ Validation: bun run lint passed; bun run typecheck passed; bun run test:unit pas
 TASK-432.2 reopened for corrective architecture work. TASK-432.5 owns the account-event fan-out collapse and page-shaped endpoint; this pass must not implement it. Final browser topology gate remains pending in TASK-432.7.
 
 Corrective architecture validation: protected async-data uses the shared authorization fingerprint/generation boundary; protected reads carry AbortSignal through account-event bootstrap, judging, team formation, and team submission paths; authenticated raw fetches use the shared client; transport/session/cache/public payload tests pass. Account-event fan-out remains explicitly deferred to TASK-432.5. Local validation passed: bun run lint, bun run typecheck, bun run test:unit (130 files / 952 tests), bun run test:integration (32 files / 399 tests), non-destructive BDD (62/62), and destructive BDD (2/2). TASK-432.7 browser topology gate remains pending, so this task stays In Progress.
+
+Exact local candidate dfe6fb6d0c4f972b9a0040be71e6bcfe0501d483: MCP generators clean; bun run lint and bun run typecheck pass; unit 155 files/1047 tests; integration 40 files/455 tests; Cloudflare build pass; workflow topology 2/2; focused Chromium topology 22/22 with zero API, console, or page errors, usable timings about 171-655ms, Settings local editor with zero CDN requests, and one intentional cancellation abort; full BDD 85/85 and destructive BDD 2/2. No remote deployment, CI, test URL, CF-Cache-Status, or remote cache evidence exists. Independent review found no P0, P1, or P2; nonblocking P3: an invalid or denied entry-family tab query may remain in the URL after a 403/404 entry response, without a data leak.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Corrective TASK-432.2 architecture findings are implemented and validated locally. The shared authorization cache boundary scopes protected client data, protected reads use cancellation signals, authenticated requests use the shared API client, and session/public-cache tests cover the required invariants. Account-event page-shaped fan-out remains TASK-432.5 scope. TASK-432.2 remains In Progress pending the final real-browser request-topology gate in TASK-432.7.
+Shared account bootstrap and static authenticated shells are complete at dfe6fb6d. The exact local gate is green: lint, typecheck, unit 155/1047, integration 40/455, Cloudflare build, workflow topology 2/2, focused browser topology 22/22, full BDD 85/85, and destructive BDD 2/2. No remote deployment or CI evidence is claimed.
 <!-- SECTION:FINAL_SUMMARY:END -->
