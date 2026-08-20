@@ -28,6 +28,7 @@ import type {
   AccountEventJudgingPage,
   AccountJudgeAssignmentWorkspacePage
 } from '#shared/domains/events/account-event-judging-page'
+import type { AccountEventSettingsPage } from '#shared/domains/events/account-event-settings-page'
 import {
   buildVersionedEventImageUrl,
   formatAccountEventHeaderSummary,
@@ -132,12 +133,24 @@ if (!slug.value) {
 
 const apiFetch = useApiClient()
 const toast = useToast()
-const entryPageRequest = useAccountEventPageRequest<AccountEventEntryPage>(slug, 'entry')
+const requestedTab = computed(() => normalizeTabQueryValue(route.query.tab))
+const entryPageRequest = useAccountEventPageRequest<AccountEventEntryPage>(slug, 'entry', {
+  query: computed(() => requestedTab.value === 'details'
+    ? { includeAdminEventConfiguration: true }
+    : {})
+})
 const prizesPageRequest = useAccountEventPageRequest<AccountEventPrizesPage>(slug, 'prizes', {
-  immediate: false
+  immediate: false,
+  query: computed(() => requestedTab.value === 'prizes'
+    ? { includeAdminEventConfiguration: true }
+    : {})
 })
 const entryPage = computed(() => entryPageRequest.data.value?.page ?? null)
 const prizesPage = computed(() => prizesPageRequest.data.value?.page ?? null)
+const prizesPageIsLoading = computed(() => prizesPageRequest.pending.value)
+const prizesPageErrorMessage = computed(() => prizesPageRequest.error.value
+  ? normalizeParticipantApiError(prizesPageRequest.error.value).message
+  : '')
 const event = computed<AccountWorkspaceEvent | null>(() => entryPage.value?.event ?? null)
 const accessRecord = shallowRef<AccountEventAccessRecord | null>(null)
 const participationRecord = shallowRef<AccountEventEntryParticipation | null>(null)
@@ -149,6 +162,9 @@ const talkProposalReviews = shallowRef<AccountEventEntryTalkProposalReview[]>([]
 const participantRank = shallowRef<AccountEventEntryRankSummary | null>(null)
 const isEntryPending = computed(() => entryPageRequest.pending.value)
 const entryError = computed(() => entryPageRequest.error.value)
+const entryErrorMessage = computed(() => entryError.value
+  ? normalizeParticipantApiError(entryError.value).message
+  : '')
 watch(entryPage, (page) => {
   if (!page) {
     return
@@ -401,6 +417,24 @@ const visibleTabs = computed(() =>
 const activeSection = computed<AccountEventWorkspaceTab>(() =>
   resolveTabQueryValue(route.query.tab, availableTabs.value, 'overview')
 )
+const settingsPageRequest = useAccountEventPageRequest<AccountEventSettingsPage>(slug, 'settings', {
+  immediate: false
+})
+const settingsPage = computed(() => settingsPageRequest.data.value?.page ?? null)
+const settingsPageIsLoading = computed(() => settingsPageRequest.pending.value)
+const settingsPageErrorMessage = computed(() => settingsPageRequest.error.value
+  ? normalizeParticipantApiError(settingsPageRequest.error.value).message
+  : '')
+const shouldLoadSettingsPage = computed(() => canAdmin.value && activeSection.value === 'settings')
+watch(shouldLoadSettingsPage, (isEnabled, wasEnabled) => {
+  if (wasEnabled && !isEnabled) {
+    settingsPageRequest.abort()
+  }
+
+  if (isEnabled && settingsPageRequest.status.value === 'idle') {
+    void settingsPageRequest.refresh()
+  }
+}, { immediate: true })
 const selectedTeamSlug = computed(() => normalizeTeamSlugQueryValue(route.query.team))
 const selectedJudgeAssignmentId = computed(() => normalizeJudgeAssignmentIdQueryValue(route.query.assignment))
 const workspacePageRequest = useAccountEventPageRequest<AccountEventWorkspacePage>(slug, 'workspace', {
@@ -600,6 +634,10 @@ async function refreshAccountEvent() {
   }
 
   await entryPageRequest.refresh()
+}
+
+async function refreshSettingsPage() {
+  await settingsPageRequest.refresh()
 }
 const accountTabListRef = ref<HTMLElement | null>(null)
 const activeSectionSeo = computed(() => getAccountEventSeoContent(activeSection.value, event.value?.name ?? ''))
@@ -1598,6 +1636,11 @@ useSeoMeta({
         <LazyAccountEventAdminSettingsPanel
           v-if="tabAccess.showPrizeConfiguration"
           :event-id="workspaceEventId"
+          :event-data="prizesPage?.adminSettingsEvent ?? null"
+          :prizes-data="prizesPage?.prizes ?? []"
+          :can-manage="canAdmin"
+          :is-loading="prizesPageIsLoading"
+          :load-error-message="prizesPageErrorMessage"
           :show-program-settings="false"
           :show-terms-management="false"
           :show-criteria-configuration="false"
@@ -1636,6 +1679,10 @@ useSeoMeta({
         <LazyAccountEventAdminSettingsPanel
           v-if="tabAccess.showAgendaConfigurationInDetails"
           :event-id="workspaceEventId"
+          :event-data="entryPage?.adminSettingsEvent ?? null"
+          :can-manage="canAdmin"
+          :is-loading="isEntryPending"
+          :load-error-message="entryErrorMessage"
           program-settings-mode="details"
           :show-terms-management="false"
           :show-criteria-configuration="false"
@@ -1857,11 +1904,15 @@ useSeoMeta({
       >
         <LazyAccountEventAdminSettingsPanel
           :event-id="workspaceEventId"
+          :page="settingsPage"
+          :can-manage="canAdmin"
+          :is-loading="settingsPageIsLoading"
+          :load-error-message="settingsPageErrorMessage"
           program-settings-mode="settings"
           :show-terms-management="true"
           :show-criteria-configuration="true"
           :show-prize-configuration="false"
-          @updated="refreshAccountEvent"
+          @updated="refreshSettingsPage"
         />
       </section>
     </AppContainer>

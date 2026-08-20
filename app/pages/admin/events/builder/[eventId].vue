@@ -22,6 +22,8 @@ const settingsPage = computed(() => settingsRequest.data.value?.page ?? null)
 const currentEvent = computed<EventRecord | null>(() => settingsPage.value?.event ?? null)
 const currentApplicationTerms = computed(() => settingsPage.value?.terms.application.current ?? null)
 const currentWinnerTerms = computed(() => settingsPage.value?.terms.winner.current ?? null)
+const initialSimplifiedClaimingStatus = computed(() => settingsPage.value?.simplifiedClaiming ?? null)
+const hasExistingTalkProposal = computed(() => settingsPage.value?.talkProposals.hasExistingProposal ?? false)
 
 const builder = useEventBuilder({
   mode: 'edit',
@@ -245,12 +247,15 @@ useSeoMeta({
       :current-application-terms="currentApplicationTerms"
       :current-winner-terms="currentWinnerTerms"
       :saving-terms-document-type="savingTermsDocumentType"
+      :initial-simplified-claiming-status="initialSimplifiedClaimingStatus"
+      :has-existing-talk-proposal="hasExistingTalkProposal"
       @submit="saveEvent"
       @upload-background-image="file => uploadEventImage('background', file)"
       @remove-background-image="removeEventImage('background')"
       @upload-banner-image="file => uploadEventImage('banner', file)"
       @remove-banner-image="removeEventImage('banner')"
       @save-terms="saveTerms"
+      @updated="settingsRequest.refresh"
     />
   </AppContainer>
 </template>

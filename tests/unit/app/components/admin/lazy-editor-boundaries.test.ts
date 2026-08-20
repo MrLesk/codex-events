@@ -31,8 +31,10 @@ describe('local editor and sortable loading boundaries', () => {
   test('loads sortable only through the local interaction boundary', () => {
     expect(settingsPanelSource).toContain('await import(\'sortablejs\')')
     expect(settingsPanelSource).toContain('onBeforeUnmount')
-    expect(settingsPanelSource).toContain('settingsRequest.abort()')
-    expect(settingsPanelSource).toContain('useAccountEventPageRequest<AccountEventSettingsPage>')
+    expect(settingsPanelSource).toContain('page?: AccountEventSettingsPage | null')
+    expect(settingsPanelSource).toContain('emit(\'updated\')')
+    expect(settingsPanelSource).not.toContain('settingsRequest.abort()')
+    expect(settingsPanelSource).not.toContain('useAccountEventPageRequest')
     expect(settingsPanelSource).not.toContain('useAdminEventSettingsWorkspace')
     expect(settingsPanelSource).not.toContain('workspace.refreshWorkspace')
     expect(builderPageSource).toContain('useAccountEventPageRequest<AccountEventSettingsPage>')

@@ -10,6 +10,10 @@ import type {
   AccountOverviewSubmissionStatus,
   AccountOverviewTeamSummary
 } from '#shared/domains/account/account-overview-page'
+import {
+  accountEventSettingsEventSchema,
+  type AccountEventSettingsEvent
+} from './account-event-settings-page'
 
 export const accountEventEntryPagePath = '/api/account/events/:slug/entry' as const
 
@@ -247,6 +251,7 @@ export interface AccountEventEntryTabVisibility {
 
 export interface AccountEventEntryPage {
   event: AccountEventEntryEvent
+  adminSettingsEvent: AccountEventSettingsEvent | null
   access: AccountEventEntryAccess | null
   participation: AccountEventEntryParticipation | null
   participantCredits: AccountEventEntryParticipantCreditOffer[]
@@ -579,6 +584,7 @@ const tabVisibilitySchema = z.object({
 
 export const accountEventEntryPageSchema = z.object({
   event: accountEventEntryEventSchema,
+  adminSettingsEvent: accountEventSettingsEventSchema.nullable(),
   access: accessSchema.nullable(),
   participation: participationSchema.nullable(),
   participantCredits: z.array(participantCreditOfferSchema),

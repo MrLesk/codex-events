@@ -22,6 +22,34 @@ const participantTeamPanelSource = readFileSync(
   new URL('../../../../app/components/account/events/AccountEventParticipantTeamPanel.vue', import.meta.url),
   'utf8'
 )
+const settingsPanelSource = readFileSync(
+  new URL('../../../../app/components/account/events/AccountEventAdminSettingsPanel.vue', import.meta.url),
+  'utf8'
+)
+const talkControlSource = readFileSync(
+  new URL('../../../../app/components/admin/EventTalkProposalControl.vue', import.meta.url),
+  'utf8'
+)
+const simplifiedClaimingPanelSource = readFileSync(
+  new URL('../../../../app/components/account/events/AccountEventSimplifiedClaimingPanel.vue', import.meta.url),
+  'utf8'
+)
+const configFormSource = readFileSync(
+  new URL('../../../../app/components/admin/EventConfigForm.vue', import.meta.url),
+  'utf8'
+)
+const builderPageSource = readFileSync(
+  new URL('../../../../app/pages/admin/events/builder/[eventId].vue', import.meta.url),
+  'utf8'
+)
+const builderWorkspaceSource = readFileSync(
+  new URL('../../../../app/components/admin/builder/AdminBuilderWorkspace.vue', import.meta.url),
+  'utf8'
+)
+const builderSettingsBoardSource = readFileSync(
+  new URL('../../../../app/components/admin/builder/organisms/AdminBuilderSettingsBoard.vue', import.meta.url),
+  'utf8'
+)
 
 describe('account event parent page request topology', () => {
   test('owns the competition page reads and passes typed page state down', () => {
@@ -44,5 +72,31 @@ describe('account event parent page request topology', () => {
     expect(teamsServerSource).toContain('query.selectedTeamSlug')
     expect(teamsServerSource).toContain('selectedTeam: selectedTeamDetail')
     expect(participantTeamPanelSource).not.toContain('findVisibleTeamBySlug')
+  })
+
+  test('owns the settings read and keeps admin controls on props-down/events-up boundaries', () => {
+    expect(pageSource).toContain('useAccountEventPageRequest<AccountEventSettingsPage>(slug, \'settings\'')
+    expect(pageSource).toContain(':page="settingsPage"')
+    expect(pageSource).toContain('@updated="refreshSettingsPage"')
+    expect(pageSource).toContain('includeAdminEventConfiguration: true')
+    expect(settingsPanelSource).not.toContain('useAccountEventPageRequest')
+    expect(settingsPanelSource).not.toContain('useRoute()')
+    expect(settingsPanelSource).not.toContain('eventSlug')
+    expect(settingsPanelSource).toContain('page?: AccountEventSettingsPage | null')
+    expect(settingsPanelSource).toContain('emit(\'updated\')')
+    expect(talkControlSource).toContain('hasExistingProposal')
+    expect(talkControlSource).not.toContain('useApiClient')
+    expect(talkControlSource).not.toContain('onMounted')
+    expect(simplifiedClaimingPanelSource).toContain('initialStatus: AccountEventSimplifiedClaimingStatus')
+    expect(simplifiedClaimingPanelSource).not.toContain('useApiFetch')
+    expect(simplifiedClaimingPanelSource).not.toContain('statusUrl')
+    expect(configFormSource).toContain('initialSimplifiedClaimingStatus')
+    expect(configFormSource).toContain('hasExistingTalkProposal')
+    expect(configFormSource).toContain('emit(\'updated\')')
+    expect(builderPageSource).toContain('const hasExistingTalkProposal = computed(() => settingsPage.value?.talkProposals.hasExistingProposal ?? false)')
+    expect(builderWorkspaceSource).toContain('hasExistingTalkProposal?: boolean')
+    expect(builderWorkspaceSource).toContain(':has-existing-talk-proposal="hasExistingTalkProposal"')
+    expect(builderSettingsBoardSource).toContain('hasExistingTalkProposal?: boolean')
+    expect(builderSettingsBoardSource).toContain(':has-existing-proposal="props.hasExistingTalkProposal ?? false"')
   })
 })

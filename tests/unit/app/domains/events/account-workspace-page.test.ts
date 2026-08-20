@@ -54,4 +54,19 @@ describe('account-event page contract boundary', () => {
       '/api/account/events/fixture%20event/judging/assignments/assignment%2F1'
     )
   })
+
+  test('makes active admin configuration state part of entry and prizes contracts', () => {
+    expect(buildAccountEventPagePath('fixture-event', 'entry', {
+      includeAdminEventConfiguration: true
+    })).toBe('/api/account/events/fixture-event/entry?includeAdminEventConfiguration=true')
+    expect(buildAccountEventPagePath('fixture-event', 'prizes', {
+      includeAdminEventConfiguration: true
+    })).toBe('/api/account/events/fixture-event/prizes?includeAdminEventConfiguration=true')
+    expect(buildAccountEventPageCacheKey('fixture-event', 'entry', {
+      includeAdminEventConfiguration: true
+    })).not.toBe(buildAccountEventPageCacheKey('fixture-event', 'entry'))
+    expect(buildAccountEventPagePath('fixture-event', 'settings', {
+      includeAdminEventConfiguration: true
+    })).toBe('/api/account/events/fixture-event/settings')
+  })
 })

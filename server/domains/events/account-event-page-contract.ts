@@ -31,7 +31,8 @@ export const accountEventPageParamsSchema = routeSlugParamsSchema.extend({
 })
 
 export const accountEventPageQuerySchema = z.object({
-  selectedTeamSlug: z.string().trim().toLowerCase().min(1).max(120).optional()
+  selectedTeamSlug: z.string().trim().toLowerCase().min(1).max(120).optional(),
+  includeAdminEventConfiguration: z.coerce.boolean().optional()
 }).passthrough()
 
 export type AccountEventPageEvent = Pick<

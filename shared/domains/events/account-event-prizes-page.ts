@@ -5,6 +5,10 @@ import type {
   AccountOverviewEventType,
   AccountOverviewOutcomeSummary
 } from '#shared/domains/account/account-overview-page'
+import {
+  accountEventSettingsEventSchema,
+  type AccountEventSettingsEvent
+} from './account-event-settings-page'
 
 export const accountEventPrizesPagePath = '/api/account/events/:slug/prizes' as const
 
@@ -130,6 +134,7 @@ export interface AccountEventWinner extends AccountEventPublishedProject {
 
 export interface AccountEventPrizesPage {
   event: AccountEventPrizesEvent
+  adminSettingsEvent: AccountEventSettingsEvent | null
   prizes: AccountEventPrize[]
   winners: AccountEventWinner[]
   publishedProjects: AccountEventPublishedProject[]
@@ -148,6 +153,7 @@ export const accountEventPrizesPageSchema = z.object({
     eventType: eventTypeSchema,
     state: eventStateSchema
   }),
+  adminSettingsEvent: accountEventSettingsEventSchema.nullable(),
   prizes: z.array(prizeSchema),
   winners: z.array(publishedProjectSchema.extend({
     finalRank: z.number().int(),

@@ -10,6 +10,8 @@ describe('account-event-settings page contract', () => {
       'prizes',
       'terms',
       'roles',
+      'simplifiedClaiming',
+      'talkProposals',
       'builder'
     ])
     expect(Object.keys(accountEventSettingsPageSchema.shape.terms.shape)).toEqual([

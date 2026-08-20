@@ -4,28 +4,16 @@ import qrcode from 'qrcode-generator'
 import AccountEventSimplifiedClaimingStep from './AccountEventSimplifiedClaimingStep.vue'
 import type { ApiDataResponse } from '~/lib/api'
 import { normalizeApiError } from '~/lib/api'
-import { useApiClient, useApiFetch } from '~/composables/useApiClient'
-
-interface SimplifiedClaimingStatus {
-  enabled: boolean
-  ready: boolean
-  locked: boolean
-  redemptionUrl: string
-  issues: Array<{ code: string, message: string }>
-  attendeeCount: number
-  offerCount: number
-  ordinaryOfferCount: number
-  totalInventoryCount: number
-  availableInventoryCount: number
-  simplifiedClaimCount: number
-  offer: { id: string, name: string } | null
-}
+import type { AccountEventSimplifiedClaimingStatus } from '#shared/domains/events/account-event-settings-page'
+import { useApiClient } from '~/composables/useApiClient'
 
 const props = defineProps<{
   eventId: string
+  initialStatus: AccountEventSimplifiedClaimingStatus
 }>()
 const emit = defineEmits<{
   lockChange: [locked: boolean]
+  updated: []
 }>()
 
 const apiFetch = useApiClient()
@@ -37,16 +25,11 @@ const attendeeUploadError = shallowRef('')
 const rewardUploadError = shallowRef('')
 const attendeeFileInput = useTemplateRef<HTMLInputElement>('attendeeFileInput')
 const rewardFileInput = useTemplateRef<HTMLInputElement>('rewardFileInput')
-const statusUrl = computed(() => `/api/events/${props.eventId}/simplified-claiming`)
-const { data, status, error, refresh } = await useApiFetch<ApiDataResponse<SimplifiedClaimingStatus>>(statusUrl, {
-  key: `simplified-claiming-${props.eventId}`
-})
-const claimStatus = computed(() => data.value?.data ?? null)
-watch(() => claimStatus.value?.locked, (locked) => {
-  if (typeof locked === 'boolean') {
-    emit('lockChange', locked)
-  }
+const claimStatus = shallowRef(props.initialStatus)
+watch(() => props.initialStatus, (status) => {
+  claimStatus.value = status
 }, { immediate: true })
+watch(() => claimStatus.value.locked, locked => emit('lockChange', locked), { immediate: true })
 const rewardReady = computed(() => Boolean(
   claimStatus.value?.offer
   && claimStatus.value.totalInventoryCount > 0
@@ -105,7 +88,7 @@ async function importAttendees(event: Event) {
       description: `${response.data.eligibleCount} unique attendee${response.data.eligibleCount === 1 ? '' : 's'} added or refreshed.`,
       color: 'success'
     })
-    await refresh()
+    emit('updated')
   } catch (caught) {
     attendeeUploadError.value = normalizeApiError(caught).message
   } finally {
@@ -140,7 +123,7 @@ async function importRewards(event: Event) {
         : `${response.data.importedCount} private reward link${response.data.importedCount === 1 ? '' : 's'} added.`,
       color: 'success'
     })
-    await refresh()
+    emit('updated')
   } catch (caught) {
     rewardUploadError.value = normalizeApiError(caught).message
   } finally {
@@ -161,7 +144,7 @@ async function deleteRewards() {
       method: 'DELETE'
     })
     toast.add({ title: 'Attendee reward links deleted', color: 'success' })
-    await refresh()
+    emit('updated')
   } catch (caught) {
     rewardUploadError.value = normalizeApiError(caught).message
   } finally {
@@ -223,191 +206,176 @@ function downloadQrSvg() {
 
     <div class="py-4">
       <AppAlert
-        v-if="error"
-        color="error"
+        v-if="claimStatus.locked"
+        color="info"
         variant="soft"
-        title="Unable to load attendee claiming"
-        :description="error.message"
+        title="Claiming is active"
+        description="The event URL and claiming option are locked after the first redemption. You can keep adding unique reward links and approved attendees."
       />
-      <template v-else-if="claimStatus">
-        <AppAlert
-          v-if="claimStatus.locked"
-          color="info"
-          variant="soft"
-          title="Claiming is active"
-          description="The event URL and claiming option are locked after the first redemption. You can keep adding unique reward links and approved attendees."
-        />
-        <AppAlert
-          v-else-if="!claimStatus.ready"
-          color="warning"
-          variant="soft"
-          title="Redemption is not available yet"
-          :description="claimStatus.issues.map(issue => issue.message).join(' ')"
-        />
-        <AppAlert
-          v-else
-          color="success"
-          variant="soft"
-          title="Ready for attendees"
-          description="Approved attendees can redeem while event registration is open."
-        />
+      <AppAlert
+        v-else-if="!claimStatus.ready"
+        color="warning"
+        variant="soft"
+        title="Redemption is not available yet"
+        :description="claimStatus.issues.map(issue => issue.message).join(' ')"
+      />
+      <AppAlert
+        v-else
+        color="success"
+        variant="soft"
+        title="Ready for attendees"
+        description="Approved attendees can redeem while event registration is open."
+      />
 
-        <div class="mt-1 divide-y divide-primary/15">
-          <AccountEventSimplifiedClaimingStep
-            :number="1"
-            title="Redemption QR"
-          >
-            <template #status>
-              <AppBadge
-                color="success"
-                variant="soft"
-              >
-                Ready
-              </AppBadge>
-            </template>
+      <div class="mt-1 divide-y divide-primary/15">
+        <AccountEventSimplifiedClaimingStep
+          :number="1"
+          title="Redemption QR"
+        >
+          <template #status>
+            <AppBadge
+              color="success"
+              variant="soft"
+            >
+              Ready
+            </AppBadge>
+          </template>
 
-            <div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_10rem] md:items-center">
-              <div class="min-w-0">
-                <p class="break-all text-sm text-muted">
-                  {{ claimStatus.redemptionUrl }}
-                </p>
-                <p class="mt-2 text-sm text-toned">
-                  Prepare or share this QR now. Redemption stays unavailable until rewards and approved attendees are ready.
-                </p>
-                <div class="mt-4 flex flex-wrap gap-2">
-                  <AppButton
-                    type="button"
-                    color="neutral"
-                    variant="outline"
-                    @click="copyRedemptionUrl"
-                  >
-                    Copy link
-                  </AppButton>
-                  <AppButton
-                    type="button"
-                    color="neutral"
-                    variant="outline"
-                    @click="downloadQrSvg"
-                  >
-                    Download QR as SVG
-                  </AppButton>
-                </div>
+          <div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_10rem] md:items-center">
+            <div class="min-w-0">
+              <p class="break-all text-sm text-muted">
+                {{ claimStatus.redemptionUrl }}
+              </p>
+              <p class="mt-2 text-sm text-toned">
+                Prepare or share this QR now. Redemption stays unavailable until rewards and approved attendees are ready.
+              </p>
+              <div class="mt-4 flex flex-wrap gap-2">
+                <AppButton
+                  type="button"
+                  color="neutral"
+                  variant="outline"
+                  @click="copyRedemptionUrl"
+                >
+                  Copy link
+                </AppButton>
+                <AppButton
+                  type="button"
+                  color="neutral"
+                  variant="outline"
+                  @click="downloadQrSvg"
+                >
+                  Download QR as SVG
+                </AppButton>
               </div>
-              <img
-                v-if="qrDataUrl"
-                :src="qrDataUrl"
-                alt="Redemption QR code"
-                class="mx-auto size-40 rounded-lg bg-white p-2"
-              >
             </div>
-          </AccountEventSimplifiedClaimingStep>
-
-          <AccountEventSimplifiedClaimingStep
-            :number="2"
-            title="Reward links"
-          >
-            <template #status>
-              <AppBadge
-                :color="claimStatus.availableInventoryCount > 0 ? 'success' : 'warning'"
-                variant="soft"
-              >
-                {{ claimStatus.totalInventoryCount > 0 ? `${claimStatus.availableInventoryCount} available` : 'Not uploaded' }}
-              </AppBadge>
-            </template>
-
-            <p class="text-sm text-muted">
-              Upload a single-column CSV with no header and one HTTPS reward link per row. Add more at any time; links already uploaded are skipped. These links never appear in Credits.
-            </p>
-            <p class="text-sm text-toned">
-              {{ claimStatus.totalInventoryCount }} uploaded · {{ claimStatus.availableInventoryCount }} available · {{ claimStatus.simplifiedClaimCount }} redeemed
-            </p>
-            <input
-              ref="rewardFileInput"
-              type="file"
-              accept=".csv,text/csv"
-              class="sr-only"
-              @change="importRewards"
+            <img
+              v-if="qrDataUrl"
+              :src="qrDataUrl"
+              alt="Redemption QR code"
+              class="mx-auto size-40 rounded-lg bg-white p-2"
             >
-            <div class="flex flex-wrap gap-2">
-              <AppButton
-                type="button"
-                color="primary"
-                variant="soft"
-                :loading="isRewardUploadPending"
-                @click="chooseRewardFile"
-              >
-                Upload reward links
-              </AppButton>
-              <AppButton
-                v-if="claimStatus.offer && claimStatus.simplifiedClaimCount === 0"
-                type="button"
-                color="error"
-                variant="ghost"
-                :loading="isRewardDeletePending"
-                @click="deleteRewards"
-              >
-                Delete reward links
-              </AppButton>
-            </div>
-            <AppAlert
-              v-if="rewardUploadError"
-              color="error"
+          </div>
+        </AccountEventSimplifiedClaimingStep>
+
+        <AccountEventSimplifiedClaimingStep
+          :number="2"
+          title="Reward links"
+        >
+          <template #status>
+            <AppBadge
+              :color="claimStatus.availableInventoryCount > 0 ? 'success' : 'warning'"
               variant="soft"
-              title="Reward links could not be updated"
-              :description="rewardUploadError"
-            />
-          </AccountEventSimplifiedClaimingStep>
-
-          <AccountEventSimplifiedClaimingStep
-            :number="3"
-            title="Approved attendees"
-          >
-            <template #status>
-              <AppBadge
-                :color="claimStatus.attendeeCount > 0 ? 'success' : 'warning'"
-                variant="soft"
-              >
-                {{ claimStatus.attendeeCount > 0 ? `${claimStatus.attendeeCount} eligible` : 'Not uploaded' }}
-              </AppBadge>
-            </template>
-
-            <p class="text-sm text-muted">
-              Upload the final Luma guest CSV during the event. Add more at any time; duplicate emails are treated as one attendee, and later imports refresh names without removing anyone.
-            </p>
-            <input
-              ref="attendeeFileInput"
-              type="file"
-              accept=".csv,text/csv"
-              class="sr-only"
-              @change="importAttendees"
             >
-            <div>
-              <AppButton
-                type="button"
-                color="neutral"
-                variant="outline"
-                :loading="isAttendeeUploadPending"
-                @click="chooseAttendeeFile"
-              >
-                Upload Luma attendees
-              </AppButton>
-            </div>
-            <AppAlert
-              v-if="attendeeUploadError"
-              color="error"
+              {{ claimStatus.totalInventoryCount > 0 ? `${claimStatus.availableInventoryCount} available` : 'Not uploaded' }}
+            </AppBadge>
+          </template>
+
+          <p class="text-sm text-muted">
+            Upload a single-column CSV with no header and one HTTPS reward link per row. Add more at any time; links already uploaded are skipped. These links never appear in Credits.
+          </p>
+          <p class="text-sm text-toned">
+            {{ claimStatus.totalInventoryCount }} uploaded · {{ claimStatus.availableInventoryCount }} available · {{ claimStatus.simplifiedClaimCount }} redeemed
+          </p>
+          <input
+            ref="rewardFileInput"
+            type="file"
+            accept=".csv,text/csv"
+            class="sr-only"
+            @change="importRewards"
+          >
+          <div class="flex flex-wrap gap-2">
+            <AppButton
+              type="button"
+              color="primary"
               variant="soft"
-              title="Attendees could not be imported"
-              :description="attendeeUploadError"
-            />
-          </AccountEventSimplifiedClaimingStep>
-        </div>
-      </template>
-      <p
-        v-else-if="status === 'pending'"
-        class="py-5 text-sm text-muted"
-      >
-        Loading attendee claiming…
-      </p>
+              :loading="isRewardUploadPending"
+              @click="chooseRewardFile"
+            >
+              Upload reward links
+            </AppButton>
+            <AppButton
+              v-if="claimStatus.offer && claimStatus.simplifiedClaimCount === 0"
+              type="button"
+              color="error"
+              variant="ghost"
+              :loading="isRewardDeletePending"
+              @click="deleteRewards"
+            >
+              Delete reward links
+            </AppButton>
+          </div>
+          <AppAlert
+            v-if="rewardUploadError"
+            color="error"
+            variant="soft"
+            title="Reward links could not be updated"
+            :description="rewardUploadError"
+          />
+        </AccountEventSimplifiedClaimingStep>
+
+        <AccountEventSimplifiedClaimingStep
+          :number="3"
+          title="Approved attendees"
+        >
+          <template #status>
+            <AppBadge
+              :color="claimStatus.attendeeCount > 0 ? 'success' : 'warning'"
+              variant="soft"
+            >
+              {{ claimStatus.attendeeCount > 0 ? `${claimStatus.attendeeCount} eligible` : 'Not uploaded' }}
+            </AppBadge>
+          </template>
+
+          <p class="text-sm text-muted">
+            Upload the final Luma guest CSV during the event. Add more at any time; duplicate emails are treated as one attendee, and later imports refresh names without removing anyone.
+          </p>
+          <input
+            ref="attendeeFileInput"
+            type="file"
+            accept=".csv,text/csv"
+            class="sr-only"
+            @change="importAttendees"
+          >
+          <div>
+            <AppButton
+              type="button"
+              color="neutral"
+              variant="outline"
+              :loading="isAttendeeUploadPending"
+              @click="chooseAttendeeFile"
+            >
+              Upload Luma attendees
+            </AppButton>
+          </div>
+          <AppAlert
+            v-if="attendeeUploadError"
+            color="error"
+            variant="soft"
+            title="Attendees could not be imported"
+            :description="attendeeUploadError"
+          />
+        </AccountEventSimplifiedClaimingStep>
+      </div>
     </div>
   </section>
 </template>

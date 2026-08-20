@@ -15,6 +15,8 @@ import AdminMarkdownEditorField from '~/components/admin/AdminMarkdownEditorFiel
 import AccountEventAdminTermsCard from '~/components/account/events/AccountEventAdminTermsCard.vue'
 import AccountEventSimplifiedClaimingControl from '~/components/account/events/AccountEventSimplifiedClaimingControl.vue'
 import EventConfigProgramIdentitySection from '~/components/admin/EventConfigProgramIdentitySection.vue'
+import EventTalkProposalControl from '~/components/admin/EventTalkProposalControl.vue'
+import type { AccountEventSimplifiedClaimingStatus } from '#shared/domains/events/account-event-settings-page'
 
 const form = defineModel<EventFormState>('form', { required: true })
 
@@ -32,6 +34,8 @@ const props = defineProps<{
   currentApplicationTerms?: TermsDocument | null
   currentWinnerTerms?: TermsDocument | null
   savingTermsDocumentType?: TermsDocument['documentType'] | null
+  initialSimplifiedClaimingStatus?: AccountEventSimplifiedClaimingStatus | null
+  hasExistingTalkProposal?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -40,6 +44,7 @@ const emit = defineEmits<{
   uploadBannerImage: [file: File]
   removeBannerImage: []
   saveTerms: [documentType: TermsDocument['documentType'], content: string]
+  updated: []
 }>()
 
 const applicationTermsDraft = ref('')
@@ -584,29 +589,12 @@ const lumaWebhookStatusColor = computed(() => {
         :group="groupById('call-for-talks')!"
         :complete="groupById('call-for-talks')!.isComplete(form, event)"
       >
-        <div class="space-y-3">
-          <AppCheckbox
-            v-model="form.talkProposalsEnabled"
-            label="Invite registered applicants to propose one talk"
-          />
-          <div
-            v-if="form.talkProposalsEnabled"
-            class="grid gap-3 sm:grid-cols-2"
-          >
-            <AppFormField label="Call opens">
-              <AppDateTimePicker
-                v-model="form.talkProposalOpensAt"
-                size="sm"
-              />
-            </AppFormField>
-            <AppFormField label="Call closes">
-              <AppDateTimePicker
-                v-model="form.talkProposalClosesAt"
-                size="sm"
-              />
-            </AppFormField>
-          </div>
-        </div>
+        <EventTalkProposalControl
+          v-model:enabled="form.talkProposalsEnabled"
+          v-model:opens-at="form.talkProposalOpensAt"
+          v-model:closes-at="form.talkProposalClosesAt"
+          :has-existing-proposal="props.hasExistingTalkProposal ?? false"
+        />
       </AdminBuilderSettingsGroupCard>
 
       <AdminBuilderSettingsGroupCard
@@ -677,7 +665,9 @@ const lumaWebhookStatusColor = computed(() => {
             v-model="form.simplifiedClaimingEnabled"
             :event-id="event?.id ?? null"
             :persisted-enabled="event?.simplifiedClaimingEnabled"
+            :initial-status="props.initialSimplifiedClaimingStatus ?? null"
             variant="plain"
+            @updated="emit('updated')"
           />
           <p
             v-if="mode === 'edit' && event"

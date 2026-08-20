@@ -14,6 +14,7 @@ import type { EventFormState } from '~/domains/events/admin-event'
 import type { EventRecord } from '~/domains/events/records'
 import type { EventImageVersions } from '~/domains/events/presentation'
 import type { EventProgramSettingsMode } from '~/domains/events/program-settings'
+import type { AccountEventSimplifiedClaimingStatus } from '#shared/domains/events/account-event-settings-page'
 
 import {
   applyEventTypeApplicationFieldDefaults,
@@ -40,6 +41,7 @@ const emit = defineEmits<{
   uploadBannerImage: [file: File]
   removeBannerImage: []
   retryLumaConfiguration: []
+  updated: []
 }>()
 
 type AgendaFormItem = EventFormState['agendaItems'][number]
@@ -64,7 +66,8 @@ const props = defineProps<{
   imageVersion?: string | number | EventImageVersions | null
   eventId?: string | null
   persistedSimplifiedClaimingEnabled?: boolean
-  persistedTalkProposalsEnabled?: boolean
+  initialSimplifiedClaimingStatus?: AccountEventSimplifiedClaimingStatus | null
+  hasExistingTalkProposal?: boolean
   lumaWebhookUrl?: string | null
   lumaWebhookStatus?: EventRecord['lumaWebhookStatus'] | null
   lumaWebhookError?: string | null
@@ -1547,6 +1550,8 @@ const submitConfigForm = handleSubmit(() => {
                     v-model="form.simplifiedClaimingEnabled"
                     :event-id="props.eventId"
                     :persisted-enabled="props.persistedSimplifiedClaimingEnabled"
+                    :initial-status="props.initialSimplifiedClaimingStatus ?? null"
+                    @updated="emit('updated')"
                   />
 
                   <EventTalkProposalControl
@@ -1554,8 +1559,7 @@ const submitConfigForm = handleSubmit(() => {
                     v-model:enabled="form.talkProposalsEnabled"
                     v-model:opens-at="form.talkProposalOpensAt"
                     v-model:closes-at="form.talkProposalClosesAt"
-                    :event-id="props.eventId"
-                    :persisted-enabled="props.persistedTalkProposalsEnabled"
+                    :has-existing-proposal="props.hasExistingTalkProposal"
                   />
 
                   <EventConfigApplicationFieldsTable
@@ -1924,6 +1928,8 @@ const submitConfigForm = handleSubmit(() => {
               v-model="form.simplifiedClaimingEnabled"
               :event-id="props.eventId"
               :persisted-enabled="props.persistedSimplifiedClaimingEnabled"
+              :initial-status="props.initialSimplifiedClaimingStatus ?? null"
+              @updated="emit('updated')"
             />
 
             <EventTalkProposalControl
@@ -1931,8 +1937,7 @@ const submitConfigForm = handleSubmit(() => {
               v-model:enabled="form.talkProposalsEnabled"
               v-model:opens-at="form.talkProposalOpensAt"
               v-model:closes-at="form.talkProposalClosesAt"
-              :event-id="props.eventId"
-              :persisted-enabled="props.persistedTalkProposalsEnabled"
+              :has-existing-proposal="props.hasExistingTalkProposal"
             />
 
             <EventConfigApplicationFieldsTable

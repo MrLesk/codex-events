@@ -21,6 +21,7 @@ export type AccountEventPageRoutePath<TPage extends AccountEventPageName = Accou
 
 export interface AccountEventPageQuery {
   selectedTeamSlug?: string | null
+  includeAdminEventConfiguration?: boolean
 }
 
 export const accountEventPagePaths = {
@@ -48,10 +49,12 @@ export function normalizeAccountEventPageQuery(
   query?: AccountEventPageQuery | null
 ): AccountEventPageQuery {
   const selectedTeamSlug = query?.selectedTeamSlug?.trim().toLowerCase()
+  const includeAdminEventConfiguration = query?.includeAdminEventConfiguration === true
 
-  return selectedTeamSlug
-    ? { selectedTeamSlug }
-    : {}
+  return {
+    ...(selectedTeamSlug ? { selectedTeamSlug } : {}),
+    ...(includeAdminEventConfiguration ? { includeAdminEventConfiguration: true } : {})
+  }
 }
 
 export function buildAccountEventPagePath(
@@ -61,12 +64,21 @@ export function buildAccountEventPagePath(
 ) {
   const path = `/api/account/events/${encodeURIComponent(slug)}/${page}`
   const normalizedQuery = normalizeAccountEventPageQuery(query)
+  const searchParams = new URLSearchParams()
 
-  if (page !== 'teams' || !normalizedQuery.selectedTeamSlug) {
-    return path
+  if (page === 'teams' && normalizedQuery.selectedTeamSlug) {
+    searchParams.set('selectedTeamSlug', normalizedQuery.selectedTeamSlug)
   }
 
-  return `${path}?selectedTeamSlug=${encodeURIComponent(normalizedQuery.selectedTeamSlug)}`
+  if (
+    (page === 'entry' || page === 'prizes')
+    && normalizedQuery.includeAdminEventConfiguration
+  ) {
+    searchParams.set('includeAdminEventConfiguration', 'true')
+  }
+
+  const queryString = searchParams.toString().replace(/\+/g, '%20')
+  return queryString ? `${path}?${queryString}` : path
 }
 
 export function buildAccountEventPageCacheKey(
@@ -78,8 +90,12 @@ export function buildAccountEventPageCacheKey(
   const selectedTeamKey = page === 'teams' && normalizedQuery.selectedTeamSlug
     ? `:selectedTeamSlug=${encodeURIComponent(normalizedQuery.selectedTeamSlug)}`
     : ''
+  const adminEventConfigurationKey = (page === 'entry' || page === 'prizes')
+    && normalizedQuery.includeAdminEventConfiguration
+    ? ':includeAdminEventConfiguration'
+    : ''
 
-  return `account-event-page:${slug}:${page}${selectedTeamKey}`
+  return `account-event-page:${slug}:${page}${selectedTeamKey}${adminEventConfigurationKey}`
 }
 
 export function buildAccountJudgeAssignmentWorkspacePath(

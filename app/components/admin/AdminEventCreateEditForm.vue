@@ -9,6 +9,9 @@ import type {
 } from '~/domains/events/records'
 import type { EventProgramSettingsMode } from '~/domains/events/program-settings'
 import type { EventImageVersions } from '~/domains/events/presentation'
+import type {
+  AccountEventSimplifiedClaimingStatus
+} from '#shared/domains/events/account-event-settings-page'
 
 import {
   createEmptyEventFormState,
@@ -23,6 +26,7 @@ const emit = defineEmits<{
   uploadBannerImage: [file: File]
   removeBannerImage: []
   retryLumaConfiguration: []
+  updated: []
 }>()
 
 const props = defineProps<{
@@ -40,6 +44,8 @@ const props = defineProps<{
   bannerImageUploadError?: string
   imageVersion?: string | number | EventImageVersions | null
   isRetryingLumaConfiguration?: boolean
+  initialSimplifiedClaimingStatus?: AccountEventSimplifiedClaimingStatus | null
+  hasExistingTalkProposal?: boolean
 }>()
 
 const form = reactive(createEmptyEventFormState())
@@ -82,7 +88,8 @@ function submitForm() {
       :image-version="imageVersion"
       :event-id="initialEvent?.id ?? null"
       :persisted-simplified-claiming-enabled="initialEvent?.simplifiedClaimingEnabled ?? false"
-      :persisted-talk-proposals-enabled="initialEvent?.talkProposalsEnabled ?? false"
+      :initial-simplified-claiming-status="initialSimplifiedClaimingStatus ?? null"
+      :has-existing-talk-proposal="hasExistingTalkProposal"
       :luma-webhook-url="initialEvent?.lumaWebhookUrl ?? null"
       :luma-webhook-status="initialEvent?.lumaWebhookStatus ?? null"
       :luma-webhook-error="initialEvent?.lumaWebhookError ?? null"
@@ -95,6 +102,7 @@ function submitForm() {
       @upload-banner-image="emit('uploadBannerImage', $event)"
       @remove-banner-image="emit('removeBannerImage')"
       @retry-luma-configuration="emit('retryLumaConfiguration')"
+      @updated="emit('updated')"
     />
   </div>
 </template>

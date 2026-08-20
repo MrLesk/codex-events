@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AccountEventSimplifiedClaimingPanel from '~/components/account/events/AccountEventSimplifiedClaimingPanel.vue'
+import type { AccountEventSimplifiedClaimingStatus } from '#shared/domains/events/account-event-settings-page'
 
 const enabled = defineModel<boolean>({
   required: true
@@ -8,6 +9,7 @@ const enabled = defineModel<boolean>({
 const props = withDefaults(defineProps<{
   eventId?: string | null
   persistedEnabled?: boolean
+  initialStatus: AccountEventSimplifiedClaimingStatus | null
   /** 'card' renders the standalone framed control; 'plain' drops the frame for hosts that provide their own card. */
   variant?: 'card' | 'plain'
 }>(), {
@@ -17,8 +19,14 @@ const props = withDefaults(defineProps<{
 })
 
 const persistedEventId = computed(() => props.eventId?.trim() ?? '')
-const claimingLocked = shallowRef(false)
+const claimingLocked = shallowRef(props.initialStatus?.locked ?? false)
+watch(() => props.initialStatus, (status) => {
+  claimingLocked.value = status?.locked ?? false
+}, { immediate: true })
 const framed = computed(() => props.variant === 'card')
+const emit = defineEmits<{
+  updated: []
+}>()
 </script>
 
 <template>
@@ -60,9 +68,11 @@ const framed = computed(() => props.variant === 'card')
 
     <template v-if="enabled">
       <AccountEventSimplifiedClaimingPanel
-        v-if="props.persistedEnabled && persistedEventId"
+        v-if="props.persistedEnabled && persistedEventId && props.initialStatus"
         :event-id="persistedEventId"
+        :initial-status="props.initialStatus"
         @lock-change="claimingLocked = $event"
+        @updated="emit('updated')"
       />
       <section
         v-else

@@ -244,6 +244,12 @@ describe('GET /api/account/events/:slug/settings', () => {
         assignments: [{ id: 'assignment_admin', userId: 'settings_admin' }],
         counts: { admins: 1, staff: 1, judges: 1 }
       },
+      simplifiedClaiming: {
+        enabled: false
+      },
+      talkProposals: {
+        hasExistingProposal: false
+      },
       builder: {
         creationFlow: 'builder',
         agendaBlockCount: 1,

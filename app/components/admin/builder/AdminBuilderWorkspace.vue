@@ -13,6 +13,7 @@ import AdminBuilderNameHero from '~/components/admin/builder/molecules/AdminBuil
 import AdminBuilderSettingsBoard from '~/components/admin/builder/organisms/AdminBuilderSettingsBoard.vue'
 import AdminBuilderSidePanel from '~/components/admin/builder/organisms/AdminBuilderSidePanel.vue'
 import AdminBuilderTemplateGallery from '~/components/admin/builder/organisms/AdminBuilderTemplateGallery.vue'
+import type { AccountEventSimplifiedClaimingStatus } from '#shared/domains/events/account-event-settings-page'
 
 const props = defineProps<{
   builder: EventBuilderApi
@@ -28,6 +29,8 @@ const props = defineProps<{
   currentApplicationTerms?: TermsDocument | null
   currentWinnerTerms?: TermsDocument | null
   savingTermsDocumentType?: TermsDocument['documentType'] | null
+  initialSimplifiedClaimingStatus?: AccountEventSimplifiedClaimingStatus | null
+  hasExistingTalkProposal?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -37,6 +40,7 @@ const emit = defineEmits<{
   uploadBannerImage: [file: File]
   removeBannerImage: []
   saveTerms: [documentType: TermsDocument['documentType'], content: string]
+  updated: []
 }>()
 
 const submitAttempted = ref(false)
@@ -207,11 +211,14 @@ function onSubmit() {
             :current-application-terms="currentApplicationTerms"
             :current-winner-terms="currentWinnerTerms"
             :saving-terms-document-type="savingTermsDocumentType"
+            :initial-simplified-claiming-status="initialSimplifiedClaimingStatus"
+            :has-existing-talk-proposal="hasExistingTalkProposal"
             @upload-background-image="file => emit('uploadBackgroundImage', file)"
             @remove-background-image="emit('removeBackgroundImage')"
             @upload-banner-image="file => emit('uploadBannerImage', file)"
             @remove-banner-image="emit('removeBannerImage')"
             @save-terms="(documentType, content) => emit('saveTerms', documentType, content)"
+            @updated="emit('updated')"
           />
         </div>
       </div>

@@ -50,7 +50,7 @@ describe('account-event page route contract', () => {
     expect(contractSource).toContain('await definition.load(context, query)')
     expect(contractSource).toContain('definition.schema.parse')
     expect(contractSource).toContain('await definition.authorize(context)')
-    expect(contractSource).not.toContain('include')
+    expect(contractSource).toContain('includeAdminEventConfiguration')
     expect(contractSource).not.toContain('resourceMap')
   })
 

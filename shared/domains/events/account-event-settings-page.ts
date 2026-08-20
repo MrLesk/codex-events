@@ -56,7 +56,7 @@ const eventBalanceBreakdownSchema = z.object({
   returnIntent: z.number()
 })
 
-const eventSettingsEventSchema = z.object({
+export const accountEventSettingsEventSchema = z.object({
   id: z.string(),
   eventType: eventTypeSchema,
   creationFlow: z.enum(['classic', 'builder']).optional(),
@@ -212,8 +212,34 @@ const roleAssignmentSchema = z.object({
   }).optional()
 })
 
+export const accountEventSimplifiedClaimingStatusSchema = z.object({
+  enabled: z.boolean(),
+  ready: z.boolean(),
+  locked: z.boolean(),
+  redemptionUrl: z.string(),
+  issues: z.array(z.object({
+    code: z.string(),
+    message: z.string()
+  })),
+  attendeeCount: z.number().int().nonnegative(),
+  offerCount: z.number().int().nonnegative(),
+  ordinaryOfferCount: z.number().int().nonnegative(),
+  totalInventoryCount: z.number().int().nonnegative(),
+  availableInventoryCount: z.number().int().nonnegative(),
+  simplifiedClaimCount: z.number().int().nonnegative(),
+  genericClaimCount: z.number().int().nonnegative(),
+  offer: z.object({
+    id: z.string(),
+    name: z.string()
+  }).nullable()
+})
+
+export const accountEventTalkProposalConfigurationSchema = z.object({
+  hasExistingProposal: z.boolean()
+})
+
 export const accountEventSettingsPageSchema = z.object({
-  event: eventSettingsEventSchema,
+  event: accountEventSettingsEventSchema,
   criteria: z.array(evaluationCriterionSchema),
   prizes: z.array(prizeDefinitionSchema),
   terms: z.object({
@@ -234,6 +260,8 @@ export const accountEventSettingsPageSchema = z.object({
       judges: z.number().int().nonnegative()
     })
   }),
+  simplifiedClaiming: accountEventSimplifiedClaimingStatusSchema,
+  talkProposals: accountEventTalkProposalConfigurationSchema,
   builder: z.object({
     creationFlow: z.enum(['classic', 'builder']),
     agendaBlockCount: z.number().int().nonnegative(),
@@ -244,7 +272,9 @@ export const accountEventSettingsPageSchema = z.object({
 })
 
 export type AccountEventSettingsPage = z.infer<typeof accountEventSettingsPageSchema>
-export type AccountEventSettingsEvent = AccountEventSettingsPage['event']
+export type AccountEventSettingsEvent = z.infer<typeof accountEventSettingsEventSchema>
+export type AccountEventSimplifiedClaimingStatus = z.infer<typeof accountEventSimplifiedClaimingStatusSchema>
+export type AccountEventTalkProposalConfiguration = z.infer<typeof accountEventTalkProposalConfigurationSchema>
 export type AccountEventSettingsTermsDocument = z.infer<typeof termsDocumentSchema>
 export type AccountEventSettingsTermsVersion = z.infer<typeof termsVersionSummarySchema>
 export type AccountEventSettingsCriterion = z.infer<typeof evaluationCriterionSchema>

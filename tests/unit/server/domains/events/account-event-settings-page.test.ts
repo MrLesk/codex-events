@@ -29,5 +29,7 @@ describe('account-event settings page boundary', () => {
     expect(loaderSource).not.toContain('fetch(')
     expect(loaderSource).not.toContain('$fetch')
     expect(loaderSource).not.toContain('inArray')
+    expect(loaderSource).toContain('getSimplifiedClaimingSummary')
+    expect(loaderSource).toContain('talkProposals')
   })
 })

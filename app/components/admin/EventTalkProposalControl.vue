@@ -1,31 +1,15 @@
 <script setup lang="ts">
-import { useApiClient } from '~/composables/useApiClient'
-
 const enabled = defineModel<boolean>('enabled', { required: true })
 const opensAt = defineModel<string>('opensAt', { required: true })
 const closesAt = defineModel<string>('closesAt', { required: true })
 
-const props = defineProps<{
-  eventId?: string | null
-  persistedEnabled?: boolean
-}>()
-
-const disablingLocked = ref(false)
-const apiFetch = useApiClient()
-
-onMounted(async () => {
-  const eventId = props.eventId?.trim()
-  if (!eventId || !props.persistedEnabled) return
-
-  try {
-    const response = await apiFetch<{ data: unknown[] }>(`/api/events/${eventId}/talk-proposals`, {
-      query: { page: 1, page_size: 1 }
-    })
-    disablingLocked.value = response.data.length > 0
-  } catch {
-    // The save endpoint remains authoritative when the review list is unavailable.
-  }
+const props = withDefaults(defineProps<{
+  hasExistingProposal?: boolean
+}>(), {
+  hasExistingProposal: false
 })
+
+const configurationLocked = computed(() => props.hasExistingProposal)
 </script>
 
 <template>
@@ -40,7 +24,7 @@ onMounted(async () => {
       <input
         v-model="enabled"
         type="checkbox"
-        :disabled="disablingLocked"
+        :disabled="configurationLocked"
         class="mt-0.5 size-4 rounded border-black/20 dark:border-white/[0.3]"
       >
       <span class="grid min-w-0 flex-1 gap-0.5">
@@ -50,7 +34,7 @@ onMounted(async () => {
     </label>
 
     <p
-      v-if="disablingLocked"
+      v-if="configurationLocked"
       class="border-t border-primary/15 px-4 py-3 text-xs text-muted dark:border-primary/20"
     >
       Call for talks cannot be turned off after a Talk proposal has been created.

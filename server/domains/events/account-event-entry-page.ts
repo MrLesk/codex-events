@@ -35,6 +35,7 @@ import {
 import {
   parseEventAgendaItems,
   listEventTracks,
+  serializeAdminEvent,
   serializeEvent
 } from '#server/domains/events'
 import { hasEventPhotos } from '#server/domains/events/photos'
@@ -460,7 +461,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
   page: 'entry',
   schema: accountEventEntryPageSchema,
   authorize: async () => undefined,
-  load: async (context): Promise<AccountEventEntryPage> => {
+  load: async (context, query): Promise<AccountEventEntryPage> => {
     const event = context.event
     const userId = context.actor.platformUser.id
     const [
@@ -529,6 +530,18 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
         ])
       : [null, { items: [], pagination: { page: 1, pageSize: 100, total: 0, totalPages: 0 } }] as const
     const serializedEvent = serializeEvent(event, undefined, tracks, imageOptions)
+    const serializedAdminSettingsEvent = query.includeAdminEventConfiguration && context.authorization.isEventAdmin
+      ? serializeAdminEvent(event, undefined, tracks, {
+          appBaseUrl: '',
+          ...imageOptions
+        })
+      : null
+    const adminSettingsEvent = serializedAdminSettingsEvent
+      ? {
+          ...serializedAdminSettingsEvent,
+          tracks: serializedAdminSettingsEvent.tracks ?? []
+        }
+      : null
     const canViewRestrictedDetails = context.authorization.isPlatformAdmin
       || context.authorization.explicitRole !== null
       || application?.status === 'approved'
@@ -571,6 +584,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
 
     return {
       event: accountEvent,
+      adminSettingsEvent,
       access,
       participation: participationRecord,
       participantCredits: credits.participantCredits,

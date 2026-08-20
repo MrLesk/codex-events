@@ -36,6 +36,7 @@ describe('account-event entry and prizes contracts', () => {
     expect(accountEventPageRoutePaths.prizes).toBe(accountEventPrizesPagePath)
     expect(Object.keys(accountEventEntryPageSchema.shape)).toEqual([
       'event',
+      'adminSettingsEvent',
       'access',
       'participation',
       'participantCredits',
@@ -50,6 +51,7 @@ describe('account-event entry and prizes contracts', () => {
     ])
     expect(Object.keys(accountEventPrizesPageSchema.shape)).toEqual([
       'event',
+      'adminSettingsEvent',
       'prizes',
       'winners',
       'publishedProjects',
@@ -63,7 +65,7 @@ describe('account-event entry and prizes contracts', () => {
   })
 
   test('uses the shared page request and removes the old entry/prizes fan-out callers', () => {
-    expect(entryPageSource).toContain('useAccountEventPageRequest<AccountEventEntryPage>(slug, \'entry\')')
+    expect(entryPageSource).toContain('useAccountEventPageRequest<AccountEventEntryPage>(slug, \'entry\', {')
     expect(entryPageSource).toContain('useAccountEventPageRequest<AccountEventPrizesPage>(slug, \'prizes\'')
     expect(entryPageSource).toContain('immediate: false')
     expect(entryPageSource).toContain('prizesPageRequest.abort()')

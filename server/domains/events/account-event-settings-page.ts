@@ -16,14 +16,30 @@ import {
   eventRoleAssignments,
   eventTermsDocuments,
   prizes,
+  talkProposals,
   users
 } from '#server/database/schema'
+import { getSimplifiedClaimingSummary } from '#server/domains/credits/simplified-claiming'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { defineAccountEventPageRoute } from './account-event-page-contract'
 import { accountEventSettingsPageSchema } from '#shared/domains/events/account-event-settings-page'
 
 const settingsTermsVersionLimit = 25
 type EventTermsDocumentRecord = typeof eventTermsDocuments.$inferSelect
+
+const emptySimplifiedClaimingSummary = {
+  ready: false,
+  locked: false,
+  issues: [] as Array<{ code: string, message: string }>,
+  attendeeCount: 0,
+  offerCount: 0,
+  ordinaryOfferCount: 0,
+  totalInventoryCount: 0,
+  availableInventoryCount: 0,
+  genericClaimCount: 0,
+  simplifiedClaimCount: 0,
+  offer: null
+}
 
 function isJudgeAssignment(assignment: typeof eventRoleAssignments.$inferSelect) {
   return assignment.role === 'judge'
@@ -70,7 +86,9 @@ export const accountEventSettingsPageRoute = defineAccountEventPageRoute({
       currentTerms,
       applicationTermVersions,
       winnerTermVersions,
-      imageOptions
+      imageOptions,
+      simplifiedClaimingSummary,
+      existingTalkProposals
     ] = await Promise.all([
       listEventTracks(context.database, event.id),
       event.eventType === 'hackathon'
@@ -119,7 +137,15 @@ export const accountEventSettingsPageRoute = defineAccountEventPageRoute({
         orderBy: [desc(eventTermsDocuments.version)],
         limit: settingsTermsVersionLimit
       }),
-      getEventDisplayImageOptions(context.database)
+      getEventDisplayImageOptions(context.database),
+      event.eventType === 'meetup'
+        ? getSimplifiedClaimingSummary(context.database, event)
+        : Promise.resolve(emptySimplifiedClaimingSummary),
+      context.database.query.talkProposals.findMany({
+        columns: { id: true },
+        where: eq(talkProposals.eventId, event.id),
+        limit: 1
+      })
     ])
 
     const userById = new Map(relatedUsers.map(user => [user.id, user]))
@@ -170,6 +196,20 @@ export const accountEventSettingsPageRoute = defineAccountEventPageRoute({
           staff: assignments.filter(isStaffAssignment).length,
           judges: assignments.filter(isJudgeAssignment).length
         }
+      },
+      simplifiedClaiming: {
+        enabled: event.simplifiedClaimingEnabled,
+        redemptionUrl: `/events/${event.slug}/redeem`,
+        ...simplifiedClaimingSummary,
+        offer: simplifiedClaimingSummary.offer
+          ? {
+              id: simplifiedClaimingSummary.offer.id,
+              name: simplifiedClaimingSummary.offer.name
+            }
+          : null
+      },
+      talkProposals: {
+        hasExistingProposal: existingTalkProposals.length > 0
       },
       builder: {
         creationFlow: event.creationFlow,
