@@ -81,6 +81,7 @@ describe('account event parent page request topology', () => {
     expect(pageSource).toContain('immediate: false')
     expect(pageSource).toContain('selectedParticipantsResponse?.visibility.canManage')
     expect(pageSource).toContain('shouldLoadParticipantsPage')
+    expect(pageSource).not.toContain('isDirectNonEntryNavigation.value && participantsPageRequest.status.value === \'idle\'')
   })
 
   test('keeps selected-team navigation in the page request instead of a slug lookup', () => {

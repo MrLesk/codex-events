@@ -382,8 +382,11 @@ describe('account page-shaped workspace reads', () => {
       && redemption.currentWinnerTerms.documentType === 'winner_terms'
       && redemption.currentWinnerTerms.content === 'Exact winner terms'
     )).toBe(true)
-    expect(harness.d1Database.queries.slice(queryOffset)
-      .filter(query => query.sql.includes('event_terms_documents'))).toHaveLength(1)
+    const workspaceQueries = harness.d1Database.queries.slice(queryOffset)
+    expect(workspaceQueries.filter(query => query.sql.includes('event_terms_documents'))).toHaveLength(1)
+    const workspaceQuery = workspaceQueries.find(query => query.sql.includes('event_terms_documents'))
+    expect(workspaceQuery?.sql).toContain('left join "team_members"')
+    expect(workspaceQuery?.sql).not.toMatch(/\bexists\s*\(/iu)
     expectSingleRequestSession(harness, queryOffset)
   })
 

@@ -2463,7 +2463,7 @@ export function serializeEventPublishedProjectTeamMember(
   }
 }
 
-export function serializeEventTermsDocument(document: EventTermsDocumentRecord) {
+export function serializeEventTermsDocument(document: Pick<EventTermsDocumentRecord, 'id' | 'eventId' | 'documentType' | 'version' | 'title' | 'content' | 'publishedAt' | 'createdAt'>) {
   return {
     id: document.id,
     eventId: document.eventId,
@@ -2497,7 +2497,7 @@ export function serializePublicEvaluationCriterion(criterion: EvaluationCriterio
   }
 }
 
-export function serializePrize(prize: PrizeRecord) {
+export function serializePrize(prize: Pick<PrizeRecord, 'id' | 'eventId' | 'name' | 'description' | 'rewardType' | 'rewardValue' | 'rewardCurrency' | 'awardScope' | 'rankStart' | 'rankEnd' | 'displayOrder' | 'createdAt'>) {
   return {
     id: prize.id,
     eventId: prize.eventId,

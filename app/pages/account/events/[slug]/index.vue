@@ -664,7 +664,7 @@ watchActivePageRequest('teams', teamsPageRequest)
 const shouldLoadParticipantsPage = computed(() =>
   activeSection.value === 'participants'
   && (
-    (isDirectNonEntryNavigation.value && participantsPageRequest.status.value === 'idle')
+    isDirectNonEntryNavigation.value
     || (
       entryPageRequest.status.value === 'success'
       && !canAdmin.value

@@ -28,6 +28,9 @@ import { getWinnersView } from '#server/domains/outcomes'
 type EventRecord = typeof events.$inferSelect
 type PrizeRecord = typeof prizes.$inferSelect
 type PrizeRedemptionRecord = typeof prizeRedemptions.$inferSelect
+type SerializedEventRecord = Pick<EventRecord, 'id' | 'name' | 'slug' | 'state' | 'currentWinnerTermsDocumentId'>
+type SerializedPrizeRecord = Pick<PrizeRecord, 'id' | 'eventId' | 'name' | 'description' | 'rewardType' | 'rewardValue' | 'rewardCurrency' | 'awardScope' | 'rankStart' | 'rankEnd' | 'displayOrder' | 'createdAt'>
+type SerializedPrizeRedemptionRecord = Pick<PrizeRedemptionRecord, 'id' | 'status' | 'userId' | 'teamId' | 'legalName' | 'winnerTermsDocumentId' | 'winnerTermsAcceptedAt' | 'redeemedAt' | 'createdAt' | 'updatedAt'>
 
 export const prizeRedemptionParamsSchema = z.object({
   redemptionId: z.string().trim().min(1)
@@ -39,9 +42,9 @@ export const redeemPrizeRedemptionBodySchema = z.object({
 })
 
 export function serializePrizeRedemption(
-  redemption: PrizeRedemptionRecord,
-  prize: PrizeRecord,
-  event: EventRecord
+  redemption: SerializedPrizeRedemptionRecord,
+  prize: SerializedPrizeRecord,
+  event: SerializedEventRecord
 ) {
   return {
     id: redemption.id,

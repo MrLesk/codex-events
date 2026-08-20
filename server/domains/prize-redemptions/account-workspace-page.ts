@@ -1,4 +1,4 @@
-import { and, asc, eq, exists, getTableColumns, isNull, or } from 'drizzle-orm'
+import { and, asc, eq, isNotNull, isNull, or } from 'drizzle-orm'
 
 import type { AccountPrizeRedemptionsPage } from '#shared/domains/prize-redemptions/account-prize-redemptions-page'
 import { accountPrizeRedemptionsPageSchema } from '#shared/domains/prize-redemptions/account-prize-redemptions-page'
@@ -24,10 +24,49 @@ export async function getAccountPrizeRedemptionsPage(
 ): Promise<AccountPrizeRedemptionsPage> {
   const rows = await database
     .select({
-      redemption: getTableColumns(prizeRedemptions),
-      prize: getTableColumns(prizes),
-      event: getTableColumns(events),
-      terms: getTableColumns(eventTermsDocuments)
+      redemption: {
+        id: prizeRedemptions.id,
+        status: prizeRedemptions.status,
+        userId: prizeRedemptions.userId,
+        teamId: prizeRedemptions.teamId,
+        legalName: prizeRedemptions.legalName,
+        winnerTermsDocumentId: prizeRedemptions.winnerTermsDocumentId,
+        winnerTermsAcceptedAt: prizeRedemptions.winnerTermsAcceptedAt,
+        redeemedAt: prizeRedemptions.redeemedAt,
+        createdAt: prizeRedemptions.createdAt,
+        updatedAt: prizeRedemptions.updatedAt
+      },
+      prize: {
+        id: prizes.id,
+        eventId: prizes.eventId,
+        name: prizes.name,
+        description: prizes.description,
+        rewardType: prizes.rewardType,
+        rewardValue: prizes.rewardValue,
+        rewardCurrency: prizes.rewardCurrency,
+        awardScope: prizes.awardScope,
+        rankStart: prizes.rankStart,
+        rankEnd: prizes.rankEnd,
+        displayOrder: prizes.displayOrder,
+        createdAt: prizes.createdAt
+      },
+      event: {
+        id: events.id,
+        name: events.name,
+        slug: events.slug,
+        state: events.state,
+        currentWinnerTermsDocumentId: events.currentWinnerTermsDocumentId
+      },
+      terms: {
+        id: eventTermsDocuments.id,
+        eventId: eventTermsDocuments.eventId,
+        documentType: eventTermsDocuments.documentType,
+        version: eventTermsDocuments.version,
+        title: eventTermsDocuments.title,
+        content: eventTermsDocuments.content,
+        publishedAt: eventTermsDocuments.publishedAt,
+        createdAt: eventTermsDocuments.createdAt
+      }
     })
     .from(prizeRedemptions)
     .innerJoin(prizes, eq(prizes.id, prizeRedemptions.prizeId))
@@ -37,23 +76,19 @@ export async function getAccountPrizeRedemptionsPage(
       eq(eventTermsDocuments.eventId, events.id),
       eq(eventTermsDocuments.documentType, 'winner_terms')
     ))
+    .leftJoin(teamMembers, and(
+      eq(teamMembers.teamId, prizeRedemptions.teamId),
+      eq(teamMembers.userId, userId),
+      eq(teamMembers.role, 'admin'),
+      isNull(teamMembers.leftAt)
+    ))
     .where(and(
       eq(prizeRedemptions.status, 'pending'),
       or(
         eq(prizeRedemptions.userId, userId),
         and(
           isNull(prizeRedemptions.userId),
-          exists(
-            database
-              .select({ id: teamMembers.id })
-              .from(teamMembers)
-              .where(and(
-                eq(teamMembers.teamId, prizeRedemptions.teamId),
-                eq(teamMembers.userId, userId),
-                eq(teamMembers.role, 'admin'),
-                isNull(teamMembers.leftAt)
-              ))
-          )
+          isNotNull(teamMembers.id)
         )
       )
     ))
