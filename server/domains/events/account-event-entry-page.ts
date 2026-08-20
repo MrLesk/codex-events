@@ -14,7 +14,7 @@ import type {
 } from '#shared/domains/events/account-event-entry-page'
 import { accountEventEntryPageSchema } from '#shared/domains/events/account-event-entry-page'
 import type { EventAuthorization } from '#server/auth/authorization'
-import type { events } from '#server/database/schema'
+import type { events, teams, userApplications } from '#server/database/schema'
 import {
   eventCreditCodes,
   eventCreditOffers,
@@ -22,9 +22,7 @@ import {
   prizes,
   submissions,
   teamMembers,
-  teams,
-  users,
-  userApplications
+  users
 } from '#server/database/schema'
 import {
   listEventCreditCodesForEvent,
@@ -43,7 +41,10 @@ import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { getTeamCompetitionOutcome } from '#server/domains/outcomes'
 import { serializeSubmission } from '#server/domains/submissions'
 import { listTalkProposals, getOwnTalkProposal, serializeTalkProposal } from '#server/domains/talk-proposals'
-import type { AccountEventPageContext } from './account-event-page-context'
+import {
+  loadAccountEventPageAccess,
+  type AccountEventPageContext
+} from './account-event-page-context'
 import { defineAccountEventPageRoute } from './account-event-page-contract'
 import { resolveEventCertificateDateIso } from '#shared/domains/events/certificates'
 import { isApplicationEffectivelyCheckedIn } from '#shared/domains/applications/check-in'
@@ -374,29 +375,12 @@ async function loadParticipation(
 }
 
 export async function loadAccountEventParticipation(context: AccountEventPageContext) {
-  const userId = context.actor.platformUser.id
-  const [application, membershipRows] = await Promise.all([
-    context.database.query.userApplications.findFirst({
-      where: and(eq(userApplications.eventId, context.event.id), eq(userApplications.userId, userId))
-    }),
-    context.database
-      .select({
-        team: getTableColumns(teams),
-        membership: getTableColumns(teamMembers)
-      })
-      .from(teamMembers)
-      .innerJoin(teams, eq(teams.id, teamMembers.teamId))
-      .where(and(
-        eq(teamMembers.userId, userId),
-        eq(teams.eventId, context.event.id)
-      ))
-      .orderBy(desc(teamMembers.joinedAt), desc(teamMembers.createdAt))
-  ])
+  const access = context.access ?? await loadAccountEventPageAccess(context)
 
   return await loadParticipation(
     context,
-    application as ApplicationRecord | null,
-    membershipRows as Array<{ team: TeamRecord, membership: TeamMemberRecord }>
+    access.application,
+    access.memberships
   )
 }
 
@@ -464,9 +448,11 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
   load: async (context, query): Promise<AccountEventEntryPage> => {
     const event = context.event
     const userId = context.actor.platformUser.id
+    const accessPromise = context.access
+      ? Promise.resolve(context.access)
+      : loadAccountEventPageAccess(context)
     const [
-      application,
-      membershipRows,
+      participantAccess,
       roles,
       tracks,
       imageOptions,
@@ -474,21 +460,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
       publishedPrize,
       publishedStaffAssignment
     ] = await Promise.all([
-      context.database.query.userApplications.findFirst({
-        where: and(eq(userApplications.eventId, event.id), eq(userApplications.userId, userId))
-      }),
-      context.database
-        .select({
-          team: getTableColumns(teams),
-          membership: getTableColumns(teamMembers)
-        })
-        .from(teamMembers)
-        .innerJoin(teams, eq(teams.id, teamMembers.teamId))
-        .where(and(
-          eq(teamMembers.userId, userId),
-          eq(teams.eventId, event.id)
-        ))
-        .orderBy(desc(teamMembers.joinedAt), desc(teamMembers.createdAt)),
+      accessPromise,
       context.database.query.eventRoleAssignments.findMany({
         where: and(
           eq(eventRoleAssignments.eventId, event.id),
@@ -514,12 +486,13 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
         )
       })
     ])
-    const memberships = membershipRows as Array<{ team: TeamRecord, membership: TeamMemberRecord }>
+    const application = participantAccess.application
+    const memberships = participantAccess.memberships
     const activeMembership = memberships.find(({ membership }) => membership.leftAt === null) ?? null
     const primaryMembership = activeMembership ?? memberships[0] ?? null
     const [participation, credits] = await Promise.all([
-      loadParticipation(context, application as ApplicationRecord | null, memberships),
-      loadCredits(context, application as ApplicationRecord | null)
+      loadParticipation(context, application, memberships),
+      loadCredits(context, application)
     ])
     const talkProposalResult = event.eventType === 'meetup' && event.talkProposalsEnabled
       ? await Promise.all([
@@ -557,7 +530,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
     const participationRecord = participation.record
     const access = serializeAccess(
       event,
-      application as ApplicationRecord | null,
+      application,
       primaryMembership?.team ?? null,
       primaryMembership?.membership ?? null,
       participationRecord?.latestSubmission

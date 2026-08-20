@@ -1,7 +1,6 @@
 import { assertCompetitionEvent, listEventTracks } from '#server/domains/events'
-import { getOwnUserApplication, serializeUserApplication } from '#server/domains/applications'
+import { serializeUserApplication } from '#server/domains/applications'
 import {
-  getOwnActiveTeamMembershipForEvent,
   getTeamWithMembersOrThrow,
   listTeamJoinRequests,
   listVisibleTeams,
@@ -11,6 +10,7 @@ import type { AccountEventTeamsPage } from '#shared/domains/events/account-event
 import type { AccountEventPageQuery } from '#shared/domains/events/account-event-page-registry'
 import { accountEventTeamsPageSchema } from '#shared/domains/events/account-event-teams-page'
 import { defineAccountEventPageRoute } from './account-event-page-contract'
+import { loadAccountEventPageAccess } from './account-event-page-context'
 
 const firstTeamPageSize = 6
 
@@ -28,10 +28,11 @@ export const accountEventTeamsPageRoute = defineAccountEventPageRoute({
     assertCompetitionEvent(context.event)
   },
   load: async (context, query: AccountEventPageQuery): Promise<AccountEventTeamsPage> => {
-    const userId = context.actor.platformUser.id
-    const [application, membership, visibleTeams, selectedTeamSummary, tracks] = await Promise.all([
-      getOwnUserApplication(context.database, context.event.id, userId),
-      getOwnActiveTeamMembershipForEvent(context.database, context.event.id, userId),
+    const accessPromise = context.access
+      ? Promise.resolve(context.access)
+      : loadAccountEventPageAccess(context)
+    const [access, visibleTeams, selectedTeamSummary, tracks] = await Promise.all([
+      accessPromise,
       listVisibleTeams(
         context.database,
         context.event,
@@ -50,23 +51,30 @@ export const accountEventTeamsPageRoute = defineAccountEventPageRoute({
         : Promise.resolve(null),
       listEventTracks(context.database, context.event.id)
     ])
-    const ownTeam = membership
-      ? await getTeamWithMembersOrThrow(context.database, context.event.id, membership.teamId, {
+    const application = access.application
+    const membership = access.memberships.find(({ membership }) => membership.leftAt === null)?.membership ?? null
+    const ownTeamPromise = membership
+      ? getTeamWithMembersOrThrow(context.database, context.event.id, membership.teamId, {
           includeSensitiveUserFields: true,
           allowInactiveTeam: context.authorization.canViewParticipantsAndTeams
         })
-      : null
-    const ownTeamDetail = ownTeam ? serializeTeamDetail(ownTeam) : null
-    const selectedTeamRecord = selectedTeamSummary?.data[0]
-      ? await getTeamWithMembersOrThrow(context.database, context.event.id, selectedTeamSummary.data[0].id, {
+      : Promise.resolve(null)
+    const selectedTeamPromise = selectedTeamSummary?.data[0]
+      ? getTeamWithMembersOrThrow(context.database, context.event.id, selectedTeamSummary.data[0].id, {
           includeSensitiveUserFields: false,
           allowInactiveTeam: context.authorization.canViewParticipantsAndTeams
         })
-      : null
+      : Promise.resolve(null)
+    const joinRequestsPromise = membership?.role === 'admin'
+      ? listTeamJoinRequests(context.database, membership.teamId)
+      : Promise.resolve([])
+    const [ownTeam, selectedTeamRecord, joinRequests] = await Promise.all([
+      ownTeamPromise,
+      selectedTeamPromise,
+      joinRequestsPromise
+    ])
+    const ownTeamDetail = ownTeam ? serializeTeamDetail(ownTeam) : null
     const selectedTeamDetail = selectedTeamRecord ? serializeTeamDetail(selectedTeamRecord) : null
-    const joinRequests = membership?.role === 'admin'
-      ? await listTeamJoinRequests(context.database, membership.teamId)
-      : []
 
     return {
       event: {

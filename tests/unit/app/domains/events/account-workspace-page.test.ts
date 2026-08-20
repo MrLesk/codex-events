@@ -69,4 +69,13 @@ describe('account-event page contract boundary', () => {
       includeAdminEventConfiguration: true
     })).toBe('/api/account/events/fixture-event/settings')
   })
+
+  test('makes direct-link shell state part of the selected page path and cache key', () => {
+    expect(buildAccountEventPagePath('fixture-event', 'operations', {
+      includeEventShell: true
+    })).toBe('/api/account/events/fixture-event/operations?includeEventShell=true')
+    expect(buildAccountEventPageCacheKey('fixture-event', 'operations', {
+      includeEventShell: true
+    })).not.toBe(buildAccountEventPageCacheKey('fixture-event', 'operations'))
+  })
 })

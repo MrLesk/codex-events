@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from 'vitest'
 
 import operationsPageGetHandler from '../../../../server/api/account/events/[slug]/operations.get'
+import participantsPageGetHandler from '../../../../server/api/account/events/[slug]/participants.get'
 import submissionsPageGetHandler from '../../../../server/api/account/events/[slug]/submissions.get'
 import judgingPageGetHandler from '../../../../server/api/account/events/[slug]/judging.get'
 import judgeInboxGetHandler from '../../../../server/api/account/judging.get'
@@ -108,6 +109,84 @@ describe('account event operations, submissions, and judging page reads', () => 
       submissionMonitor: { teamDetails: [], teamSubmissions: [] },
       noSubmissionTeams: []
     })
+  })
+
+  test('keeps a direct operations shell read on one session with one joined credit probe', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/account/events/:slug/operations', handler: operationsPageGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|direct_operations_admin',
+        email: 'direct_operations_admin@example.com',
+        name: 'Direct Operations Admin'
+      }
+    })
+    harnesses.push(harness)
+    await seedFixture(harness, 'direct_operations_admin', 'event_admin')
+
+    const queryOffset = harness.d1Database.queries.length
+    const response = await harness.request(
+      '/api/account/events/page-read-fixture/operations?includeEventShell=true'
+    )
+    const body = await response.json() as {
+      data: {
+        page: unknown
+        shell?: { tabVisibility: { hasCreditInventory: boolean } }
+      }
+    }
+
+    expect(response.status).toBe(200)
+    expect(accountEventOperationsPageSchema.parse(body.data.page)).toMatchObject({
+      event: { id: 'event_page_read' }
+    })
+    expect(body.data.shell?.tabVisibility.hasCreditInventory).toBe(false)
+
+    const requestQueries = harness.d1Database.queries.slice(queryOffset)
+    expect(new Set(requestQueries.map(query => query.sessionId))).toHaveLength(1)
+    const creditQueries = requestQueries.filter(query =>
+      query.sql.includes('event_credit_offers') || query.sql.includes('event_credit_codes')
+    )
+
+    expect(creditQueries).toHaveLength(1)
+    expect(creditQueries[0]?.sql).toContain('event_credit_offers')
+    expect(creditQueries[0]?.sql).toContain('event_credit_codes')
+  })
+
+  test('uses the operations model for a direct admin Participants link', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/account/events/:slug/participants', handler: participantsPageGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|direct_participants_admin',
+        email: 'direct_participants_admin@example.com',
+        name: 'Direct Participants Admin'
+      }
+    })
+    harnesses.push(harness)
+    await seedFixture(harness, 'direct_participants_admin', 'event_admin')
+
+    const queryOffset = harness.d1Database.queries.length
+    const response = await harness.request(
+      '/api/account/events/page-read-fixture/participants?includeEventShell=true'
+    )
+    const body = await response.json() as {
+      data: {
+        page: unknown
+        visibility: { canManage: boolean }
+        shell?: unknown
+      }
+    }
+
+    expect(response.status).toBe(200)
+    expect(body.data.visibility.canManage).toBe(true)
+    expect(accountEventOperationsPageSchema.parse(body.data.page)).toMatchObject({
+      event: { id: 'event_page_read' },
+      assignments: { data: [], total: 0 }
+    })
+    expect(body.data.shell).toBeDefined()
+    expect(new Set(harness.d1Database.queries.slice(queryOffset).map(query => query.sessionId))).toHaveLength(1)
   })
 
   test('returns judge event and global inbox page models without event GET fan-out', async () => {

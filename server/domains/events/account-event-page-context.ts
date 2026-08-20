@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, desc, eq, getTableColumns } from 'drizzle-orm'
 
 import { assertRegularPlatformAccess, getRequestActor, type PlatformActor } from '#server/auth/actor'
 import { resolveEventAuthorization, type EventAuthorization } from '#server/auth/authorization'
@@ -9,20 +9,32 @@ import { events, teamMembers, teams, userApplications } from '#server/database/s
 import { ApiError } from '#server/http/api-error'
 
 export type AccountEventPageEventRecord = typeof events.$inferSelect
+type AccountEventPageApplicationRecord = typeof userApplications.$inferSelect
+type AccountEventPageTeamRecord = typeof teams.$inferSelect
+type AccountEventPageMembershipRecord = typeof teamMembers.$inferSelect
+
+export interface AccountEventPageAuthorizedAccess {
+  application: AccountEventPageApplicationRecord | null
+  memberships: Array<{
+    team: AccountEventPageTeamRecord
+    membership: AccountEventPageMembershipRecord
+  }>
+}
 
 export interface AccountEventPageContext {
   actor: PlatformActor
   authorization: EventAuthorization
+  access: AccountEventPageAuthorizedAccess | null
   database: AppDatabase
   event: AccountEventPageEventRecord
 }
 
-async function assertAccountEventPageVisibilityAndAccess(input: {
+async function resolveAccountEventPageVisibilityAndAccess(input: {
   actor: PlatformActor
   authorization: EventAuthorization
   database: AppDatabase
   event: AccountEventPageEventRecord
-}) {
+}): Promise<AccountEventPageAuthorizedAccess | null> {
   const hasInternalVisibilityRole = input.authorization.isEventAdmin
     || input.authorization.isStaff
     || input.authorization.explicitRole === 'staff'
@@ -44,36 +56,41 @@ async function assertAccountEventPageVisibilityAndAccess(input: {
   }
 
   if (input.authorization.isPlatformAdmin) {
-    return
+    return null
   }
 
-  const hasApplication = await input.database.query.userApplications.findFirst({
-    columns: {
-      id: true
-    },
-    where: and(
-      eq(userApplications.eventId, input.event.id),
-      eq(userApplications.userId, input.actor.platformUser.id)
-    )
-  })
+  if (input.authorization.explicitRole !== null) {
+    return null
+  }
 
-  const activeMembership = await input.database
-    .select({
-      teamId: teamMembers.teamId
-    })
-    .from(teamMembers)
-    .innerJoin(teams, eq(teams.id, teamMembers.teamId))
-    .where(and(
-      eq(teamMembers.userId, input.actor.platformUser.id),
-      isNull(teamMembers.leftAt),
-      eq(teams.eventId, input.event.id)
-    ))
-    .limit(1)
+  const [application, membershipRows] = await Promise.all([
+    input.database.query.userApplications.findFirst({
+      where: and(
+        eq(userApplications.eventId, input.event.id),
+        eq(userApplications.userId, input.actor.platformUser.id)
+      )
+    }),
+    input.database
+      .select({
+        team: getTableColumns(teams),
+        membership: getTableColumns(teamMembers)
+      })
+      .from(teamMembers)
+      .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+      .where(and(
+        eq(teamMembers.userId, input.actor.platformUser.id),
+        eq(teams.eventId, input.event.id)
+      ))
+      .orderBy(desc(teamMembers.joinedAt), desc(teamMembers.createdAt))
+  ])
+  const access: AccountEventPageAuthorizedAccess = {
+    application: application ?? null,
+    memberships: membershipRows as AccountEventPageAuthorizedAccess['memberships']
+  }
 
   if (
-    !hasApplication
-    && input.authorization.explicitRole === null
-    && activeMembership.length === 0
+    !access.application
+    && !access.memberships.some(({ membership }) => membership.leftAt === null)
   ) {
     throw new ApiError({
       statusCode: 403,
@@ -83,6 +100,44 @@ async function assertAccountEventPageVisibilityAndAccess(input: {
         eventId: input.event.id
       }
     })
+  }
+
+  return access
+}
+
+/**
+ * Resolve participant-owned application and team data only when the shared
+ * page boundary did not already authorize and load it. Explicit event roles
+ * bypass the participant gate, but admin/staff pages may still request this
+ * data when their response contract needs it.
+ */
+export async function loadAccountEventPageAccess(
+  context: Pick<AccountEventPageContext, 'actor' | 'database' | 'event'>
+): Promise<AccountEventPageAuthorizedAccess> {
+  const [application, membershipRows] = await Promise.all([
+    context.database.query.userApplications.findFirst({
+      where: and(
+        eq(userApplications.eventId, context.event.id),
+        eq(userApplications.userId, context.actor.platformUser.id)
+      )
+    }),
+    context.database
+      .select({
+        team: getTableColumns(teams),
+        membership: getTableColumns(teamMembers)
+      })
+      .from(teamMembers)
+      .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+      .where(and(
+        eq(teamMembers.userId, context.actor.platformUser.id),
+        eq(teams.eventId, context.event.id)
+      ))
+      .orderBy(desc(teamMembers.joinedAt), desc(teamMembers.createdAt))
+  ])
+
+  return {
+    application: application ?? null,
+    memberships: membershipRows as AccountEventPageAuthorizedAccess['memberships']
   }
 }
 
@@ -113,7 +168,7 @@ export async function resolveAccountEventPageContext(
 
   const authorization = await resolveEventAuthorization(h3Event, event.id)
 
-  await assertAccountEventPageVisibilityAndAccess({
+  const access = await resolveAccountEventPageVisibilityAndAccess({
     actor,
     authorization,
     database,
@@ -123,6 +178,7 @@ export async function resolveAccountEventPageContext(
   return {
     actor,
     authorization,
+    access,
     database,
     event
   }

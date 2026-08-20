@@ -12,11 +12,13 @@ describe('account-event page context boundary', () => {
     expect(contextSource.match(/getDatabase\(/g)).toHaveLength(1)
     expect(contextSource.match(/database\.query\.events\.findFirst/g)).toHaveLength(1)
     expect(contextSource.match(/resolveEventAuthorization\(/g)).toHaveLength(1)
-    expect(contextSource).toContain('assertAccountEventPageVisibilityAndAccess({')
+    expect(contextSource).toContain('resolveAccountEventPageVisibilityAndAccess({')
+    expect(contextSource).toContain('if (input.authorization.explicitRole !== null)')
+    expect(contextSource).toContain('const [application, membershipRows] = await Promise.all([')
     expect(contextSource).toContain('actor,\n    authorization,\n    database,\n    event')
     expect(contextSource).not.toContain('eventRoleAssignments')
     expect(contextSource.indexOf('const authorization = await resolveEventAuthorization'))
-      .toBeLessThan(contextSource.indexOf('await assertAccountEventPageVisibilityAndAccess'))
+      .toBeLessThan(contextSource.indexOf('const access = await resolveAccountEventPageVisibilityAndAccess'))
   })
 
   test('does not delegate to another workspace accessor or create an HTTP/database escape hatch', () => {

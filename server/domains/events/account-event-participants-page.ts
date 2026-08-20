@@ -1,11 +1,20 @@
 import { and, count, eq, isNull } from 'drizzle-orm'
 
 import { assertEventParticipantVisibilityAccess } from '#server/auth/authorization'
-import type { AccountEventParticipantsPage } from '#shared/domains/events/account-event-participants-page'
-import { accountEventParticipantsPageSchema } from '#shared/domains/events/account-event-participants-page'
+import type {
+  AccountEventParticipantsPage,
+  AccountEventParticipantsPageResponse
+} from '#shared/domains/events/account-event-participants-page'
+import {
+  accountEventParticipantsPageResponseSchema
+} from '#shared/domains/events/account-event-participants-page'
 import { listEventApplications } from '#server/domains/applications'
 import { eventRoleAssignments, userApplicationStatuses, userApplications, users } from '#server/database/schema'
 import { listEventTracks } from '#server/domains/events'
+import {
+  assertAccountEventOperationsAccess,
+  loadAccountEventOperationsPage
+} from './account-event-operations-page'
 import { defineAccountEventPageRoute } from './account-event-page-contract'
 
 const firstParticipantPageSize = 100
@@ -43,11 +52,16 @@ async function getParticipantApplicationCounts(
 
 export const accountEventParticipantsPageRoute = defineAccountEventPageRoute({
   page: 'participants',
-  schema: accountEventParticipantsPageSchema,
+  schema: accountEventParticipantsPageResponseSchema,
   authorize: async (context) => {
     assertEventParticipantVisibilityAccess(context.authorization)
   },
-  load: async (context): Promise<AccountEventParticipantsPage> => {
+  load: async (context): Promise<AccountEventParticipantsPageResponse> => {
+    if (context.authorization.isEventAdmin) {
+      assertAccountEventOperationsAccess(context)
+      return await loadAccountEventOperationsPage(context)
+    }
+
     const [applicationResult, tracks, statusCounts] = await Promise.all([
       listEventApplications(context.database, context.event.id, {
         page: 1,

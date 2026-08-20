@@ -34,6 +34,7 @@ export interface JudgeAssignmentAuthorization {
   assignmentId: string
   eventId: string
   assignedJudgeUserId: string
+  assignment: typeof judgeAssignments.$inferSelect
   actingRole: 'assigned_judge' | null
   canAccess: boolean
   visibility: 'blind' | 'pitch' | 'forbidden'
@@ -244,6 +245,7 @@ export async function resolveJudgeAssignmentAuthorization(
         assignmentId,
         eventId: assignment.eventId,
         assignedJudgeUserId: assignment.judgeUserId,
+        assignment,
         actingRole: isAssignedJudge ? 'assigned_judge' : null,
         canAccess: isAssignedJudge,
         visibility: isAssignedJudge

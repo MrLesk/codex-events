@@ -183,6 +183,7 @@ For each navigation and tab interaction, browser instrumentation records:
 - phase timings for shell navigation, account bootstrap, the critical page read, first usable state, lazy-tab completion, and media delivery;
 - the declared wall-clock budget and the observed duration for each phase and journey;
 - request topology, including exactly one shared bootstrap per authenticated workspace entry, exactly one critical page-shaped JSON read after bootstrap, zero feature-local session reads, and zero query-only actor refreshes;
+- direct links to non-entry account-event tabs use that one selected page read with `includeEventShell=true`; the selected page loader and shell run concurrently in the same request, with the shell's independent tracks, image-options, gallery, published-prize, published-staff, credit-inventory, and meetup talk-proposal reads started in one D1 wave (participant application and membership access is a parallel branch when the shared context does not already contain it);
 - cancellation of abandoned tab requests, local lazy-code loading, and the absence of runtime `unpkg` dependencies; and
 - media payload constraints, including versioned cacheable URLs, allowed named variants, response content type and byte size, and the absence of public `no-store` original media in page backgrounds.
 

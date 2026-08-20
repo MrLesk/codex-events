@@ -35,6 +35,8 @@ describe('TASK-432.5.3 server request topology', () => {
     expect(judgeInboxSource).not.toContain('$fetch')
     expect(judgeInboxSource).not.toContain('fetch(')
     expect(judgingSource).not.toContain('resolveJudgeAssignmentAuthorization')
+    expect(judgingSource).toContain('context.assignmentAuthorization.assignment')
+    expect(judgingSource).not.toContain('context.database.query.judgeAssignments.findFirst')
     expect(judgingSource).toContain('context.actor.platformUser.id')
   })
 

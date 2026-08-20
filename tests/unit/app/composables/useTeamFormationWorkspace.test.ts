@@ -9,13 +9,13 @@ vi.mock('~/composables/useApiClient', () => ({
 
 vi.mock('~/domains/teams/workspace', async () => await import('../../../../app/domains/teams/workspace'))
 
-function createTeamDetail(memberUserIds: string[]) {
+function createTeamDetail(memberUserIds: string[], teamId = 'team_1') {
   return {
-    id: 'team_1',
+    id: teamId,
     eventId: 'event_1',
     name: 'North Star Team',
     bio: 'Building a focused collaboration workspace.',
-    slug: 'north-star-team-1234',
+    slug: teamId === 'team_1' ? 'north-star-team-1234' : `${teamId}-slug`,
     isOpenToJoinRequests: true,
     createdByUserId: 'user_admin',
     createdAt: '2026-04-04T08:00:00.000Z',
@@ -23,7 +23,7 @@ function createTeamDetail(memberUserIds: string[]) {
     activeMemberCount: memberUserIds.length,
     members: memberUserIds.map((userId, index) => ({
       id: `member_${index + 1}`,
-      teamId: 'team_1',
+      teamId,
       userId,
       role: index === 0 ? 'admin' : 'member',
       joinedAt: '2026-04-04T08:00:00.000Z',
@@ -72,6 +72,15 @@ async function waitFor(predicate: () => boolean) {
   }
 
   throw new Error('Timed out waiting for workspace state.')
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((promiseResolve) => {
+    resolve = promiseResolve
+  })
+
+  return { promise, resolve }
 }
 
 describe('useTeamFormationWorkspace', () => {
@@ -194,15 +203,53 @@ describe('useTeamFormationWorkspace', () => {
     vi.unstubAllGlobals()
   })
 
-  test('removes approved requests from join requests and refreshes team members after approval', async () => {
+  test('uses page-shaped initial state and updates an approved request without refetching', async () => {
     const { useTeamFormationWorkspace } = await import('../../../../app/composables/useTeamFormationWorkspace')
+    const team = createTeamDetail(['user_admin'])
 
     const workspace = useTeamFormationWorkspace({
       id: 'event_1',
       state: 'registration_open',
       maxTeamMembers: 4
     } as never, {
-      teamId: 'team_1'
+      teamId: 'team_1',
+      initialState: ref({
+        application: {
+          id: 'application_1',
+          eventId: 'event_1',
+          userId: 'user_admin',
+          status: 'approved'
+        },
+        ownTeam: team,
+        ownMembership: team.members[0],
+        selectedTeam: team,
+        joinRequests: [createJoinRequest('pending')],
+        visibleTeams: [{
+          id: team.id,
+          eventId: team.eventId,
+          name: team.name,
+          bio: team.bio,
+          slug: team.slug,
+          workspaceMode: 'team',
+          isOpenToJoinRequests: team.isOpenToJoinRequests,
+          createdByUserId: team.createdByUserId,
+          createdAt: team.createdAt,
+          updatedAt: team.updatedAt,
+          activeMemberCount: team.activeMemberCount
+        }],
+        visibleTeamsMeta: {
+          page: 1,
+          pageSize: 6,
+          total: 1,
+          filterCounts: {
+            all: 1,
+            open_to_join: 1,
+            solo: 0,
+            multi_person: 0,
+            full: 0
+          }
+        }
+      })
     })
 
     await waitFor(() =>
@@ -221,18 +268,58 @@ describe('useTeamFormationWorkspace', () => {
 
     await workspace.approveJoinRequest('request_1')
 
-    await waitFor(() => {
-      const team = workspace.currentTeam.value
+    expect(workspace.currentTeam.value?.members.map(member => member.userId)).toEqual(['user_admin'])
+    expect(workspace.teamJoinRequests.value).toMatchObject([
+      { id: 'request_1', status: 'approved' }
+    ])
+    expect(apiFetch).toHaveBeenCalledTimes(1)
+    expect(apiFetch).toHaveBeenCalledWith(
+      '/api/events/event_1/team-join-requests/request_1/actions/approve',
+      expect.objectContaining({ method: 'POST' })
+    )
+  })
 
-      return team?.members.length === 2
-        && team.members.some(member => member.userId === 'user_new')
-        && workspace.teamJoinRequests.value.length === 0
+  test('does not commit a late team response after the selected team changes', async () => {
+    const { useTeamFormationWorkspace } = await import('../../../../app/composables/useTeamFormationWorkspace')
+    const teamId = ref('team_1')
+    const first = deferred<{ data: ReturnType<typeof createTeamDetail> }>()
+    const second = deferred<{ data: ReturnType<typeof createTeamDetail> }>()
+
+    apiFetch.mockReset()
+    apiFetch.mockImplementation((url: string) => {
+      if (url === '/api/events/event_1/teams/team_1') {
+        return first.promise
+      }
+
+      if (url === '/api/events/event_1/teams/team_2') {
+        return second.promise
+      }
+
+      throw new Error(`Unhandled request in stale-response test: ${url}`)
     })
 
-    expect(workspace.currentTeam.value?.members.map(member => member.userId)).toEqual([
-      'user_admin',
-      'user_new'
-    ])
-    expect(workspace.teamJoinRequests.value).toEqual([])
+    const workspace = useTeamFormationWorkspace({
+      id: 'event_1',
+      state: 'registration_open',
+      maxTeamMembers: 4
+    } as never, {
+      teamId
+    })
+
+    await flushWorkspace()
+    teamId.value = 'team_2'
+    await flushWorkspace()
+
+    first.resolve({
+      data: createTeamDetail(['user_admin'], 'team_1')
+    })
+    await flushWorkspace()
+
+    expect(workspace.currentTeam.value?.id).not.toBe('team_1')
+
+    second.resolve({
+      data: createTeamDetail(['user_admin'], 'team_2')
+    })
+    await waitFor(() => workspace.currentTeam.value?.id === 'team_2')
   })
 })

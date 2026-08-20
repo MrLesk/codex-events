@@ -94,6 +94,9 @@ describe('resolveAccountEventPageContext', () => {
     expect(database.query.events.findFirst).toHaveBeenCalledOnce()
     expect(resolveEventAuthorization).toHaveBeenCalledOnce()
     expect(database.query.eventRoleAssignments.findMany).not.toHaveBeenCalled()
+    expect(database.query.userApplications.findFirst).not.toHaveBeenCalled()
+    expect(database.select).not.toHaveBeenCalled()
+    expect(context.access).toBeNull()
     expect(context.authorization.explicitRole).toBe('event_admin')
   })
 
@@ -134,5 +137,77 @@ describe('resolveAccountEventPageContext', () => {
     await expect(resolveAccountEventPageContext({} as never, 'fixture-event'))
       .rejects.toMatchObject({ statusCode: 404, code: 'event_not_found' })
     expect(roleQuery).not.toHaveBeenCalled()
+  })
+
+  test('returns participant application and memberships as one typed access context', async () => {
+    resolveEventAuthorization.mockResolvedValue({
+      eventId: 'event_1',
+      isPlatformAdmin: false,
+      explicitRole: null,
+      isEventAdmin: false,
+      canReviewThroughAssignment: false,
+      isInJudgePool: false,
+      isStaff: false,
+      staffTrackId: null,
+      canViewParticipantsAndTeams: false
+    })
+
+    const application = {
+      id: 'application_1',
+      eventId: 'event_1',
+      userId: 'user_1',
+      status: 'approved'
+    }
+    const membership = {
+      team: {
+        id: 'team_1',
+        eventId: 'event_1',
+        name: 'Fixture Team',
+        slug: 'fixture-team'
+      },
+      membership: {
+        id: 'membership_1',
+        teamId: 'team_1',
+        userId: 'user_1',
+        role: 'admin',
+        leftAt: null
+      }
+    }
+    const orderBy = vi.fn(async () => [membership])
+    const findFirst = vi.fn(async () => application)
+    getDatabase.mockReturnValue({
+      query: {
+        events: {
+          findFirst: vi.fn(async () => ({
+            id: 'event_1',
+            slug: 'fixture-event',
+            name: 'Fixture event',
+            eventType: 'hackathon',
+            state: 'submission_open',
+            hiddenAt: null
+          }))
+        },
+        userApplications: {
+          findFirst
+        }
+      },
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({
+          innerJoin: vi.fn(() => ({
+            where: vi.fn(() => ({ orderBy }))
+          }))
+        }))
+      }))
+    })
+
+    const { resolveAccountEventPageContext } = await import('../../../../../server/domains/events/account-event-page-context')
+    const context = await resolveAccountEventPageContext({} as never, 'fixture-event')
+
+    expect(context.access).toMatchObject({
+      application,
+      memberships: [membership]
+    })
+    expect(findFirst).toHaveBeenCalledOnce()
+    expect(orderBy).toHaveBeenCalledOnce()
   })
 })

@@ -33,6 +33,7 @@ export function useTeamSubmissionWorkspace(
 ) {
   const apiFetch = useApiClient()
   const requests = useAbortableRequest()
+  let submissionGeneration = 0
   const resolvedEvent = computed(() => toValue(event))
   const resolvedEventId = computed(() => {
     const eventId = toValue(options.visibleEventId)
@@ -86,6 +87,19 @@ export function useTeamSubmissionWorkspace(
     return true
   }
 
+  function isCurrentSubmissionRequest(
+    generation: number,
+    eventId: string,
+    teamId: string,
+    signal: AbortSignal
+  ) {
+    return !signal.aborted
+      && submissionGeneration === generation
+      && resolvedEventId.value === eventId
+      && resolvedTeamId.value === teamId
+      && canViewSubmission.value
+  }
+
   watch([initialSubmissionStateKey, initialSubmission], () => {
     if (!initialSubmissionStateKey.value) {
       appliedInitialSubmissionStateKey.value = null
@@ -98,13 +112,9 @@ export function useTeamSubmissionWorkspace(
     immediate: true
   })
 
-  async function fetchCurrentSubmission(teamId: string, signal: AbortSignal) {
-    if (!resolvedEventId.value) {
-      throw new Error('The current event submission route could not be resolved.')
-    }
-
+  async function fetchCurrentSubmission(eventId: string, teamId: string, signal: AbortSignal) {
     const response = await apiFetch<TeamSubmissionApiDataResponse<TeamSubmissionRecord | null>>(
-      `/api/events/${resolvedEventId.value}/teams/${teamId}/submission`,
+      `/api/events/${eventId}/teams/${teamId}/submission`,
       { signal }
     )
 
@@ -114,21 +124,33 @@ export function useTeamSubmissionWorkspace(
   }
 
   async function loadCurrentSubmission() {
-    if (!resolvedEventId.value || !resolvedTeamId.value || !canViewSubmission.value) {
+    const eventId = resolvedEventId.value
+    const teamId = resolvedTeamId.value
+    if (!eventId || !teamId || !canViewSubmission.value) {
+      requests.abort('current-submission')
       resetSubmissionState()
       return
     }
 
     currentSubmissionStatus.value = 'pending'
     currentSubmissionErrorMessage.value = ''
+    const generation = submissionGeneration
     const signal = requests.createSignal('current-submission')
 
     try {
-      currentSubmission.value = await fetchCurrentSubmission(resolvedTeamId.value, signal)
+      const submission = await fetchCurrentSubmission(eventId, teamId, signal)
       throwIfAborted(signal)
+      if (!isCurrentSubmissionRequest(generation, eventId, teamId, signal)) {
+        return
+      }
+      currentSubmission.value = submission
       currentSubmissionStatus.value = 'success'
     } catch (error) {
       if (isAbortError(error, signal)) {
+        return
+      }
+
+      if (!isCurrentSubmissionRequest(generation, eventId, teamId, signal)) {
         return
       }
 
@@ -252,6 +274,9 @@ export function useTeamSubmissionWorkspace(
     initialSubmissionStateKey,
     hasInitialSubmissionState
   ], async () => {
+    submissionGeneration += 1
+    requests.abort('current-submission')
+
     if (!resolvedEventId.value || !resolvedTeamId.value || !canViewSubmission.value) {
       resetSubmissionState()
       return

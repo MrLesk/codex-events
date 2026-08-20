@@ -1,5 +1,6 @@
 import type { PublicEventState } from '~/domains/events/presentation'
 import type { EventType } from '~/domains/events/records'
+import type { AccountEventPageShell } from '#shared/domains/events/account-event-page-shell'
 
 export {
   accountEventPageNames,
@@ -37,6 +38,7 @@ export interface AccountEventPageResponse<TPage> {
   event: AccountEventPageEvent
   visibility: AccountEventPageVisibility
   page: TPage
+  shell?: AccountEventPageShell
 }
 
 export type AccountEventEntryPage<TPage> = AccountEventPageResponse<TPage>

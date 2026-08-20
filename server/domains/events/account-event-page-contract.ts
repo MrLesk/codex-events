@@ -21,6 +21,8 @@ import {
   type AccountEventPageContext,
   type AccountEventPageEventRecord
 } from './account-event-page-context'
+import { loadAccountEventPageShell } from './account-event-page-shell'
+import type { AccountEventPageShell } from '#shared/domains/events/account-event-page-shell'
 
 export {
   accountEventPageNames,
@@ -36,7 +38,8 @@ export const accountEventPageParamsSchema = routeSlugParamsSchema.extend({
 
 export const accountEventPageQuerySchema = z.object({
   selectedTeamSlug: z.string().trim().toLowerCase().min(1).max(120).optional(),
-  includeAdminEventConfiguration: z.coerce.boolean().optional()
+  includeAdminEventConfiguration: z.coerce.boolean().optional(),
+  includeEventShell: z.coerce.boolean().optional()
 }).passthrough()
 
 export type AccountEventPageEvent = Pick<
@@ -55,6 +58,7 @@ export interface AccountEventPageResponse<TPage> {
   event: AccountEventPageEvent
   visibility: AccountEventPageVisibility
   page: TPage
+  shell?: AccountEventPageShell
 }
 
 export type AccountEventEntryPage<TPage> = AccountEventPageResponse<TPage>
@@ -137,17 +141,22 @@ export async function executeAccountEventPageRoute<
     slug,
     page: definition.page
   })
-  const context = await resolveAccountEventPageContext(h3Event, params.slug)
-  await definition.authorize(context)
   const query = normalizeAccountEventPageQuery(
     accountEventPageQuerySchema.parse(getQuery(h3Event))
   )
-  const page = definition.schema.parse(await definition.load(context, query))
+  const context = await resolveAccountEventPageContext(h3Event, params.slug)
+  await definition.authorize(context)
+  const [pageResult, shell] = await Promise.all([
+    definition.load(context, query),
+    query.includeEventShell ? loadAccountEventPageShell(context) : Promise.resolve(undefined)
+  ])
+  const page = definition.schema.parse(await pageResult)
 
   return apiData<AccountEventPageResponse<z.output<TSchema>>>({
     event: toPageEvent(context.event),
     visibility: toPageVisibility(context.authorization),
-    page
+    page,
+    ...(shell ? { shell } : {})
   })
 }
 

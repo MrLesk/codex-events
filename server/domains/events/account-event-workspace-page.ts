@@ -1,9 +1,8 @@
 import { assertCompetitionEvent, listEventTracks } from '#server/domains/events'
-import { getOwnUserApplication, serializeUserApplication } from '#server/domains/applications'
+import { serializeUserApplication } from '#server/domains/applications'
 import { getTeamCompetitionOutcome } from '#server/domains/outcomes'
 import { getSubmissionDisqualificationReason, getSubmissionForTeam, serializeSubmission } from '#server/domains/submissions'
 import {
-  getOwnActiveTeamMembershipForEvent,
   getTeamWithMembersOrThrow,
   listTeamJoinRequests,
   serializeTeamMember
@@ -11,6 +10,7 @@ import {
 import type { AccountEventWorkspacePage } from '#shared/domains/events/account-event-workspace-page'
 import { accountEventWorkspacePageSchema } from '#shared/domains/events/account-event-workspace-page'
 import { defineAccountEventPageRoute } from './account-event-page-contract'
+import { loadAccountEventPageAccess } from './account-event-page-context'
 
 const outcomeVisibleStates = new Set([
   'pitch',
@@ -34,33 +34,39 @@ export const accountEventWorkspacePageRoute = defineAccountEventPageRoute({
     assertCompetitionEvent(context.event)
   },
   load: async (context): Promise<AccountEventWorkspacePage> => {
-    const userId = context.actor.platformUser.id
-    const [application, tracks] = await Promise.all([
-      getOwnUserApplication(context.database, context.event.id, userId),
+    const accessPromise = context.access
+      ? Promise.resolve(context.access)
+      : loadAccountEventPageAccess(context)
+    const [access, tracks] = await Promise.all([
+      accessPromise,
       listEventTracks(context.database, context.event.id)
     ])
-    const membership = await getOwnActiveTeamMembershipForEvent(context.database, context.event.id, userId)
-    const team = membership
-      ? await getTeamWithMembersOrThrow(context.database, context.event.id, membership.teamId, {
-          includeSensitiveUserFields: true
-        })
-      : null
+    const application = access.application
+    const membership = access.memberships.find(({ membership }) => membership.leftAt === null)?.membership ?? null
+    const teamId = membership?.teamId ?? null
+    const [team, joinRequests, submission, outcome] = await Promise.all([
+      teamId
+        ? getTeamWithMembersOrThrow(context.database, context.event.id, teamId, {
+            includeSensitiveUserFields: true
+          })
+        : Promise.resolve(null),
+      membership?.role === 'admin'
+        ? listTeamJoinRequests(context.database, teamId!)
+        : Promise.resolve([]),
+      teamId
+        ? getSubmissionForTeam(context.database, teamId)
+        : Promise.resolve(null),
+      teamId && outcomeVisibleStates.has(context.event.state)
+        ? getTeamCompetitionOutcome(context.database, context.event.id, teamId)
+        : Promise.resolve(null)
+    ])
     const teamDetail = team ? serializeTeamDetail(team) : null
-    const joinRequests = membership?.role === 'admin'
-      ? await listTeamJoinRequests(context.database, membership.teamId)
-      : []
-    const submission = teamDetail
-      ? await getSubmissionForTeam(context.database, teamDetail.id)
-      : null
     const serializedSubmission = submission
       ? serializeSubmission(submission, {
           disqualificationReason: submission.status === 'disqualified'
             ? await getSubmissionDisqualificationReason(context.database, submission.id)
             : null
         })
-      : null
-    const outcome = teamDetail && outcomeVisibleStates.has(context.event.state)
-      ? await getTeamCompetitionOutcome(context.database, context.event.id, teamDetail.id)
       : null
     const applicationStatus = application?.status ?? null
     const isApprovedParticipant = applicationStatus === 'approved'

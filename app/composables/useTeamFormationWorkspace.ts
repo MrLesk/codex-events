@@ -81,6 +81,7 @@ export function useTeamFormationWorkspace(
 ) {
   const apiFetch = useApiClient()
   const requests = useAbortableRequest()
+  let workspaceGeneration = 0
   const { actor, status: actorStatus } = useAccountLifecycleActor()
   const resolvedEvent = computed(() => toValue(event))
   const resolvedTeamId = computed(() => {
@@ -233,6 +234,20 @@ export function useTeamFormationWorkspace(
     teamJoinRequestsErrorMessage.value = ''
   }
 
+  function isCurrentWorkspaceRequest(
+    generation: number,
+    eventId: string,
+    userId: string,
+    signal: AbortSignal,
+    teamId?: string | null
+  ) {
+    return !signal.aborted
+      && workspaceGeneration === generation
+      && visibleEventId.value === eventId
+      && actorUserId.value === userId
+      && (teamId === undefined || resolvedTeamId.value === teamId)
+  }
+
   async function fetchTeamPage(
     page: number,
     pageSize: number = visibleTeamsPageSize,
@@ -286,10 +301,17 @@ export function useTeamFormationWorkspace(
       return null
     }
 
+    const eventId = visibleEventId.value
+    const userId = actorUserId.value
+    if (!userId) {
+      return null
+    }
+
+    const generation = workspaceGeneration
     const signal = requests.createSignal('team-slug')
 
     const response = await apiFetch<TeamSummaryListResponse>(
-      `/api/events/${visibleEventId.value}/teams`,
+      `/api/events/${eventId}/teams`,
       {
         query: {
           page: 1,
@@ -301,6 +323,10 @@ export function useTeamFormationWorkspace(
     )
 
     throwIfAborted(signal)
+
+    if (!isCurrentWorkspaceRequest(generation, eventId, userId, signal)) {
+      return null
+    }
 
     return response.data.find(team => team.slug === normalizedTeamSlug) ?? null
   }
@@ -324,13 +350,16 @@ export function useTeamFormationWorkspace(
     loadMore?: boolean
     filter?: VisibleTeamsFilter
   }) {
-    if (!visibleEventId.value || typedActor.value?.kind !== 'platform_user') {
+    const eventId = visibleEventId.value
+    const userId = actorUserId.value
+    if (!eventId || !userId || typedActor.value?.kind !== 'platform_user') {
       resetVisibleTeamsState()
       return
     }
 
     const isLoadMore = options?.loadMore ?? false
     const nextFilter = options?.filter ?? activeVisibleTeamsFilter.value
+    const generation = workspaceGeneration
 
     if (!isLoadMore) {
       activeVisibleTeamsFilter.value = {
@@ -358,6 +387,9 @@ export function useTeamFormationWorkspace(
       )
       throwIfAborted(signal)
       const nextTeams = responses.flatMap(response => response.data)
+      if (!isCurrentWorkspaceRequest(generation, eventId, userId, signal)) {
+        return
+      }
       const uniqueTeams = nextTeams.filter((team, index, items) =>
         items.findIndex(candidate => candidate.id === team.id) === index
       )
@@ -369,6 +401,10 @@ export function useTeamFormationWorkspace(
       visibleTeamsStatus.value = 'success'
     } catch (error) {
       if (isAbortError(error, signal)) {
+        return
+      }
+
+      if (!isCurrentWorkspaceRequest(generation, eventId, userId, signal)) {
         return
       }
 
@@ -390,7 +426,7 @@ export function useTeamFormationWorkspace(
         'Visible teams could not be loaded right now.'
       )
     } finally {
-      if (isLoadMore && !signal.aborted) {
+      if (isLoadMore && isCurrentWorkspaceRequest(generation, eventId, userId, signal)) {
         isLoadingMoreVisibleTeams.value = false
       }
     }
@@ -408,28 +444,39 @@ export function useTeamFormationWorkspace(
   }
 
   async function loadCurrentTeam() {
-    if (!visibleEventId.value || !resolvedTeamId.value || typedActor.value?.kind !== 'platform_user') {
+    const eventId = visibleEventId.value
+    const teamId = resolvedTeamId.value
+    const userId = actorUserId.value
+    if (!eventId || !teamId || !userId || typedActor.value?.kind !== 'platform_user') {
       resetCurrentTeamState()
       return
     }
 
     currentTeamStatus.value = 'pending'
     currentTeamErrorMessage.value = ''
+    const generation = workspaceGeneration
     const signal = requests.createSignal('current-team')
 
     try {
-      const detail = await fetchTeamDetail(resolvedTeamId.value, signal)
+      const detail = await fetchTeamDetail(teamId, signal)
       throwIfAborted(signal)
+      if (!isCurrentWorkspaceRequest(generation, eventId, userId, signal, teamId)) {
+        return
+      }
       currentTeam.value = detail
       currentTeamStatus.value = 'success'
 
-      if (getOwnTeamMembership(detail, actorUserId.value)) {
+      if (getOwnTeamMembership(detail, userId)) {
         ownTeam.value = detail
         ownTeamStatus.value = 'success'
         ownTeamErrorMessage.value = ''
       }
     } catch (error) {
       if (isAbortError(error, signal)) {
+        return
+      }
+
+      if (!isCurrentWorkspaceRequest(generation, eventId, userId, signal, teamId)) {
         return
       }
 
@@ -443,7 +490,10 @@ export function useTeamFormationWorkspace(
   }
 
   async function loadCurrentTeamJoinRequests() {
-    if (!visibleEventId.value || !currentTeam.value || !isCurrentTeamAdmin.value) {
+    const eventId = visibleEventId.value
+    const teamId = currentTeam.value?.id ?? null
+    const userId = actorUserId.value
+    if (!eventId || !teamId || !userId || !isCurrentTeamAdmin.value) {
       teamJoinRequests.value = []
       teamJoinRequestsStatus.value = 'idle'
       teamJoinRequestsErrorMessage.value = ''
@@ -452,20 +502,29 @@ export function useTeamFormationWorkspace(
 
     teamJoinRequestsStatus.value = 'pending'
     teamJoinRequestsErrorMessage.value = ''
+    const generation = workspaceGeneration
     const signal = requests.createSignal('team-join-requests')
 
     try {
       const response = await apiFetch<TeamWorkspaceApiListResponse<TeamJoinRequestRecord>>(
-        `/api/events/${visibleEventId.value}/teams/${currentTeam.value.id}/join-requests`,
+        `/api/events/${eventId}/teams/${teamId}/join-requests`,
         { signal }
       )
 
       throwIfAborted(signal)
 
+      if (!isCurrentWorkspaceRequest(generation, eventId, userId, signal, teamId)) {
+        return
+      }
+
       teamJoinRequests.value = response.data.filter(request => request.status === 'pending')
       teamJoinRequestsStatus.value = 'success'
     } catch (error) {
       if (isAbortError(error, signal)) {
+        return
+      }
+
+      if (!isCurrentWorkspaceRequest(generation, eventId, userId, signal, teamId)) {
         return
       }
 
@@ -782,7 +841,21 @@ export function useTeamFormationWorkspace(
     return result
   }
 
-  watch([resolvedTeamId, actorUserId], async ([teamId, userId]) => {
+  watch([visibleEventId, resolvedTeamId, actorUserId], async ([eventId, teamId, userId], previous) => {
+    const contextChanged = Boolean(previous?.length)
+      && (previous[0] !== eventId || previous[1] !== teamId || previous[2] !== userId)
+
+    workspaceGeneration += 1
+    requests.abort('team-slug')
+    requests.abort('visible-teams')
+    requests.abort('current-team')
+    requests.abort('team-join-requests')
+
+    if (contextChanged) {
+      resetVisibleTeamsState()
+      resetCurrentTeamState()
+    }
+
     if (!teamId || !userId) {
       if (initialState.value) {
         currentTeam.value = initialState.value.ownTeam as TeamDetailRecord | null

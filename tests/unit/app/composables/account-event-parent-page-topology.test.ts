@@ -64,8 +64,17 @@ describe('account event parent page request topology', () => {
     expect(pageSource).not.toContain('<LazyAccountEventJudgePanel\n          :event-id="workspaceEventId"\n          :slug="slug"\n          :selected-assignment-id="selectedJudgeAssignmentId"\n        />')
   })
 
+  test('uses one selected direct-link read with a concurrent event shell', () => {
+    expect(pageSource).toContain('const isDirectNonEntryNavigation = computed(() =>')
+    expect(pageSource).toContain('const directPageQuery = computed(() => isDirectNonEntryNavigation.value')
+    expect(pageSource).toContain('{ includeEventShell: true }')
+    expect(pageSource).toContain('immediate: false')
+    expect(pageSource).toContain('selectedParticipantsResponse?.visibility.canManage')
+    expect(pageSource).toContain('shouldLoadParticipantsPage')
+  })
+
   test('keeps selected-team navigation in the page request instead of a slug lookup', () => {
-    expect(pageSource).toContain('query: computed(() => ({ selectedTeamSlug: selectedTeamSlug.value }))')
+    expect(pageSource).toContain('selectedTeamSlug: selectedTeamSlug.value')
     expect(teamsRouteSource).toContain('query: computed(() => ({ selectedTeamSlug: selectedTeamSlug.value }))')
     expect(teamRouteSource).toContain('query: computed(() => ({ selectedTeamSlug: teamSlug.value }))')
     expect(teamsServerSource).toContain('query: AccountEventPageQuery')

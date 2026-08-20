@@ -22,6 +22,7 @@ export type AccountEventPageRoutePath<TPage extends AccountEventPageName = Accou
 export interface AccountEventPageQuery {
   selectedTeamSlug?: string | null
   includeAdminEventConfiguration?: boolean
+  includeEventShell?: boolean
 }
 
 export const accountEventPagePaths = {
@@ -50,10 +51,12 @@ export function normalizeAccountEventPageQuery(
 ): AccountEventPageQuery {
   const selectedTeamSlug = query?.selectedTeamSlug?.trim().toLowerCase()
   const includeAdminEventConfiguration = query?.includeAdminEventConfiguration === true
+  const includeEventShell = query?.includeEventShell === true
 
   return {
     ...(selectedTeamSlug ? { selectedTeamSlug } : {}),
-    ...(includeAdminEventConfiguration ? { includeAdminEventConfiguration: true } : {})
+    ...(includeAdminEventConfiguration ? { includeAdminEventConfiguration: true } : {}),
+    ...(includeEventShell ? { includeEventShell: true } : {})
   }
 }
 
@@ -77,6 +80,10 @@ export function buildAccountEventPagePath(
     searchParams.set('includeAdminEventConfiguration', 'true')
   }
 
+  if (normalizedQuery.includeEventShell) {
+    searchParams.set('includeEventShell', 'true')
+  }
+
   const queryString = searchParams.toString().replace(/\+/g, '%20')
   return queryString ? `${path}?${queryString}` : path
 }
@@ -94,8 +101,9 @@ export function buildAccountEventPageCacheKey(
     && normalizedQuery.includeAdminEventConfiguration
     ? ':includeAdminEventConfiguration'
     : ''
+  const eventShellKey = normalizedQuery.includeEventShell ? ':includeEventShell' : ''
 
-  return `account-event-page:${slug}:${page}${selectedTeamKey}${adminEventConfigurationKey}`
+  return `account-event-page:${slug}:${page}${selectedTeamKey}${adminEventConfigurationKey}${eventShellKey}`
 }
 
 export function buildAccountJudgeAssignmentWorkspacePath(

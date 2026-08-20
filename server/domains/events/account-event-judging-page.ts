@@ -13,7 +13,6 @@ import {
 } from '#server/domains/events'
 import { assertJudgeAssignmentAccess } from '#server/auth/authorization'
 import { evaluationCriteria, judgeAssignments } from '#server/database/schema'
-import { ApiError } from '#server/http/api-error'
 import { assertGuard } from '#server/domains/lifecycle-guard'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import {
@@ -128,20 +127,9 @@ export async function loadAccountJudgeAssignmentWorkspacePage(
   assignmentId: string
 ): Promise<AccountJudgeAssignmentWorkspacePage> {
   assertCompetitionEvent(context.event)
-  const assignment = await context.database.query.judgeAssignments.findFirst({
-    where: eq(judgeAssignments.id, assignmentId)
-  })
+  const assignment = context.assignmentAuthorization.assignment
 
-  if (!assignment) {
-    throw new ApiError({
-      statusCode: 404,
-      code: 'judge_assignment_not_found',
-      message: 'The requested judge assignment was not found for this event.',
-      details: { assignmentId, eventId: context.event.id }
-    })
-  }
-
-  assertGuard(assignment.eventId === context.event.id, {
+  assertGuard(assignment.id === assignmentId && assignment.eventId === context.event.id, {
     statusCode: 404,
     code: 'judge_assignment_not_found',
     message: 'The requested judge assignment was not found for this event.',

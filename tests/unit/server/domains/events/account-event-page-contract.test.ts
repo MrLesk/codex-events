@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { z } from 'zod'
 
 const resolveAccountEventPageContext = vi.hoisted(() => vi.fn())
+const loadAccountEventPageShell = vi.hoisted(() => vi.fn())
 const contractSource = readFileSync(
   new URL('../../../../../server/domains/events/account-event-page-contract.ts', import.meta.url),
   'utf8'
@@ -13,10 +14,15 @@ vi.mock('../../../../../server/domains/events/account-event-page-context', () =>
   resolveAccountEventPageContext
 }))
 
+vi.mock('../../../../../server/domains/events/account-event-page-shell', () => ({
+  loadAccountEventPageShell
+}))
+
 describe('account-event page route contract', () => {
   beforeEach(() => {
     vi.resetModules()
     resolveAccountEventPageContext.mockReset()
+    loadAccountEventPageShell.mockReset()
     resolveAccountEventPageContext.mockResolvedValue({
       actor: {},
       authorization: {
@@ -47,11 +53,51 @@ describe('account-event page route contract', () => {
     expect(contractSource).toContain('authorize: AccountEventPageAuthorizer')
     expect(contractSource).toContain('accountEventPageParamsSchema.parse')
     expect(contractSource).toContain('accountEventPageQuerySchema.parse')
-    expect(contractSource).toContain('await definition.load(context, query)')
+    expect(contractSource).toContain('definition.load(context, query)')
+    expect(contractSource).toContain('const [pageResult, shell] = await Promise.all([')
+    expect(contractSource).toContain('loadAccountEventPageShell(context)')
     expect(contractSource).toContain('definition.schema.parse')
     expect(contractSource).toContain('await definition.authorize(context)')
     expect(contractSource).toContain('includeAdminEventConfiguration')
     expect(contractSource).not.toContain('resourceMap')
+  })
+
+  test('runs the selected page and direct-link shell in the same request wave', async () => {
+    const {
+      defineAccountEventPageRoute,
+      executeAccountEventPageRoute
+    } = await import('../../../../../server/domains/events/account-event-page-contract')
+    let shellStarted = false
+    const shell = { marker: 'event-shell' }
+    loadAccountEventPageShell.mockImplementation(async () => {
+      shellStarted = true
+      return shell
+    })
+    const load = vi.fn(async () => {
+      await Promise.resolve()
+      expect(shellStarted).toBe(true)
+      return { phase: 'submission_open' }
+    })
+    const route = defineAccountEventPageRoute({
+      page: 'operations',
+      schema: z.object({ phase: z.string() }),
+      authorize: vi.fn(),
+      load
+    })
+
+    const result = await executeAccountEventPageRoute(
+      requestEvent('/?includeEventShell=true'),
+      'fixture-event',
+      route
+    )
+
+    expect(result).toMatchObject({
+      data: {
+        page: { phase: 'submission_open' },
+        shell
+      }
+    })
+    expect(loadAccountEventPageShell).toHaveBeenCalledOnce()
   })
 
   test('requires a named page and concrete Zod schema, then validates output', async () => {
