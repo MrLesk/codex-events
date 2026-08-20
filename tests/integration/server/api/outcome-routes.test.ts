@@ -2278,6 +2278,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         linkedinProfileUrl: 'https://linkedin.com/in/team-admin-one',
         githubProfileUrl: 'https://github.com/team-admin-one',
         profileIconUpdatedAt: '2026-03-18T13:00:00.000Z',
+        profileIconObjectKey: 'users/team_admin_one/profile-icon/fixture-1',
         profileIconRevision: 1
       })
       .where(eq(users.id, 'team_admin_one'))

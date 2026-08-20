@@ -157,7 +157,8 @@ describe('resolveNonHttpD1Binding', () => {
       email: 'mutation-probe@example.com',
       displayName: 'Mutation Probe'
     })
-    const updateBuilder = database.update(users).set({ displayName: 'Updated Mutation Probe' })
+    const updateSource = database.update(users)
+    const updateBuilder = updateSource.set({ displayName: 'Updated Mutation Probe' })
     const deleteBuilder = database.delete(users)
     const capabilityObjects = [
       relationalQuery,
@@ -262,6 +263,33 @@ describe('resolveNonHttpD1Binding', () => {
       })
       expect(() => Reflect.get(capability, 'where', receiver)).not.toThrow()
     }
+
+    for (const capability of capabilityObjects) {
+      for (const key of [
+        '__defineGetter__',
+        '__defineSetter__',
+        '__lookupGetter__',
+        '__lookupSetter__',
+        'hasOwnProperty',
+        'propertyIsEnumerable',
+        'toString',
+        'valueOf'
+      ]) {
+        expect(Reflect.get(capability, key)).toBeUndefined()
+        expect(key in capability).toBe(false)
+      }
+    }
+
+    expect(typeof relationalQuery.findFirst).toBe('function')
+    expect(typeof selectBuilder.where).toBe('function')
+    expect(typeof selectBuilder.$dynamic).toBe('function')
+    expect(typeof selectBuilder.toSQL).toBe('function')
+    expect(typeof insertBuilder.values).toBe('function')
+    expect(typeof updateSource.set).toBe('function')
+    expect(typeof deleteBuilder.where).toBe('function')
+    expect(Reflect.get(selectBuilder, 'dialect')).toBeDefined()
+    expect(Object.getOwnPropertyDescriptor(selectBuilder, 'dialect')?.value)
+      .toBe(Reflect.get(selectBuilder, 'dialect'))
   })
 
   test('allows direct database injection only on non-HTTP events', () => {

@@ -33,6 +33,7 @@ const dangerousBuilderCapabilities = new Set<PropertyKey>([
   'constructor',
   '__proto__',
   'binding',
+  'batch',
   'createSession',
   'getBookmark',
   'mapBatchResult',
@@ -56,7 +57,7 @@ function isObjectLike(value: unknown): value is object {
 function findPropertyDescriptor(target: object, property: PropertyKey) {
   let current: object | null = target
 
-  while (current) {
+  while (current && current !== Object.prototype) {
     const descriptor = Reflect.getOwnPropertyDescriptor(current, property)
     if (descriptor) {
       return descriptor
@@ -65,6 +66,11 @@ function findPropertyDescriptor(target: object, property: PropertyKey) {
   }
 
   return undefined
+}
+
+function isSafeBuilderDataValue(target: object, value: unknown) {
+  return !isObjectLike(value) || typeof value === 'function'
+    || (value !== target && !facadeByTarget.has(value) && !hasDangerousBuilderCapability(value))
 }
 
 function createSafeConstructorChain(rawConstructor: object, seen = new WeakMap<object, object>()): object {
@@ -204,6 +210,10 @@ function createBuilderFacade<T extends object>(target: T): T {
         return undefined
       }
 
+      if (!isSafeBuilderDataValue(target, descriptor.value)) {
+        return undefined
+      }
+
       return typeof descriptor.value === 'function'
         ? getForwardedMethod(target, property, descriptor.value as (...args: unknown[]) => unknown)
         : descriptor.value
@@ -212,7 +222,7 @@ function createBuilderFacade<T extends object>(target: T): T {
       const descriptor = findPropertyDescriptor(target, property)
       return !dangerousBuilderCapabilities.has(property)
         && typeof property !== 'symbol'
-        && Boolean(descriptor && 'value' in descriptor)
+        && Boolean(descriptor && 'value' in descriptor && isSafeBuilderDataValue(target, descriptor.value))
     },
     ownKeys() {
       return Reflect.ownKeys(target).filter((property) => {
@@ -220,7 +230,7 @@ function createBuilderFacade<T extends object>(target: T): T {
           return false
         }
         const descriptor = Reflect.getOwnPropertyDescriptor(target, property)
-        return Boolean(descriptor && 'value' in descriptor)
+        return Boolean(descriptor && 'value' in descriptor && isSafeBuilderDataValue(target, descriptor.value))
       })
     },
     getOwnPropertyDescriptor(_facadeTarget, property) {
@@ -229,7 +239,7 @@ function createBuilderFacade<T extends object>(target: T): T {
       }
 
       const descriptor = Reflect.getOwnPropertyDescriptor(target, property)
-      if (!descriptor || !('value' in descriptor)) {
+      if (!descriptor || !('value' in descriptor) || !isSafeBuilderDataValue(target, descriptor.value)) {
         return undefined
       }
 

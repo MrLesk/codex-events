@@ -3705,17 +3705,19 @@ describe('TASK-3.6 application routes', () => {
       await harness.database.insert(teamMembers).values(participantMemberships.slice(index, index + 40))
     }
 
-    const usersFindManySpy = vi.spyOn(harness.database.query.users, 'findMany')
-    const teamMembersFindManySpy = vi.spyOn(harness.database.query.teamMembers, 'findMany')
-    const teamsFindManySpy = vi.spyOn(harness.database.query.teams, 'findMany')
-    const submissionsFindManySpy = vi.spyOn(harness.database.query.submissions, 'findMany')
+    const queryHistoryBeforeRequest = harness.d1Database.queries.length
     const response = await harness.request('/api/events/event_1/applications?page=1&page_size=100')
+    const requestQueries = harness.d1Database.queries.slice(queryHistoryBeforeRequest)
 
     expect(response.status).toBe(200)
-    expect(usersFindManySpy).not.toHaveBeenCalled()
-    expect(teamMembersFindManySpy).not.toHaveBeenCalled()
-    expect(teamsFindManySpy).not.toHaveBeenCalled()
-    expect(submissionsFindManySpy).not.toHaveBeenCalled()
+    const routeQueryStart = requestQueries.findIndex(query =>
+      query.sql.includes('from "user_applications"') && query.sql.includes('limit ?')
+    )
+    expect(routeQueryStart).toBeGreaterThanOrEqual(0)
+    const routeQueries = requestQueries.slice(routeQueryStart)
+    expect(routeQueries).toHaveLength(6)
+    expect(routeQueries.filter(query => query.sql.includes('from "team_members"'))).toHaveLength(2)
+    expect(routeQueries.filter(query => query.sql.includes('from "submissions"'))).toHaveLength(1)
     expect(await response.json()).toMatchObject({
       data: expect.arrayContaining([
         expect.objectContaining({

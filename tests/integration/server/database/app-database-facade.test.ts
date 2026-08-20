@@ -153,6 +153,27 @@ describe('AppDatabase facade', () => {
     expect(Object.getOwnPropertySymbols(usersFromDescriptor)).toEqual([])
     expect(Reflect.get(database, 'transaction')).toBeUndefined()
 
+    const selectBuilder = database.select({ id: users.id }).from(users)
+    for (const builder of [usersFromDescriptor, selectBuilder]) {
+      for (const key of ['__defineGetter__', '__defineSetter__', 'hasOwnProperty', 'toString', 'valueOf']) {
+        expect(Reflect.get(builder, key)).toBeUndefined()
+        expect(key in builder).toBe(false)
+      }
+    }
+
+    expect(typeof (usersFromDescriptor as { findMany?: unknown }).findMany).toBe('function')
+    expect(typeof selectBuilder.where).toBe('function')
+    expect(typeof selectBuilder.$dynamic).toBe('function')
+    expect(typeof selectBuilder.toSQL).toBe('function')
+    expect(Reflect.get(selectBuilder, 'dialect')).toBeDefined()
+    expect(Object.getOwnPropertyDescriptor(selectBuilder, 'dialect')?.value)
+      .toBe(Reflect.get(selectBuilder, 'dialect'))
+    expect(Object.getOwnPropertyDescriptor(selectBuilder, 'session')).toBeUndefined()
+    expect(Reflect.get(selectBuilder, 'session')).toBeUndefined()
+    expect(selectBuilder.toSQL()).toEqual(expect.objectContaining({ sql: expect.any(String) }))
+    expect(typeof selectBuilder.$dynamic().where).toBe('function')
+    await expect(selectBuilder.where(eq(users.id, 'facade_user')).limit(1)).resolves.toEqual([])
+
     let transactionCallbackCalled = false
     const transaction = Reflect.get(database, 'transaction') as undefined | ((callback: (transaction: unknown) => unknown) => Promise<unknown>)
     expect(transaction).toBeUndefined()
