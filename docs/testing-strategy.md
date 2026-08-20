@@ -189,6 +189,16 @@ For each navigation and tab interaction, browser instrumentation records:
 
 Failures report the actual request counts, cancellation observations, media payload facts, phase timings, wall-clock budget, and observed duration. The journey uses the same storage state, actor resolution, authorization, and local D1 fixtures as the rest of the BDD suite.
 
+The canonical read-only account-workspace topology feature is tagged
+`@task-432-5-7`. It warms each local Chromium surface before measurement, then
+records request start/response/finish times through first usable UI state. Its
+local budget is deliberately generous for Nuxt development mode and is not a
+deployed-performance claim; run it with `BDD_BASE_URL` and a dedicated local
+BDD D1 state root. The matrix includes global overview, judging, and prize
+redemption only where the stable local persona fixtures authorize the surface;
+the staff dashboard remains covered by server integration tests until a stable
+local staff persona fixture exists.
+
 ## Local Load Runner
 
 `tools/load-tests/local-1000-participant-event.ts` uses the same four persona
