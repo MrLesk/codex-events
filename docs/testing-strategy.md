@@ -42,10 +42,12 @@ keys.
 
 Local integration tests verify response headers, streaming bodies, object-write
 ordering, revision checks, and transform configuration. They also verify that
-protected API success and error responses, including unauthenticated
-`/api/session`, emit browser and Cloudflare no-store directives, while
-explicitly public/versioned routes retain the documented public contract. They
-do not pretend to simulate a Cloudflare edge cache hit. A real edge hit can
+protected actor/product API success and error responses, including
+unauthenticated `/api/session` and unknown generated-framework paths, emit
+browser and Cloudflare no-store directives; the separate static-framework
+`/api/_nuxt_icon/*.json` family preserves its generated cache headers, while
+explicitly public/versioned routes retain the documented public product
+contract. They do not pretend to simulate a Cloudflare edge cache hit. A real edge hit can
 bypass the Worker, so deployed `CF-Cache-Status` and equivalent production
 revocation verification remain a release-gate check. The read-only, opt-in
 remote smoke test in `OPERATOR.md` checks authenticated then unauthenticated
@@ -195,7 +197,7 @@ For each navigation and tab interaction, browser instrumentation records:
 - phase timings for shell navigation, account bootstrap, the critical page read, first usable state, lazy-tab completion, and media delivery;
 - the declared wall-clock budget and the observed duration for each phase and journey;
 - request topology, including exactly one shared bootstrap per authenticated workspace entry, exactly one critical page-shaped JSON read after bootstrap, zero feature-local session reads, and zero query-only actor refreshes;
-- protected API response headers, including `CF-Cache-Status` and `Age`, so any `CF-Cache-Status: HIT` or present `Age` header on a protected API response fails the journey; explicit public/versioned event and media paths are excluded from this assertion;
+- protected actor/product API response headers, including `CF-Cache-Status` and `Age`, so any `CF-Cache-Status: HIT` or present `Age` header on a protected API response fails the journey; explicit public/versioned event and media paths plus the static-framework `/api/_nuxt_icon/*.json` family are excluded, while unknown generated-framework paths remain protected and included;
 - direct links to non-entry account-event tabs use that one selected page read with `includeEventShell=true`; the selected page loader and shell run concurrently in the same request, with the shell's independent tracks, image-options, gallery, published-prize, published-staff, credit-inventory, and meetup talk-proposal reads started in one D1 wave (participant application and membership access is a parallel branch when the shared context does not already contain it);
 - cancellation of abandoned tab requests, local lazy-code loading, and the absence of runtime `unpkg` dependencies; and
 - media payload constraints, including versioned cacheable URLs, allowed named variants, response content type and byte size, and the absence of public `no-store` original media in page backgrounds.

@@ -26,6 +26,10 @@ const publicCacheableApiPathPatterns = [
   /^\/api\/public\/platform\/event-default-background-image$/u
 ]
 
+const staticFrameworkApiPathPatterns = [
+  /^\/api\/_nuxt_icon\/[^/]+\.json$/u
+]
+
 function normalizedPath(path: string) {
   const withoutTrailingSlash = path.replace(/\/+$/u, '')
   return withoutTrailingSlash || '/'
@@ -66,8 +70,15 @@ export function isPublicCacheableApiPath(path: string) {
   return publicCacheableApiPathPatterns.some(pattern => pattern.test(normalized))
 }
 
+export function isStaticFrameworkApiPath(path: string) {
+  const normalized = normalizedPath(path)
+  return staticFrameworkApiPathPatterns.some(pattern => pattern.test(normalized))
+}
+
 export function isProtectedApiPath(path: string) {
-  return normalizedPath(path).startsWith('/api/') && !isPublicCacheableApiPath(path)
+  return normalizedPath(path).startsWith('/api/')
+    && !isPublicCacheableApiPath(path)
+    && !isStaticFrameworkApiPath(path)
 }
 
 export function applyApiResponseCachePolicy(
@@ -78,6 +89,10 @@ export function applyApiResponseCachePolicy(
 
   if (!path.startsWith('/api/')) {
     return 'outside_api' as const
+  }
+
+  if (isStaticFrameworkApiPath(path)) {
+    return 'static_framework' as const
   }
 
   const body = response?.body

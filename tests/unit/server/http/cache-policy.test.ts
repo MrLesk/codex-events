@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest'
 import {
   isProtectedApiPath,
   isPublicCacheableApiPath,
+  isStaticFrameworkApiPath,
   protectedApiCacheControl,
   protectedApiCdnCacheControl,
   publicEventCacheControl,
@@ -41,6 +42,17 @@ describe('API response cache policy classifier', () => {
       '/api/public/events/codex-spring/participants/user-1/certificate',
       '/api/public/events/codex-spring/published-projects/user-1/profile-icon'
     ]
+    const staticFrameworkPaths = [
+      '/api/_nuxt_icon/lucide.json',
+      '/api/_nuxt_icon/lucide.json/'
+    ]
+    const unknownFrameworkPaths = [
+      '/api/_nuxt_icon',
+      '/api/_nuxt_icon/lucide/outline.json',
+      '/api/_nuxt_icons/lucide.json',
+      '/api/_nuxt_assets/app.json',
+      '/api/_nuxt_iconography/lucide.json'
+    ]
 
     for (const path of publicPaths) {
       expect(isPublicCacheableApiPath(path), path).toBe(true)
@@ -48,6 +60,18 @@ describe('API response cache policy classifier', () => {
     }
 
     for (const path of protectedPaths) {
+      expect(isPublicCacheableApiPath(path), path).toBe(false)
+      expect(isProtectedApiPath(path), path).toBe(true)
+    }
+
+    for (const path of staticFrameworkPaths) {
+      expect(isStaticFrameworkApiPath(path), path).toBe(true)
+      expect(isPublicCacheableApiPath(path), path).toBe(false)
+      expect(isProtectedApiPath(path), path).toBe(false)
+    }
+
+    for (const path of unknownFrameworkPaths) {
+      expect(isStaticFrameworkApiPath(path), path).toBe(false)
       expect(isPublicCacheableApiPath(path), path).toBe(false)
       expect(isProtectedApiPath(path), path).toBe(true)
     }

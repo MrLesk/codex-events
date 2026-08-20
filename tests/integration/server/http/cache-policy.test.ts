@@ -122,6 +122,30 @@ describe('centralized API response cache policy', () => {
     expectProtectedCacheHeaders(response)
   })
 
+  test('preserves generated static icon Response cache headers', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [{
+        method: 'get',
+        path: '/api/_nuxt_icon/lucide.json',
+        handler: defineApiHandler(() => new Response('{"icons":[]}', {
+          headers: {
+            'cache-control': 'public, max-age=31536000, immutable',
+            'cloudflare-cdn-cache-control': 'public, max-age=31536000, immutable'
+          }
+        }))
+      }],
+      nitroPlugins: [databaseBookmarkPlugin as never]
+    })
+    harnesses.push(harness)
+
+    const response = await harness.request('/api/_nuxt_icon/lucide.json')
+
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe('{"icons":[]}')
+    expect(response.headers.get('cache-control')).toBe('public, max-age=31536000, immutable')
+    expect(response.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=31536000, immutable')
+  })
+
   test('preserves explicitly public/versioned JSON and Response routes', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -175,6 +199,29 @@ describe('centralized API response cache policy', () => {
     const response = await harness.request('/api/public/events/cacheable/participants/user/certificate')
 
     expect(response.status).toBe(200)
+    expectProtectedCacheHeaders(response)
+  })
+
+  test('fails closed for unknown generated framework API paths', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [{
+        method: 'get',
+        path: '/api/_nuxt_icon/lucide/outline.json',
+        handler: defineApiHandler(() => new Response('{"private":true}', {
+          headers: {
+            'cache-control': 'public, max-age=31536000, immutable',
+            'cloudflare-cdn-cache-control': 'public, max-age=31536000, immutable'
+          }
+        }))
+      }],
+      nitroPlugins: [databaseBookmarkPlugin as never]
+    })
+    harnesses.push(harness)
+
+    const response = await harness.request('/api/_nuxt_icon/lucide/outline.json')
+
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe('{"private":true}')
     expectProtectedCacheHeaders(response)
   })
 })
