@@ -1,0 +1,58 @@
+---
+id: TASK-432.9.1
+title: Eliminate the repeated protected D1 request stall
+status: In Progress
+assignee:
+  - '@luna-actor-request-plan'
+created_date: '2026-08-21 04:29'
+labels: []
+dependencies: []
+parent_task_id: TASK-432.9
+priority: high
+type: enhancement
+ordinal: 151000
+---
+
+## Description
+
+<!-- SECTION:DESCRIPTION:BEGIN -->
+Deployed signed-in browser evidence at d4644d5c shows /api/session resolving the same actor in 23–28 ms, but every immediately following protected page request spends roughly 3.1–3.9 seconds in one strong D1 read or an otherwise unaccounted database operation. Account overview, event entry, operations, Staff rosters, and Feedback all remain 3.6–4.1 seconds TTFB even though their page-shaped domain reads are only 37–289 ms. The Staff candidates request moves the stall from actor resolution to the subsequent candidates query, proving this is a request/database execution boundary rather than one query shape. Instrument and refactor the strong protected read architecture so representative critical APIs are sub-500 ms without stale actor tokens, weakened authorization, replica reads, or client-trusted capability state.
+<!-- SECTION:DESCRIPTION:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 Per-statement and request-phase evidence identifies exactly where the 3-second stall occurs for actor and non-actor D1 reads; no multi-second time remains unattributed
+- [ ] #2 Protected query APIs preserve server-side Auth0 identity binding, current platform consent, canonical authorization, one request-scoped D1 session, and strong bookmark semantics
+- [ ] #3 The architecture removes serialized actor/page database round trips or other repeated request setup structurally across protected page-shaped routes rather than special-casing measured endpoints
+- [ ] #4 Warm real-browser critical API TTFB is below 500 ms on account overview, event overview, operations, Staff, Feedback, staff dashboard, admin dashboard, and platform settings, with page usability below 1 second where the browser gate applies
+- [ ] #5 Mutations still resolve canonical authorization and current consent at execution time, and query paths do not trust unsigned or stale client actor/capability data
+- [ ] #6 Unit, integration, production-build, and real-browser topology/timing regressions fail if the repeated protected D1 stall or an extra actor round trip returns
+<!-- AC:END -->
+
+## Definition of Done
+<!-- DOD:BEGIN -->
+- [ ] #1 Canonical docs were updated or confirmed unchanged
+- [ ] #2 Code behavior matches canonical docs
+- [ ] #3 Relevant validation commands pass
+- [ ] #4 Tests were added or updated when behavior changed
+- [ ] #5 Test gaps are documented when automation is not practical
+- [ ] #6 Config and developer workflow docs were updated when setup changed
+- [ ] #7 Auth and permissions changes follow the documented platform model
+- [ ] #8 Risks and follow ups are recorded in the task summary
+<!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Add request-scoped per-statement timing around the actual D1 session binding so every prepare/batch execution is attributed without changing behavior.
+2. Reproduce the actor-fast/session versus page-slow pattern locally where possible and on test, including a non-actor candidates read.
+3. Use the evidence to design one canonical strong protected request plan that resolves identity/consent/authorization and page data without serialized database round trips or stale client assertions.
+4. Update canonical architecture and persistent agent guidance before applying the route migration.
+5. Migrate representative page-shaped routes through the shared boundary, add source/reachability and browser timing gates, validate, deploy to test, and repeat the signed-in journeys.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Baseline at d4644d5c: /api/session TTFB 88–142 ms with actor-d1 23–28 ms. Account overview TTFB 3.69–3.97 s with actor-d1 3.41–3.79 s and page D1 58–100 ms. Event entry TTFB 4.12 s with actor-d1 2.91 s and page D1 289 ms. Operations TTFB 3.96 s with actor-d1 2.97 s and page D1 260 ms. Staff rosters TTFB 4.11 s with actor-d1 3.60 s and page D1 151 ms. Feedback 409 TTFB 3.65 s with actor-d1 3.14 s and page D1 37 ms. Staff candidates TTFB 3.65 s while actor-d1 was only 19 ms and total was 3.49 s, so the slow slot can move to the next D1-backed operation. Direct authenticated overview fetches with and without an incoming bookmark were both about 4.4 s, so the bookmark header alone is not the cause.
+<!-- SECTION:NOTES:END -->

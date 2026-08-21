@@ -1,11 +1,11 @@
 ---
 id: TASK-432.7.2
 title: Prevent implicit retries on protected tab reads
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-08-21 02:39'
-updated_date: '2026-08-21 04:10'
+updated_date: '2026-08-21 04:29'
 labels: []
 dependencies: []
 parent_task_id: TASK-432.7
@@ -67,6 +67,8 @@ Current-state evidence (2026-08-21):
 - Earlier clean shared-checkout gates: lint, typecheck, unit 1,096, integration 470, account-workspace BDD 25, regular BDD 88, and destructive BDD 2.
 - Final gates after this patch: targeted composable unit tests 16 passed; lint passed; typecheck passed; unit 165 files / 1,101 tests passed; integration 44 files / 470 tests passed; account-workspace BDD 25 passed; regular BDD 88 passed; destructive BDD 2 passed; Cloudflare production build passed; git diff --check passed.
 - No production, remote-test, or deployment verification was performed. TASK-432.7.2 remains In Progress pending deployed browser verification.
+
+Deployed verification at d4644d5c (2026-08-21): CodeQL 32446066565 passed. deploy-test 32446067381 passed backend checks, all 25 authenticated account-workspace topology scenarios, Worker deployment, and queue reconciliation. In the signed-in real browser, Staff emitted exactly one roles/candidates GET and completed 200; Feedback emitted exactly one page GET and completed the expected lifecycle 409. Both responses remained private, no-store with no shared-cache HIT evidence. The shared owner therefore prevents both the former 2xx and terminal-4xx implicit retries in production-built test.
 <!-- SECTION:NOTES:END -->
 
 ## Comments
@@ -88,5 +90,5 @@ Fresh architecture review blocked rollout: protected useAsyncData watch changes 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Implemented the shared protected-read freshness and bounded-retention invariants. Watched request shapes now participate in the pre-watcher Nuxt and owner identity, and each Nuxt app retains only a bounded inactive-settled LRU without evicting active subscribers. Focused, unit, integration, account-workspace, regular 88-test, destructive 2-test, lint, typecheck, production build, and diff checks pass. Remains In Progress pending deployed browser verification.
+Deployed the shared protected-read owner with transport retries disabled, reactive request-shape keys, and a bounded inactive-settlement LRU. Staff 200 and Feedback 409 each execute once, cancellation remains intact, and local plus deployed topology gates pass.
 <!-- SECTION:FINAL_SUMMARY:END -->
