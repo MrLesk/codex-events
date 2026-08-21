@@ -6,7 +6,7 @@ import type { ApplicationOperation, OperationCapability, OperationEffect, Operat
 import type { StructuredOperationInputComponents } from './contracts'
 import { structuredOperationInputSchema } from './contracts'
 import { executeApplicationOperation } from './execute'
-import { structuredOperationOutputSchemas, type StructuredOperationId } from './generated-output-schemas'
+import { getStructuredOperationOutputSchema, type StructuredOperationId } from './generated-output-schemas'
 import { defineApiHandler } from '#server/http/api-handler'
 
 export interface RouteOperationDefinition {
@@ -33,7 +33,7 @@ export function defineStructuredRouteOperation(
   executor: (event: H3Event) => Promise<unknown> | unknown
 ) {
   const inputSchema = structuredOperationInputSchema(definition.input)
-  const outputSchema = structuredOperationOutputSchemas[definition.id]
+  const outputSchema = getStructuredOperationOutputSchema(definition.id)
   return {
     ...definition,
     eligibleForMcp: true as const,

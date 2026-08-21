@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 const listEventTracks = vi.hoisted(() => vi.fn())
-const serializeEvent = vi.hoisted(() => vi.fn())
+const serializeAccountEvent = vi.hoisted(() => vi.fn())
 const hasEventPhotos = vi.hoisted(() => vi.fn())
 const getEventDisplayImageOptions = vi.hoisted(() => vi.fn())
 const getOwnTalkProposal = vi.hoisted(() => vi.fn())
@@ -15,7 +15,7 @@ const shellSource = readFileSync(
 
 vi.mock('#server/domains/events', () => ({
   listEventTracks,
-  serializeEvent
+  serializeAccountEvent
 }))
 
 vi.mock('#server/domains/events/photos', () => ({
@@ -61,7 +61,7 @@ describe('account-event page shell request topology', () => {
   beforeEach(() => {
     vi.resetModules()
     listEventTracks.mockReset()
-    serializeEvent.mockReset()
+    serializeAccountEvent.mockReset()
     hasEventPhotos.mockReset()
     getEventDisplayImageOptions.mockReset()
     getOwnTalkProposal.mockReset()
@@ -88,7 +88,7 @@ describe('account-event page shell request topology', () => {
       },
       memberships: []
     })
-    serializeEvent.mockReturnValue({
+    serializeAccountEvent.mockReturnValue({
       id: 'event_1',
       slug: 'fixture-meetup',
       name: 'Fixture Meetup',

@@ -33,8 +33,8 @@ import {
 import {
   parseEventAgendaItems,
   listEventTracks,
-  serializeAdminEvent,
-  serializeEvent
+  serializeAccountEvent,
+  serializeAdminEvent
 } from '#server/domains/events'
 import { hasEventPhotos } from '#server/domains/events/photos'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
@@ -501,7 +501,7 @@ export const accountEventEntryPageRoute = defineAccountEventPageRoute({
             : Promise.resolve({ items: [], pagination: { page: 1, pageSize: 100, total: 0, totalPages: 0 } })
         ])
       : [null, { items: [], pagination: { page: 1, pageSize: 100, total: 0, totalPages: 0 } }] as const
-    const serializedEvent = serializeEvent(event, undefined, tracks, imageOptions)
+    const serializedEvent = serializeAccountEvent(event, tracks, imageOptions)
     const serializedAdminSettingsEvent = query.includeAdminEventConfiguration && context.authorization.isEventAdmin
       ? serializeAdminEvent(event, undefined, tracks, {
           appBaseUrl: '',

@@ -46,6 +46,7 @@ import {
 import { buildEventLumaWebhookUrl } from '#shared/domains/luma/webhook-url'
 import type { EventBalanceBreakdown, EventBalanceScoringInput } from '#shared/domains/events/builder-scoring'
 import { computeEventBalance } from '#shared/domains/events/builder-scoring'
+import type { AccountEventEntryTrack } from '#shared/domains/events/account-event-entry-page'
 import {
   parseTalkProposalQuestionsJson,
   talkProposalQuestionsSchema
@@ -1017,6 +1018,22 @@ export function serializeEventTrack(
           staffInstructions: track.staffInstructions
         }
       : {})
+  }
+}
+
+export function serializeAccountEventTrack(
+  track: ReturnType<typeof serializeEventTrack>
+): AccountEventEntryTrack {
+  return {
+    id: track.id,
+    name: track.name,
+    shortDescription: track.shortDescription,
+    fullDescription: track.fullDescription,
+    ...(track.staffInstructions !== undefined
+      ? { staffInstructions: track.staffInstructions }
+      : {}),
+    resources: track.resources,
+    displayOrder: track.displayOrder
   }
 }
 
@@ -2276,6 +2293,21 @@ export function serializeEvent(
             winnerTerms: currentTerms.winnerTerms ? serializeEventTermsDocument(currentTerms.winnerTerms) : null
           }
         }
+      : {})
+  }
+}
+
+export function serializeAccountEvent(
+  event: EventRecord,
+  tracks?: EventTrackRecord[],
+  options: EventSerializationOptions = {}
+) {
+  const serialized = serializeEvent(event, undefined, tracks, options)
+
+  return {
+    ...serialized,
+    ...(serialized.tracks
+      ? { tracks: serialized.tracks.map(serializeAccountEventTrack) }
       : {})
   }
 }

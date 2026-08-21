@@ -13,6 +13,7 @@ import {
   isEventRolePublishedInRoster,
   parseEventAgendaItems,
   parseEventBalanceBreakdown,
+  serializeAccountEvent,
   serializeAdminEvent,
   serializeEvent,
   serializeEventAgendaItems,
@@ -829,6 +830,26 @@ describe('event management utilities', () => {
     }).tracks?.[0]).toMatchObject({
       staffInstructions: 'Help participants find the right starter guide.'
     })
+    const accountEventTrack = serializeAccountEvent(buildEventRecord(), tracks, {
+      trackStaffInstructionIds: 'all'
+    }).tracks?.[0]
+    expect(accountEventTrack).toEqual({
+      id: 'track_1',
+      name: 'Agents',
+      shortDescription: 'Build with agents.',
+      fullDescription: 'Read the full track guidelines.',
+      staffInstructions: 'Help participants find the right starter guide.',
+      resources: [{
+        id: 'resource_1',
+        title: 'Starter guide',
+        url: 'https://example.com/guide',
+        description: 'Read this before the event.',
+        displayOrder: 1
+      }],
+      displayOrder: 1
+    })
+    expect(accountEventTrack).not.toHaveProperty('eventId')
+    expect(accountEventTrack).not.toHaveProperty('createdAt')
     expect(serializePublicEvent(buildEventRecord({
       eventType: 'build'
     }), undefined, tracks).tracks).toEqual([{

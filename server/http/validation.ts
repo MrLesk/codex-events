@@ -8,7 +8,7 @@ import { ApiError } from './api-error'
 export function validateWithSchema<TSchema extends z.ZodTypeAny>(
   schema: TSchema,
   payload: unknown,
-  input: 'body' | 'query' | 'params'
+  input: 'body' | 'query' | 'params' | 'output'
 ): z.infer<TSchema> {
   const result = schema.safeParse(payload)
 
@@ -19,7 +19,9 @@ export function validateWithSchema<TSchema extends z.ZodTypeAny>(
   throw new ApiError({
     statusCode: 400,
     code: 'invalid_request',
-    message: `The request ${input} did not match the expected schema.`,
+    message: input === 'output'
+      ? 'The response output did not match the expected schema.'
+      : `The request ${input} did not match the expected schema.`,
     details: {
       input,
       issues: result.error.issues.map(issue => ({

@@ -18,4 +18,19 @@ describe('validation helpers', () => {
   test('throws a stable API error when the payload is invalid', () => {
     expect(() => validateWithSchema(schema, { email: 'not-an-email' }, 'body')).toThrow(ApiError)
   })
+
+  test('labels operation output validation separately from request input', () => {
+    try {
+      validateWithSchema(schema, { email: 'not-an-email' }, 'output')
+      throw new Error('Expected output validation to fail.')
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiError)
+      expect(error).toMatchObject({
+        message: 'The response output did not match the expected schema.',
+        details: {
+          input: 'output'
+        }
+      })
+    }
+  })
 })

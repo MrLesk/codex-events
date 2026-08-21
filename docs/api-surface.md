@@ -33,6 +33,7 @@ It translates the canonical product model into stable backend domains, operation
 - List responses use top-level `data` and `meta` objects.
 - `meta` contains only pagination or filtering metadata required by the operation.
 - Derived operational views are returned as computed data and are not treated as persisted canonical entities.
+- Structured REST and MCP operations use deterministic operation-specific Zod output contracts from the shared registry. The selected route constructs and validates only its own operation contract; page-shaped routes validate their page result before constructing the envelope, and the shared executor validates the final operation output once. Output-validation failures identify response output rather than request input.
 
 ### Error Responses
 

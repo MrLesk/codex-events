@@ -10,6 +10,7 @@ import workspacePageGetHandler from '../../../../server/api/account/events/[slug
 import judgeInboxGetHandler from '../../../../server/api/account/judging.get'
 import {
   eventRoleAssignments,
+  eventTracks,
   events,
   userApplications,
   users
@@ -145,6 +146,17 @@ describe('account event operations, submissions, and judging page reads', () => 
     })
     harnesses.push(harness)
     await seedFixture(harness, 'direct_operations_admin', 'event_admin')
+    await harness.database.insert(eventTracks).values({
+      id: 'operations_track',
+      eventId: 'event_page_read',
+      name: 'Operations track',
+      shortDescription: 'Track description.',
+      fullDescription: 'Track guidelines.',
+      staffInstructions: 'Staff guidance.',
+      resourcesJson: '[]',
+      displayOrder: 1,
+      createdAt: '2026-08-19T12:00:00.000Z'
+    })
 
     const queryOffset = harness.d1Database.queries.length
     const response = await harness.request(
@@ -153,7 +165,10 @@ describe('account event operations, submissions, and judging page reads', () => 
     const body = await response.json() as {
       data: {
         page: unknown
-        shell?: { tabVisibility: { hasCreditInventory: boolean } }
+        shell?: {
+          event: { tracks: Array<Record<string, unknown>> }
+          tabVisibility: { hasCreditInventory: boolean }
+        }
       }
     }
 
@@ -161,6 +176,14 @@ describe('account event operations, submissions, and judging page reads', () => 
     expect(accountEventOperationsPageSchema.parse(body.data.page)).toMatchObject({
       event: { id: 'event_page_read' }
     })
+    expect(body.data.shell?.event.tracks).toEqual([{
+      id: 'operations_track',
+      name: 'Operations track',
+      shortDescription: 'Track description.',
+      fullDescription: 'Track guidelines.',
+      resources: [],
+      displayOrder: 1
+    }])
     expect(body.data.shell?.tabVisibility.hasCreditInventory).toBe(false)
 
     const requestQueries = harness.d1Database.queries.slice(queryOffset)
@@ -397,6 +420,17 @@ describe('account event operations, submissions, and judging page reads', () => 
     })
     harnesses.push(harness)
     await seedFixture(harness, 'roster_workspace_user', null, 'submitted')
+    await harness.database.insert(eventTracks).values({
+      id: 'rosters_track',
+      eventId: 'event_page_read',
+      name: 'Rosters track',
+      shortDescription: 'Roster track description.',
+      fullDescription: 'Roster track guidelines.',
+      staffInstructions: 'Roster staff guidance.',
+      resourcesJson: '[]',
+      displayOrder: 1,
+      createdAt: '2026-08-19T12:00:00.000Z'
+    })
     await harness.database.insert(users).values({
       id: 'published_judge',
       auth0Subject: 'auth0|published_judge',
@@ -428,8 +462,13 @@ describe('account event operations, submissions, and judging page reads', () => 
       createdAt: '2026-08-19T12:01:00.000Z'
     })
 
-    const response = await harness.request('/api/account/events/page-read-fixture/rosters')
-    const body = await response.json() as { data: { page: unknown } }
+    const response = await harness.request('/api/account/events/page-read-fixture/rosters?includeEventShell=true')
+    const body = await response.json() as {
+      data: {
+        page: unknown
+        shell?: { event: { tracks: Array<Record<string, unknown>> } }
+      }
+    }
     const rawPage = body.data.page as {
       publishedJudges: Array<Record<string, unknown>>
       publishedStaff: Array<Record<string, unknown>>
@@ -440,6 +479,14 @@ describe('account event operations, submissions, and judging page reads', () => 
       publishedJudges: [{ id: 'published_judge', fullName: 'Published Judge' }],
       canManageRoles: false
     })
+    expect(body.data.shell?.event.tracks).toEqual([{
+      id: 'rosters_track',
+      name: 'Rosters track',
+      shortDescription: 'Roster track description.',
+      fullDescription: 'Roster track guidelines.',
+      resources: [],
+      displayOrder: 1
+    }])
     expect(rawPage.publishedJudges).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'unpublished_admin' })
     ]))

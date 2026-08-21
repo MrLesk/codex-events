@@ -280,6 +280,13 @@ state.
   precedence, certificate eligibility, rate limiting, and the external coupon
   redirect.
 
+Structured operation coverage verifies that importing one structured route does
+not construct the whole generated output-schema catalog, that each selected
+schema is constructed at most once per Worker isolate, and that generation is
+deterministic. It also verifies one final-envelope output-validation owner,
+output-specific validation errors, unchanged REST/MCP operation metadata, and
+canonical page serializers for any page-shaped contract.
+
 ## MCP Validation
 
 MCP coverage uses the same local D1 actors and product fixtures as REST. Tests

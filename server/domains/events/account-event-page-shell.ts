@@ -14,7 +14,7 @@ import {
 } from '#server/database/schema'
 import {
   listEventTracks,
-  serializeEvent
+  serializeAccountEvent
 } from '#server/domains/events'
 import { hasEventPhotos } from '#server/domains/events/photos'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
@@ -225,7 +225,7 @@ export async function loadAccountEventPageShell(
   const canViewRestrictedDetails = context.authorization.isPlatformAdmin
     || context.authorization.explicitRole !== null
     || application?.status === 'approved'
-  const serializedEvent = serializeEvent(context.event, undefined, tracks, imageOptions)
+  const serializedEvent = serializeAccountEvent(context.event, tracks, imageOptions)
   const event: AccountEventEntryEvent = {
     ...serializedEvent,
     address: canViewRestrictedDetails ? context.event.address : '',
