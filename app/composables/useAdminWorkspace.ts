@@ -4,7 +4,7 @@ import type { EventRecord } from '~/domains/events/records'
 import { filterManageableEvents } from '~/domains/events/access'
 import { buildApiCacheKey, getApiSubjectKey } from '~/lib/api'
 
-import { useApiFetch } from './useApiClient'
+import { useApiFetch } from './useProtectedApiFetch'
 import { useSessionActor } from './useSessionActor'
 
 interface AdminWorkspaceOptions {

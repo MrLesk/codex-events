@@ -1,7 +1,4 @@
 import type { FetchHook, FetchOptions, FetchRequest } from 'ofetch'
-import type { AsyncData, NuxtError, UseFetchOptions } from 'nuxt/app'
-
-import { useAuthorizationCache } from './useAuthorizationCache'
 
 const d1BookmarkHeader = 'x-d1-bookmark'
 const d1BookmarkStateKey = 'account-api:d1-bookmark'
@@ -66,21 +63,4 @@ export function useApiClient() {
   }
 
   return apiClient as ApiClient
-}
-
-export function useApiFetch<Data>(
-  request: MaybeRefOrGetter<string>,
-  options?: UseFetchOptions<Data, Data, never[], Data>
-): AsyncData<Data, NuxtError<unknown>> {
-  const apiClient = useApiClient()
-  const authorizationCache = useAuthorizationCache()
-  const protectedKey = authorizationCache.protectedKey(options?.key ?? request)
-
-  return useFetch(request, {
-    deep: false,
-    dedupe: 'cancel',
-    ...options,
-    key: protectedKey,
-    $fetch: apiClient as unknown as typeof $fetch
-  } as UseFetchOptions<Data, Data, never[], Data>) as AsyncData<Data, NuxtError<unknown>>
 }

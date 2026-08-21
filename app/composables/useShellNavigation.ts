@@ -1,4 +1,4 @@
-import type { ResolvedSessionActor } from '~/composables/useSessionActor'
+import type { ResolvedSessionActor } from '~/composables/useAccountBootstrap'
 import type { AccountEventPageResponse } from '~/domains/events/account-workspace-page'
 
 import { accountDashboardHref, buildAuthLoginHref } from '#shared/domains/accounts/auth-navigation'

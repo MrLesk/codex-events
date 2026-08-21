@@ -67,6 +67,12 @@ Feature: Account event workspace browser topology
       | judge        | judging    |
       | regular_user | redemption |
 
+  Scenario: a cold judge workspace waits for bootstrap before its critical read
+    Given the saved "judge" local session state exists for account topology
+    When I cold-start the judging workspace while holding the account bootstrap response as "judge"
+    Then the global account workspace topology should have one session and one critical read
+    And the browser topology should not request runtime CDN scripts
+
   Scenario: an abandoned Operations request cannot paint after navigating to Settings
     Given the saved "event_admin" local session state exists for account topology
     When I measure account event cancellation from Operations to Settings for event slug "operations-fixture-event" as "event_admin"

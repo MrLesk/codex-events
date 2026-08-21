@@ -520,6 +520,28 @@ export function assertExactPathCount(
   return actual
 }
 
+export function assertProtectedReadStartsAfterBootstrap(
+  capture: AccountEventTopologyCapture,
+  criticalPath: string
+) {
+  const bootstrap = pathRecords(capture, '/api/session')[0]
+  const criticalRead = pathRecords(capture, criticalPath)[0]
+
+  if (!bootstrap || !criticalRead || bootstrap.finishedMs === null) {
+    throw topologyFailure(
+      capture,
+      `Cannot prove that ${criticalPath} started after the completed account bootstrap.`
+    )
+  }
+
+  if (criticalRead.startedMs < bootstrap.finishedMs) {
+    throw topologyFailure(
+      capture,
+      `${criticalPath} started at ${criticalRead.startedMs}ms before /api/session completed at ${bootstrap.finishedMs}ms.`
+    )
+  }
+}
+
 export function assertNoLegacyFanOut(capture: AccountEventTopologyCapture) {
   const legacy = apiRecords(capture).filter(record =>
     legacyFanOutPathPatterns.some(pattern => pattern.test(record.path))

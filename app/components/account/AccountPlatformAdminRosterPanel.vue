@@ -3,7 +3,8 @@ import type { ApiListResponse } from '~/lib/api'
 import type { EventRoleUserSummary } from '~/domains/events/access'
 
 import { buildApiCacheKey, getApiSubjectKey } from '~/lib/api'
-import { useApiClient, useApiFetch } from '~/composables/useApiClient'
+import { useApiClient } from '~/composables/useApiClient'
+import { useApiFetch } from '~/composables/useProtectedApiFetch'
 import { useSessionActor } from '~/composables/useSessionActor'
 
 const actor = useSessionActor().actor

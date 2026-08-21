@@ -16,7 +16,10 @@ const creationPageSources = [
 ].map(path => readFileSync(new URL(path, import.meta.url), 'utf8'))
 
 vi.mock('~/composables/useApiClient', () => ({
-  useApiClient: vi.fn(),
+  useApiClient: vi.fn()
+}))
+
+vi.mock('~/composables/useProtectedApiFetch', () => ({
   useApiFetch
 }))
 

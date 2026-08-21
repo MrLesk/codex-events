@@ -3,7 +3,8 @@ import type { ApiDataResponse } from '~/lib/api'
 
 import { buildAccountRegisterHref } from '#shared/domains/accounts/auth-navigation'
 import { normalizeApiError } from '~/lib/api'
-import { useApiClient, useApiFetch } from '~/composables/useApiClient'
+import { useApiClient } from '~/composables/useApiClient'
+import { useApiFetch } from '~/composables/useProtectedApiFetch'
 
 type SimplifiedClaimState = {
   status: 'claimed'

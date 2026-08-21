@@ -14,6 +14,7 @@ import {
   assertNoLegacyFanOut,
   assertNoRuntimeCdnScripts,
   assertPublishedRosterPrivacy,
+  assertProtectedReadStartsAfterBootstrap,
   capturePageTopology,
   formatTopologySummary,
   pathRecords,
@@ -327,6 +328,55 @@ When('I warm and measure the {string} global account workspace as {string}', asy
   })
 })
 
+When('I cold-start the judging workspace while holding the account bootstrap response as {string}', async ({ page }, persona: string) => {
+  await applyStoredStateToPage(parsePersona(persona), page)
+
+  const capture = capturePageTopology(page)
+  const criticalPath = '/api/account/judging'
+  let resolveBootstrapStarted!: () => void
+  let releaseBootstrap!: () => void
+  const bootstrapStarted = new Promise<void>((resolve) => {
+    resolveBootstrapStarted = resolve
+  })
+  const bootstrapReleased = new Promise<void>((resolve) => {
+    releaseBootstrap = resolve
+  })
+  const sessionRoute = async (route: Parameters<Parameters<typeof page.route>[1]>[0]) => {
+    resolveBootstrapStarted()
+    await bootstrapReleased
+    await route.continue()
+  }
+
+  await page.route('**/api/session', sessionRoute)
+
+  try {
+    await page.goto('/account/judging', { waitUntil: 'domcontentloaded' })
+    capture.markShell()
+    await bootstrapStarted
+    assertExactPathCount(capture, '/api/session', 1)
+    assertExactPathCount(capture, criticalPath, 0)
+
+    releaseBootstrap()
+    const criticalRead = await capture.waitForCompletedPath(criticalPath)
+    capture.markCritical(criticalPath)
+    assertJsonApiRecord(capture, criticalRead, 'Cold judge workspace read')
+    await page.getByRole('heading', { name: 'Judge dashboard', exact: true }).waitFor({ state: 'visible' })
+  } finally {
+    releaseBootstrap()
+    await page.unroute('**/api/session', sessionRoute)
+  }
+
+  capture.markUsable()
+  await finishCapture(capture)
+
+  measurements.set(page, {
+    kind: 'global',
+    capture,
+    workspace: 'judging',
+    criticalPath
+  })
+})
+
 When('I measure account event cancellation from Operations to Settings for event slug {string} as {string}', async ({ page }, slug: string, persona: string) => {
   const personaKey = parsePersona(persona)
   await applyStoredStateToPage(personaKey, page)
@@ -490,6 +540,7 @@ Then('the global account workspace topology should have one session and one crit
 
   assertExactPathCount(capture, '/api/session', 1)
   assertExactPathCount(capture, criticalPath, 1)
+  assertProtectedReadStartsAfterBootstrap(capture, criticalPath)
   assertNoLegacyFanOut(capture)
   assertJsonApiRecord(capture, requireRecord(capture, criticalPath, 'global workspace read'), 'Global workspace read')
   assertBudget(capture)

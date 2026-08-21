@@ -2,8 +2,14 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 const clientFetch = vi.hoisted(() => vi.fn())
 const useApiClient = vi.hoisted(() => vi.fn())
+const useAccountBootstrap = vi.hoisted(() => vi.fn())
+const ensureLoaded = vi.hoisted(() => vi.fn())
 const useAuthorizationCache = vi.hoisted(() => vi.fn())
 const useAsyncData = vi.hoisted(() => vi.fn())
+
+vi.mock('../../../../app/composables/useAccountBootstrap', () => ({
+  useAccountBootstrap
+}))
 
 vi.mock('../../../../app/composables/useApiClient', () => ({
   useApiClient
@@ -18,10 +24,13 @@ describe('useApiData', () => {
     vi.resetModules()
     clientFetch.mockReset()
     useApiClient.mockReset()
+    useAccountBootstrap.mockReset()
+    ensureLoaded.mockReset()
     useAuthorizationCache.mockReset()
     useAsyncData.mockReset()
 
     useApiClient.mockReturnValue(clientFetch)
+    useAccountBootstrap.mockReturnValue({ ensureLoaded })
     useAuthorizationCache.mockReturnValue({
       protectedKey: (key: string) => `protected-api:0:${key}`
     })
@@ -73,6 +82,63 @@ describe('useApiData', () => {
     })).resolves.toEqual({
       actor: 'platform_user'
     })
+    expect(ensureLoaded).toHaveBeenCalledWith(signal)
+  })
+
+  test('does not dispatch a protected consumer before the shared bootstrap resolves', async () => {
+    let releaseBootstrap!: () => void
+    const bootstrapReady = new Promise<void>((resolve) => {
+      releaseBootstrap = resolve
+    })
+    ensureLoaded.mockReturnValue(bootstrapReady)
+    let capturedHandler: ((nuxtApp: unknown, context: { signal: AbortSignal }) => Promise<unknown>) | undefined
+    const consumer = vi.fn(async ({ apiFetch }: { apiFetch: typeof clientFetch }) => {
+      return await apiFetch('/api/account/judging')
+    })
+    useAsyncData.mockImplementation((_key, handler) => {
+      capturedHandler = handler
+      return {}
+    })
+
+    const { useApiData } = await import('../../../../app/composables/useApiData')
+    useApiData('judge-workspace', consumer)
+
+    const signal = new AbortController().signal
+    const pending = capturedHandler!({}, { signal })
+    await Promise.resolve()
+
+    expect(ensureLoaded).toHaveBeenCalledWith(signal)
+    expect(consumer).not.toHaveBeenCalled()
+    releaseBootstrap()
+    await pending
+
+    expect(consumer).toHaveBeenCalledOnce()
+    expect(clientFetch).toHaveBeenCalledWith('/api/account/judging')
+  })
+
+  test('does not dispatch a protected consumer after its wait signal is aborted', async () => {
+    ensureLoaded.mockImplementation(async (signal: AbortSignal) => {
+      await new Promise<void>((resolve) => {
+        signal.addEventListener('abort', () => resolve(), { once: true })
+      })
+      throw new DOMException('The request was aborted.', 'AbortError')
+    })
+    let capturedHandler: ((nuxtApp: unknown, context: { signal: AbortSignal }) => Promise<unknown>) | undefined
+    const consumer = vi.fn(async () => 'never')
+    useAsyncData.mockImplementation((_key, handler) => {
+      capturedHandler = handler
+      return {}
+    })
+
+    const { useApiData } = await import('../../../../app/composables/useApiData')
+    useApiData('judge-workspace', consumer)
+
+    const controller = new AbortController()
+    const pending = capturedHandler!({}, { signal: controller.signal })
+    controller.abort()
+
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    expect(consumer).not.toHaveBeenCalled()
   })
 
   test('keeps public async-data keys independent from authorization generation', async () => {
