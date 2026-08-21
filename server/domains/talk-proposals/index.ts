@@ -140,6 +140,14 @@ export async function getOwnTalkProposal(database: AppDatabase, eventId: string,
   }) ?? null
 }
 
+export async function assertNoOwnTalkProposal(database: AppDatabase, eventId: string, userId: string) {
+  assertGuard(!await getOwnTalkProposal(database, eventId, userId), {
+    statusCode: 409,
+    code: 'talk_proposal_exists',
+    message: 'You already have a Talk proposal for this event.'
+  })
+}
+
 export async function getTalkProposalOrThrow(database: AppDatabase, eventId: string, proposalId: string) {
   const proposal = await database.query.talkProposals.findFirst({
     where: and(eq(talkProposals.eventId, eventId), eq(talkProposals.id, proposalId))
@@ -232,11 +240,7 @@ export async function createTalkProposalDraft(
   assertTalkProposalWindowOpen(event, now)
   assertTalkProposalAnswers(event, input.questionSetRevision, input.answers, false)
   await assertTalkProposalOwnerEligible(database, input.eventId, input.userId)
-  assertGuard(!await getOwnTalkProposal(database, input.eventId, input.userId), {
-    statusCode: 409,
-    code: 'talk_proposal_exists',
-    message: 'You already have a Talk proposal for this event.'
-  })
+  await assertNoOwnTalkProposal(database, input.eventId, input.userId)
 
   const timestamp = now.toISOString()
   const id = crypto.randomUUID()

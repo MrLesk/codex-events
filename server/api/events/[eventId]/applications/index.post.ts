@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
+import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { eventTracks, userApplications } from '#server/database/schema'
 import { defineStructuredOperationApiHandler, defineStructuredRouteOperation } from '#server/application/operations/route-operation'
@@ -20,6 +21,7 @@ import {
   submitApplicationBodySchema
 } from '#server/domains/applications'
 import { applyPostRegistrationApplicationOutcome } from '#server/domains/applications/review-finalization'
+import { createApplicationWithSubmittedTalkProposal } from '#server/domains/applications/talk-proposal-registration'
 import { getVisibleEventOrThrow, routeIdParamsSchema } from '#server/domains/events'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
@@ -148,11 +150,11 @@ export const applicationOperation = defineStructuredRouteOperation({
     aiKnowledgeLevel: body.aiKnowledgeLevel
   })
 
-  const submittedAt = new Date().toISOString()
+  const submissionTime = new Date()
+  const submittedAt = submissionTime.toISOString()
   const applicationId = crypto.randomUUID()
   const lumaSyncStatus = getInitialApplicationLumaSyncStatus(event)
-
-  await database.insert(userApplications).values({
+  const applicationValues = {
     id: applicationId,
     eventId,
     userId: actor.platformUser.id,
@@ -168,11 +170,40 @@ export const applicationOperation = defineStructuredRouteOperation({
     registrationDetailsJson,
     createdAt: submittedAt,
     updatedAt: submittedAt
-  })
+  } satisfies typeof userApplications.$inferInsert
 
-  const createdApplication = await database.query.userApplications.findFirst({
-    where: eq(userApplications.id, applicationId)
-  })
+  let createdApplication: typeof userApplications.$inferSelect | undefined
+
+  if (body.talkProposal) {
+    const created = await createApplicationWithSubmittedTalkProposal({
+      database,
+      event,
+      application: applicationValues,
+      proposal: body.talkProposal,
+      now: submissionTime
+    })
+    createdApplication = created.application
+
+    await writeAuditLog(database, {
+      actorUserId: actor.platformUser.id,
+      entityType: 'talk_proposal',
+      entityId: created.proposal.id,
+      action: 'talk_proposal.created',
+      metadata: { eventId }
+    })
+    await writeAuditLog(database, {
+      actorUserId: actor.platformUser.id,
+      entityType: 'talk_proposal',
+      entityId: created.proposal.id,
+      action: 'talk_proposal.submitted',
+      metadata: { eventId }
+    })
+  } else {
+    await database.insert(userApplications).values(applicationValues)
+    createdApplication = await database.query.userApplications.findFirst({
+      where: eq(userApplications.id, applicationId)
+    })
+  }
 
   if (!createdApplication) {
     throw new ApiError({

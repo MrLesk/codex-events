@@ -162,6 +162,7 @@ Rules:
 
 - A user can have at most one talk proposal per Meetup.
 - A Talk proposal contains a title, an abstract, an optional demo-or-slides URL using `http` or `https`, the configured custom answers, and the question-set revision used to create it.
+- An authenticated user with no event application can enter through an open Call for talks and submit the event application and completed Talk proposal together. The application and submitted proposal are created atomically, and the speaker is counted through that application.
 - The owner application must be `submitted` or `approved` to create, edit, submit, withdraw, revise, or resubmit a proposal.
 - A speaker is counted through the same event application as every other participant. A Talk proposal does not create a separate speaker registration or participant-count record.
 - A later `rejected` or `withdrawn` application preserves the proposal for the owner and reviewers but pauses owner mutations. Mutations can resume only if eligibility is restored before the Call for talks closes.

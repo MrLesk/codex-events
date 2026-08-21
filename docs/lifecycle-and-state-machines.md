@@ -217,6 +217,10 @@ Talk proposals exist only for Meetups whose private Call for talks is enabled.
 
 ### Transitions
 
+- no application and no proposal -> `submitted`
+  - Actor: authenticated user.
+  - Guard: event registration and the Call for talks are both open, the registration fields and profile satisfy the event requirements, the proposal content is complete, every required custom question is answered, and every configured acknowledgment is confirmed.
+  - Effect: creates a `submitted` event application and `submitted` Talk proposal atomically.
 - no proposal -> `draft`
   - Actor: applicant.
   - Guard: the Call for talks is open and the participant's `UserApplication` is `submitted` or `approved`.

@@ -19,9 +19,11 @@ import type {
   ParticipantRegistrationTeamMemberHint,
   VisibleEventRecord
 } from '~/domains/applications/participant-application'
+import type { TalkProposalAnswer } from '#shared/domains/talk-proposals/questions'
 
 import EventStateBadge from '~/components/public/events/EventStateBadge.vue'
 import ParticipantApplicationRegistrationPanel from '~/components/applications/ParticipantApplicationRegistrationPanel.vue'
+import TalkProposalRegistrationSection from '~/components/talk-proposals/organisms/TalkProposalRegistrationSection.vue'
 import {
   createParticipantTeamMemberHintRows,
   getParticipantApplicationSubmissionPolicy,
@@ -33,6 +35,11 @@ import {
 } from '~/domains/applications/participant-application'
 import { normalizeParticipantRegistrationProfileForm } from '~/domains/applications/participant-application-form'
 import { normalizeAccountProfileUrl } from '~/domains/accounts/profile'
+import {
+  createTalkProposalAnswers,
+  isTalkProposalWindowOpen,
+  validateTalkProposalSubmission
+} from '~/domains/talk-proposals'
 import { useApiClient } from '~/composables/useApiClient'
 
 definePageMeta({
@@ -75,6 +82,14 @@ if (!eventData.value) {
 }
 
 const event = computed(() => eventData.value!)
+const requestedTalkProposalIntent = computed(() => route.query.intent === 'talk-proposal')
+const isTalkProposalRegistration = computed(() =>
+  requestedTalkProposalIntent.value
+  && event.value.eventType === 'meetup'
+  && event.value.talkProposalsEnabled
+  && isTalkProposalWindowOpen(event.value.talkProposalOpensAt, event.value.talkProposalClosesAt)
+)
+const registrationIntent = computed(() => isTalkProposalRegistration.value ? 'talk-proposal' as const : undefined)
 const detailBackgroundImageUrl = computed(() => resolveEventDetailBackgroundImageUrl(event.value))
 const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
@@ -118,6 +133,13 @@ const isSubmitting = ref(false)
 const submissionTransition = ref<ParticipantApplicationSubmittedTransition | null>(null)
 const visibleEventId = ref<string | null>(null)
 const registrationTrackOptions = ref<ParticipantRegistrationTrackOption[]>([])
+const talkProposalTitle = ref('')
+const talkProposalAbstract = ref('')
+const talkProposalDemoOrSlidesUrl = ref('')
+const talkProposalAnswers = ref<TalkProposalAnswer[]>([])
+const talkProposalQuestions = ref<NonNullable<VisibleEventRecord['talkProposalQuestions']>>([])
+const talkProposalQuestionsRevision = ref(0)
+const talkProposalSubmitAttempted = ref(false)
 
 function createDefaultRegistrationRouteState() {
   return {
@@ -125,6 +147,8 @@ function createDefaultRegistrationRouteState() {
     hasExistingApplication: false,
     currentApplicationTerms: null,
     trackOptions: [],
+    talkProposalQuestions: [],
+    talkProposalQuestionsRevision: 0,
     workspaceErrorMessage: '',
     redirectTo: null
   }
@@ -194,13 +218,15 @@ const registrationRouteState = await useApiData<{
   hasExistingApplication: boolean
   currentApplicationTerms: ParticipantApplicationTermsDocument | null
   trackOptions: ParticipantRegistrationTrackOption[]
+  talkProposalQuestions: NonNullable<VisibleEventRecord['talkProposalQuestions']>
+  talkProposalQuestionsRevision: number
   workspaceErrorMessage: string
   redirectTo: {
     to: string
     external?: boolean
   } | null
 }>(
-  () => `public-event-register-state:${slug.value}:${accountActorCacheKey.value}`,
+  () => `public-event-register-state:${slug.value}:${accountActorCacheKey.value}:${registrationIntent.value ?? 'registration'}`,
   async ({ apiFetch, signal }) => {
     if (accountActor.value.kind !== 'platform_user' || !accountActor.value.hasAcceptedCurrentPlatformDocuments) {
       return {
@@ -208,6 +234,8 @@ const registrationRouteState = await useApiData<{
         hasExistingApplication: false,
         currentApplicationTerms: null,
         trackOptions: [],
+        talkProposalQuestions: [],
+        talkProposalQuestionsRevision: 0,
         workspaceErrorMessage: '',
         redirectTo: null
       }
@@ -235,7 +263,8 @@ const registrationRouteState = await useApiData<{
         eventState: event.value.state,
         registrationOpensAt: event.value.registrationOpensAt,
         registrationClosesAt: event.value.registrationClosesAt,
-        hasExistingApplication: resolvedHasExistingApplication
+        hasExistingApplication: resolvedHasExistingApplication,
+        registrationIntent: registrationIntent.value
       })
 
       if (routeResolution) {
@@ -244,6 +273,8 @@ const registrationRouteState = await useApiData<{
           hasExistingApplication: resolvedHasExistingApplication,
           currentApplicationTerms: null,
           trackOptions: [],
+          talkProposalQuestions: [],
+          talkProposalQuestionsRevision: 0,
           workspaceErrorMessage: '',
           redirectTo: {
             to: routeResolution.to,
@@ -264,6 +295,12 @@ const registrationRouteState = await useApiData<{
         hasExistingApplication: resolvedHasExistingApplication,
         currentApplicationTerms: currentTermsResponse.data.application_terms,
         trackOptions: listRegistrationTrackOptions(visibleEventResponse.data),
+        talkProposalQuestions: registrationIntent.value
+          ? (visibleEventResponse.data.talkProposalQuestions ?? [])
+          : [],
+        talkProposalQuestionsRevision: registrationIntent.value
+          ? (visibleEventResponse.data.talkProposalQuestionsRevision ?? 0)
+          : 0,
         workspaceErrorMessage: '',
         redirectTo: null
       }
@@ -277,6 +314,8 @@ const registrationRouteState = await useApiData<{
         hasExistingApplication: false,
         currentApplicationTerms: null,
         trackOptions: [],
+        talkProposalQuestions: [],
+        talkProposalQuestionsRevision: 0,
         workspaceErrorMessage: normalizeParticipantApiError(error).message,
         redirectTo: null
       }
@@ -289,7 +328,8 @@ const registrationRouteState = await useApiData<{
       accountActorCacheKey,
       computed(() => event.value.state),
       computed(() => event.value.registrationOpensAt),
-      computed(() => event.value.registrationClosesAt)
+      computed(() => event.value.registrationClosesAt),
+      registrationIntent
     ]
   }
 )
@@ -323,7 +363,13 @@ watch(() => registrationRouteState.data.value, (state) => {
   hasExistingApplication.value = state.hasExistingApplication
   currentApplicationTerms.value = state.currentApplicationTerms
   registrationTrackOptions.value = state.trackOptions
+  talkProposalQuestions.value = state.talkProposalQuestions
+  talkProposalQuestionsRevision.value = state.talkProposalQuestionsRevision
   workspaceErrorMessage.value = state.workspaceErrorMessage
+}, { immediate: true })
+
+watch(talkProposalQuestions, (questions) => {
+  talkProposalAnswers.value = createTalkProposalAnswers(questions, talkProposalAnswers.value)
 }, { immediate: true })
 
 watch(registrationTrackOptions, (trackOptions) => {
@@ -364,8 +410,29 @@ const missingRequiredProfileFields = computed(() =>
   })
 )
 
+const talkProposalValidation = computed(() => validateTalkProposalSubmission({
+  title: talkProposalTitle.value,
+  abstract: talkProposalAbstract.value,
+  demoOrSlidesUrl: talkProposalDemoOrSlidesUrl.value,
+  questionSetRevision: talkProposalQuestionsRevision.value,
+  answers: talkProposalAnswers.value
+}, talkProposalQuestions.value))
+const talkProposalErrors = computed(() => talkProposalSubmitAttempted.value
+  ? talkProposalValidation.value.errors
+  : { questions: {} })
+
+function handleSubmitAttempt() {
+  if (isTalkProposalRegistration.value) {
+    talkProposalSubmitAttempted.value = true
+  }
+}
+
 async function submitParticipantApplication() {
   if (!participantSubmissionPolicy.value.isAllowed) {
+    return
+  }
+
+  if (isTalkProposalRegistration.value && !talkProposalValidation.value.isValid) {
     return
   }
 
@@ -461,6 +528,16 @@ async function submitParticipantApplication() {
       )
     }
 
+    if (isTalkProposalRegistration.value) {
+      applicationPayload.talkProposal = {
+        title: talkProposalTitle.value,
+        abstract: talkProposalAbstract.value,
+        demoOrSlidesUrl: talkProposalDemoOrSlidesUrl.value,
+        questionSetRevision: talkProposalQuestionsRevision.value,
+        answers: talkProposalAnswers.value
+      }
+    }
+
     await apiFetch(`/api/events/${visibleEventId.value}/applications`, {
       method: 'POST',
       body: applicationPayload
@@ -473,7 +550,8 @@ async function submitParticipantApplication() {
   }
 
   const nextSubmissionTransition = resolveParticipantApplicationSubmittedTransition(slug.value, {
-    autoApproveApplications: event.value.autoApproveApplications
+    autoApproveApplications: event.value.autoApproveApplications,
+    talkProposalSubmitted: isTalkProposalRegistration.value
   })
 
   hasExistingApplication.value = true
@@ -599,8 +677,28 @@ useSeoMeta({
           :submission-transition="submissionTransition"
           :is-loading="isRegistrationRouteStateLoading"
           :workspace-error-message="workspaceErrorMessage"
+          :section-label="isTalkProposalRegistration ? 'Event registration' : undefined"
+          :submit-label="isTalkProposalRegistration ? 'Register and submit proposal' : undefined"
+          :submission-error-title="isTalkProposalRegistration ? 'Registration and proposal submission failed' : undefined"
+          :additional-missing-required-item-count="isTalkProposalRegistration ? talkProposalValidation.missingRequiredItemCount : 0"
+          :additional-invalid-field-count="isTalkProposalRegistration ? talkProposalValidation.invalidFieldCount : 0"
+          :hide-post-submission-text="isTalkProposalRegistration"
+          @submit-attempt="handleSubmitAttempt"
           @submit-application="submitParticipantApplication"
-        />
+        >
+          <template #additional-section>
+            <TalkProposalRegistrationSection
+              v-if="isTalkProposalRegistration"
+              v-model:title="talkProposalTitle"
+              v-model:abstract="talkProposalAbstract"
+              v-model:demo-or-slides-url="talkProposalDemoOrSlidesUrl"
+              v-model:answers="talkProposalAnswers"
+              :questions="talkProposalQuestions"
+              :errors="talkProposalErrors"
+              :disabled="isSubmitting || isSavingProfile"
+            />
+          </template>
+        </ParticipantApplicationRegistrationPanel>
       </template>
     </AppContainer>
   </div>

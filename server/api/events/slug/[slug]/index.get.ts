@@ -15,6 +15,7 @@ import {
 } from '#server/domains/events'
 import { parseValidatedParams } from '#server/http/validation'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
+import { parseTalkProposalQuestionsJson } from '#shared/domains/talk-proposals/questions'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.events.slug.by-slug',
@@ -53,6 +54,12 @@ export const applicationOperation = defineStructuredRouteOperation({
         : undefined
     }),
     ...restrictedFields,
+    ...(event.eventType === 'meetup' && event.talkProposalsEnabled
+      ? {
+          talkProposalQuestions: parseTalkProposalQuestionsJson(event.talkProposalQuestionsJson),
+          talkProposalQuestionsRevision: event.talkProposalQuestionsRevision
+        }
+      : {}),
     ...(authorization?.isEventAdmin
       ? { simplifiedClaimingEnabled: event.simplifiedClaimingEnabled }
       : {}),

@@ -126,6 +126,7 @@ Talk proposal permissions apply only to Meetups with an enabled Call for talks. 
 | --- | --- | --- | --- | --- |
 | Configure ordered Call for talks questions | No | No | Yes, before the first proposal exists and before completion | Yes, before the first proposal exists and before completion |
 | View own retained proposal | Yes | No | No | No |
+| Register and submit a proposal together | Yes, while event registration and the Call for talks are open and the user has no application or proposal | No | No | No |
 | Create proposal draft | Yes, while the Call for talks is open and own application is `submitted` or `approved` | No | No | No |
 | Edit proposal draft | Yes, while open and eligible | No | No | No |
 | Submit or resubmit proposal | Yes, while open and eligible | No | No | No |
@@ -317,7 +318,7 @@ required-document changes take effect on the next MCP request.
 
 - Team formation is allowed during `registration_open` and `submission_open` for Hackathon events only.
 - Submission creation and editing are allowed only during `submission_open` for Hackathon events only.
-- Talk proposal owner mutations are allowed only during an enabled Meetup Call for talks window and only while the owner application is `submitted` or `approved`.
+- Talk proposal owner mutations are allowed only during an enabled Meetup Call for talks window. A new owner can atomically create a submitted application and proposal while event registration is also open; later owner mutations require the application to remain `submitted` or `approved`.
 - Talk proposal decisions remain available to event and platform admins after the Call for talks closes, but not after the Meetup is completed.
 - Blind review can require `0`, `1`, or `2` blind assignments per submission depending on Hackathon configuration.
 - Pitch review can be enabled independently from blind review for Hackathon events.

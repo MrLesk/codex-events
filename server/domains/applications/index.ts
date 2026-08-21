@@ -51,6 +51,7 @@ import {
   isEventLumaEmailRequired,
   isEventLumaSyncEnabled
 } from '#server/domains/applications/luma-config'
+import { talkProposalContentBodySchema } from '#server/domains/talk-proposals'
 
 export {
   getInitialApplicationLumaSyncStatus,
@@ -84,7 +85,8 @@ export const submitApplicationBodySchema = z.object({
   whyThisEvent: z.string().trim().max(4000).default(''),
   proofOfExecutionUrl: z.string().trim().max(2048).default(''),
   aiKnowledgeLevel: z.string().trim().max(32).default(''),
-  selectedTrackId: z.string().trim().max(120).default('')
+  selectedTrackId: z.string().trim().max(120).default(''),
+  talkProposal: talkProposalContentBodySchema.optional()
 })
 
 type UserApplicationRecord = typeof userApplications.$inferSelect

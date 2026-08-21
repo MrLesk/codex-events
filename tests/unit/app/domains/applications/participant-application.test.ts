@@ -511,6 +511,23 @@ describe('participant application helpers', () => {
     })
   })
 
+  test('opens the submitted Talk proposal after combined registration', () => {
+    expect(resolveParticipantApplicationSubmittedTransition('codex-spring', {
+      talkProposalSubmitted: true
+    })).toEqual({
+      title: 'Registration and proposal submitted',
+      description: 'Opening your Talk proposal.',
+      eyebrow: 'Proposal submitted',
+      to: {
+        path: '/account/events/codex-spring',
+        query: {
+          notice: 'application_submitted',
+          tab: 'call-for-talks'
+        }
+      }
+    })
+  })
+
   test('resolves the auto-approved application transition into the account workspace', () => {
     expect(resolveParticipantApplicationSubmittedTransition('codex-spring', {
       autoApproveApplications: true
@@ -577,6 +594,46 @@ describe('participant application helpers', () => {
     })).toEqual({
       label: 'Register',
       to: '/account/register?returnTo=%2Fevents%2Fcodex-spring%2Fregister',
+      external: false
+    })
+  })
+
+  test('preserves the Talk proposal intent through registration and account setup', () => {
+    const routeOptions = {
+      eventSlug: 'codex-spring',
+      eventState: 'registration_open' as const,
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      registrationIntent: 'talk-proposal' as const,
+      now: new Date('2026-03-21T12:00:00.000Z')
+    }
+
+    expect(resolvePublicEventPrimaryAction({
+      ...routeOptions,
+      actorKind: 'platform_user',
+      hasAcceptedCurrentPlatformDocuments: true,
+      hasEventWorkspaceAccess: false
+    })).toMatchObject({
+      to: '/events/codex-spring/register?intent=talk-proposal'
+    })
+
+    expect(resolveParticipantRegistrationEntry({
+      ...routeOptions,
+      actorKind: 'authenticated_identity',
+      hasAcceptedCurrentPlatformDocuments: false,
+      hasExistingApplication: false
+    })).toEqual({
+      to: '/account/register?returnTo=%2Fevents%2Fcodex-spring%2Fregister%3Fintent%3Dtalk-proposal',
+      external: false
+    })
+
+    expect(resolveParticipantRegistrationEntry({
+      ...routeOptions,
+      actorKind: 'platform_user',
+      hasAcceptedCurrentPlatformDocuments: true,
+      hasExistingApplication: true
+    })).toEqual({
+      to: '/account/events/codex-spring?tab=call-for-talks',
       external: false
     })
   })

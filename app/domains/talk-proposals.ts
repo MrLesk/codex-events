@@ -1,7 +1,9 @@
 import { z } from 'zod'
 import {
+  getTalkProposalAnswerIssues,
   talkProposalAnswersSchema,
-  type TalkProposalAnswer
+  type TalkProposalAnswer,
+  type TalkProposalQuestionDefinition
 } from '#shared/domains/talk-proposals/questions'
 
 export const talkProposalFormSchema = z.object({
@@ -14,6 +16,83 @@ export const talkProposalFormSchema = z.object({
   questionSetRevision: z.number().int().min(0),
   answers: talkProposalAnswersSchema
 })
+
+export interface TalkProposalFormValues {
+  title: string
+  abstract: string
+  demoOrSlidesUrl: string
+  questionSetRevision: number
+  answers: TalkProposalAnswer[]
+}
+
+export interface TalkProposalFormErrors {
+  title?: string
+  abstract?: string
+  demoOrSlidesUrl?: string
+  questions: Record<string, string>
+}
+
+export function createTalkProposalAnswers(
+  questions: TalkProposalQuestionDefinition[],
+  source: TalkProposalAnswer[] = []
+) {
+  const sourceById = new Map(source.map(answer => [answer.questionId, answer]))
+
+  return questions.map(question => sourceById.get(question.id) ?? {
+    questionId: question.id,
+    value: question.type === 'acknowledgement' ? false : ''
+  })
+}
+
+export function validateTalkProposalSubmission(
+  values: TalkProposalFormValues,
+  questions: TalkProposalQuestionDefinition[]
+) {
+  const result = talkProposalFormSchema.safeParse(values)
+  const errors: TalkProposalFormErrors = { questions: {} }
+
+  if (!result.success) {
+    for (const issue of result.error.issues) {
+      const field = issue.path[0]
+      if ((field === 'title' || field === 'abstract' || field === 'demoOrSlidesUrl') && !errors[field]) {
+        errors[field] = issue.message
+      }
+    }
+  }
+
+  const answerIssues = getTalkProposalAnswerIssues(questions, values.answers, true)
+  errors.questions = Object.fromEntries(answerIssues.map(issue => [issue.questionId, issue.message]))
+
+  const answersById = new Map(values.answers.map(answer => [answer.questionId, answer]))
+  const missingRequiredItemCount = Number(!values.title.trim())
+    + Number(!values.abstract.trim())
+    + questions.filter((question) => {
+      if (!question.required) return false
+      const answer = answersById.get(question.id)
+      return question.type === 'acknowledgement'
+        ? answer?.value !== true
+        : typeof answer?.value !== 'string' || answer.value.length === 0
+    }).length
+  const invalidFieldCount = Object.values({
+    title: values.title.trim() ? errors.title : undefined,
+    abstract: values.abstract.trim() ? errors.abstract : undefined,
+    demoOrSlidesUrl: errors.demoOrSlidesUrl
+  }).filter(Boolean).length
+  + answerIssues.filter(issue => !questions.some((question) => {
+    if (question.id !== issue.questionId || !question.required) return false
+    const answer = answersById.get(question.id)
+    return question.type === 'acknowledgement'
+      ? answer?.value !== true
+      : typeof answer?.value !== 'string' || answer.value.length === 0
+  })).length
+
+  return {
+    errors,
+    missingRequiredItemCount,
+    invalidFieldCount,
+    isValid: result.success && answerIssues.length === 0
+  }
+}
 
 export type TalkProposalStatus = 'draft' | 'submitted' | 'withdrawn' | 'accepted' | 'rejected'
 

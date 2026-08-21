@@ -34,6 +34,7 @@ import EventTimeline from '~/components/public/events/EventTimeline.vue'
 import EventWinnersShowcase from '~/components/public/events/EventWinnersShowcase.vue'
 import EventTalkProposalCallout from '~/components/public/events/EventTalkProposalCallout.vue'
 import { resolvePublicEventPrimaryAction } from '~/domains/applications/participant-application'
+import { isTalkProposalWindowOpen } from '~/domains/talk-proposals'
 import { usePublicEventWorkspaceAccess } from '~/composables/usePublicEventWorkspaceAccess'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
 
@@ -213,9 +214,25 @@ const primaryActionHref = computed(() => primaryAction.value?.to ?? '')
 const isPrimaryActionExternal = computed(() => primaryAction.value?.external ?? false)
 const primaryActionLabel = computed(() => primaryAction.value?.label ?? '')
 const talkProposalWorkspaceHref = computed(() => `/account/events/${slug.value}?tab=call-for-talks`)
+const talkProposalIsOpen = computed(() => isTalkProposalWindowOpen(
+  event.value.talkProposalOpensAt ?? null,
+  event.value.talkProposalClosesAt ?? null
+))
+const talkProposalRegistrationAction = computed(() => resolvePublicEventPrimaryAction({
+  actorKind: accountActor.value.kind,
+  hasAcceptedCurrentPlatformDocuments: accountActor.value.hasAcceptedCurrentPlatformDocuments,
+  eventSlug: slug.value,
+  eventState: event.value.state,
+  registrationOpensAt: event.value.registrationOpensAt,
+  registrationClosesAt: event.value.registrationClosesAt,
+  hasEventWorkspaceAccess: hasEventWorkspaceAccess.value,
+  registrationIntent: 'talk-proposal'
+}))
 const talkProposalAction = computed(() => hasEventWorkspaceAccess.value
   ? { label: 'Open Talk proposal', to: talkProposalWorkspaceHref.value, external: false }
-  : primaryAction.value
+  : talkProposalIsOpen.value && talkProposalRegistrationAction.value
+    ? { ...talkProposalRegistrationAction.value, label: 'Propose a talk' }
+    : primaryAction.value
 )
 const publicSectionTabs = ['overview', 'prizes', 'details', 'gallery'] as const
 type PublicSectionTab = (typeof publicSectionTabs)[number]

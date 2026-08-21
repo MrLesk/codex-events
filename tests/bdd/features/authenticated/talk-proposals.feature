@@ -1,6 +1,14 @@
 Feature: Meetup Call for talks
   Meetup participants can privately submit one Talk proposal while public pages show only the Call for talks.
 
+  Scenario: A new participant registers and submits a Talk proposal together
+    Given the saved "platform_admin" local session state exists
+    When the saved "platform_admin" session creates an open Meetup with a Call for talks
+    And I open the remembered Meetup Call for talks with the saved "regular_user" session
+    Then Event registration and Talk proposal should be shown as separate sections
+    When I complete the combined registration and Talk proposal
+    Then the submitted Talk proposal workspace should open
+
   Scenario: A registered participant submits a private Talk proposal
     Given the saved "platform_admin" local session state exists
     When the saved "platform_admin" session creates an open Meetup with a Call for talks

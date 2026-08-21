@@ -471,6 +471,86 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect(publicPrizesResponse.status).toBe(404)
   })
 
+  test('authenticated Meetup detail exposes Call for talks questions without publishing them', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/events/slug/:slug', handler: eventBySlugGetHandler },
+        { method: 'get', path: '/api/public/events/:slug', handler: publicEventDetailGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|participant',
+        email: 'participant@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'participant',
+        auth0Subject: 'auth0|participant',
+        email: 'participant@example.com',
+        displayName: 'Participant'
+      }
+    ])
+    await seedCurrentPlatformConsent(harness, 'participant')
+    await harness.database.insert(events).values({
+      id: 'event_cfp_registration',
+      eventType: 'meetup',
+      name: 'Combined CFP registration',
+      slug: 'combined-cfp-registration',
+      description: 'Meetup description',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-09-23T12:00:00.000Z',
+      submissionOpensAt: null,
+      submissionClosesAt: null,
+      state: 'registration_open',
+      maxTeamMembers: 1,
+      talkProposalsEnabled: true,
+      talkProposalOpensAt: '2026-03-20T12:00:00.000Z',
+      talkProposalClosesAt: '2026-09-23T12:00:00.000Z',
+      talkProposalQuestionsJson: JSON.stringify([
+        {
+          id: 'audience',
+          type: 'short_text',
+          prompt: 'Who is this talk for?',
+          required: true,
+          options: []
+        }
+      ]),
+      talkProposalQuestionsRevision: 4,
+      createdByUserId: 'creator_1'
+    })
+
+    const authenticatedResponse = await harness.request('/api/events/slug/combined-cfp-registration')
+    expect(authenticatedResponse.status).toBe(200)
+    expect(await authenticatedResponse.json()).toMatchObject({
+      data: {
+        talkProposalQuestions: [
+          {
+            id: 'audience',
+            prompt: 'Who is this talk for?'
+          }
+        ],
+        talkProposalQuestionsRevision: 4
+      }
+    })
+
+    const publicResponse = await harness.request('/api/public/events/combined-cfp-registration')
+    expect(publicResponse.status).toBe(200)
+    const publicPayload = await publicResponse.json()
+    expect(publicPayload.data).not.toHaveProperty('talkProposalQuestions')
+    expect(publicPayload.data).not.toHaveProperty('talkProposalQuestionsRevision')
+  })
+
   test('hidden events disappear publicly while event admins can still open them', async () => {
     const harness = createApiRouteTestHarness({
       routes: [

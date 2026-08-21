@@ -55,7 +55,7 @@ const profileForm = defineModel<ParticipantRegistrationProfileForm>('profileForm
   required: true
 })
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   event: Pick<PublicEvent, 'eventType' | 'slug' | 'state' | 'city' | 'country' | 'autoApproveApplications' | 'inPersonEvent' | 'applicationWhyThisEventVisible' | 'applicationProofOfExecutionVisible' | 'applicationTeamIntentVisible' | 'applicationAiKnowledgeVisible' | 'requireWhyThisEvent' | 'requireProofOfExecution' | 'requireTeamIntent' | 'requireAiKnowledge'>
   trackOptions?: ParticipantRegistrationTrackOption[]
   currentApplicationTerms: ParticipantApplicationTermsDocument | null
@@ -70,9 +70,23 @@ const props = defineProps<{
   submissionTransition?: ParticipantApplicationSubmittedTransition | null
   isLoading?: boolean
   workspaceErrorMessage?: string
-}>()
+  sectionLabel?: string
+  submitLabel?: string
+  submissionErrorTitle?: string
+  additionalMissingRequiredItemCount?: number
+  additionalInvalidFieldCount?: number
+  hidePostSubmissionText?: boolean
+}>(), {
+  sectionLabel: 'About you',
+  submitLabel: 'Submit application',
+  submissionErrorTitle: 'Application submission failed',
+  additionalMissingRequiredItemCount: 0,
+  additionalInvalidFieldCount: 0,
+  hidePostSubmissionText: false
+})
 
 const emit = defineEmits<{
+  submitAttempt: []
   submitApplication: []
 }>()
 
@@ -462,12 +476,16 @@ const invalidFieldCount = computed(() => {
 })
 
 const submitReadinessText = computed(() => {
-  if (missingRequiredFieldCount.value > 0) {
-    return `${missingRequiredFieldCount.value} required item${missingRequiredFieldCount.value === 1 ? '' : 's'} left`
+  const missingRequiredItemCount = missingRequiredFieldCount.value + props.additionalMissingRequiredItemCount
+
+  if (missingRequiredItemCount > 0) {
+    return `${missingRequiredItemCount} required item${missingRequiredItemCount === 1 ? '' : 's'} left`
   }
 
-  if (invalidFieldCount.value > 0) {
-    return `${invalidFieldCount.value} field${invalidFieldCount.value === 1 ? '' : 's'} need attention`
+  const invalidItemCount = invalidFieldCount.value + props.additionalInvalidFieldCount
+
+  if (invalidItemCount > 0) {
+    return `${invalidItemCount} field${invalidItemCount === 1 ? '' : 's'} need attention`
   }
 
   return 'Ready to submit'
@@ -484,6 +502,7 @@ const submitApplicationForm = handleSubmit(() => {
 })
 
 function handleSubmitAttempt(event?: Event) {
+  emit('submitAttempt')
   submitApplicationForm(event)
 }
 
@@ -572,7 +591,7 @@ function getProfileFieldPlaceholder(key: EventProfileField['key']) {
             v-if="submissionError"
             color="error"
             variant="soft"
-            title="Application submission failed"
+            :title="props.submissionErrorTitle"
             :description="submissionError"
           />
 
@@ -584,7 +603,7 @@ function getProfileFieldPlaceholder(key: EventProfileField['key']) {
               <div class="space-y-3">
                 <div class="flex items-center justify-between gap-3">
                   <p class="text-[13px] font-medium text-highlighted dark:text-white">
-                    About you
+                    {{ props.sectionLabel }}
                   </p>
                 </div>
 
@@ -1078,6 +1097,9 @@ function getProfileFieldPlaceholder(key: EventProfileField['key']) {
               >
                 {{ termsAcceptedError }}
               </p>
+
+              <slot name="additional-section" />
+
               <AppButton
                 type="submit"
                 color="neutral"
@@ -1086,7 +1108,7 @@ function getProfileFieldPlaceholder(key: EventProfileField['key']) {
                 :disabled="isSubmitDisabled"
                 class="hidden h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC] md:inline-flex"
               >
-                Submit application
+                {{ props.submitLabel }}
               </AppButton>
 
               <div class="sticky bottom-0 -mx-4 border-t border-black/8 bg-white/80 px-4 py-3 backdrop-blur md:hidden dark:border-white/[0.08] dark:bg-[#171717]/80">
@@ -1102,12 +1124,15 @@ function getProfileFieldPlaceholder(key: EventProfileField['key']) {
                     :disabled="isSubmitDisabled"
                     class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
                   >
-                    Submit application
+                    {{ props.submitLabel }}
                   </AppButton>
                 </div>
               </div>
 
-              <p class="text-[12px] text-neutral-500 dark:text-[#8C8C8C]">
+              <p
+                v-if="!props.hidePostSubmissionText"
+                class="text-[12px] text-neutral-500 dark:text-[#8C8C8C]"
+              >
                 {{ postSubmissionText }}
               </p>
             </form>

@@ -5,6 +5,7 @@ import { createBdd } from 'playwright-bdd'
 
 import { createAuthenticatedApiClient } from '../support/api-client'
 import { stablePersonaKeys, storageStatePathForPersona, type StablePersonaKey } from '../support/personas'
+import { resetRegularUserParticipantAccessScenarioState } from '../support/platform-fixtures'
 
 const { When, Then } = createBdd()
 
@@ -81,6 +82,7 @@ async function applyPersona(page: Page, personaKey: StablePersonaKey) {
   const path = storageStatePathForPersona(personaKey)
   if (!existsSync(path)) throw new Error(`Missing storage state for ${personaKey}.`)
   const storage = JSON.parse(readFileSync(path, 'utf8')) as StoredState
+  await page.context().clearCookies()
   if (storage.cookies?.length) await page.context().addCookies(storage.cookies)
 }
 
@@ -131,8 +133,55 @@ Then('the public Meetup should show a Call for talks registration action without
   await page.goto(`/events/${state.eventSlug}`)
   const callout = page.getByTestId('public-call-for-talks')
   await expect(callout).toBeVisible()
-  await expect(callout.getByRole('link', { name: 'Register' })).toBeVisible()
+  await expect(callout.getByRole('link', { name: 'Propose a talk' })).toBeVisible()
   await expect(page.getByText('Reliable agent handoffs')).toHaveCount(0)
+})
+
+When('I open the remembered Meetup Call for talks with the saved {string} session', async ({ page }, personaKey: string) => {
+  const state = stateFor(page)
+  const persona = parsePersonaKey(personaKey)
+  if (persona === 'regular_user') {
+    await resetRegularUserParticipantAccessScenarioState()
+  }
+  await applyPersona(page, persona)
+  await page.goto(`/events/${state.eventSlug}`)
+  const action = page.getByTestId('public-call-for-talks').getByRole('link', { name: 'Propose a talk' })
+  await expect(action).toHaveAttribute('href', `/events/${state.eventSlug}/register?intent=talk-proposal`)
+  await action.click()
+  await expect(page).toHaveURL(new RegExp(`/events/${state.eventSlug}/register\\?intent=talk-proposal$`))
+})
+
+Then('Event registration and Talk proposal should be shown as separate sections', async ({ page }) => {
+  await expect(page.getByText('Event registration', { exact: true })).toBeVisible()
+  await expect(page.getByTestId('combined-talk-proposal-section')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Register and submit proposal' })).toBeVisible()
+})
+
+When('I complete the combined registration and Talk proposal', async ({ page }) => {
+  const state = stateFor(page)
+  const section = page.getByTestId('combined-talk-proposal-section')
+  await page.getByRole('textbox', { name: /First name/ }).fill('Regular')
+  await page.getByRole('textbox', { name: /Family name/ }).fill('User')
+  await section.getByLabel('Title').fill('One-step agent handoffs')
+  await section.getByLabel('Abstract').fill('A practical talk about dependable handoffs between agents.')
+  await section.getByLabel('Phone number *').fill('+43 123 456')
+  await section.getByLabel('What will you demo live, and what should the audience learn? *').fill('A live Codex agent handoff with a recoverable failure.')
+  await section.getByLabel('How ready is the live demo? *').selectOption('Fully working')
+  await section.getByLabel(/seven minutes/).check()
+  const [response] = await Promise.all([
+    page.waitForResponse(candidate => candidate.url().endsWith(`/api/events/${state.eventId}/applications`) && candidate.request().method() === 'POST'),
+    page.getByRole('button', { name: 'Register and submit proposal' }).click()
+  ])
+  expect(response.ok(), await response.text()).toBe(true)
+})
+
+Then('the submitted Talk proposal workspace should open', async ({ page }) => {
+  await expect(page).toHaveURL(/\/account\/events\/[^?]+\?.*tab=call-for-talks/)
+  await expect(page.getByRole('tab', { name: 'Call for talks' })).toHaveAttribute('aria-selected', 'true')
+  const panel = page.getByTestId('participant-talk-proposal-panel')
+  await expect(panel).toBeVisible()
+  await expect(panel.getByText('Submitted', { exact: true })).toBeVisible()
+  await expect(panel.getByLabel('Title')).toHaveValue('One-step agent handoffs')
 })
 
 When('the saved {string} session registers for the remembered Meetup', async ({ page }, personaKey: string) => {

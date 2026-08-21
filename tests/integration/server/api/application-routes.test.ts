@@ -20,6 +20,7 @@ import {
   eventTracks,
   events,
   submissions,
+  talkProposals,
   teamJoinRequests,
   teamMembers,
   teams,
@@ -387,6 +388,136 @@ describe('TASK-3.6 application routes', () => {
       applicationTermsDocumentId: null,
       applicationTermsAcceptedAt: null
     })
+  })
+
+  test('POST /api/events/:eventId/applications atomically submits registration and a Talk proposal', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      currentApplicationTerms: false
+    })
+    await harness.database.update(events).set({
+      eventType: 'meetup',
+      submissionOpensAt: null,
+      submissionClosesAt: null,
+      talkProposalsEnabled: true,
+      talkProposalOpensAt: fixtureRegistrationOpensAt,
+      talkProposalClosesAt: fixtureRegistrationClosesAt,
+      talkProposalQuestionsJson: JSON.stringify([
+        {
+          id: 'audience',
+          type: 'short_text',
+          prompt: 'Who is this talk for?',
+          required: true,
+          options: []
+        },
+        {
+          id: 'recording',
+          type: 'acknowledgement',
+          prompt: 'I agree to recording.',
+          required: true,
+          options: []
+        }
+      ]),
+      talkProposalQuestionsRevision: 3
+    }).where(eq(events.id, 'event_1'))
+
+    const invalidResponse = await harness.request('/api/events/event_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        registrationTeamIntent: 'solo',
+        talkProposal: {
+          title: 'Reliable agent demos',
+          abstract: 'How to build a demo that survives a live audience.',
+          demoOrSlidesUrl: '',
+          questionSetRevision: 3,
+          answers: [
+            { questionId: 'audience', value: '' },
+            { questionId: 'recording', value: false }
+          ]
+        }
+      })
+    })
+
+    expect(invalidResponse.status).toBe(422)
+    expect(await invalidResponse.json()).toMatchObject({
+      error: {
+        code: 'talk_proposal_answers_invalid'
+      }
+    })
+    expect(await harness.database.select().from(userApplications)).toEqual([])
+    expect(await harness.database.select().from(talkProposals)).toEqual([])
+
+    const successResponse = await harness.request('/api/events/event_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        registrationTeamIntent: 'solo',
+        talkProposal: {
+          title: 'Reliable agent demos',
+          abstract: 'How to build a demo that survives a live audience.',
+          demoOrSlidesUrl: 'https://example.com/slides',
+          questionSetRevision: 3,
+          answers: [
+            { questionId: 'audience', value: 'Agent builders' },
+            { questionId: 'recording', value: true }
+          ]
+        }
+      })
+    })
+
+    const successPayload = await successResponse.json()
+    expect({ status: successResponse.status, payload: successPayload }).toMatchObject({
+      status: 200,
+      payload: {
+        data: {
+          userId: 'regular_user',
+          status: 'submitted'
+        }
+      }
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: and(
+        eq(userApplications.eventId, 'event_1'),
+        eq(userApplications.userId, 'regular_user')
+      )
+    })
+    const storedProposal = await harness.database.query.talkProposals.findFirst({
+      where: and(
+        eq(talkProposals.eventId, 'event_1'),
+        eq(talkProposals.userId, 'regular_user')
+      )
+    })
+
+    expect(storedApplication).toMatchObject({ status: 'submitted' })
+    expect(storedProposal).toMatchObject({
+      status: 'submitted',
+      title: 'Reliable agent demos',
+      abstract: 'How to build a demo that survives a live audience.',
+      demoOrSlidesUrl: 'https://example.com/slides',
+      questionSetRevision: 3,
+      answersJson: JSON.stringify([
+        { questionId: 'audience', value: 'Agent builders' },
+        { questionId: 'recording', value: true }
+      ]),
+      submittedAt: expect.any(String)
+    })
+
+    const proposalAuditActions = (await harness.database.select().from(auditLogs))
+      .filter(row => row.entityId === storedProposal?.id)
+      .map(row => row.action)
+    expect(proposalAuditActions).toEqual(expect.arrayContaining([
+      'talk_proposal.created',
+      'talk_proposal.submitted'
+    ]))
   })
 
   test('event organizers with admin access elsewhere can apply to unrelated events as participants', async () => {

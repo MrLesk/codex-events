@@ -1,4 +1,5 @@
 import type { PublicEvent, PublicEventState } from '~/domains/events/presentation'
+import type { TalkProposalQuestionDefinition } from '#shared/domains/talk-proposals/questions'
 import type {
   ApiDataResponse,
   ApiErrorShape,
@@ -117,6 +118,8 @@ export interface ParticipantApplicationRecord {
 export interface VisibleEventRecord extends Omit<PublicEvent, 'tracks'> {
   id: string
   tracks?: ParticipantRegistrationTrackOption[]
+  talkProposalQuestions?: TalkProposalQuestionDefinition[]
+  talkProposalQuestionsRevision?: number
 }
 
 export interface ParticipantCurrentTermsResponse {
@@ -403,9 +406,10 @@ export function resolvePublicEventPrimaryAction(options: {
   registrationOpensAt: string
   registrationClosesAt: string
   hasEventWorkspaceAccess: boolean
+  registrationIntent?: 'talk-proposal'
   now?: Date
 }): PublicEventPrimaryAction | null {
-  const registerHref = `/events/${options.eventSlug}/register`
+  const registerHref = `/events/${options.eventSlug}/register${options.registrationIntent === 'talk-proposal' ? '?intent=talk-proposal' : ''}`
   const registerCompletionHref = buildAccountRegisterHref(registerHref)
 
   if (shouldShowPublicRegistrationEntry(
@@ -467,14 +471,15 @@ export function resolveParticipantRegistrationEntry(options: {
   registrationOpensAt: string
   registrationClosesAt: string
   hasExistingApplication: boolean
+  registrationIntent?: 'talk-proposal'
   now?: Date
 }) {
-  const registerHref = `/events/${options.eventSlug}/register`
+  const registerHref = `/events/${options.eventSlug}/register${options.registrationIntent === 'talk-proposal' ? '?intent=talk-proposal' : ''}`
   const registerCompletionHref = buildAccountRegisterHref(registerHref)
 
   if (options.hasExistingApplication) {
     return {
-      to: `/account/events/${options.eventSlug}`,
+      to: `/account/events/${options.eventSlug}${options.registrationIntent === 'talk-proposal' ? '?tab=call-for-talks' : ''}`,
       external: false
     }
   }
@@ -519,6 +524,7 @@ export interface ParticipantApplicationSubmittedTransition {
     path: string
     query: {
       notice: 'application_submitted'
+      tab?: 'call-for-talks'
     }
   }
 }
@@ -527,8 +533,24 @@ export function resolveParticipantApplicationSubmittedTransition(
   eventSlug: string,
   options: {
     autoApproveApplications?: boolean
+    talkProposalSubmitted?: boolean
   } = {}
 ): ParticipantApplicationSubmittedTransition {
+  if (options.talkProposalSubmitted) {
+    return {
+      title: 'Registration and proposal submitted',
+      description: 'Opening your Talk proposal.',
+      eyebrow: 'Proposal submitted',
+      to: {
+        path: `/account/events/${eventSlug}`,
+        query: {
+          notice: 'application_submitted',
+          tab: 'call-for-talks'
+        }
+      }
+    }
+  }
+
   if (options.autoApproveApplications) {
     return {
       title: 'Application approved',
