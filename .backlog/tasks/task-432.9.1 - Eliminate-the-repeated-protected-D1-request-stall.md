@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@luna-actor-request-plan'
 created_date: '2026-08-21 04:29'
-updated_date: '2026-08-21 05:51'
+updated_date: '2026-08-21 06:21'
 labels: []
 dependencies: []
 parent_task_id: TASK-432.9
@@ -76,4 +76,10 @@ Validation passed: focused request-timing/fake-D1 integration 38/38; bun run lin
 Local fake/stub tests cannot validate the real Cloudflare withSession/batch response metadata shape. Required test-environment validation is the deployed signed-in browser journey with D1 Server-Timing and Workers Trace/Tail evidence; no brittle live integration test or local secrets are required.
 
 Final validation: full local BDD passed (88 authenticated scenarios plus 2 destructive account-management scenarios). The run reset only local fixture state; no remote or deployed test data was changed. Fake/stub validation still cannot prove the real Cloudflare withSession/batch metadata shape; deployed signed-in browser, D1 Server-Timing, and Workers Trace/Tail evidence remain required.
+
+Deployed test evidence at 0ae6a0e9 identifies the common stall boundary. Correlated signed-in browser and Wrangler Tail samples for structured routes reported 2.72–3.01 s Worker CPU and 3.27–3.59 s Worker wall time: account overview 2.831/3.359 s, staff workspace 2.721/3.455 s, events 3.014/3.586 s, current legal settings 2.729/3.274 s, and current platform documents 2.868/3.371 s. The plain /api/session route used 19 ms CPU and 69 ms wall time. Representative browser TTFB remained 3.7–4.0 s, while the first D1 execution span often absorbed 1.6–2.9 s because Workers timers advance at I/O boundaries and therefore do not prove D1 itself consumed that interval.
+
+Every slow route crosses defineStructuredOperationApiHandler and imports the generated structured output-schema catalog; /api/session bypasses it. generated-output-schemas.ts is approximately 786 KB and eagerly executes roughly 170 z.fromJSONSchema calls at module initialization. Route data volume, authorization shape, and query count vary, including a single simple public D1 read, so they do not explain the shared CPU profile. The next bounded architecture slice is lazy, cached, per-operation schema construction with one canonical output-validation owner.
+
+A separate deployed functional regression is now visible on direct event Staff and Operations page APIs: output validation returns 400 because event shell track objects contain keys excluded by the generated schema, and the validation error incorrectly labels output as request params. The schema slice must restore the canonical serialized track contract and identify output failures as output failures; it must not add permissive passthrough or compatibility fallbacks. Production was not touched.
 <!-- SECTION:NOTES:END -->
