@@ -715,16 +715,68 @@ export async function waitForAccountEventTab(page: Page, tabLabel: string) {
   await page.locator(`#${panelId}`).waitFor({ state: 'visible' })
 }
 
-export async function warmAccountEventSurface(page: Page, slug: string) {
-  await page.goto(`/account/events/${encodeURIComponent(slug)}?tab=overview`, {
-    waitUntil: 'domcontentloaded'
+async function waitForSuccessfulJsonApiResponse(page: Page, path: string, label: string) {
+  const response = await page.waitForResponse((candidate) => {
+    const url = new URL(candidate.url())
+
+    return candidate.request().method() === 'GET' && url.pathname === path
   })
-  await waitForAccountEventTab(page, 'Overview')
-  await page.waitForTimeout(250)
+
+  const finishError = await response.finished()
+
+  if (finishError) {
+    throw new Error(`${label} request failed: ${finishError.message}`)
+  }
+
+  if (response.status() < 200 || response.status() >= 300) {
+    throw new Error(`${label} did not return a successful response (HTTP ${response.status()}).`)
+  }
+
+  if (!response.headers()['content-type']?.includes('json')) {
+    throw new Error(`${label} did not return a JSON response.`)
+  }
+
+  let payload: unknown
+
+  try {
+    payload = await response.json()
+  } catch {
+    throw new Error(`${label} did not return valid JSON.`)
+  }
+
+  if (!hasDataEnvelope(payload)) {
+    throw new Error(`${label} did not return the expected data envelope.`)
+  }
 }
 
-export async function warmGlobalSurface(page: Page, path: string, heading: string) {
-  await page.goto(path, { waitUntil: 'domcontentloaded' })
+export async function warmAccountEventSurface(page: Page, slug: string, entryPath: string) {
+  const entryResponse = waitForSuccessfulJsonApiResponse(
+    page,
+    entryPath,
+    'Warmed account event entry read'
+  )
+
+  await Promise.all([
+    page.goto(`/account/events/${encodeURIComponent(slug)}?tab=overview`, {
+      waitUntil: 'domcontentloaded'
+    }),
+    entryResponse
+  ])
+
+  await waitForAccountEventTab(page, 'Overview')
+}
+
+export async function warmGlobalSurface(page: Page, path: string, heading: string, criticalPath: string) {
+  const criticalResponse = waitForSuccessfulJsonApiResponse(
+    page,
+    criticalPath,
+    'Warmed global workspace read'
+  )
+
+  await Promise.all([
+    page.goto(path, { waitUntil: 'domcontentloaded' }),
+    criticalResponse
+  ])
+
   await page.getByRole('heading', { name: heading, exact: true }).waitFor({ state: 'visible' })
-  await page.waitForTimeout(250)
 }

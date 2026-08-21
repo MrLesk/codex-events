@@ -161,7 +161,7 @@ When('I warm and measure a direct account event {string} tab for event slug {str
   }
 
   await applyStoredStateToPage(personaKey, page)
-  await warmAccountEventSurface(page, slug)
+  await warmAccountEventSurface(page, slug, `/api/account/events/${encodeURIComponent(slug)}/entry`)
 
   const capture = capturePageTopology(page)
   const selectedPath = selectedEventReadPath(slug, pageFamily)
@@ -199,7 +199,7 @@ When('I measure a forbidden direct account event {string} tab for event slug {st
   }
 
   await applyStoredStateToPage(personaKey, page)
-  await warmAccountEventSurface(page, slug)
+  await warmAccountEventSurface(page, slug, `/api/account/events/${encodeURIComponent(slug)}/entry`)
 
   const capture = capturePageTopology(page)
   const selectedPath = selectedEventReadPath(slug, pageFamily)
@@ -225,11 +225,12 @@ When('I measure a forbidden direct account event {string} tab for event slug {st
 })
 
 When('I warm and measure the account event overview for event slug {string} as {string}', async ({ page }, slug: string, persona: string) => {
+  const selectedPath = `/api/account/events/${encodeURIComponent(slug)}/entry`
+
   await applyStoredStateToPage(parsePersona(persona), page)
-  await warmAccountEventSurface(page, slug)
+  await warmAccountEventSurface(page, slug, selectedPath)
 
   const capture = capturePageTopology(page)
-  const selectedPath = `/api/account/events/${encodeURIComponent(slug)}/entry`
 
   await page.goto(`/account/events/${encodeURIComponent(slug)}?tab=overview`, {
     waitUntil: 'domcontentloaded'
@@ -261,10 +262,10 @@ When('I warm and measure the account event SPA flow for event slug {string} as {
   }
 
   await applyStoredStateToPage(personaKey, page)
-  await warmAccountEventSurface(page, slug)
+  const entryPath = `/api/account/events/${encodeURIComponent(slug)}/entry`
+  await warmAccountEventSurface(page, slug, entryPath)
 
   const capture = capturePageTopology(page)
-  const entryPath = `/api/account/events/${encodeURIComponent(slug)}/entry`
   const selectedPath = selectedEventReadPath(slug, pageFamily)
 
   await page.goto(`/account/events/${encodeURIComponent(slug)}?tab=overview`, {
@@ -308,7 +309,7 @@ When('I warm and measure the {string} global account workspace as {string}', asy
   }
 
   await applyStoredStateToPage(parsePersona(persona), page)
-  await warmGlobalSurface(page, surface.path, surface.heading)
+  await warmGlobalSurface(page, surface.path, surface.heading, surface.criticalPath)
 
   const capture = capturePageTopology(page)
   await page.goto(surface.path, { waitUntil: 'domcontentloaded' })
@@ -380,7 +381,7 @@ When('I cold-start the judging workspace while holding the account bootstrap res
 When('I measure account event cancellation from Operations to Settings for event slug {string} as {string}', async ({ page }, slug: string, persona: string) => {
   const personaKey = parsePersona(persona)
   await applyStoredStateToPage(personaKey, page)
-  await warmAccountEventSurface(page, slug)
+  await warmAccountEventSurface(page, slug, `/api/account/events/${encodeURIComponent(slug)}/entry`)
 
   const capture = capturePageTopology(page)
   const operationsPath = `/api/account/events/${encodeURIComponent(slug)}/operations`

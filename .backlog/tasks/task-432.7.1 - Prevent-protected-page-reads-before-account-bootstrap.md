@@ -1,11 +1,11 @@
 ---
 id: TASK-432.7.1
 title: Prevent protected page reads before account bootstrap
-status: In Progress
+status: Done
 assignee:
   - '@luna-bootstrap-gate'
 created_date: '2026-08-21 00:23'
-updated_date: '2026-08-21 01:22'
+updated_date: '2026-08-21 01:48'
 labels: []
 dependencies: []
 parent_task_id: TASK-432.7
@@ -48,6 +48,9 @@ CI browser evidence at SHA 932a11e9 showed /account/judging issuing a protected 
 2. Replace serialized useState readiness with explicit non-serialized state scoped by the current useNuxtApp() instance; share one in-flight refresh per app, make clear reset readiness and in-flight state, and preserve abortable caller waiting without coupling useApiClient to protected code.
 3. Add focused unit proof that serialized readiness cannot mark a fresh app ready, readiness is shared across consumers, clear resets it, and both protected fetch boundaries wait. Strengthen only the account-workspace topology assertion needed to prove warmed judging and cold held-session journeys each issue exactly one session request followed by one judging read.
 4. Run focused unit, lint, typecheck, account-workspace BDD, and full regular/destructive BDD; inspect the final diff for TASK-432.7.1-only scope and amend b13d5d24 without pushing.
+
+5. Correct warm-fixture isolation: warmGlobalSurface receives the explicit global criticalPath and awaits its exact successful JSON response before measurement capture; warmAccountEventSurface receives the event entry path and awaits that exact entry response. Remove timing sleeps and preserve exact one-session/one-critical-read assertions.
+6. Validate warmed overview and judging examples, then the 23-case account-workspace BDD suite, lint/typecheck when needed, and git diff --check; commit a new fix without amending or pushing bfd09e94.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -72,6 +75,10 @@ Final validation on 2026-08-21:
 - git diff --check — passed. Source check found no useState readiness or account-api:bootstrap-loaded in app/composables/useAccountBootstrap.ts.
 
 An intermediate full BDD run against a temporary over-constrained post-refresh assertion failed 85/86: simplified-claiming timed out filling the disabled Luma email field after a page 500, and the navigation guard reported Account bootstrap did not become ready after refresh. That assertion was removed; the focused scenario then passed and the final full BDD rerun above passed 86 regular plus 2 destructive tests.
+
+CI run 32436271579 exposed a fixture-isolation race, not another protected-fetch escape: the warmed global overview helper used page.goto + heading visible + waitForTimeout(250), but /api/session started at 221.07ms and finished at 306.05ms while the captured successful /api/account/overview started at 350.34ms. The warm page’s legitimate critical read began after capture, so the test observed an abandoned request and a second current read. The judging and cold judging examples passed. Fix the shared helpers defensively by awaiting the exact successful critical response before the helper returns and before capture begins; pass criticalPath from globalSurfaces. Review warmAccountEventSurface for the same entry-read leak and pass/await its exact entry path when applicable. No runtime app, D1, cache, deploy, or unrelated task files are in scope.
+
+Fix validation on 2026-08-21: targeted global account workspace scenario (overview, judging, redemption) passed 3/3; overview and judging each recorded exactly one /api/session and one critical read. bun run test:bdd:account-workspace passed 23/23 in 43.0s. bun run lint passed. bun run typecheck passed. bun run test:unit passed 164 files and 1,091 tests. bun run test:bdd passed 86 regular tests plus 2 destructive tests. git diff --check passed. The only changed files are the account-workspace topology support, its BDD step callers, and this task record; no runtime, D1, cache, deploy, or other task files changed.
 <!-- SECTION:NOTES:END -->
 
 ## Comments
@@ -91,7 +98,5 @@ Per finalization instruction, the task remains In Progress because an intermedia
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Replaced serialized account bootstrap readiness with a non-serialized WeakMap keyed by the current Nuxt app instance. Readiness is shared across useAccountBootstrap consumers, reset by clear, guarded against stale generations, and backed by one shared abortable refresh wait; useApiClient remains acyclic and both protected fetch gates remain in place. Final validation passed: focused bootstrap/protected unit suite 4 files and 15 tests, full unit 164 files and 1,091 tests, integration 44 files and 468 tests, lint, typecheck, account workspace BDD 23/23, and full BDD 86 regular plus 2 destructive. Warmed and cold judging each produced exactly one /api/session and one /api/account/judging.
-
-An intermediate 85/86 BDD run exposed an over-constrained post-refresh assertion; it was removed, the focused regression passed, and the final complete BDD rerun exited 0.
+Updated the shared account-workspace warm fixtures so each helper subscribes before navigation, awaits the exact completed critical GET response, validates its successful JSON data envelope, and only then waits for the stable heading/tab. Global callers pass surface.criticalPath and event callers pass the entry path; the arbitrary 250ms delay is removed. Verified with the targeted global scenario (overview and judging each exactly one session plus one critical read), bun run test:bdd:account-workspace (23/23), bun run lint, bun run typecheck, bun run test:unit (1,091 tests), bun run test:bdd (86 regular plus 2 destructive), and git diff --check. Scope is limited to the shared topology support, its step callers, and this task record.
 <!-- SECTION:FINAL_SUMMARY:END -->
