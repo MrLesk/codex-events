@@ -36,6 +36,20 @@ describe('TestD1Database', () => {
     })
   })
 
+  test('reports primary serving metadata for standalone queries and batches', async () => {
+    const d1Database = createTestD1Database()
+    databases.push(d1Database)
+
+    const queryResult = await d1Database.prepare('select 1').all()
+    const batchResults = await d1Database.batch([
+      d1Database.prepare('select 1'),
+      d1Database.prepare('select 2')
+    ])
+
+    expect(queryResult.meta.served_by_primary).toBe(true)
+    expect(batchResults.map(result => result.meta.served_by_primary)).toEqual([true, true])
+  })
+
   test('keeps concurrently active test databases isolated from each other', async () => {
     const firstDatabase = createTestD1Database()
     const secondDatabase = createTestD1Database()

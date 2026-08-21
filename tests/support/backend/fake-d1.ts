@@ -623,7 +623,8 @@ export class TestD1Database {
     return new TestD1PreparedStatement(
       async () => ({
         database: await this.getDatabase(),
-        version: this.databaseVersion
+        version: this.databaseVersion,
+        isPrimary: true
       }),
       execute => this.runMutation(execute),
       sql,

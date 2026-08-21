@@ -12,7 +12,7 @@ type RequestTimingPhase = 'actor'
 
 export type D1ExecutionApi = 'prepare' | 'batch'
 export type D1ExecutionKind = 'all' | 'first' | 'raw' | 'run' | 'batch'
-export type D1ExecutionStatus = 'complete' | 'failed' | 'inflight'
+export type D1ExecutionStatus = 'succeeded' | 'failed' | 'inflight'
 export type D1MetadataSummary = string | 'unknown' | 'mixed'
 export type D1PrimarySummary = boolean | 'unknown' | 'mixed'
 export type D1SessionDescription = 'first-primary' | 'bookmark'
@@ -67,6 +67,8 @@ interface RequestTimingState {
   d1: {
     nextOrdinal: number
     executionCount: number
+    succeededExecutionCount: number
+    failedExecutionCount: number
     statementCount: number
     inflightExecutionCount: number
     inflightStatementCount: number
@@ -102,6 +104,8 @@ function getOrCreateRequestTiming(event: H3Event) {
     d1: {
       nextOrdinal: 1,
       executionCount: 0,
+      succeededExecutionCount: 0,
+      failedExecutionCount: 0,
       statementCount: 0,
       inflightExecutionCount: 0,
       inflightStatementCount: 0,
@@ -262,7 +266,7 @@ export function finishRequestD1Execution(
   event: H3Event,
   execution: ReturnType<typeof startRequestD1Execution>,
   observation: D1ExecutionObservation,
-  status: Exclude<D1ExecutionStatus, 'inflight'> = 'complete'
+  status: Exclude<D1ExecutionStatus, 'inflight'> = 'succeeded'
 ) {
   const timing = getOrCreateRequestTiming(event)
   if (execution.finished) {
@@ -270,6 +274,11 @@ export function finishRequestD1Execution(
   }
 
   execution.finished = true
+  if (status === 'failed') {
+    timing.d1.failedExecutionCount += 1
+  } else {
+    timing.d1.succeededExecutionCount += 1
+  }
   timing.d1.inflightExecutionCount = Math.max(0, timing.d1.inflightExecutionCount - 1)
   timing.d1.inflightStatementCount = Math.max(0, timing.d1.inflightStatementCount - execution.statementCount)
   const durationMs = Math.max(0, now() - execution.startedAt)
@@ -345,6 +354,7 @@ export function emitRequestTiming(event: H3Event) {
 
   const total = Math.max(0, now() - timing.startedAt)
   const d1Description = `strong:${timing.databaseSession ?? 'unknown'}`
+  const completedExecutionCount = timing.d1.succeededExecutionCount + timing.d1.failedExecutionCount
   const serverTimingEntries = [
     `actor;dur=${formatMilliseconds(timing.phases.actor ?? 0)}`,
     `actor-session;dur=${formatMilliseconds(timing.phases['actor-session'] ?? 0)}`,
@@ -357,7 +367,7 @@ export function emitRequestTiming(event: H3Event) {
   ]
 
   serverTimingEntries.push(
-    `d1-exec-total;dur=${formatMilliseconds(timing.d1.totalDurationMs)};desc="executions=${timing.d1.executionCount};complete=${timing.d1.executionCount - timing.d1.inflightExecutionCount};inflight=${timing.d1.inflightExecutionCount};statements=${timing.d1.statementCount};inflight-statements=${timing.d1.inflightStatementCount};overflow=${timing.d1.overflowCount}"`,
+    `d1-exec-total;dur=${formatMilliseconds(timing.d1.totalDurationMs)};desc="executions=${timing.d1.executionCount};completed=${completedExecutionCount};succeeded=${timing.d1.succeededExecutionCount};failed=${timing.d1.failedExecutionCount};inflight=${timing.d1.inflightExecutionCount};statements=${timing.d1.statementCount};inflight-statements=${timing.d1.inflightStatementCount};overflow=${timing.d1.overflowCount}"`,
     `d1-db-total;dur=${formatMilliseconds(timing.d1.totalDatabaseDurationMs)};desc="unknown=${timing.d1.databaseDurationUnknownCount};attempts=${timing.d1.totalAttempts};attempts-unknown=${timing.d1.attemptsUnknownCount};region=${timing.d1.servedByRegion ?? 'unknown'};colo=${timing.d1.servedByColo ?? 'unknown'};primary=${formatServedByPrimary(timing.d1.servedByPrimary)}"`,
     ...timing.d1.executions.map((execution) => {
       const databaseDuration = execution.databaseDurationUnknownCount > 0
@@ -388,6 +398,8 @@ export function readRequestTiming(event: H3Event) {
     databaseSession: timing.databaseSession,
     d1: {
       executionCount: timing.d1.executionCount,
+      succeededExecutionCount: timing.d1.succeededExecutionCount,
+      failedExecutionCount: timing.d1.failedExecutionCount,
       statementCount: timing.d1.statementCount,
       inflightExecutionCount: timing.d1.inflightExecutionCount,
       inflightStatementCount: timing.d1.inflightStatementCount,

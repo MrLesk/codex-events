@@ -189,7 +189,7 @@ function readDatabaseDuration(result: unknown, statementCount: number, expectsRe
 }
 
 function isConstraintLikeD1SessionValue(value: string) {
-  return /^(?:first(?:[-_\s]|$)|primary$|unconstrained$)/iu.test(value)
+  return value === 'first-primary' || value === 'first-unconstrained'
 }
 
 function invalidD1BookmarkError() {

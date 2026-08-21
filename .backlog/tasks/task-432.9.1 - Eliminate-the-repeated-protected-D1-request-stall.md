@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@luna-actor-request-plan'
 created_date: '2026-08-21 04:29'
-updated_date: '2026-08-21 05:28'
+updated_date: '2026-08-21 05:51'
 labels: []
 dependencies: []
 parent_task_id: TASK-432.9
@@ -54,6 +54,8 @@ Deployed signed-in browser evidence at d4644d5c shows /api/session resolving the
 Phase 1 evidence boundary: the capability-narrowed request-scoped D1 adapter wraps the one session's prepare/batch execution methods; deployment must inspect execution-level Server-Timing before any authorization or query redesign.
 
 6. Apply the review corrections at the request-scoped session/timing adapter and fake-D1 boundaries, with focused security, concurrency, batch attribution, metadata, and timer-semantics coverage.
+
+7. Apply the final request-boundary corrections: accept only opaque bookmarks except exact D1 constraints, mark standalone fake-D1 targets primary, and aggregate succeeded/failed/inflight executions across the bounded timing entries; record the unavoidable local metadata-validation gap.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -66,4 +68,12 @@ Phase 1 implementation is complete locally and remains pre-deploy. The capabilit
 Review-correction implementation starts on b93af163. Scope is local-only: reject all reserved/constraint-like incoming D1 session values before withSession; report active D1 executions at timing emission; attribute ordered batch result metadata compactly without SQL or result leakage; mark aggregate metadata unknown/mixed when any included value is missing; make fake-D1 metadata follow its selected primary/replica target; and document Workers timer limitations. No push, deploy, or remote/test data mutation is authorized for this slice.
 
 Review-correction validation on b93af163: bun run lint passed; bun run typecheck passed; bun run test:unit passed (165 files, 1102 tests); bun run test:integration passed (44 files, 482 tests); focused request-timing/fake-D1 integration passed (3 files, 38 tests); bun run test:bdd:account-workspace passed (25 tests); bun run test:bdd passed (88 chromium tests plus 2 destructive tests); bun run build:cloudflare passed; local node_modules/.bin/wrangler deploy --dry-run --config .wrangler/generated/test.jsonc passed with --dry-run: exiting now; git diff --check passed. The repository Wrangler wrapper was not runnable because CF_ACCOUNT_ID is absent, so no credentials or remote access were introduced. No push, deploy, or remote/test data mutation occurred; ACs/DoD/status remain unchanged pending the larger task's deployment evidence.
+
+Final correction pass on 0575fe8 was implemented locally without push, deploy, or remote/test data mutation. The HTTP bookmark boundary now rejects only the exact case-sensitive D1 constraints first-primary and first-unconstrained; opaque values such as first-custom-bookmark, first_opaque, primary, unconstrained, and FIRST-PRIMARY reach withSession. Standalone fake-D1 prepare and batch targets report served_by_primary=true. d1-exec-total now reports executions, completed, succeeded, failed, inflight, statement counts, and bounded overflow; failed executions beyond the eight detailed entries remain aggregated.
+
+Validation passed: focused request-timing/fake-D1 integration 38/38; bun run lint; bun run typecheck; bun run test:unit (165 files, 1102 tests); bun run test:integration (44 files, 487 tests); bun run test:bdd:account-workspace (25 tests); bun run build:cloudflare; direct node_modules/.bin/wrangler deploy --dry-run --config .wrangler/generated/test.jsonc; git diff --check.
+
+Local fake/stub tests cannot validate the real Cloudflare withSession/batch response metadata shape. Required test-environment validation is the deployed signed-in browser journey with D1 Server-Timing and Workers Trace/Tail evidence; no brittle live integration test or local secrets are required.
+
+Final validation: full local BDD passed (88 authenticated scenarios plus 2 destructive account-management scenarios). The run reset only local fixture state; no remote or deployed test data was changed. Fake/stub validation still cannot prove the real Cloudflare withSession/batch metadata shape; deployed signed-in browser, D1 Server-Timing, and Workers Trace/Tail evidence remain required.
 <!-- SECTION:NOTES:END -->

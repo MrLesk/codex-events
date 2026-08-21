@@ -47,7 +47,7 @@ function createStubD1Binding(options?: {
   const binding = {
     prepare: vi.fn((query: string) => createStatement(query)),
     batch: vi.fn(async () => options?.batchResults ?? []),
-    withSession: vi.fn(() => session)
+    withSession: vi.fn((_constraintOrBookmark?: string) => session)
   }
 
   return { binding, session }
@@ -116,8 +116,10 @@ describe('protected request timing', () => {
     expect(timing).not.toContain(bookmark ?? '')
   })
 
-  test.each(['first-unconstrained', 'first-primary', 'first-replica', 'unconstrained'])('rejects constraint-like incoming D1 session value %s before withSession', async (constraint) => {
+  test.each(['first-unconstrained', 'first-primary'])('rejects exact D1 session constraint %s before withSession', async (constraint) => {
+    const { binding } = createStubD1Binding()
     const harness = createApiRouteTestHarness({
+      cloudflareEnv: { DB: binding },
       routes: [{
         method: 'get',
         path: '/api/request-timing-invalid-bookmark',
@@ -135,10 +137,36 @@ describe('protected request timing', () => {
     const timing = response.headers.get('server-timing') ?? ''
 
     expect(response.status).toBe(400)
+    expect(binding.withSession).not.toHaveBeenCalled()
     expect(harness.d1Database.sessionStarts).toEqual([])
     expect(timing).not.toContain('strong:bookmark')
     expect(timing).not.toContain('first-unconstrained')
     expect(timing).not.toContain('first-primary')
+  })
+
+  test.each(['first-custom-bookmark', 'first_opaque', 'primary', 'unconstrained', 'FIRST-PRIMARY'])('passes opaque incoming D1 bookmark %s to withSession', async (bookmark) => {
+    const { binding } = createStubD1Binding()
+    const harness = createApiRouteTestHarness({
+      cloudflareEnv: { DB: binding },
+      routes: [{
+        method: 'get',
+        path: '/api/request-timing-opaque-bookmark',
+        handler: defineApiHandler(async (event) => {
+          await getDatabase(event).query.users.findFirst()
+          return apiData({ ok: true })
+        })
+      }]
+    })
+    harnesses.push(harness)
+
+    const response = await harness.request('/api/request-timing-opaque-bookmark', {
+      headers: { [d1BookmarkHeader]: bookmark }
+    })
+
+    expect(response.status).toBe(200)
+    expect(binding.withSession).toHaveBeenCalledTimes(1)
+    expect(binding.withSession).toHaveBeenCalledWith(bookmark)
+    expect(harness.d1Database.sessionStarts).toEqual([])
   })
 
   test('attributes shared database setup and D1 work on public structured reads', async () => {
@@ -189,10 +217,10 @@ describe('protected request timing', () => {
     const timing = response.headers.get('server-timing') ?? ''
 
     expect(response.status).toBe(200)
-    expect(timing).toMatch(/d1-exec-total;dur=\d+\.\d+;desc="executions=2;complete=2;inflight=0;statements=3;inflight-statements=0;overflow=0"/u)
+    expect(timing).toMatch(/d1-exec-total;dur=\d+\.\d+;desc="executions=2;completed=2;succeeded=2;failed=0;inflight=0;statements=3;inflight-statements=0;overflow=0"/u)
     expect(timing).toMatch(/d1-db-total;dur=\d+\.\d+;desc="unknown=0;attempts=3;attempts-unknown=0;region=test-region;colo=test-colo;primary=1"/u)
-    expect(timing).toMatch(/d1-exec-1;dur=\d+\.\d+;desc="ordinal=1;api=prepare;kind=all;status=complete;statements=1;db=0\.00;attempts=1;attempts-unknown=0;region=test-region;colo=test-colo;primary=1"/u)
-    expect(timing).toMatch(/d1-exec-2;dur=\d+\.\d+;desc="ordinal=2;api=batch;kind=batch;status=complete;statements=2;db=0\.00;attempts=2;attempts-unknown=0;region=test-region;colo=test-colo;primary=1;stmt=1:db=0\.00;attempts=1;attempts-unknown=0;region=test-region;colo=test-colo;primary=1\|2:db=0\.00;attempts=1;attempts-unknown=0;region=test-region;colo=test-colo;primary=1;stmt-overflow=0"/u)
+    expect(timing).toMatch(/d1-exec-1;dur=\d+\.\d+;desc="ordinal=1;api=prepare;kind=all;status=succeeded;statements=1;db=0\.00;attempts=1;attempts-unknown=0;region=test-region;colo=test-colo;primary=1"/u)
+    expect(timing).toMatch(/d1-exec-2;dur=\d+\.\d+;desc="ordinal=2;api=batch;kind=batch;status=succeeded;statements=2;db=0\.00;attempts=2;attempts-unknown=0;region=test-region;colo=test-colo;primary=1;stmt=1:db=0\.00;attempts=1;attempts-unknown=0;region=test-region;colo=test-colo;primary=1\|2:db=0\.00;attempts=1;attempts-unknown=0;region=test-region;colo=test-colo;primary=1;stmt-overflow=0"/u)
     expect(timing).not.toContain('select')
     expect(timing).not.toContain('secret-value')
     expect(timing).not.toContain('$client')
@@ -217,10 +245,10 @@ describe('protected request timing', () => {
     const timing = response.headers.get('server-timing') ?? ''
 
     expect(response.status).toBe(200)
-    expect(timing).toMatch(/d1-exec-total;dur=\d+\.\d+;desc="executions=2;complete=2;inflight=0;statements=2;inflight-statements=0;overflow=0"/u)
+    expect(timing).toMatch(/d1-exec-total;dur=\d+\.\d+;desc="executions=2;completed=2;succeeded=2;failed=0;inflight=0;statements=2;inflight-statements=0;overflow=0"/u)
     expect(timing).toMatch(/d1-db-total;dur=\d+\.\d+;desc="unknown=2;attempts=0;attempts-unknown=2;region=unknown;colo=unknown;primary=unknown"/u)
-    expect(timing).toMatch(/d1-exec-1;dur=\d+\.\d+;desc="ordinal=1;api=prepare;kind=first;status=complete;statements=1;db=0\.00;db-unknown=1;attempts=0;attempts-unknown=1;region=unknown;colo=unknown;primary=unknown"/u)
-    expect(timing).toMatch(/d1-exec-2;dur=\d+\.\d+;desc="ordinal=2;api=prepare;kind=raw;status=complete;statements=1;db=0\.00;db-unknown=1;attempts=0;attempts-unknown=1;region=unknown;colo=unknown;primary=unknown"/u)
+    expect(timing).toMatch(/d1-exec-1;dur=\d+\.\d+;desc="ordinal=1;api=prepare;kind=first;status=succeeded;statements=1;db=0\.00;db-unknown=1;attempts=0;attempts-unknown=1;region=unknown;colo=unknown;primary=unknown"/u)
+    expect(timing).toMatch(/d1-exec-2;dur=\d+\.\d+;desc="ordinal=2;api=prepare;kind=raw;status=succeeded;statements=1;db=0\.00;db-unknown=1;attempts=0;attempts-unknown=1;region=unknown;colo=unknown;primary=unknown"/u)
   })
 
   test('attributes ordered batch metadata and marks missing or mixed serving fields', async () => {
@@ -317,7 +345,7 @@ describe('protected request timing', () => {
     const timing = response.headers.get('server-timing') ?? ''
 
     expect(response.status).toBe(500)
-    expect(timing).toMatch(/d1-exec-total;dur=\d+\.\d+;desc="executions=2;complete=1;inflight=1;statements=2;inflight-statements=1;overflow=0"/u)
+    expect(timing).toMatch(/d1-exec-total;dur=\d+\.\d+;desc="executions=2;completed=1;succeeded=0;failed=1;inflight=1;statements=2;inflight-statements=1;overflow=0"/u)
     expect(timing).toContain('status=failed')
     expect(timing).toContain('status=inflight')
 
@@ -344,7 +372,7 @@ describe('protected request timing', () => {
 
     expect(response.status).toBe(500)
     expect(harness.d1Database.queries).toEqual([])
-    expect(timing).toMatch(/d1-exec-total;dur=\d+\.\d+;desc="executions=0;complete=0;inflight=0;statements=0;inflight-statements=0;overflow=0"/u)
+    expect(timing).toMatch(/d1-exec-total;dur=\d+\.\d+;desc="executions=0;completed=0;succeeded=0;failed=0;inflight=0;statements=0;inflight-statements=0;overflow=0"/u)
     expect(timing).not.toContain('d1-exec-1;')
   })
 
@@ -386,7 +414,7 @@ describe('protected request timing', () => {
     expect(secondTiming).not.toMatch(/d1-exec-2;/u)
     expect(errorResponse.status).toBe(500)
     expect(errorTiming).toContain('d1-exec-1;')
-    expect(errorTiming).toMatch(/d1-exec-total;dur=\d+\.\d+;desc="executions=1;complete=1;inflight=0;statements=1;inflight-statements=0;overflow=0"/u)
+    expect(errorTiming).toMatch(/d1-exec-total;dur=\d+\.\d+;desc="executions=1;completed=1;succeeded=0;failed=1;inflight=0;statements=1;inflight-statements=0;overflow=0"/u)
     expect(errorTiming).toMatch(/d1-db-total;dur=\d+\.\d+;desc="unknown=1;attempts=0;attempts-unknown=1;region=unknown;colo=unknown;primary=unknown"/u)
     expect(errorTiming).not.toContain('missing_column')
   })
@@ -413,7 +441,35 @@ describe('protected request timing', () => {
 
     expect(response.status).toBe(200)
     expect(reportedExecutions).toHaveLength(8)
-    expect(timing).toMatch(/d1-exec-total;dur=\d+\.\d+;desc="executions=12;complete=12;inflight=0;statements=12;inflight-statements=0;overflow=4"/u)
+    expect(timing).toMatch(/d1-exec-total;dur=\d+\.\d+;desc="executions=12;completed=12;succeeded=12;failed=0;inflight=0;statements=12;inflight-statements=0;overflow=4"/u)
+    expect(timing.length).toBeLessThan(5000)
+  })
+
+  test('aggregates an overflow failure without adding an unbounded timing entry', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [{
+        method: 'get',
+        path: '/api/request-timing-overflow-failure',
+        handler: defineApiHandler(async (event) => {
+          const session = getDatabaseSession(event)
+          for (let index = 0; index < 11; index += 1) {
+            await session.prepare('select 1').all()
+          }
+          await session.prepare('select missing_column').all()
+          return apiData({ ok: true })
+        })
+      }]
+    })
+    harnesses.push(harness)
+
+    const response = await harness.request('/api/request-timing-overflow-failure')
+    const timing = response.headers.get('server-timing') ?? ''
+    const reportedExecutions = timing.match(/d1-exec-\d+;/gu) ?? []
+
+    expect(response.status).toBe(500)
+    expect(reportedExecutions).toHaveLength(8)
+    expect(timing).toMatch(/d1-exec-total;dur=\d+\.\d+;desc="executions=12;completed=12;succeeded=11;failed=1;inflight=0;statements=12;inflight-statements=0;overflow=4"/u)
+    expect(timing).not.toContain('missing_column')
     expect(timing.length).toBeLessThan(5000)
   })
 })
