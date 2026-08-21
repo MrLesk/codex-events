@@ -173,6 +173,7 @@ export class AccountEventTopologyCapture {
   readonly consoleErrors: string[] = []
   readonly pageErrors: string[] = []
   expectedConsoleErrorCount = 0
+  readonly expectedConsoleErrorPatterns: RegExp[] = []
   readonly phases: TopologyPhaseEvidence = {
     shellMs: null,
     bootstrapMs: null,
@@ -366,9 +367,13 @@ export class AccountEventTopologyCapture {
     throw new Error(`Timed out waiting for started ${path}.\n${formatTopologyEvidence(this)}`)
   }
 
+  async waitForResponseInspections() {
+    await Promise.allSettled([...this.responseInspections])
+  }
+
   async settle(quietMs = 200) {
     await this.page.waitForTimeout(quietMs)
-    await Promise.allSettled([...this.responseInspections])
+    await this.waitForResponseInspections()
     this.markDerivedPhases()
   }
 }
@@ -648,17 +653,22 @@ export function assertForbiddenJsonApiRecord(
     throw topologyFailure(capture, `${label} exposed a data envelope for a forbidden response.`)
   }
 
+  expectConsoleError(capture, expectedForbiddenConsoleErrorPattern)
+}
+
+export function expectConsoleError(capture: AccountEventTopologyCapture, pattern: RegExp) {
   capture.expectedConsoleErrorCount += 1
+  capture.expectedConsoleErrorPatterns.push(pattern)
 }
 
 export function assertNoUnexpectedBrowserErrors(capture: AccountEventTopologyCapture) {
   assertNoProtectedApiCacheReuse(capture)
 
   const expectedConsoleErrors = capture.consoleErrors.filter(error =>
-    expectedForbiddenConsoleErrorPattern.test(error)
+    capture.expectedConsoleErrorPatterns.some(pattern => pattern.test(error))
   )
   const unexpectedConsoleErrors = capture.consoleErrors.filter(error =>
-    !expectedForbiddenConsoleErrorPattern.test(error)
+    !capture.expectedConsoleErrorPatterns.some(pattern => pattern.test(error))
   )
 
   if (

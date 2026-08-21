@@ -72,6 +72,7 @@ describe('useApiClient', () => {
     const options = requestFetch.mock.calls[0]?.[1]
     expect(options.body).toBe(body)
     expect(options.signal).toBe(signal)
+    expect(options.retry).toBe(false)
     expect(options.headers).toBeInstanceOf(Headers)
     expect(options.headers.get('x-client-request')).toBe('registration')
     expect(options.headers.get('x-d1-bookmark')).toBeNull()

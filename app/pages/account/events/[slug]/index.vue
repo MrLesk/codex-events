@@ -196,7 +196,7 @@ watch(shouldLoadEntryPage, (isEnabled, wasEnabled) => {
   }
 
   if (isEnabled && entryPageRequest.status.value === 'idle') {
-    void entryPageRequest.refresh()
+    void entryPageRequest.activate()
   }
 }, { immediate: true })
 const prizesPageIsLoading = computed(() => prizesPageRequest.pending.value)
@@ -516,7 +516,7 @@ watch(shouldLoadSettingsPage, (isEnabled, wasEnabled) => {
   }
 
   if (isEnabled && settingsPageRequest.status.value === 'idle') {
-    void settingsPageRequest.refresh()
+    void settingsPageRequest.activate()
   }
 }, { immediate: true })
 const selectedTeamSlug = computed(() => normalizeTeamSlugQueryValue(route.query.team))
@@ -635,7 +635,7 @@ function watchActivePageRequest<T>(
     }
 
     if (section === tab && request.status.value === 'idle') {
-      void request.refresh()
+      void request.activate()
     }
   }, { immediate: true })
 }
@@ -661,7 +661,7 @@ watch(shouldLoadParticipantsPage, (isEnabled, wasEnabled) => {
   }
 
   if (isEnabled && participantsPageRequest.status.value === 'idle') {
-    void participantsPageRequest.refresh()
+    void participantsPageRequest.activate()
   }
 }, { immediate: true })
 const shouldLoadOperationsPage = computed(() =>
@@ -674,7 +674,7 @@ watch(shouldLoadOperationsPage, (isEnabled, wasEnabled) => {
   }
 
   if (isEnabled && operationsPageRequest.status.value === 'idle') {
-    void operationsPageRequest.refresh()
+    void operationsPageRequest.activate()
   }
 }, { immediate: true })
 const shouldLoadSubmissionsPage = computed(() =>
@@ -687,7 +687,7 @@ watch(shouldLoadSubmissionsPage, (isEnabled, wasEnabled) => {
   }
 
   if (isEnabled && submissionsPageRequest.status.value === 'idle') {
-    void submissionsPageRequest.refresh()
+    void submissionsPageRequest.activate()
   }
 }, { immediate: true })
 const shouldLoadJudgingPage = computed(() =>
@@ -699,7 +699,7 @@ watch(shouldLoadJudgingPage, (isEnabled, wasEnabled) => {
   }
 
   if (isEnabled && judgingPageRequest.status.value === 'idle') {
-    void judgingPageRequest.refresh()
+    void judgingPageRequest.activate()
   }
 }, { immediate: true })
 watch(shouldLoadAssignmentPage, (isEnabled, wasEnabled) => {
@@ -708,7 +708,7 @@ watch(shouldLoadAssignmentPage, (isEnabled, wasEnabled) => {
   }
 
   if (isEnabled && assignmentPageRequest.status.value === 'idle') {
-    void assignmentPageRequest.refresh()
+    void assignmentPageRequest.activate()
   }
 }, { immediate: true })
 const rostersPageRequest = useAccountEventPageRequest<AccountEventRostersPage>(slug, 'rosters', {
@@ -776,7 +776,7 @@ watch(shouldLoadRostersPage, (isEnabled, wasEnabled) => {
   }
 
   if (isEnabled && rostersPageRequest.status.value === 'idle') {
-    void rostersPageRequest.refresh()
+    void rostersPageRequest.activate()
   }
 }, { immediate: true })
 const winners = computed<AccountEventWinner[]>(() => prizesPage.value?.winners ?? [])
@@ -788,7 +788,7 @@ watch(activeSection, (section, previousSection) => {
   }
 
   if (section === 'prizes' && prizesPageRequest.status.value === 'idle') {
-    void prizesPageRequest.refresh()
+    void prizesPageRequest.activate()
   }
 }, { immediate: true })
 

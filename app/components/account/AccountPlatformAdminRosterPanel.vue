@@ -37,8 +37,9 @@ const {
   loadMoreCandidates
 } = useRosterCandidateSearch<EventRoleUserSummary>({
   pageSize: platformAdminCandidatePageSize,
+  requestKey: 'platform-admin-candidates',
   resetKey: subjectKey,
-  loadPage: async ({ page, pageSize, search }) => await apiFetch<ApiListResponse<EventRoleUserSummary>>(
+  loadPage: async ({ page, pageSize, search, signal }) => await apiFetch<ApiListResponse<EventRoleUserSummary>>(
     '/api/platform-admins/candidates',
     {
       query: {
@@ -49,7 +50,8 @@ const {
               search
             }
           : {})
-      }
+      },
+      signal
     }
   )
 })

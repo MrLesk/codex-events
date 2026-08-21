@@ -4,6 +4,7 @@ import type { ApiDataResponse } from '~/lib/api'
 import { useAccountBootstrap } from './useAccountBootstrap'
 import { useApiClient } from './useApiClient'
 import { useAuthorizationCache, type ApiCacheScope } from './useAuthorizationCache'
+import { useProtectedRequestOwner } from './useProtectedRequestOwner'
 
 interface UseApiDataOptions<Data> {
   cacheScope?: ApiCacheScope
@@ -36,19 +37,67 @@ export function useApiData<Data>(
   const resolvedKey = cacheScope === 'protected'
     ? useAuthorizationCache().protectedKey(key)
     : key
+  const protectedRequestOwner = cacheScope === 'protected'
+    ? useProtectedRequestOwner()
+    : null
 
-  return useAsyncData<Data>(
+  const request = useAsyncData<Data>(
     resolvedKey,
     async (_nuxtApp, { signal }) => {
+      if (!protectedRequestOwner) {
+        return await handler({ apiFetch, signal })
+      }
+
       await bootstrap?.ensureLoaded(signal)
-      return await handler({ apiFetch, signal })
+      return await protectedRequestOwner.execute(
+        toValue(resolvedKey),
+        signal,
+        async ownerSignal => await handler({ apiFetch, signal: ownerSignal })
+      )
     },
     {
       deep: false,
-      dedupe: 'cancel',
-      ...asyncDataOptions
+      ...asyncDataOptions,
+      dedupe: cacheScope === 'protected' ? 'cancel' : asyncDataOptions.dedupe ?? 'cancel'
     }
   )
+
+  const rawExecute = request.execute
+  const activate = (executeOptions?: Parameters<typeof request.execute>[0]) => {
+    if (request.status.value !== 'idle') {
+      return Promise.resolve()
+    }
+
+    return rawExecute({
+      ...executeOptions,
+      dedupe: 'defer'
+    })
+  }
+
+  if (!protectedRequestOwner) {
+    return Object.assign(request, { activate })
+  }
+
+  const rawRefresh = request.refresh
+  const rawClear = request.clear
+  const refresh = (refreshOptions?: Parameters<typeof request.refresh>[0]) => {
+    protectedRequestOwner.invalidate(toValue(resolvedKey))
+    return rawRefresh({
+      ...refreshOptions,
+      dedupe: 'cancel'
+    })
+  }
+  const clear = () => {
+    protectedRequestOwner.invalidate(toValue(resolvedKey))
+    rawClear()
+  }
+
+  return Object.assign(request, {
+    activate,
+    clear,
+    execute: refresh,
+    refresh
+  })
 }
 
 export function useApiResponse<Data>(

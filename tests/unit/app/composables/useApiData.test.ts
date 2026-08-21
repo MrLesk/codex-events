@@ -5,7 +5,10 @@ const useApiClient = vi.hoisted(() => vi.fn())
 const useAccountBootstrap = vi.hoisted(() => vi.fn())
 const ensureLoaded = vi.hoisted(() => vi.fn())
 const useAuthorizationCache = vi.hoisted(() => vi.fn())
+const useProtectedRequestOwner = vi.hoisted(() => vi.fn())
 const useAsyncData = vi.hoisted(() => vi.fn())
+const protectedExecute = vi.hoisted(() => vi.fn())
+const protectedInvalidate = vi.hoisted(() => vi.fn())
 
 vi.mock('../../../../app/composables/useAccountBootstrap', () => ({
   useAccountBootstrap
@@ -19,6 +22,10 @@ vi.mock('../../../../app/composables/useAuthorizationCache', () => ({
   useAuthorizationCache
 }))
 
+vi.mock('../../../../app/composables/useProtectedRequestOwner', () => ({
+  useProtectedRequestOwner
+}))
+
 describe('useApiData', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -27,12 +34,24 @@ describe('useApiData', () => {
     useAccountBootstrap.mockReset()
     ensureLoaded.mockReset()
     useAuthorizationCache.mockReset()
+    useProtectedRequestOwner.mockReset()
     useAsyncData.mockReset()
+    protectedExecute.mockReset()
+    protectedInvalidate.mockReset()
 
     useApiClient.mockReturnValue(clientFetch)
     useAccountBootstrap.mockReturnValue({ ensureLoaded })
     useAuthorizationCache.mockReturnValue({
       protectedKey: (key: string) => `protected-api:0:${key}`
+    })
+    protectedExecute.mockImplementation(async (
+      _key: string,
+      signal: AbortSignal,
+      load: (signal: AbortSignal) => Promise<unknown>
+    ) => await load(signal))
+    useProtectedRequestOwner.mockReturnValue({
+      execute: protectedExecute,
+      invalidate: protectedInvalidate
     })
 
     vi.stubGlobal('useAsyncData', useAsyncData)

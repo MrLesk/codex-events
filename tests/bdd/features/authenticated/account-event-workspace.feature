@@ -33,6 +33,18 @@ Feature: Account event workspace browser topology
     Then the forbidden account event topology should return the expected API error without a data payload
     And the browser topology should not request runtime CDN scripts
 
+  @task-432-7-2
+  Scenario: Staff candidate consumers share one successful protected read
+    Given the saved "event_admin" local session state exists for account topology
+    When I measure a direct account event "staff" tab for event slug "operations-fixture-event" as "event_admin" with page family "rosters" for protected request settlement
+    Then the Staff candidate read should have exactly one successful initial request
+
+  @task-432-7-2
+  Scenario: Feedback lifecycle errors settle one protected read
+    Given the saved "event_admin" local session state exists for account topology
+    When I measure a direct account event "feedback" tab for event slug "operations-fixture-event" as "event_admin" with page family "feedback" for protected request settlement
+    Then the Feedback read should have exactly one terminal lifecycle response
+
   Scenario: direct settings loads the admin surface without legacy fan-out
     Given the saved "event_admin" local session state exists for account topology
     When I warm and measure a direct account event "settings" tab for event slug "operations-fixture-event" as "event_admin" with page family "settings"

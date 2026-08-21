@@ -50,6 +50,7 @@ export function useApiClient() {
 
     return await requestFetch<T>(request, {
       ...options,
+      retry: false,
       headers: addBookmarkHeader(options?.headers, bookmark.value),
       onResponse: [
         captureBookmark,

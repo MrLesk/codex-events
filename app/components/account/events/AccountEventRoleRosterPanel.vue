@@ -60,6 +60,7 @@ const {
   loadMoreCandidates
 } = useRosterCandidateSearch<EventRoleUserSummary>({
   pageSize: roleCandidatePageSize,
+  requestKey: () => `event-role-candidates:${props.eventId}`,
   resetKey: () => `${props.eventId}:${props.role}`,
   loadPage: async ({ page, pageSize, search, signal }) => await apiFetch<ApiListResponse<EventRoleUserSummary>>(
     `/api/events/${props.eventId}/roles/candidates`,

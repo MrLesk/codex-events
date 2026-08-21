@@ -3,6 +3,9 @@ import type { ApiListResponse } from '~/lib/api'
 import { normalizeApiError } from '~/lib/api'
 import { isAbortError } from '~/lib/request-cancellation'
 import { useAbortableRequest } from '~/composables/useAbortableRequest'
+import { useAccountBootstrap } from './useAccountBootstrap'
+import { useAuthorizationCache } from './useAuthorizationCache'
+import { useProtectedRequestOwner } from './useProtectedRequestOwner'
 
 export type RosterCandidateLoadStatus = 'idle' | 'pending' | 'success' | 'error'
 
@@ -15,6 +18,7 @@ interface RosterCandidateSearchPageRequest {
 
 interface UseRosterCandidateSearchOptions<TCandidate extends { id: string }> {
   pageSize: number
+  requestKey: MaybeRefOrGetter<string>
   resetKey: MaybeRefOrGetter<string | null>
   enabled?: MaybeRefOrGetter<boolean>
   debounceMs?: number
@@ -25,6 +29,9 @@ export function useRosterCandidateSearch<TCandidate extends { id: string }>(
   options: UseRosterCandidateSearchOptions<TCandidate>
 ) {
   const debounceMs = options.debounceMs ?? 250
+  const bootstrap = useAccountBootstrap()
+  const authorizationCache = useAuthorizationCache()
+  const protectedRequestOwner = useProtectedRequestOwner()
   const requests = useAbortableRequest()
   const isEnabled = computed(() => options.enabled === undefined || toValue(options.enabled))
   const activeResetKey = computed(() => isEnabled.value ? toValue(options.resetKey) : null)
@@ -55,16 +62,30 @@ export function useRosterCandidateSearch<TCandidate extends { id: string }>(
     loadMoreCandidatesErrorMessage.value = ''
   }
 
-  async function fetchCandidatePage(page: number, signal: AbortSignal) {
-    return await options.loadPage({
-      page,
-      pageSize: options.pageSize,
-      search: appliedCandidateSearch.value,
-      signal
-    })
+  async function fetchCandidatePage(page: number, signal: AbortSignal, force = false) {
+    const requestKey = [
+      toValue(options.requestKey),
+      `page=${page}`,
+      `pageSize=${options.pageSize}`,
+      `search=${encodeURIComponent(appliedCandidateSearch.value)}`
+    ].join(':')
+    const protectedKey = authorizationCache.protectedKey(requestKey)
+
+    await bootstrap.ensureLoaded(signal)
+    return await protectedRequestOwner.execute(
+      toValue(protectedKey),
+      signal,
+      async ownerSignal => await options.loadPage({
+        page,
+        pageSize: options.pageSize,
+        search: appliedCandidateSearch.value,
+        signal: ownerSignal
+      }),
+      { force }
+    )
   }
 
-  async function loadCandidateUsers() {
+  async function loadCandidateUsers(options: { force?: boolean } = {}) {
     if (!isEnabled.value) {
       return
     }
@@ -77,7 +98,7 @@ export function useRosterCandidateSearch<TCandidate extends { id: string }>(
     loadMoreCandidatesErrorMessage.value = ''
 
     try {
-      const response = await fetchCandidatePage(1, signal)
+      const response = await fetchCandidatePage(1, signal, options.force ?? true)
 
       if (requestId !== candidateRequestSequence.value) {
         return
@@ -118,7 +139,7 @@ export function useRosterCandidateSearch<TCandidate extends { id: string }>(
     loadMoreCandidatesErrorMessage.value = ''
 
     try {
-      const response = await fetchCandidatePage(nextPage, signal)
+      const response = await fetchCandidatePage(nextPage, signal, true)
 
       if (requestId !== candidateRequestSequence.value) {
         return
@@ -158,7 +179,7 @@ export function useRosterCandidateSearch<TCandidate extends { id: string }>(
       pendingCandidateSearchTimeout = null
       appliedCandidateSearch.value = value
 
-      await loadCandidateUsers()
+      await loadCandidateUsers({ force: false })
     }, debounceMs)
   }
 
@@ -188,7 +209,7 @@ export function useRosterCandidateSearch<TCandidate extends { id: string }>(
       return
     }
 
-    await loadCandidateUsers()
+    await loadCandidateUsers({ force: false })
   }, {
     immediate: import.meta.client
   })

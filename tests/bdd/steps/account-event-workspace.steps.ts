@@ -16,6 +16,7 @@ import {
   assertPublishedRosterPrivacy,
   assertProtectedReadStartsAfterBootstrap,
   capturePageTopology,
+  expectConsoleError,
   formatTopologySummary,
   pathRecords,
   topologyFailure,
@@ -130,6 +131,12 @@ async function finishCapture(capture: AccountEventTopologyCapture) {
   assertNoUnexpectedBrowserErrors(capture)
 }
 
+async function finishCaptureWithoutQuietPeriod(capture: AccountEventTopologyCapture) {
+  await capture.waitForResponseInspections()
+  capture.markDerivedPhases()
+  assertNoUnexpectedBrowserErrors(capture)
+}
+
 function requireRecord(
   capture: AccountEventTopologyCapture,
   path: string,
@@ -179,6 +186,65 @@ When('I warm and measure a direct account event {string} tab for event slug {str
   await waitForAccountEventTab(page, tabLabel)
   capture.markUsable()
   await finishCapture(capture)
+
+  measurements.set(page, {
+    kind: 'event',
+    capture,
+    slug,
+    tab,
+    pageFamily,
+    selectedPath
+  })
+})
+
+When('I measure a direct account event {string} tab for event slug {string} as {string} with page family {string} for protected request settlement', async ({ page }, tab: string, slug: string, persona: string, pageFamily: string) => {
+  const personaKey = parsePersona(persona)
+  const tabLabel = tabLabels[tab]
+
+  if (!tabLabel) {
+    throw new Error(`Unknown account event tab label: ${tab}`)
+  }
+
+  await applyStoredStateToPage(personaKey, page)
+  await warmAccountEventSurface(page, slug, `/api/account/events/${encodeURIComponent(slug)}/entry`)
+
+  const capture = capturePageTopology(page)
+  const selectedPath = selectedEventReadPath(slug, pageFamily)
+
+  await page.goto(`/account/events/${encodeURIComponent(slug)}?tab=${encodeURIComponent(tab)}`, {
+    waitUntil: 'domcontentloaded'
+  })
+  capture.markShell()
+  const selectedRead = await capture.waitForCompletedPath(selectedPath)
+  capture.markCritical(selectedPath)
+
+  if (pageFamily === 'rosters') {
+    assertPublishedRosterPrivacy(capture, selectedRead)
+    await expect(page.getByText('Add staff access', { exact: true })).toBeVisible()
+    await expect(page.getByText('Admins', { exact: true })).toBeVisible()
+
+    const candidateRecord = capture.records.find(record =>
+      record.path.startsWith('/api/events/')
+      && record.path.endsWith('/roles/candidates')
+    )
+
+    if (!candidateRecord) {
+      throw topologyFailure(capture, 'Staff candidate read did not start.')
+    }
+
+    await capture.waitForCompletedPath(candidateRecord.path)
+  }
+
+  if (pageFamily === 'feedback') {
+    await expect(page.getByText('Event workspace unavailable', { exact: true })).toBeVisible()
+    expectConsoleError(capture, /^Failed to load resource: the server responded with a status of 409 \(Conflict\)$/u)
+  }
+
+  if (pageFamily !== 'feedback') {
+    await waitForAccountEventTab(page, tabLabel)
+  }
+  capture.markUsable()
+  await finishCaptureWithoutQuietPeriod(capture)
 
   measurements.set(page, {
     kind: 'event',
@@ -481,6 +547,53 @@ Then('the measured account event topology should include a generous local timing
   const { capture } = eventMeasurement(page)
   assertBudget(capture)
   console.info(`[TASK-432.5.7] account-event ${formatTopologySummary(capture)}`)
+})
+
+Then('the Staff candidate read should have exactly one successful initial request', async ({ page }) => {
+  const measurement = eventMeasurement(page)
+  const candidateRecords = measurement.capture.records.filter(record =>
+    record.path.startsWith('/api/events/')
+    && record.path.endsWith('/roles/candidates')
+  )
+  const candidatePaths = [...new Set(candidateRecords.map(record => record.path))]
+
+  if (candidatePaths.length !== 1) {
+    throw topologyFailure(
+      measurement.capture,
+      `Expected one canonical Staff candidate path, observed ${candidatePaths.join(', ') || 'none'}.`
+    )
+  }
+
+  const candidateReads = assertExactPathCount(measurement.capture, candidatePaths[0]!, 1)
+  const candidateRead = candidateReads[0]!
+
+  assertJsonApiRecord(measurement.capture, candidateRead, 'Staff candidate read')
+  assertExactPathCount(measurement.capture, '/api/session', 1)
+})
+
+Then('the Feedback read should have exactly one terminal lifecycle response', async ({ page }) => {
+  const measurement = eventMeasurement(page)
+  const [feedbackRead] = assertExactPathCount(measurement.capture, measurement.selectedPath, 1)
+
+  if (feedbackRead?.status !== 409) {
+    throw topologyFailure(
+      measurement.capture,
+      `Expected one HTTP 409 feedback response, observed HTTP ${feedbackRead?.status ?? 'none'}.`
+    )
+  }
+
+  if (feedbackRead.errorCode !== 'event_feedback_unavailable') {
+    throw topologyFailure(
+      measurement.capture,
+      `Expected event_feedback_unavailable, observed ${feedbackRead.errorCode ?? 'none'}.`
+    )
+  }
+
+  if (feedbackRead.hasDataEnvelope === true) {
+    throw topologyFailure(measurement.capture, 'Terminal feedback response unexpectedly exposed a data envelope.')
+  }
+
+  assertExactPathCount(measurement.capture, '/api/session', 1)
 })
 
 Then('unrelated account event tabs should not request editor or sortable chunks', async ({ page }) => {
