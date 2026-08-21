@@ -1,11 +1,11 @@
 ---
 id: TASK-432.9.1
 title: Eliminate the repeated protected D1 request stall
-status: In Progress
+status: Done
 assignee:
   - '@luna-actor-request-plan'
 created_date: '2026-08-21 04:29'
-updated_date: '2026-08-21 06:21'
+updated_date: '2026-08-21 07:21'
 labels: []
 dependencies: []
 parent_task_id: TASK-432.9
@@ -22,24 +22,24 @@ Deployed signed-in browser evidence at d4644d5c shows /api/session resolving the
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Per-statement and request-phase evidence identifies exactly where the 3-second stall occurs for actor and non-actor D1 reads; no multi-second time remains unattributed
-- [ ] #2 Protected query APIs preserve server-side Auth0 identity binding, current platform consent, canonical authorization, one request-scoped D1 session, and strong bookmark semantics
-- [ ] #3 The architecture removes serialized actor/page database round trips or other repeated request setup structurally across protected page-shaped routes rather than special-casing measured endpoints
-- [ ] #4 Warm real-browser critical API TTFB is below 500 ms on account overview, event overview, operations, Staff, Feedback, staff dashboard, admin dashboard, and platform settings, with page usability below 1 second where the browser gate applies
-- [ ] #5 Mutations still resolve canonical authorization and current consent at execution time, and query paths do not trust unsigned or stale client actor/capability data
-- [ ] #6 Unit, integration, production-build, and real-browser topology/timing regressions fail if the repeated protected D1 stall or an extra actor round trip returns
+- [x] #1 Per-statement and request-phase evidence identifies exactly where the 3-second stall occurs for actor and non-actor D1 reads; no multi-second time remains unattributed
+- [x] #2 Protected query APIs preserve server-side Auth0 identity binding, current platform consent, canonical authorization, one request-scoped D1 session, and strong bookmark semantics
+- [x] #3 The architecture removes serialized actor/page database round trips or other repeated request setup structurally across protected page-shaped routes rather than special-casing measured endpoints
+- [x] #4 Warm real-browser critical API TTFB is below 500 ms on account overview, event overview, operations, Staff, Feedback, staff dashboard, admin dashboard, and platform settings, with page usability below 1 second where the browser gate applies
+- [x] #5 Mutations still resolve canonical authorization and current consent at execution time, and query paths do not trust unsigned or stale client actor/capability data
+- [x] #6 Unit, integration, production-build, and real-browser topology/timing regressions fail if the repeated protected D1 stall or an extra actor round trip returns
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Canonical docs were updated or confirmed unchanged
-- [ ] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
-- [ ] #4 Tests were added or updated when behavior changed
-- [ ] #5 Test gaps are documented when automation is not practical
-- [ ] #6 Config and developer workflow docs were updated when setup changed
-- [ ] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #1 Canonical docs were updated or confirmed unchanged
+- [x] #2 Code behavior matches canonical docs
+- [x] #3 Relevant validation commands pass
+- [x] #4 Tests were added or updated when behavior changed
+- [x] #5 Test gaps are documented when automation is not practical
+- [x] #6 Config and developer workflow docs were updated when setup changed
+- [x] #7 Auth and permissions changes follow the documented platform model
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -82,4 +82,16 @@ Deployed test evidence at 0ae6a0e9 identifies the common stall boundary. Correla
 Every slow route crosses defineStructuredOperationApiHandler and imports the generated structured output-schema catalog; /api/session bypasses it. generated-output-schemas.ts is approximately 786 KB and eagerly executes roughly 170 z.fromJSONSchema calls at module initialization. Route data volume, authorization shape, and query count vary, including a single simple public D1 read, so they do not explain the shared CPU profile. The next bounded architecture slice is lazy, cached, per-operation schema construction with one canonical output-validation owner.
 
 A separate deployed functional regression is now visible on direct event Staff and Operations page APIs: output validation returns 400 because event shell track objects contain keys excluded by the generated schema, and the validation error incorrectly labels output as request params. The schema slice must restore the canonical serialized track contract and identify output failures as output failures; it must not add permissive passthrough or compatibility fallbacks. Production was not touched.
+
+Resolution evidence on test Worker 1bbd1f6c-8762-467c-b87d-b957252d4ddc: Wrangler Tail proved the apparent D1 stall was 2.7-3.0 seconds of eager structured-operation output-schema CPU charged before the first I/O boundary, not a multi-second D1 round trip. TASK-432.9.1.1 replaced whole-catalog construction with one cached schema per selected operation and restored the canonical event-shell track DTO.
+
+Warm signed-in browser critical API times: account overview 142 ms, event entry 366 ms, Operations 447 ms, Staff rosters 247 ms, Feedback 228 ms, staff workspace 114 ms, admin events 122 ms, legal settings 61 ms, and platform documents 85 ms. Corresponding representative Tail CPU was 3-54 ms for overview/staff/admin/legal/documents/Operations/rosters; event entry used 130 ms CPU for 13 D1 statements and remains a query-count optimization candidate. All named APIs returned 200.
+
+Real-browser API-backed visible readiness: account 427 ms, event overview 404 ms, Operations 718 ms, Staff 620 ms, Feedback 455 ms, staff dashboard 307 ms, admin dashboard 310 ms, and platform settings 326 ms. CI CodeQL and deploy-test passed. Authentication, consent, canonical authorization, one request-scoped strong D1 session, opaque bookmark behavior, and mutation-time authorization remain unchanged and are covered by unit, integration, source/reachability, BDD topology, production build, and deployed timing evidence. Late icon/media network-quiet tails and high-query-count event entry work remain under parent TASK-432.9.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Eliminated the repeated 3-4 second protected-route stall by instrumenting the capability-narrowed request-scoped D1 session, proving with browser/Tail correlation that eager generated output-schema construction—not D1 latency—consumed 2.7-3.0 seconds of Worker CPU, and replacing it with deterministic lazy per-operation schema construction. Preserved strong server-side identity, consent, authorization, bookmark, and mutation semantics. All named warm APIs now complete in 61-447 ms and all API-backed page content is visible in 307-718 ms in a real signed-in browser; CodeQL, deploy-test, local validation, and fresh Luna reviews passed.
+<!-- SECTION:FINAL_SUMMARY:END -->

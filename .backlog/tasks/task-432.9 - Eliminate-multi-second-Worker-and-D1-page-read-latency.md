@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@luna-performance'
 created_date: '2026-08-20 22:46'
-updated_date: '2026-08-21 02:57'
+updated_date: '2026-08-21 07:25'
 labels: []
 dependencies: []
 parent_task_id: TASK-432
@@ -64,10 +64,6 @@ This slice measures actor-session and actor-d1 subphases, measures request datab
 The remaining deployment-only question is whether the multi-second cold gap is primarily Auth0/session or first-primary/Worker initialization rather than actor SQL. ec90231 predates these subphases, so the test Worker must be redeployed and profiled in a real browser before claiming the task deployed latency budgets or attributing public routes whose counters were zero.
 
 Validation: targeted actor/document unit tests (15), authorization unit tests (13), request-timing and actor-hot-path integration tests (8) passed. Full local unit passed 164 files/1,091 tests; integration passed 44 files/470 tests; account-workspace BDD passed 23/23; full BDD passed 86 tests plus the 2-test destructive phase; Cloudflare build and Wrangler deploy --dry-run passed. bun run lint and bun run typecheck passed on the TASK-432.9 source state before unrelated concurrent TASK-432.7.2 edits appeared; a final mixed-worktree rerun reports only those unrelated composable errors, while targeted ESLint and git diff --check pass. No deploy or push was performed. Deployment-only real-browser profiling remains required.
+
+TASK-432.9.1 and TASK-432.9.1.1 are complete on test Worker 1bbd1f6c-8762-467c-b87d-b957252d4ddc. Browser/Tail correlation identified and removed the shared 2.7-3.0 second eager generated output-schema CPU cost. Warm protected APIs now complete in 61-447 ms, and representative API-backed page content becomes visible in 307-718 ms in a signed-in real browser. TASK-432.9 remains open because network-quiet totals can still reach 1.1-2.2 seconds from late icon/media requests, and event entry still uses 13 D1 statements with 130 ms Worker CPU. These residuals—not the resolved structured-route stall—remain the current optimization scope.
 <!-- SECTION:NOTES:END -->
-
-## Final Summary
-
-<!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Implemented the next shared defensive architecture slice in 33c3de8e43315c4aaf9869d97c5a75201d5820f6: normal HTTP actor resolution now uses one strong identity/current-consent D1 statement with latest-document semantics; timing separates actor-session, actor-d1, database-session, structured-route D1, authorization, serialization, and total; independent event list/count reads run in one request-scoped strong session wave; docs, AGENTS.md, and regression tests were updated. Local unit, integration, account-workspace BDD, full BDD, Cloudflare build, Wrangler dry-run, targeted ESLint, and diff checks passed. The task remains In Progress because ec90231 predates the new phases and no deploy/push was performed; redeploy test and repeat the cold real-browser journeys to identify Auth0/session versus first-primary/Worker initialization and prove the latency/503 gates.
-<!-- SECTION:FINAL_SUMMARY:END -->

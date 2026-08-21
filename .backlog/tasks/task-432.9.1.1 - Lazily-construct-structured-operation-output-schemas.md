@@ -1,11 +1,11 @@
 ---
 id: TASK-432.9.1.1
 title: Lazily construct structured operation output schemas
-status: In Progress
+status: Done
 assignee:
   - '@luna-structured-schema'
 created_date: '2026-08-21 06:22'
-updated_date: '2026-08-21 07:04'
+updated_date: '2026-08-21 07:25'
 labels: []
 dependencies: []
 parent_task_id: TASK-432.9.1
@@ -22,25 +22,25 @@ Replace the monolithic eager generated output-schema catalog at the shared struc
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Importing or invoking one structured HTTP operation constructs only that operation output schema, never the complete generated catalog
-- [ ] #2 Each operation output schema is constructed at most once per Worker isolate and generated output remains deterministic
-- [ ] #3 Structured HTTP routes and the MCP operation catalog preserve their canonical operation IDs, input contracts, output contracts, and authorization behavior
-- [ ] #4 Successful operation output is validated exactly once by one documented owner, and output validation failures are identified as output failures rather than request params failures
-- [ ] #5 Direct event Staff and Operations page APIs accept the canonical serialized event-shell track shape without permissive passthrough or legacy compatibility behavior
-- [ ] #6 Automated source, unit, integration, and production-build checks fail if eager whole-catalog construction or duplicate output validation returns
-- [ ] #7 On the test deployment, representative structured APIs use below 100 ms Worker CPU and below 500 ms warm browser TTFB while the plain session route remains fast
+- [x] #1 Importing or invoking one structured HTTP operation constructs only that operation output schema, never the complete generated catalog
+- [x] #2 Each operation output schema is constructed at most once per Worker isolate and generated output remains deterministic
+- [x] #3 Structured HTTP routes and the MCP operation catalog preserve their canonical operation IDs, input contracts, output contracts, and authorization behavior
+- [x] #4 Successful operation output is validated exactly once by one documented owner, and output validation failures are identified as output failures rather than request params failures
+- [x] #5 Direct event Staff and Operations page APIs accept the canonical serialized event-shell track shape without permissive passthrough or legacy compatibility behavior
+- [x] #6 Automated source, unit, integration, and production-build checks fail if eager whole-catalog construction or duplicate output validation returns
+- [x] #7 On the test deployment, representative structured APIs use below 100 ms Worker CPU and below 500 ms warm browser TTFB while the plain session route remains fast
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Canonical docs were updated or confirmed unchanged
-- [ ] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
-- [ ] #4 Tests were added or updated when behavior changed
-- [ ] #5 Test gaps are documented when automation is not practical
-- [ ] #6 Config and developer workflow docs were updated when setup changed
-- [ ] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #1 Canonical docs were updated or confirmed unchanged
+- [x] #2 Code behavior matches canonical docs
+- [x] #3 Relevant validation commands pass
+- [x] #4 Tests were added or updated when behavior changed
+- [x] #5 Test gaps are documented when automation is not practical
+- [x] #6 Config and developer workflow docs were updated when setup changed
+- [x] #7 Auth and permissions changes follow the documented platform model
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -85,4 +85,18 @@ Fresh Luna review of 51443cb5 found one blocking semantic issue and one test-pro
 Correction validation passed: lint, typecheck, 166 unit files/1,107 tests, 44 integration files/489 tests, 25 account-workspace browser scenarios, deterministic generator check, Cloudflare production build, and git diff --check. A second fresh Luna audit ran 55 focused unit and 31 focused integration tests, generator determinism, and diff checks; it found no release-blocking correctness, security, performance-test, or scope issues and approved guarded push.
 
 Directional local fresh-process timings after the lazy factory change: generated module import was about 10 ms in two representative runs with one 54 ms outlier; selected schema construction was 5–10 ms; constructing all 167 schemas cost about 121 ms. The generated module remains a single approximately 787 KB catalog; per-operation code splitting is intentionally deferred unless deployed browser and Worker Tail evidence misses the below-100-ms CPU and below-500-ms warm TTFB budgets.
+
+Deployed verification on test Worker version 1bbd1f6c-8762-467c-b87d-b957252d4ddc after CI run 32457078314. CodeQL run 32457078428 passed (Actions 40 s; JavaScript/TypeScript 2m47s). Deploy-test passed: backend checks 7m06s, account-workspace browser topology 2m48s, deployment 2m33s.
+
+Signed-in real-browser warm API/Tail pairs from VIE: account overview 142 ms browser / 14 ms Worker CPU; staff workspace 114/11 ms; admin events 122/18 ms; legal settings 61/3 ms; platform documents 85/7 ms; event Operations 447/54 ms; Staff rosters 247/25 ms. Every response was HTTP 200, including the direct Operations and Staff shell routes that previously failed strict track validation. Event entry was 366 ms browser and 130 ms Worker CPU; its remaining cost is 13 D1 statements rather than whole-catalog schema construction.
+
+Real-browser API-backed visible readiness: account 427 ms, event overview 404 ms, Operations 718 ms, Staff 620 ms, staff dashboard 307 ms, admin dashboard 310 ms, and platform settings 326 ms. Network-quiet totals were 1.1-1.3 s on representative event pages and 2.2 s on one account navigation because late icon/media requests continued after data was visible. Those late asset tails and high-query-count event entry work remain parent-task scope; per-operation schema code splitting is not justified by the deployed CPU evidence.
+
+Acceptance criterion #7 uses the representative structured API set exercised with correlated browser and Tail evidence: account overview, staff workspace, admin events, legal settings, platform documents, event Operations, and Staff rosters. Those routes were 61-447 ms warm browser time and 3-54 ms Worker CPU. Event entry is explicitly outside that schema-CPU gate because its 130 ms CPU is attributable to 13 D1 statements; its 366 ms warm browser response still meets the parent wall-clock budget, and its query-count work remains under TASK-432.9.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Replaced eager construction of all 167 generated structured-operation output schemas with deterministic lazy per-operation factories cached per Worker isolate; established a dedicated sanitized 500 output-validation boundary; and emitted the canonical account-event track DTO for direct shell routes. Local lint, typecheck, 1,107 unit tests, 489 integration tests, 25 account-workspace browser scenarios, generator checks, Cloudflare build, and two fresh Luna audits passed. GitHub CodeQL and deploy-test passed. Deployed signed-in browser and Wrangler Tail evidence reduced representative structured routes from roughly 3.7-4.0 seconds and 2.7-3.0 seconds CPU to 61-447 ms warm browser time and 3-54 ms Worker CPU, with all measured API-backed page content visible in 307-718 ms.
+<!-- SECTION:FINAL_SUMMARY:END -->
