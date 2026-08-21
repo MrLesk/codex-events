@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { readdir, readFile } from 'node:fs/promises'
 import { join, relative } from 'node:path'
 import { z } from 'zod'
@@ -6,10 +6,7 @@ import { z } from 'zod'
 import { loadApplicationOperationCatalog } from '../../../../server/application/operations/catalog'
 import { getApplicationOperation, listApplicationOperations, listApplicationOperationsForCapabilities } from '../../../../server/application/operations/registry'
 import { mcpEligibilityManifest } from '../../../../server/application/operations/eligibility-manifest'
-import {
-  getStructuredOperationOutputSchema,
-  structuredOperationOutputSchemaFactories
-} from '../../../../server/application/operations/generated-output-schemas'
+import { structuredOperationOutputSchemaFactories } from '../../../../server/application/operations/generated-output-schemas'
 import { assertConstrainedOutputSchema, generateOutputSchemaSource } from '../../../../tools/mcp/generate-output-schemas'
 import { assertCatalogMatchesEligibilityManifest, generateOperationCatalogSource } from '../../../../tools/mcp/generate-operation-catalog'
 
@@ -39,20 +36,6 @@ describe('MCP application operation registry', () => {
   function manifestBinding(route: string) {
     return restBinding(join(process.cwd(), 'server/api', route))
   }
-
-  test('lazily constructs and caches only the requested output schema for a route import', async () => {
-    const factory = vi.spyOn(
-      structuredOperationOutputSchemaFactories,
-      'get.account.overview'
-    )
-
-    const route = await import('../../../../server/api/account/overview.get')
-    const first = route.applicationOperation.outputSchema
-    const second = getStructuredOperationOutputSchema('get.account.overview')
-
-    expect(factory).toHaveBeenCalledOnce()
-    expect(first).toBe(second)
-  })
 
   test('has unique stable IDs, tool names, and REST bindings', async () => {
     await loadApplicationOperationCatalog()

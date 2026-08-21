@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
+import { z } from 'zod'
 
+import { executeApplicationOperation } from '../../../../server/application/operations/execute'
+import type { ApplicationOperation } from '../../../../server/application/operations/types'
 import { defineApiHandler } from '../../../../server/http/api-handler'
 import { ApiError } from '../../../../server/http/api-error'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
@@ -75,5 +78,58 @@ describe('api handler error responses', () => {
       }
     })
     expect(consoleErrorSpy).not.toHaveBeenCalled()
+  })
+
+  test('returns generic internal error semantics for an operation output contract failure', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const inputSchema = z.object({})
+    const outputSchema = z.object({ data: z.string() })
+    const operation = {
+      id: 'test.http-output-failure',
+      toolName: 'test_http_output_failure',
+      description: 'Test operation',
+      rest: { method: 'GET', path: '/api/test-output-failure' },
+      inputSchema,
+      outputSchema,
+      capabilities: ['public'],
+      effect: 'read',
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true
+      },
+      execute: vi.fn(async () => ({ data: { secret: 'response-private' } } as unknown as z.output<typeof outputSchema>))
+    } satisfies ApplicationOperation<typeof inputSchema, typeof outputSchema>
+    const safeParse = vi.spyOn(outputSchema, 'safeParse')
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'get',
+          path: '/api/test-output-failure',
+          handler: defineApiHandler(event => executeApplicationOperation(event, operation, {}))
+        }
+      ]
+    })
+
+    const response = await harness.request('/api/test-output-failure')
+
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'internal_error',
+        message: 'An unexpected error occurred.'
+      }
+    })
+    expect(safeParse).toHaveBeenCalledOnce()
+    expect(consoleErrorSpy).toHaveBeenCalledOnce()
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Application operation output validation failed', {
+      operationId: 'test.http-output-failure',
+      issues: [{
+        code: 'invalid_type',
+        path: ['data'],
+        message: expect.any(String)
+      }]
+    })
+    expect(JSON.stringify(consoleErrorSpy.mock.calls)).not.toContain('response-private')
   })
 })

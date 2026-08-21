@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 import type { z } from 'zod'
 
 import type { ApplicationOperation } from './types'
-import { validateWithSchema } from '#server/http/validation'
+import { validateApplicationOperationOutput } from './output-validation'
 
 export async function executeApplicationOperation<TInputSchema extends z.ZodTypeAny, TOutputSchema extends z.ZodTypeAny>(
   event: H3Event,
@@ -16,5 +16,5 @@ export async function executeApplicationOperation<TInputSchema extends z.ZodType
   // This is the sole owner of operation-envelope output validation. Page
   // contracts validate their page result before constructing the envelope;
   // they do not validate the operation output a second time.
-  return validateWithSchema(operation.outputSchema, output, 'output') as z.output<TOutputSchema>
+  return validateApplicationOperationOutput(operation.id, operation.outputSchema, output)
 }

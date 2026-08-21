@@ -280,12 +280,15 @@ state.
   precedence, certificate eligibility, rate limiting, and the external coupon
   redirect.
 
-Structured operation coverage verifies that importing one structured route does
-not construct the whole generated output-schema catalog, that each selected
-schema is constructed at most once per Worker isolate, and that generation is
-deterministic. It also verifies one final-envelope output-validation owner,
-output-specific validation errors, unchanged REST/MCP operation metadata, and
-canonical page serializers for any page-shaped contract.
+Structured operation coverage uses a fresh generated-schema module and an
+instrumented `z.fromJSONSchema` constructor. It verifies that module import
+constructs zero schemas, the first selected getter constructs exactly one,
+repeated access constructs none, a second selected ID adds exactly one, and no
+unselected factory runs. Source and generator checks verify the deterministic
+factory artifact. Unit and HTTP integration tests verify one final-envelope
+output-validation owner, generic internal-error semantics with sanitized
+server logs, unchanged REST/MCP operation metadata, and canonical page
+serializers for any page-shaped contract.
 
 ## MCP Validation
 

@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'vitest'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { z } from 'zod'
 
 import { ApiError } from '../../../../server/http/api-error'
@@ -19,18 +21,10 @@ describe('validation helpers', () => {
     expect(() => validateWithSchema(schema, { email: 'not-an-email' }, 'body')).toThrow(ApiError)
   })
 
-  test('labels operation output validation separately from request input', () => {
-    try {
-      validateWithSchema(schema, { email: 'not-an-email' }, 'output')
-      throw new Error('Expected output validation to fail.')
-    } catch (error) {
-      expect(error).toBeInstanceOf(ApiError)
-      expect(error).toMatchObject({
-        message: 'The response output did not match the expected schema.',
-        details: {
-          input: 'output'
-        }
-      })
-    }
+  test('keeps request validation limited to request input locations', async () => {
+    const source = await readFile(join(process.cwd(), 'server/http/validation.ts'), 'utf8')
+
+    expect(source).not.toContain('input === \'output\'')
+    expect(source).not.toContain('\'body\' | \'query\' | \'params\' | \'output\'')
   })
 })

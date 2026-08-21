@@ -1,8 +1,11 @@
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
+import { z } from 'zod'
 
 import accountPatchHandler from '../../../../server/api/account.patch'
+import * as operationExecution from '../../../../server/application/operations/execute'
+import { validateApplicationOperationOutput } from '../../../../server/application/operations/output-validation'
 import protectedResourceHandler from '../../../../server/routes/.well-known/oauth-protected-resource.get'
 import mcpHandler from '../../../../server/routes/mcp.post'
 import { auditLogs, eventRoleAssignments, events, mcpAccessTokens, platformDocuments, userPlatformDocumentAcceptances, users } from '../../../../server/database/schema'
@@ -15,6 +18,7 @@ describe('stateless MCP protocol', () => {
   const harnesses: Array<ReturnType<typeof createApiRouteTestHarness>> = []
 
   afterEach(async () => {
+    vi.restoreAllMocks()
     while (harnesses.length > 0) await harnesses.pop()?.d1Database.close()
   })
 
@@ -298,6 +302,38 @@ describe('stateless MCP protocol', () => {
     } finally {
       vi.stubGlobal('fetch', originalFetch)
     }
+  })
+
+  test('propagates operation output contract failures as generic MCP internal errors', async () => {
+    const { harness, credential } = await setup()
+    const outputSchema = z.object({ data: z.string() })
+    let outputError: unknown
+    try {
+      validateApplicationOperationOutput('get.events', outputSchema, { data: { secret: 'response-private' } })
+    } catch (error) {
+      outputError = error
+    }
+    const executeSpy = vi.spyOn(operationExecution, 'executeApplicationOperation')
+      .mockRejectedValue(outputError)
+
+    const response = await rpc(harness, credential, {
+      jsonrpc: '2.0', id: 1, method: 'tools/call',
+      params: { name: 'get_events', arguments: { query: {} } }
+    })
+    const payload = await rpcPayload(response) as {
+      result: { isError: boolean, structuredContent: { error: Record<string, unknown> } }
+    }
+
+    expect(response.status).toBe(200)
+    expect(payload.result.isError).toBe(true)
+    expect(payload.result.structuredContent).toEqual({
+      error: {
+        code: 'internal_error',
+        message: 'An unexpected error occurred.'
+      }
+    })
+    expect(executeSpy).toHaveBeenCalledOnce()
+    expect(JSON.stringify(payload)).not.toContain('response-private')
   })
 
   test('rejects cookies and invalid, expired, revoked, or deleted-owner credentials', async () => {
