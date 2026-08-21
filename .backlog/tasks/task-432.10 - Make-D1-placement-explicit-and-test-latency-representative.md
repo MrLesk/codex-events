@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@luna-infrastructure'
 created_date: '2026-08-20 23:06'
-updated_date: '2026-08-20 23:33'
+updated_date: '2026-08-21 00:31'
 labels: []
 dependencies: []
 parent_task_id: TASK-432
@@ -53,4 +53,6 @@ The test D1 database was auto-created in ENAM while the test users and Worker ex
 Observed 2026-08-20: codex-events-test is ENAM, 811 kB, read replication disabled; browser and Worker traffic are VIE. Production codex-hackathons is EEUR, EU jurisdiction, 5.71 MB, read replication disabled. No production mutation is authorized or required.
 
 Local code/docs/test slice completed. Deployment configuration now requires exactly one operator-owned CF_D1_JURISDICTION or CF_D1_PRIMARY_LOCATION_HINT value; existing D1 databases are inspected with wrangler d1 info --json and placement conflicts fail closed without delete/update; a recoverable source-retention replacement procedure is checked in at docs/d1-placement-and-replacement.md. Validation passed: bun run lint, bun run typecheck, bun run test:unit (159 files, 1068 tests), bun run build:cloudflare, and git diff --check. Rollout-dependent work remains open by design: test currently has no CF_D1_* placement variable and codex-events-test remains ENAM; production currently has no CF_D1_* placement variable and its existing database remains EU/EEUR. No remote D1 resource, variable, deployment, migration, or production state was changed.
+
+TASK-432.10.1 restore implementation now uses a checked-in non-destructive operator tool: trusted full exports are ingested with SQLite, replay is dependency-ordered with deferred foreign keys, remote count checks are capped at four tables per request, and exact source/replacement row evidence is a post-restore canonical SQLite export digest. Temporary replacement Wrangler config is pinned to the explicit replacement UUID for migrations and target commands. Full validation passed: lint, typecheck, unit (162 files, 1084 tests), and integration (44 files, 468 tests). No remote D1 resource, migration, deployment, or source database was changed.
 <!-- SECTION:NOTES:END -->
