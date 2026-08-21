@@ -595,6 +595,7 @@ const lumaWebhookStatusColor = computed(() => {
           v-model:closes-at="form.talkProposalClosesAt"
           v-model:questions="form.talkProposalQuestions"
           :has-existing-proposal="props.hasExistingTalkProposal ?? false"
+          question-editor-variant="builder"
         />
       </AdminBuilderSettingsGroupCard>
 

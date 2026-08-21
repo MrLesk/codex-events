@@ -270,7 +270,8 @@ describe('judging-workspace filters', () => {
       day: 'numeric',
       year: 'numeric',
       hour: 'numeric',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: true
     }).format(new Date(value)))
 
     expect(formatJudgeTimestamp(null)).toBe('Not recorded')

@@ -74,8 +74,8 @@ const dateModel = computed<DateValue | undefined>({
 
 const hasDate = computed(() => dateModel.value !== undefined)
 
-// The popover edits the clock in 12h form (hour + minute + AM/PM) while the
-// field segments stay 24h; both write the same underlying value.
+// Both the field and popover edit the clock in 12h form (hour + minute +
+// AM/PM) while preserving the same local datetime storage value.
 const hour24 = computed(() => {
   const value = dateModel.value
 
@@ -139,7 +139,7 @@ function setMeridiem(pm: boolean) {
   <DatePickerRoot
     v-model="dateModel"
     granularity="minute"
-    :hour-cycle="24"
+    :hour-cycle="12"
     locale="en-GB"
     :disabled="props.disabled"
   >

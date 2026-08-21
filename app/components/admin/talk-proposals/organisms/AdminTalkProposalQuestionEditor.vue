@@ -4,12 +4,51 @@ import type {
   TalkProposalQuestionType
 } from '#shared/domains/talk-proposals/questions'
 import AdminSortableEditorRow from '~/components/admin/AdminSortableEditorRow.vue'
+import AdminBuilderTalkProposalQuestionCard from '~/components/admin/builder/molecules/AdminBuilderTalkProposalQuestionCard.vue'
 
 const questions = defineModel<TalkProposalQuestionDefinition[]>({ required: true })
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   locked?: boolean
-}>()
+  variant?: 'classic' | 'builder'
+}>(), {
+  locked: false,
+  variant: 'classic'
+})
+
+const builderListElement = useTemplateRef<HTMLElement>('builderList')
+const activeDragId = shallowRef<string | null>(null)
+
+useAdminSortableLists({
+  elements: () => [builderListElement.value],
+  enabled: () => props.variant === 'builder' && !props.locked && questions.value.length > 1,
+  sources: [() => questions.value.length],
+  createOptions: () => ({
+    animation: 180,
+    handle: '[data-builder-question-sort-handle]',
+    draggable: '[data-builder-question-row]',
+    dataIdAttr: 'data-builder-question-id',
+    ghostClass: 'opacity-45',
+    chosenClass: 'cursor-grabbing',
+    dragClass: 'cursor-grabbing',
+    onChoose(event) {
+      activeDragId.value = event.item.dataset.builderQuestionId ?? null
+    },
+    onEnd(event) {
+      const oldIndex = event.oldDraggableIndex ?? event.oldIndex
+      const newIndex = event.newDraggableIndex ?? event.newIndex
+
+      if (oldIndex !== undefined && newIndex !== undefined && oldIndex !== newIndex) {
+        reorderQuestion(oldIndex, newIndex)
+      }
+
+      activeDragId.value = null
+    }
+  }),
+  onDestroy: () => {
+    activeDragId.value = null
+  }
+})
 
 const questionTypeLabels: Record<TalkProposalQuestionType, string> = {
   short_text: 'Short text',
@@ -48,6 +87,16 @@ function moveQuestion(index: number, offset: -1 | 1) {
   const [question] = next.splice(index, 1)
   if (!question) return
   next.splice(targetIndex, 0, question)
+  questions.value = next
+}
+
+function reorderQuestion(oldIndex: number, newIndex: number) {
+  const next = [...questions.value]
+  const [question] = next.splice(oldIndex, 1)
+
+  if (!question) return
+
+  next.splice(newIndex, 0, question)
   questions.value = next
 }
 
@@ -122,6 +171,24 @@ function removeOption(questionIndex: number, optionIndex: number) {
     >
       No additional questions.
     </p>
+
+    <div
+      v-else-if="props.variant === 'builder'"
+      ref="builderList"
+      class="space-y-2.5"
+    >
+      <AdminBuilderTalkProposalQuestionCard
+        v-for="(question, index) in questions"
+        :key="question.id"
+        :question="question"
+        :index="index"
+        :locked="props.locked"
+        :active="activeDragId === question.id"
+        @update="patch => updateQuestion(index, patch)"
+        @move="offset => moveQuestion(index, offset)"
+        @remove="removeQuestion(index)"
+      />
+    </div>
 
     <div
       v-else

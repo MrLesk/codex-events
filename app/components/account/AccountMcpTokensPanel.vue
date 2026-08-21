@@ -78,7 +78,11 @@ async function revokeToken(token: McpAccessToken) {
 
 function formatDate(value: string | null) {
   if (!value) return 'Never'
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    hour12: true
+  }).format(new Date(value))
 }
 
 onMounted(async () => {

@@ -3,6 +3,7 @@ import type { EventBuilderBlockInstance, EventBuilderScheduleEntry } from '~/dom
 import { eventBuilderBlockDefinitions } from '#shared/domains/events/builder-blocks'
 import { getScaledBlockEnergyDelta, getScaledBlockFocusCost } from '#shared/domains/events/builder-scoring'
 import { eventBuilderBlockIcons } from '~/domains/events/builder'
+import { formatLocalTime } from '~/lib/date-formatting'
 import AdminBuilderDurationStepper from '~/components/admin/builder/molecules/AdminBuilderDurationStepper.vue'
 
 const props = defineProps<{
@@ -37,7 +38,7 @@ const timeRange = computed(() => {
     return ''
   }
 
-  return `${props.schedule.startsAt.slice(11, 16)} – ${props.schedule.endsAt.slice(11, 16)}`
+  return `${formatLocalTime(props.schedule.startsAt)} – ${formatLocalTime(props.schedule.endsAt)}`
 })
 
 const scaledFocus = computed(() =>

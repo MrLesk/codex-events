@@ -1,10 +1,21 @@
 <script setup lang="ts">
-defineProps<{
+const props = withDefaults(defineProps<{
   itemId: string
   index: number
   title: string
   active?: boolean
-}>()
+  testIdPrefix?: string
+  itemIdAttribute?: string
+  rowAttribute?: string
+  sortHandleAttribute?: string
+  reorderDisabled?: boolean
+}>(), {
+  testIdPrefix: 'event-builder-block',
+  itemIdAttribute: 'data-builder-block-id',
+  rowAttribute: 'data-builder-block-row',
+  sortHandleAttribute: 'data-builder-block-sort-handle',
+  reorderDisabled: false
+})
 
 const emit = defineEmits<{
   move: [direction: -1 | 1]
@@ -19,13 +30,21 @@ function onGripKeydown(event: KeyboardEvent) {
     emit('move', 1)
   }
 }
+
+const rowAttributes = computed(() => ({
+  [props.itemIdAttribute]: props.itemId,
+  [props.rowAttribute]: ''
+}))
+
+const sortHandleAttributes = computed(() => ({
+  [props.sortHandleAttribute]: ''
+}))
 </script>
 
 <template>
   <article
-    :data-testid="`event-builder-block-row-${index}`"
-    :data-builder-block-id="itemId"
-    data-builder-block-row
+    :data-testid="`${props.testIdPrefix}-row-${index}`"
+    v-bind="rowAttributes"
     class="rounded-xl border bg-white/88 p-2 pl-1.5 transition-all dark:bg-[#111111]"
     :class="active
       ? 'border-black/16 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.55)] dark:border-white/[0.16]'
@@ -34,10 +53,11 @@ function onGripKeydown(event: KeyboardEvent) {
     <div class="flex min-w-0 items-center gap-1.5">
       <button
         type="button"
-        data-builder-block-sort-handle
-        :data-testid="`event-builder-block-grip-${index}`"
+        v-bind="sortHandleAttributes"
+        :data-testid="`${props.testIdPrefix}-grip-${index}`"
         :aria-label="`Reorder ${title}: drag, or press the arrow keys`"
-        class="inline-flex h-9 w-6 shrink-0 cursor-grab items-center justify-center rounded-lg text-dimmed transition hover:bg-black/5 hover:text-highlighted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-black/30 active:cursor-grabbing dark:hover:bg-white/[0.06] dark:focus-visible:outline-white/40"
+        :disabled="props.reorderDisabled"
+        class="inline-flex h-9 w-6 shrink-0 cursor-grab items-center justify-center rounded-lg text-dimmed transition hover:bg-black/5 hover:text-highlighted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-black/30 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-white/[0.06] dark:focus-visible:outline-white/40"
         @keydown="onGripKeydown"
       >
         <AppIcon

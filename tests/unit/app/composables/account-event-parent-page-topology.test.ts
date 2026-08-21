@@ -50,6 +50,14 @@ const builderSettingsBoardSource = readFileSync(
   new URL('../../../../app/components/admin/builder/organisms/AdminBuilderSettingsBoard.vue', import.meta.url),
   'utf8'
 )
+const dateTimeInputSource = readFileSync(
+  new URL('../../../../app/components/AppDateTimeInput.vue', import.meta.url),
+  'utf8'
+)
+const dateTimePickerSource = readFileSync(
+  new URL('../../../../app/components/AppDateTimePicker.vue', import.meta.url),
+  'utf8'
+)
 
 describe('account event parent page request topology', () => {
   test('owns the competition page reads and passes typed page state down', () => {
@@ -125,5 +133,10 @@ describe('account event parent page request topology', () => {
     expect(builderWorkspaceSource).toContain(':has-existing-talk-proposal="hasExistingTalkProposal"')
     expect(builderSettingsBoardSource).toContain('hasExistingTalkProposal?: boolean')
     expect(builderSettingsBoardSource).toContain(':has-existing-proposal="props.hasExistingTalkProposal ?? false"')
+    expect(builderSettingsBoardSource).toContain('question-editor-variant="builder"')
+    expect(talkControlSource).toContain(':variant="props.questionEditorVariant"')
+    expect(dateTimeInputSource).toContain('<AppDateTimePicker')
+    expect(dateTimeInputSource).not.toContain('datetime-local')
+    expect(dateTimePickerSource).toContain(':hour-cycle="12"')
   })
 })

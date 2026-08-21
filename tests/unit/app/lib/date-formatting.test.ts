@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { formatTimestamp } from '../../../../app/lib/date-formatting'
+import { formatLocalTime, formatTimestamp } from '../../../../app/lib/date-formatting'
 
 describe('date formatting utilities', () => {
   test('formats timestamps with the shared Intl date-time formatter', () => {
@@ -11,8 +11,14 @@ describe('date formatting utilities', () => {
       day: 'numeric',
       year: 'numeric',
       hour: 'numeric',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: true
     }).format(new Date(value)))
+  })
+
+  test('formats local datetime values with an explicit AM/PM marker', () => {
+    expect(formatLocalTime('2026-05-09T23:00')).toBe('11:00 PM')
+    expect(formatLocalTime('2026-05-09T00:05')).toBe('12:05 AM')
   })
 
   test('returns the provided fallback when the timestamp is missing', () => {
@@ -21,5 +27,6 @@ describe('date formatting utilities', () => {
 
   test('returns the provided fallback when the timestamp is invalid', () => {
     expect(formatTimestamp('not-a-date', 'Unavailable')).toBe('Unavailable')
+    expect(formatLocalTime('not-a-date', 'Unavailable')).toBe('Unavailable')
   })
 })

@@ -12,7 +12,11 @@ const opensAtTime = computed(() => Date.parse(props.opensAt))
 const closesAtTime = computed(() => Date.parse(props.closesAt))
 const isOpen = computed(() => now >= opensAtTime.value && now <= closesAtTime.value)
 const isUpcoming = computed(() => now < opensAtTime.value)
-const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+const dateFormatter = new Intl.DateTimeFormat(undefined, {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+  hour12: true
+})
 const timingLabel = computed(() => isOpen.value
   ? `Open until ${dateFormatter.format(new Date(props.closesAt))}`
   : `Opens ${dateFormatter.format(new Date(props.opensAt))}`

@@ -305,7 +305,8 @@ const weekdayFormatter = new Intl.DateTimeFormat('en-US', {
 
 const timeFormatter = new Intl.DateTimeFormat('en-US', {
   hour: '2-digit',
-  minute: '2-digit'
+  minute: '2-digit',
+  hour12: true
 })
 
 function isSameLocalDay(left: Date, right: Date) {

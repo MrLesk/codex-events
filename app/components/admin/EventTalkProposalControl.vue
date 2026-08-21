@@ -9,8 +9,10 @@ const questions = defineModel<TalkProposalQuestionDefinition[]>('questions', { r
 
 const props = withDefaults(defineProps<{
   hasExistingProposal?: boolean
+  questionEditorVariant?: 'classic' | 'builder'
 }>(), {
-  hasExistingProposal: false
+  hasExistingProposal: false,
+  questionEditorVariant: 'classic'
 })
 
 const configurationLocked = computed(() => props.hasExistingProposal)
@@ -67,6 +69,7 @@ const configurationLocked = computed(() => props.hasExistingProposal)
       <AdminTalkProposalQuestionEditor
         v-model="questions"
         :locked="configurationLocked"
+        :variant="props.questionEditorVariant"
       />
     </div>
   </section>

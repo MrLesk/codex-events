@@ -82,9 +82,29 @@ export const eventBuilderBlockIcons: Record<EventBuilderBlockType, string> = {
   custom: 'i-lucide-puzzle'
 }
 
-export const eventBuilderMinBlockDurationMinutes = 5
+export const eventBuilderMinBlockDurationMinutes = 1
 export const eventBuilderMaxBlockDurationMinutes = 480
-export const eventBuilderDurationStepMinutes = 5
+
+export function getNextEventBuilderDurationMinutes(currentMinutes: number, direction: -1 | 1) {
+  const current = Math.min(
+    eventBuilderMaxBlockDurationMinutes,
+    Math.max(eventBuilderMinBlockDurationMinutes, Math.round(currentMinutes))
+  )
+
+  if (direction === 1) {
+    const next = current < 10
+      ? current + 1
+      : Math.ceil((current + 1) / 5) * 5
+
+    return Math.min(eventBuilderMaxBlockDurationMinutes, next)
+  }
+
+  const next = current <= 10
+    ? current - 1
+    : Math.max(10, Math.floor((current - 1) / 5) * 5)
+
+  return Math.max(eventBuilderMinBlockDurationMinutes, next)
+}
 
 export function createEmptyEventBuilderState(): EventBuilderState {
   const form = createEmptyEventFormState()

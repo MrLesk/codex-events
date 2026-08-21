@@ -263,7 +263,8 @@ describe('public event agenda presentation helpers', () => {
     }).format(date)
     const expectedTimeLabel = new Intl.DateTimeFormat('en-US', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: true
     }).format(date)
 
     expect(getEventDateTimePresentation(value)).toEqual({
@@ -279,7 +280,8 @@ describe('public event agenda presentation helpers', () => {
     const end = '2026-03-28T01:00:00Z'
     const expectedCloseTime = new Intl.DateTimeFormat('en-US', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: true
     }).format(new Date(end))
 
     expect(describeEventWindowStatus('2026-02-26T00:00:00Z', end, now)).toBe('Open now')

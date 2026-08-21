@@ -2,6 +2,7 @@
 import type { EventBalanceResult } from '#shared/domains/events/builder-scoring'
 import type { EventBuilderBlockInstance, EventBuilderChecklistItem } from '~/domains/events/builder'
 import { addMinutesToLocalValue, getTotalAgendaDurationMinutes } from '~/domains/events/builder'
+import { formatLocalTime } from '~/lib/date-formatting'
 import AdminBuilderChecklistRow from '~/components/admin/builder/molecules/AdminBuilderChecklistRow.vue'
 import AdminBuilderMeterRow from '~/components/admin/builder/molecules/AdminBuilderMeterRow.vue'
 import AdminBuilderScienceDialog from '~/components/admin/builder/molecules/AdminBuilderScienceDialog.vue'
@@ -40,7 +41,7 @@ const totalDurationLabel = computed(() => {
   return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`
 })
 
-// "From 18:00 to 21:00", shown once the event start pins the agenda to a clock.
+// Shown once the event start pins the agenda to a clock.
 const timeRangeLabel = computed(() => {
   if (!props.eventStartsAt.trim() || props.blocks.length === 0) {
     return ''
@@ -52,7 +53,7 @@ const timeRangeLabel = computed(() => {
     return ''
   }
 
-  return `From ${props.eventStartsAt.slice(11, 16)} to ${end.slice(11, 16)}`
+  return `From ${formatLocalTime(props.eventStartsAt)} to ${formatLocalTime(end)}`
 })
 
 const bandColor = computed(() => {

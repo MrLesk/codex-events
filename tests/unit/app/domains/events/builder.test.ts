@@ -13,6 +13,7 @@ import {
   eventBuilderBasicsSchema,
   getBuilderChecklist,
   getEventBuilderSettingsGroups,
+  getNextEventBuilderDurationMinutes,
   pruneBlocksForEventType,
   toEventBalanceInputFromState,
   toEventBuilderFormState
@@ -86,6 +87,28 @@ function buildAgendaEvent(overrides: Partial<EventRecord> = {}): EventRecord {
     ...overrides
   }
 }
+
+describe('getNextEventBuilderDurationMinutes', () => {
+  test('steps one minute at a time through durations below ten minutes', () => {
+    expect(getNextEventBuilderDurationMinutes(5, -1)).toBe(4)
+    expect(getNextEventBuilderDurationMinutes(5, 1)).toBe(6)
+    expect(getNextEventBuilderDurationMinutes(9, 1)).toBe(10)
+    expect(getNextEventBuilderDurationMinutes(10, -1)).toBe(9)
+  })
+
+  test('steps in five-minute increments above ten minutes', () => {
+    expect(getNextEventBuilderDurationMinutes(10, 1)).toBe(15)
+    expect(getNextEventBuilderDurationMinutes(15, -1)).toBe(10)
+    expect(getNextEventBuilderDurationMinutes(15, 1)).toBe(20)
+  })
+
+  test('moves manually entered values onto the next useful step and respects limits', () => {
+    expect(getNextEventBuilderDurationMinutes(12, -1)).toBe(10)
+    expect(getNextEventBuilderDurationMinutes(12, 1)).toBe(15)
+    expect(getNextEventBuilderDurationMinutes(1, -1)).toBe(1)
+    expect(getNextEventBuilderDurationMinutes(480, 1)).toBe(480)
+  })
+})
 
 describe('computeBlockSchedule', () => {
   test('computes cumulative sequential times from the event start', () => {
