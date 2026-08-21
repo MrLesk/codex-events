@@ -202,6 +202,7 @@ For each navigation and tab interaction, browser instrumentation records:
 - phase timings for shell navigation, account bootstrap, the critical page read, first usable state, lazy-tab completion, and media delivery;
 - the declared wall-clock budget and the observed duration for each phase and journey;
 - request topology, including exactly one shared bootstrap per authenticated workspace entry, exactly one critical page-shaped JSON read after bootstrap, zero feature-local session reads, and zero query-only actor refreshes;
+- protected API `Server-Timing` phases, including aggregate `actor`, `actor-session` for Auth0 session resolution, `actor-d1` for the one strong identity/current-consent read, `database-session` for request-session and facade construction, `authorization`, page-loader `d1`, `serialization`, and `total`; the strong session descriptor must remain `first-primary` or `bookmark`;
 - protected actor/product API response headers, including `CF-Cache-Status` and `Age`, so any `CF-Cache-Status: HIT` or present `Age` header on a protected API response fails the journey; explicit public/versioned event and media paths plus the static-framework `/api/_nuxt_icon/*.json` family are excluded, while unknown generated-framework paths remain protected and included;
 - direct links to non-entry account-event tabs use that one selected page read with `includeEventShell=true`; the selected page loader and shell run concurrently in the same request, with the shell's independent tracks, image-options, gallery, published-prize, published-staff, credit-inventory, and meetup talk-proposal reads started in one D1 wave (participant application and membership access is a parallel branch when the shared context does not already contain it);
 - cancellation of abandoned tab requests, local lazy-code loading, and the absence of runtime `unpkg` dependencies; and
@@ -225,6 +226,16 @@ BDD D1 state root. The matrix includes global overview, judging, and prize
 redemption only where the stable local persona fixtures authorize the surface;
 the staff dashboard remains covered by server integration tests until a stable
 local staff persona fixture exists.
+
+Deployed latency evidence must come from a real browser on an uncached protected
+response. Record the cold navigation wall time, response TTFB, `Server-Timing`
+phase values, status, `Cache-Control`, `Cloudflare-CDN-Cache-Control`,
+`CF-Cache-Status`, `Age`, and visible first usable state. Treat zero-valued
+phases on a route without an explicit phase wrapper as unattributed work rather
+than proof of zero execution time. A new actor optimization is not considered
+deployed evidence until the test Worker has been redeployed and the same
+browser journey reports the actor subphases and unchanged one-bootstrap/
+one-critical-read topology.
 
 ## Local Load Runner
 

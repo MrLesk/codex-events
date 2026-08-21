@@ -56,17 +56,28 @@ function createDatabaseMock(
     ?? (typeof user?.auth0Subject === 'string' ? user.auth0Subject : null)
   const hasAcceptedCurrentPlatformDocuments = options?.hasAcceptedCurrentPlatformDocuments ?? true
   const currentDocumentsAvailable = options?.currentDocumentsAvailable ?? true
-  const select = vi.fn(() => ({
-    from: vi.fn(() => ({
-      innerJoin: vi.fn(() => ({
-        where: vi.fn(() => ({
-          limit: vi.fn(() => ({
-            get: vi.fn(async () => auth0Subject && user ? { user } : undefined)
-          }))
-        }))
-      }))
-    }))
-  }))
+  const select = vi.fn(() => {
+    const query = {} as {
+      from: ReturnType<typeof vi.fn>
+      innerJoin: ReturnType<typeof vi.fn>
+      where: ReturnType<typeof vi.fn>
+      limit: ReturnType<typeof vi.fn>
+      get: ReturnType<typeof vi.fn>
+    }
+    const result = auth0Subject && user
+      ? {
+          user,
+          hasAcceptedCurrentPlatformDocuments: hasAcceptedCurrentPlatformDocuments ? 1 : 0
+        }
+      : undefined
+
+    query.from = vi.fn(() => query)
+    query.innerJoin = vi.fn(() => query)
+    query.where = vi.fn(() => query)
+    query.limit = vi.fn(() => query)
+    query.get = vi.fn(async () => result)
+    return query
+  })
 
   return {
     select,
@@ -240,7 +251,7 @@ describe('request actor resolution', () => {
     const second = await getRequestActor(event)
 
     expect(first).toBe(second)
-    expect(database.select).toHaveBeenCalledTimes(1)
+    expect(database.select).toHaveBeenCalledTimes(4)
   })
 
   test('resolves an existing linked Auth0 identity without reconciling it on an ordinary request', async () => {

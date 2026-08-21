@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@luna-performance'
 created_date: '2026-08-20 22:46'
-updated_date: '2026-08-20 23:20'
+updated_date: '2026-08-21 02:56'
 labels: []
 dependencies: []
 parent_task_id: TASK-432
@@ -45,27 +45,23 @@ Deployed real-browser verification shows that the page-shaped topology removed r
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Capture warm baseline timings for facade construction, representative builder/result use, and the Participants page path.
-2. Replace eager relational-query facade construction and recursive builder membrane work with lazy table lookup and constant-time shallow allowlisting while preserving the request-scoped session boundary.
-3. Add protected API phase timing evidence for actor, authorization, D1, serialization, and total request time without sensitive values.
-4. Add focused boundary, loader, timing, and benchmark-style regressions; validate the Participants response remains usable and same-session.
-5. Run required validation, inspect scope, commit only TASK-432.9 files, and document deployed-evidence gaps.
+1. Reconcile TASK-432.9 with the ec90231 deployed browser evidence and trace Auth0 session, actor, request-scoped D1 session, authorization, page loader, and response hooks.
+2. Add only phase evidence that separates Auth0 session resolution, actor D1, request-session/facade construction, and structured-route D1 work; preserve strong session/bookmark descriptors and treat unwrapped work as unattributed.
+3. Collapse normal HTTP platform-user identity and current-consent resolution into one strongly consistent D1 statement while preserving latest-document semantics, canonical authorization, and the one-bootstrap/one-critical-read contract.
+4. Add integration and unit guards for actor shape, current-document semantics, one-session/one-hot-path statement topology, timing labels, public structured-route attribution, and no per-page actor fan-out.
+5. Update canonical performance/testing docs and root AGENTS.md; run targeted, required, BDD, Cloudflare build, and Worker-runtime validation; inspect and commit only TASK-432.9 changes without pushing.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Deployed SHA 77fa4ddf in Vienna: Settings page API MISS 6800ms; account overview MISS 16392ms; Operations MISS 8877ms; Participants attempts returned 503 BYPASS at 34782ms and 36593ms. A later Participants request returned 200; Wrangler tail reported wallTime 21005ms and cpuTime 3610ms with no logged exception. The page-shaped topology itself was correct: one cached session plus one selected page request, Operations did not call entry/applications, and Participants did not call applications/operations.
+Deployed evidence at ec90231db488785e15e99637c12e74c1ba39ef1e on test.codex-events.com: CodeQL and deploy-test green; Worker bound to codex-events-test-eu UUID 7ce9568f-1ba6-49dd-bb3c-7e378b5f8a78, jurisdiction eu, EEUR, read replication disabled. Protected topology is one /api/session followed by one page-shaped read, with private no-store responses and no CF HIT/Age. Cold browser reads: account wall 4.344s; overview TTFB 2.959s, actor 2.042s, D1 87ms, total 2.129s; Operations wall 5.372s, TTFB 3.726s, actor 3.116s, D1 206ms, total 3.322s; Participants wall 5.059s, TTFB 4.001s, actor 2.927s, D1 163ms, total 3.090s; Settings wall 5.229s, TTFB 3.546s, actor 2.536s, D1 199ms, total 2.735s; Staff wall 5.078s, TTFB 3.417s, actor 3.154s, D1 25ms, total 3.179s. Admin /api/events and platform legal settings also report 3.6-3.7s TTFB with phase counters at zero, so those routes remain unattributed. Warm per-navigation bootstrap is 130-245ms TTFB and 81-122ms total.
 
-Cloudflare placement check: test D1 is ENAM with read replication disabled while browser/Worker traffic is VIE. Production D1 is EEUR with EU jurisdiction and read replication disabled. The test environment therefore adds transatlantic latency to every first-primary session and is not representative of production placement; test D1 must be migrated/reprovisioned in EU before final deployed latency comparison. The 3.61s Worker CPU remains a separate application-facade issue independent of database distance.
+The request trace showed Auth0 getSession, an identity-to-user join, two current platform-document reads, and one acceptance read on the protected actor path; the hot-path integration fixture recorded five statements on one strong session. The shared browser client already forwards the returned X-D1-Bookmark to later API requests. Cloudflare Workers best-practice guidance and @cloudflare/workers-types@5.20260821.1 were fetched before review.
 
-First complete local fix slice implemented (no push/deploy). AppDatabase now uses an explicit schema table allowlist with lazy per-table relational facades; it removes eager Object.entries(query), recursive safe constructor/prototype-chain construction, reflective dangerous-capability scans, and recursive unwrap/wrap work from ordinary builder methods. Only the explicit batch boundary recursively unwraps statement facades. Session-bearing builders remain sealed; the facade still blocks symbols, constructors, session/client/$client/binding/prepare/transaction entry points, and keeps a fixed inert safe constructor/prototype metadata object.
+This slice measures actor-session and actor-d1 subphases, measures request database-session construction, attributes public structured-route D1 work, parallelizes the independent event list/count reads, and replaces the normal platform-user actor fan-out with one strong identity-and-current-consent statement. Current-document semantics are enforced inside the statement using latest-version and acceptance predicates; /api/session retains its separate event-role read.
 
-Protected API evidence now includes Server-Timing actor, authorization, d1, serialization, and total phases. The d1 phase description is strong:first-primary when a request starts without a bookmark and strong:bookmark when it is bookmark-anchored; bookmark values are never emitted. Account overview, event page context, Participants/page loaders, and judge assignment loaders include the phase measurements. Focused boundary, session, page-contract, timing, and representative Participants benchmark tests were added.
+The remaining deployment-only question is whether the multi-second cold gap is primarily Auth0/session or first-primary/Worker initialization rather than actor SQL. ec90231 predates these subphases, so the test Worker must be redeployed and profiled in a real browser before claiming the task deployed latency budgets or attributing public routes whose counters were zero.
 
-Local fake-D1 benchmark on the same workload: pre-slice facade at 7c9b63f construction median 0.107 ms, builder 0.016 ms, relational lookup 0.001 ms, Participants page 2.286 ms; final slice construction 0.081 ms, builder 0.014 ms, relational lookup 0.001 ms, Participants page 2.188 ms. This local harness does not reproduce the deployed 3.61 s Worker CPU, so these are directional CPU-shape evidence rather than production proof.
-
-Cloudflare topology evidence: codex-events-test is ENAM with read replication disabled while browser/Worker traffic is VIE. The implementation preserves canonical HTTP strong consistency and does not add a replica or generic consistency option. The narrowest Cloudflare-first topology action is EU placement/reprovisioning for the test database before the final latency comparison; if the production strong primary is not EU-near VIE, an EU-primary migration is required. A split strong-auth/replica-read architecture would be a canonical architecture/docs change and is not implemented silently.
-
-Validation passed: bun run lint; bun run typecheck; bun run test:unit (159 files, 1061 tests); bun run test:integration (43 files, 465 tests); bun run test:bdd:account-workspace (22 passed); git diff --check. Deployed browser/Worker acceptance gates remain pending because this slice was intentionally not deployed.
+Validation: targeted actor/document unit tests (15), authorization unit tests (13), request-timing and actor-hot-path integration tests (8) passed. Full local unit passed 164 files/1,091 tests; integration passed 44 files/470 tests; account-workspace BDD passed 23/23; full BDD passed 86 tests plus the 2-test destructive phase; Cloudflare build and Wrangler deploy --dry-run passed. bun run lint and bun run typecheck passed on the TASK-432.9 source state before unrelated concurrent TASK-432.7.2 edits appeared; a final mixed-worktree rerun reports only those unrelated composable errors, while targeted ESLint and git diff --check pass. No deploy or push was performed. Deployment-only real-browser profiling remains required.
 <!-- SECTION:NOTES:END -->

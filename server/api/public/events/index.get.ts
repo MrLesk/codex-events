@@ -8,6 +8,7 @@ import {
 } from '#server/domains/events/public-cache'
 import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { parseValidatedQuery } from '#server/http/validation'
+import { measureRequestPhase } from '#server/http/request-timing'
 
 type EventRecord = Awaited<ReturnType<typeof listPublicEvents>>['items'][number]
 
@@ -25,10 +26,14 @@ export const applicationOperation = defineStructuredRouteOperation({
 
   const query = parseValidatedQuery(h3Event, eventListQuerySchema)
   const database = getDatabase(h3Event)
-  const [result, imageOptions] = await Promise.all([
-    listPublicEvents(database, query),
-    getEventDisplayImageOptions(database)
-  ])
+  const [result, imageOptions] = await measureRequestPhase(
+    h3Event,
+    'd1',
+    () => Promise.all([
+      listPublicEvents(database, query),
+      getEventDisplayImageOptions(database)
+    ])
+  )
 
   const response = apiList(
     result.items.map((event: EventRecord) => serializePublicEvent(event, undefined, undefined, imageOptions)),

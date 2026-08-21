@@ -1,4 +1,6 @@
-import { and, desc, eq, or } from 'drizzle-orm'
+import { and, count, desc, eq, exists, gt, notExists, or } from 'drizzle-orm'
+import type { SQLWrapper } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/sqlite-core'
 import { z } from 'zod'
 
 import { writeAuditLog } from '#server/database/audit-log'
@@ -35,6 +37,47 @@ export function serializePlatformDocument(document: PlatformDocumentRecord) {
     publishedAt: document.publishedAt,
     createdAt: document.createdAt
   }
+}
+
+/**
+ * Build the one-read current-consent count used by authenticated actor
+ * resolution. The user id may be a bound value or a column from an outer
+ * query, which lets the actor lookup join identity, user, and consent state
+ * without a second D1 round trip.
+ */
+export function buildCurrentPlatformDocumentAcceptanceCountQuery(
+  database: AppDatabase,
+  userId: string | SQLWrapper
+) {
+  const currentDocuments = alias(platformDocuments, 'current_platform_documents')
+  const newerDocuments = alias(platformDocuments, 'newer_platform_documents')
+  const acceptances = alias(
+    userPlatformDocumentAcceptances,
+    'current_platform_document_acceptances'
+  )
+
+  return database
+    .select({ total: count() })
+    .from(currentDocuments)
+    .where(and(
+      or(...platformDocumentTypes.map(documentType =>
+        eq(currentDocuments.documentType, documentType)
+      )),
+      notExists(database
+        .select({ id: newerDocuments.id })
+        .from(newerDocuments)
+        .where(and(
+          eq(newerDocuments.documentType, currentDocuments.documentType),
+          gt(newerDocuments.version, currentDocuments.version)
+        ))),
+      exists(database
+        .select({ id: acceptances.id })
+        .from(acceptances)
+        .where(and(
+          eq(acceptances.userId, userId),
+          eq(acceptances.platformDocumentId, currentDocuments.id)
+        )))
+    ))
 }
 
 export async function listPlatformDocumentVersions(
@@ -121,27 +164,9 @@ export async function hasAcceptedCurrentPlatformDocuments(
   database: AppDatabase,
   userId: string
 ) {
-  const currentDocuments = await getCurrentPlatformDocuments(database)
-  const requiredDocuments = platformDocumentTypes
-    .map(documentType => currentDocuments[documentType])
-    .filter((document): document is PlatformDocumentRecord => Boolean(document))
+  const result = await buildCurrentPlatformDocumentAcceptanceCountQuery(database, userId).get()
 
-  if (requiredDocuments.length !== platformDocumentTypes.length) {
-    return false
-  }
-
-  const acceptances = await database.query.userPlatformDocumentAcceptances.findMany({
-    where: and(
-      eq(userPlatformDocumentAcceptances.userId, userId),
-      or(...requiredDocuments.map(document =>
-        eq(userPlatformDocumentAcceptances.platformDocumentId, document.id)
-      ))
-    )
-  })
-
-  const acceptedDocumentIds = new Set(acceptances.map(acceptance => acceptance.platformDocumentId))
-
-  return requiredDocuments.every(document => acceptedDocumentIds.has(document.id))
+  return Number(result?.total ?? 0) === platformDocumentTypes.length
 }
 
 export function assertCurrentPlatformDocument(

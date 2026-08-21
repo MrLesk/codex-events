@@ -58,17 +58,22 @@ function createDatabaseMock(options?: {
   const auth0Subject = typeof options?.user?.auth0Subject === 'string'
     ? options.user.auth0Subject
     : null
-  const select = vi.fn(() => ({
-    from: vi.fn(() => ({
-      innerJoin: vi.fn(() => ({
-        where: vi.fn(() => ({
-          limit: vi.fn(() => ({
-            get: vi.fn(async () => auth0Subject && options?.user ? { user: options.user } : undefined)
-          }))
-        }))
-      }))
-    }))
-  }))
+  const select = vi.fn(() => {
+    const query = {
+      from: vi.fn(() => query),
+      innerJoin: vi.fn(() => query),
+      where: vi.fn(() => query),
+      limit: vi.fn(() => query),
+      get: vi.fn(async () => auth0Subject && options?.user
+        ? {
+            user: options.user,
+            hasAcceptedCurrentPlatformDocuments: currentDocumentsAvailable && hasAcceptedCurrentPlatformDocuments ? 1 : 0
+          }
+        : undefined)
+    }
+
+    return query
+  })
 
   return {
     select,

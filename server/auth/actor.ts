@@ -4,9 +4,10 @@ import { and, eq, isNull } from 'drizzle-orm'
 
 import { getDatabase } from '#server/database/client'
 import { ApiError } from '#server/http/api-error'
-import { findPlatformUserByAuth0Subject } from '#server/domains/accounts/auth-identities'
+import { findPlatformUserByAuth0SubjectWithConsent } from '#server/domains/accounts/auth-identities'
 import { canCreateFirstPlatformAdminSetupAccount } from '#server/domains/platform/admins'
 import { hasAcceptedCurrentPlatformDocuments } from '#server/domains/platform/documents'
+import { measureRequestPhase } from '#server/http/request-timing'
 
 interface SessionUserProfile {
   sub: string
@@ -113,13 +114,6 @@ async function getAuth0Session(event: H3Event): Promise<SessionLike | null> {
   return session as SessionLike | null
 }
 
-async function findPlatformUserBySubject(
-  database: ReturnType<typeof getDatabase>,
-  auth0Subject: string
-) {
-  return await findPlatformUserByAuth0Subject(database, auth0Subject)
-}
-
 async function buildAuthenticatedIdentityActor(
   database: ReturnType<typeof getDatabase>,
   sessionUser: SessionUserProfile,
@@ -139,19 +133,16 @@ async function buildAuthenticatedIdentityActor(
   }
 }
 
-async function buildPlatformActor(
-  database: ReturnType<typeof getDatabase>,
+function buildPlatformActor(
   sessionUser: SessionUserProfile,
-  platformUser: PlatformUserRecord
-): Promise<PlatformActor> {
+  platformUser: PlatformUserRecord,
+  hasAcceptedCurrentPlatformDocuments: boolean
+): PlatformActor {
   return {
     kind: 'platform_user',
     isAuthenticated: true,
     hasPlatformAccount: true,
-    hasAcceptedCurrentPlatformDocuments: await hasAcceptedCurrentPlatformDocuments(
-      database,
-      platformUser.id
-    ),
+    hasAcceptedCurrentPlatformDocuments,
     sessionUser,
     platformUser
   }
@@ -162,8 +153,11 @@ export function setRequestActor(event: H3Event, actor: RequestActor | Promise<Re
 }
 
 export async function resolveRequestActor(event: H3Event): Promise<RequestActor> {
-  const sessionUser = readSessionUser(await getAuth0Session(event))
-  const database = getDatabase(event)
+  const sessionUser = readSessionUser(await measureRequestPhase(
+    event,
+    'actor-session',
+    () => getAuth0Session(event)
+  ))
 
   if (!sessionUser) {
     return {
@@ -176,16 +170,29 @@ export async function resolveRequestActor(event: H3Event): Promise<RequestActor>
     }
   }
 
-  const platformUser = await findPlatformUserBySubject(database, sessionUser.sub)
+  const database = getDatabase(event)
+  const platformUser = await measureRequestPhase(
+    event,
+    'actor-d1',
+    () => findPlatformUserByAuth0SubjectWithConsent(database, sessionUser.sub)
+  )
 
   if (platformUser) {
-    return await buildPlatformActor(database, sessionUser, platformUser)
+    return buildPlatformActor(
+      sessionUser,
+      platformUser.user,
+      platformUser.hasAcceptedCurrentPlatformDocuments
+    )
   }
 
-  return await buildAuthenticatedIdentityActor(
-    database,
-    sessionUser,
-    useRuntimeConfig(event).firstPlatformAdminEmail
+  return await measureRequestPhase(
+    event,
+    'actor-d1',
+    () => buildAuthenticatedIdentityActor(
+      database,
+      sessionUser,
+      useRuntimeConfig(event).firstPlatformAdminEmail
+    )
   )
 }
 
@@ -208,13 +215,13 @@ export async function resolveMcpPlatformActor(event: H3Event, userId: string): P
     })
   }
 
-  return await buildPlatformActor(database, {
+  return buildPlatformActor({
     sub: platformUser.auth0Subject,
     email: platformUser.email,
     email_verified: true,
     name: platformUser.displayName,
     githubProfileUrl: platformUser.githubProfileUrl
-  }, platformUser)
+  }, platformUser, await hasAcceptedCurrentPlatformDocuments(database, platformUser.id))
 }
 
 export async function requireAuthenticatedActor(event: H3Event) {

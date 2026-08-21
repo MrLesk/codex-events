@@ -38,6 +38,7 @@ import {
   normalizeManagedPublicEventImageUrlForSlug,
   serializeManagedPublicEventImageUrl
 } from '#server/domains/events/images'
+import { measureRequestPhase } from '#server/http/request-timing'
 import {
   resolveVersionedEventDisplayBackgroundImageUrl,
   type EventDisplayImageOptions
@@ -1901,7 +1902,7 @@ export async function listVisibleEvents(
   input: z.infer<typeof eventListQuerySchema>
 ) {
   const database = getDatabase(event)
-  const actor = await getRequestActor(event)
+  const actor = await measureRequestPhase(event, 'actor', () => getRequestActor(event))
   const page = input.page
   const pageSize = input.page_size
   const filters = buildEventListFilters(input)
@@ -1909,14 +1910,19 @@ export async function listVisibleEvents(
   const baseWhere = filters.length > 0 ? and(...filters) : undefined
 
   if (actor.kind === 'platform_user' && actor.platformUser.isPlatformAdmin) {
-    const items = await database.query.events.findMany({
-      where: baseWhere,
-      orderBy: [desc(events.createdAt)],
-      limit: pageSize,
-      offset: (page - 1) * pageSize
+    const { items, total } = await measureRequestPhase(event, 'd1', async () => {
+      const [items, totalRows] = await Promise.all([
+        database.query.events.findMany({
+          where: baseWhere,
+          orderBy: [desc(events.createdAt)],
+          limit: pageSize,
+          offset: (page - 1) * pageSize
+        }),
+        database.select({ total: count() }).from(events).where(baseWhere)
+      ])
+
+      return { items, total: totalRows[0]?.total ?? 0 }
     })
-    const totalRows = await database.select({ total: count() }).from(events).where(baseWhere)
-    const total = totalRows[0]?.total ?? 0
 
     return { items, total, page, pageSize }
   }
@@ -1957,14 +1963,19 @@ export async function listVisibleEvents(
     ? and(baseWhere, or(...visibilityClauses))
     : or(...visibilityClauses)
 
-  const items = await database.query.events.findMany({
-    where: visibilityWhere,
-    orderBy: [desc(events.createdAt)],
-    limit: pageSize,
-    offset: (page - 1) * pageSize
+  const { items, total } = await measureRequestPhase(event, 'd1', async () => {
+    const [items, totalRows] = await Promise.all([
+      database.query.events.findMany({
+        where: visibilityWhere,
+        orderBy: [desc(events.createdAt)],
+        limit: pageSize,
+        offset: (page - 1) * pageSize
+      }),
+      database.select({ total: count() }).from(events).where(visibilityWhere)
+    ])
+
+    return { items, total: totalRows[0]?.total ?? 0 }
   })
-  const totalRows = await database.select({ total: count() }).from(events).where(visibilityWhere)
-  const total = totalRows[0]?.total ?? 0
 
   return { items, total, page, pageSize }
 }

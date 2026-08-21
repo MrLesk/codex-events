@@ -30,7 +30,7 @@ describe('authenticated actor request topology', () => {
     }
   })
 
-  test('uses one strong session with one identity join and bounded consent reads', async () => {
+  test('uses one strong session with one identity-and-consent read', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/session', handler: sessionHandler }
@@ -87,6 +87,10 @@ describe('authenticated actor request topology', () => {
     const response = await harness.request('/api/session')
 
     expect(response.status).toBe(200)
+    expect(response.headers.get('server-timing')).toMatch(/actor;dur=\d+\.\d+/u)
+    expect(response.headers.get('server-timing')).toMatch(/actor-session;dur=\d+\.\d+/u)
+    expect(response.headers.get('server-timing')).toMatch(/actor-d1;dur=\d+\.\d+/u)
+    expect(response.headers.get('server-timing')).toMatch(/database-session;dur=\d+\.\d+/u)
     expect(await response.json()).toMatchObject({
       data: {
         actor: {
@@ -103,13 +107,89 @@ describe('authenticated actor request topology', () => {
     expect(harness.d1Database.sessionStarts).toEqual(['first-primary'])
 
     const queries = harness.d1Database.queries
-    expect(queries).toHaveLength(5)
+    expect(queries).toHaveLength(2)
     expect(new Set(queries.map(query => query.sessionId)).size).toBe(1)
     expect(queries.filter(query => query.isWrite)).toHaveLength(0)
     expect(queries.filter(query => query.sql.includes('user_auth_identities'))).toHaveLength(1)
     expect(queries.filter(query => query.sql.includes('user_auth_identities') && query.sql.includes('inner join'))).toHaveLength(1)
-    expect(queries.filter(query => query.sql.includes('platform_documents'))).toHaveLength(2)
+    expect(queries.filter(query => query.sql.includes('platform_documents'))).toHaveLength(1)
     expect(queries.filter(query => query.sql.includes('user_platform_document_acceptances'))).toHaveLength(1)
+  })
+
+  test('evaluates acceptance against the latest document versions in the actor read', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/session', handler: sessionHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|actor-current-consent',
+        email: 'actor-current-consent@example.com',
+        email_verified: true,
+        name: 'Actor Current Consent'
+      },
+      autoAcceptCurrentPlatformDocuments: false
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'actor-current-consent-user',
+      auth0Subject: 'auth0|actor-current-consent',
+      email: 'actor-current-consent@example.com',
+      displayName: 'Actor Current Consent'
+    })
+    await harness.database.insert(platformDocuments).values([
+      {
+        id: 'actor-current-consent-privacy-v1',
+        documentType: 'privacy_policy',
+        version: 1,
+        title: 'Privacy Policy v1',
+        content: 'Privacy v1',
+        publishedAt: '2026-08-19T00:00:00.000Z'
+      },
+      {
+        id: 'actor-current-consent-privacy-v2',
+        documentType: 'privacy_policy',
+        version: 2,
+        title: 'Privacy Policy v2',
+        content: 'Privacy v2',
+        publishedAt: '2026-08-20T00:00:00.000Z'
+      },
+      {
+        id: 'actor-current-consent-terms-v1',
+        documentType: 'platform_terms',
+        version: 1,
+        title: 'Platform Terms v1',
+        content: 'Terms v1',
+        publishedAt: '2026-08-19T00:00:00.000Z'
+      }
+    ])
+    await harness.database.insert(userPlatformDocumentAcceptances).values([
+      {
+        id: 'actor-current-consent-privacy-v1-acceptance',
+        userId: 'actor-current-consent-user',
+        platformDocumentId: 'actor-current-consent-privacy-v1',
+        acceptedAt: '2026-08-19T00:00:00.000Z'
+      },
+      {
+        id: 'actor-current-consent-terms-v1-acceptance',
+        userId: 'actor-current-consent-user',
+        platformDocumentId: 'actor-current-consent-terms-v1',
+        acceptedAt: '2026-08-19T00:00:00.000Z'
+      }
+    ])
+
+    const outdatedResponse = await harness.request('/api/session')
+    expect((await outdatedResponse.json()).data.actor.hasAcceptedCurrentPlatformDocuments).toBe(false)
+
+    await harness.database.insert(userPlatformDocumentAcceptances).values({
+      id: 'actor-current-consent-privacy-v2-acceptance',
+      userId: 'actor-current-consent-user',
+      platformDocumentId: 'actor-current-consent-privacy-v2',
+      acceptedAt: '2026-08-20T00:00:00.000Z'
+    })
+
+    const currentResponse = await harness.request('/api/session')
+    expect((await currentResponse.json()).data.actor.hasAcceptedCurrentPlatformDocuments).toBe(true)
   })
 
   test('persists both link subjects before the secondary subject resolves the account', async () => {

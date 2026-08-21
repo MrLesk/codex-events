@@ -5,6 +5,7 @@ import {
   getPlatformLegalSettings,
   serializePlatformLegalSettings
 } from '#server/domains/platform/legal-settings'
+import { measureRequestPhase } from '#server/http/request-timing'
 
 export const applicationOperation = defineStructuredRouteOperation({
   id: 'get.platform-legal-settings.current',
@@ -16,7 +17,12 @@ export const applicationOperation = defineStructuredRouteOperation({
   capabilities: ['public'],
   effect: 'read'
 }, async (h3Event) => {
-  const settings = await getPlatformLegalSettings(getDatabase(h3Event))
+  const database = getDatabase(h3Event)
+  const settings = await measureRequestPhase(
+    h3Event,
+    'd1',
+    () => getPlatformLegalSettings(database)
+  )
 
   return apiData(settings ? serializePlatformLegalSettings(settings) : null)
 })

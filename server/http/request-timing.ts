@@ -2,7 +2,13 @@ import type { H3Event } from 'h3'
 
 import { setResponseHeader } from 'h3'
 
-type RequestTimingPhase = 'actor' | 'authorization' | 'd1' | 'serialization'
+type RequestTimingPhase = 'actor'
+  | 'actor-session'
+  | 'actor-d1'
+  | 'authorization'
+  | 'database-session'
+  | 'd1'
+  | 'serialization'
 
 interface RequestTimingState {
   readonly startedAt: number
@@ -50,6 +56,21 @@ export async function measureRequestPhase<T>(
   }
 }
 
+export function measureRequestPhaseSync<T>(
+  event: H3Event,
+  phase: RequestTimingPhase,
+  operation: () => T
+) {
+  const timing = getOrCreateRequestTiming(event)
+  const startedAt = now()
+
+  try {
+    return operation()
+  } finally {
+    timing.phases[phase] = (timing.phases[phase] ?? 0) + Math.max(0, now() - startedAt)
+  }
+}
+
 export function recordRequestDatabaseSession(
   event: H3Event,
   sessionStart: 'first-primary' | string
@@ -72,7 +93,10 @@ export function emitRequestTiming(event: H3Event) {
   const d1Description = `strong:${timing.databaseSession ?? 'unknown'}`
   const serverTiming = [
     `actor;dur=${formatMilliseconds(timing.phases.actor ?? 0)}`,
+    `actor-session;dur=${formatMilliseconds(timing.phases['actor-session'] ?? 0)}`,
+    `actor-d1;dur=${formatMilliseconds(timing.phases['actor-d1'] ?? 0)}`,
     `authorization;dur=${formatMilliseconds(timing.phases.authorization ?? 0)}`,
+    `database-session;dur=${formatMilliseconds(timing.phases['database-session'] ?? 0)}`,
     `d1;dur=${formatMilliseconds(timing.phases.d1 ?? 0)};desc="${d1Description}"`,
     `serialization;dur=${formatMilliseconds(timing.phases.serialization ?? 0)}`,
     `total;dur=${formatMilliseconds(total)}`

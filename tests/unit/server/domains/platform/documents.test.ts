@@ -74,7 +74,19 @@ describe('platform document utilities', () => {
   })
 
   test('treats missing required current documents as not accepted', async () => {
+    const select = vi.fn(() => {
+      const query = {} as {
+        from: ReturnType<typeof vi.fn>
+        where: ReturnType<typeof vi.fn>
+        get: ReturnType<typeof vi.fn>
+      }
+      query.from = vi.fn(() => query)
+      query.where = vi.fn(() => query)
+      query.get = vi.fn(async () => ({ total: 0 }))
+      return query
+    })
     const database = {
+      select,
       query: {
         platformDocuments: {
           findFirst: vi.fn()
@@ -97,6 +109,6 @@ describe('platform document utilities', () => {
     } as never
 
     await expect(hasAcceptedCurrentPlatformDocuments(database, 'user_1')).resolves.toBe(false)
-    expect(database.query.userPlatformDocumentAcceptances.findMany).not.toHaveBeenCalled()
+    expect(select).toHaveBeenCalled()
   })
 })

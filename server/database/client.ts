@@ -10,7 +10,10 @@ import {
   type D1DatabaseClientBinding
 } from './non-http'
 import { ApiError } from '#server/http/api-error'
-import { recordRequestDatabaseSession } from '#server/http/request-timing'
+import {
+  measureRequestPhaseSync,
+  recordRequestDatabaseSession
+} from '#server/http/request-timing'
 
 export type { AppDatabase, AppDatabaseBatch } from './non-http'
 
@@ -132,7 +135,9 @@ function getRequestDatabaseAccess(event: H3Event) {
     return existingAccess
   }
 
-  const access = createStrongDatabaseAccess(getD1Binding(event), resolveIncomingBookmark(event))
+  const access = measureRequestPhaseSync(event, 'database-session', () =>
+    createStrongDatabaseAccess(getD1Binding(event), resolveIncomingBookmark(event))
+  )
   recordRequestDatabaseSession(event, access.sessionStart)
   requestDatabaseAccess.set(event, access)
   return access

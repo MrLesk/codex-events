@@ -5,11 +5,16 @@ import { eventRoleAssignments } from '#server/database/schema'
 import { getDatabase } from '#server/database/client'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
+import { measureRequestPhase } from '#server/http/request-timing'
 
 type EventRoleAssignmentRecord = typeof eventRoleAssignments.$inferSelect
 
 export default defineApiHandler(async (h3Event) => {
-  const actor = await requireAuthenticatedActor(h3Event)
+  const actor = await measureRequestPhase(
+    h3Event,
+    'actor',
+    () => requireAuthenticatedActor(h3Event)
+  )
 
   if (!actor.hasPlatformAccount) {
     return apiData({
