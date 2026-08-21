@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@luna-performance'
 created_date: '2026-08-20 22:46'
-updated_date: '2026-08-21 02:56'
+updated_date: '2026-08-21 02:57'
 labels: []
 dependencies: []
 parent_task_id: TASK-432
@@ -24,22 +24,22 @@ Deployed real-browser verification shows that the page-shaped topology removed r
 <!-- AC:BEGIN -->
 - [ ] #1 Uncached authenticated account overview, event Operations, Settings, and Participants reads complete within the documented deployed wall-clock and Worker CPU budgets
 - [ ] #2 Participants returns a usable page without automatic multi-second 503 retries
-- [ ] #3 Server-Timing or equivalent phase instrumentation attributes actor, authorization, D1, serialization, and total request time on protected API responses without exposing sensitive data
+- [x] #3 Server-Timing or equivalent phase instrumentation attributes actor, authorization, D1, serialization, and total request time on protected API responses without exposing sensitive data
 - [ ] #4 The request-scoped database facade and page-shaped loaders do not add reflective/proxy/result-wrapping work proportional to query-builder internals or returned object graphs
 - [ ] #5 A deployed browser gate fails on protected CF cache HIT/Age, 5xx responses, excessive Worker/API timing, or an incomplete user-visible page
-- [ ] #6 Canonical docs and root agent instructions preserve the uncached runtime budgets and profiling method
+- [x] #6 Canonical docs and root agent instructions preserve the uncached runtime budgets and profiling method
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Canonical docs were updated or confirmed unchanged
-- [ ] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
-- [ ] #4 Tests were added or updated when behavior changed
-- [ ] #5 Test gaps are documented when automation is not practical
+- [x] #1 Canonical docs were updated or confirmed unchanged
+- [x] #2 Code behavior matches canonical docs
+- [x] #3 Relevant validation commands pass
+- [x] #4 Tests were added or updated when behavior changed
+- [x] #5 Test gaps are documented when automation is not practical
 - [ ] #6 Config and developer workflow docs were updated when setup changed
-- [ ] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #7 Auth and permissions changes follow the documented platform model
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -65,3 +65,9 @@ The remaining deployment-only question is whether the multi-second cold gap is p
 
 Validation: targeted actor/document unit tests (15), authorization unit tests (13), request-timing and actor-hot-path integration tests (8) passed. Full local unit passed 164 files/1,091 tests; integration passed 44 files/470 tests; account-workspace BDD passed 23/23; full BDD passed 86 tests plus the 2-test destructive phase; Cloudflare build and Wrangler deploy --dry-run passed. bun run lint and bun run typecheck passed on the TASK-432.9 source state before unrelated concurrent TASK-432.7.2 edits appeared; a final mixed-worktree rerun reports only those unrelated composable errors, while targeted ESLint and git diff --check pass. No deploy or push was performed. Deployment-only real-browser profiling remains required.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Implemented the next shared defensive architecture slice in 33c3de8e43315c4aaf9869d97c5a75201d5820f6: normal HTTP actor resolution now uses one strong identity/current-consent D1 statement with latest-document semantics; timing separates actor-session, actor-d1, database-session, structured-route D1, authorization, serialization, and total; independent event list/count reads run in one request-scoped strong session wave; docs, AGENTS.md, and regression tests were updated. Local unit, integration, account-workspace BDD, full BDD, Cloudflare build, Wrangler dry-run, targeted ESLint, and diff checks passed. The task remains In Progress because ec90231 predates the new phases and no deploy/push was performed; redeploy test and repeat the cold real-browser journeys to identify Auth0/session versus first-primary/Worker initialization and prove the latency/503 gates.
+<!-- SECTION:FINAL_SUMMARY:END -->
