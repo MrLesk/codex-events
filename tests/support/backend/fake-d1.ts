@@ -107,6 +107,7 @@ function createResultMeta(options: {
   lastRowId?: number
   rowsRead?: number
   rowsWritten?: number
+  servedByPrimary: boolean
 }) {
   return {
     served_by: 'sql.js',
@@ -120,7 +121,7 @@ function createResultMeta(options: {
     total_attempts: 1,
     served_by_region: 'test-region',
     served_by_colo: 'test-colo',
-    served_by_primary: true,
+    served_by_primary: options.servedByPrimary,
     timings: {
       sql_duration_ms: 0
     }
@@ -274,6 +275,7 @@ function isReadQuery(sql: string) {
 interface TestD1QueryTarget {
   database: SqlJsDatabase
   version: number
+  isPrimary: boolean
 }
 
 const infrastructureOwnerId = 0
@@ -336,7 +338,8 @@ class TestD1PreparedStatement {
           success: true,
           meta: createResultMeta({
             changes: database.getRowsModified(),
-            lastRowId: isInsert ? readLastInsertRowId(database) : 0
+            lastRowId: isInsert ? readLastInsertRowId(database) : 0,
+            servedByPrimary: target.isPrimary
           })
         } satisfies D1RunResult
 
@@ -377,7 +380,7 @@ class TestD1PreparedStatement {
 
         return {
           success: true,
-          meta: createResultMeta({ rowsRead: results.length }),
+          meta: createResultMeta({ rowsRead: results.length, servedByPrimary: target.isPrimary }),
           results
         } satisfies D1QueryResult<TResult>
       } finally {
@@ -493,21 +496,24 @@ class TestD1DatabaseSession {
     private readonly database: TestD1Database,
     private readonly sessionId: number,
     private minimumVersion: number,
-    private readonly useReplica: boolean,
+    private readonly firstQueryMustUsePrimary: boolean,
     private readonly databaseIdentity: TestD1DatabaseIdentity,
     private readonly runMutation: TestD1Mutation
   ) {}
+
+  private queryCount = 0
 
   prepare(sql: string) {
     return new TestD1PreparedStatement(
       isRead => this.database.getSessionQueryTarget(
         this.minimumVersion,
-        isRead && this.useReplica && !this.hasWritten
+        isRead && (!this.firstQueryMustUsePrimary || this.queryCount > 0) && !this.hasWritten
       ),
       this.runMutation,
       sql,
       [],
       (query, servedVersion) => {
+        this.queryCount += 1
         const bookmark = this.database.recordSessionQuery(
           this.sessionId,
           this.minimumVersion,
@@ -533,7 +539,8 @@ class TestD1DatabaseSession {
     const previousState = {
       bookmark: this.bookmark,
       minimumVersion: this.minimumVersion,
-      hasWritten: this.hasWritten
+      hasWritten: this.hasWritten,
+      queryCount: this.queryCount
     }
 
     try {
@@ -550,6 +557,7 @@ class TestD1DatabaseSession {
       this.bookmark = previousState.bookmark
       this.minimumVersion = previousState.minimumVersion
       this.hasWritten = previousState.hasWritten
+      this.queryCount = previousState.queryCount
       throw error
     }
   }
@@ -657,7 +665,7 @@ export class TestD1Database {
       this,
       sessionId,
       minimumVersion,
-      constraintOrBookmark !== 'first-primary',
+      constraintOrBookmark === 'first-primary',
       this.databaseIdentity,
       execute => this.runMutation(execute)
     )
@@ -773,14 +781,16 @@ export class TestD1Database {
 
     return {
       database: await this.replicaDatabase,
-      version: this.replicaVersion
+      version: this.replicaVersion,
+      isPrimary: false
     }
   }
 
   private async getPrimaryQueryTarget(): Promise<TestD1QueryTarget> {
     return {
       database: await this.getDatabase(),
-      version: this.databaseVersion
+      version: this.databaseVersion,
+      isPrimary: true
     }
   }
 

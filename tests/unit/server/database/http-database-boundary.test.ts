@@ -405,7 +405,7 @@ describe('HTTP database boundary', () => {
       .sort()
 
     expect(instrumentationFiles).toEqual([...allowedInstrumentationFiles].sort())
-    expect(clientSource).toMatch(/createTimedSessionDatabaseBinding\(event, binding\.withSession\(sessionStart\)\)/u)
+    expect(clientSource).toMatch(/createTimedSessionDatabaseBinding\(event, binding\.withSession\(sessionAnchor\)\)/u)
     expect(clientSource).toMatch(/const rawStatementByTimedStatement = new WeakMap/u)
     expect(clientSource).toMatch(/batch: async <T>[\s\S]*?measureD1Execution/u)
     expect(timingSource).toMatch(/const maxReportedD1Executions = 8/u)

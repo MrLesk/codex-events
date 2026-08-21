@@ -101,19 +101,37 @@ describe('TestD1Database', () => {
     const writeBookmark = d1Database.getLatestBookmark()
     expect(writeBookmark).toBe('test-bookmark-1')
 
-    const unbookmarkedRead = createNonHttpDatabase(d1Database.withSession('first-unconstrained') as never)
+    const unbookmarkedSession = d1Database.withSession('first-unconstrained')
+    const unbookmarkedRead = createNonHttpDatabase(unbookmarkedSession as never)
+    const unbookmarkedResult = await unbookmarkedSession.prepare('select id from users where id = ?').bind('bookmark_user').all()
+    expect(unbookmarkedResult.meta.served_by_primary).toBe(false)
     await expect(unbookmarkedRead.query.users.findFirst({
       where: eq(users.id, 'bookmark_user')
     })).resolves.toBeUndefined()
     expect(d1Database.getLatestBookmark()).toBe('test-bookmark-0')
 
-    const bookmarkedRead = createNonHttpDatabase(d1Database.withSession(writeBookmark ?? undefined) as never)
+    const bookmarkedSession = d1Database.withSession(writeBookmark ?? undefined)
+    const bookmarkedRead = createNonHttpDatabase(bookmarkedSession as never)
+    const bookmarkedResult = await bookmarkedSession.prepare('select id from users where id = ?').bind('bookmark_user').all()
+    expect(bookmarkedResult.meta.served_by_primary).toBe(false)
     await expect(bookmarkedRead.query.users.findFirst({
       where: eq(users.id, 'bookmark_user')
     })).resolves.toMatchObject({
       id: 'bookmark_user'
     })
     expect(d1Database.getLatestBookmark()).toBe(writeBookmark)
+  })
+
+  test('routes only the first first-primary query to primary and reports the selected target', async () => {
+    const d1Database = createTestD1Database({ replicaStale: true })
+    databases.push(d1Database)
+    const session = d1Database.withSession('first-primary')
+
+    const firstResult = await session.prepare('select 1').all()
+    const secondResult = await session.prepare('select 1').all()
+
+    expect(firstResult.meta.served_by_primary).toBe(true)
+    expect(secondResult.meta.served_by_primary).toBe(false)
   })
 
   test('executes mixed write/read statements atomically on one request session', async () => {

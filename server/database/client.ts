@@ -12,12 +12,17 @@ import {
 import { ApiError } from '#server/http/api-error'
 import {
   finishRequestD1Execution,
+  maxReportedD1Statements,
   measureRequestPhaseSync,
   recordRequestDatabaseSession,
   startRequestD1Execution,
   type D1ExecutionApi,
   type D1ExecutionKind,
-  type D1ExecutionObservation
+  type D1ExecutionObservation,
+  type D1MetadataSummary,
+  type D1PrimarySummary,
+  type D1SessionDescription,
+  type D1StatementObservation
 } from '#server/http/request-timing'
 
 export type { AppDatabase, AppDatabaseBatch } from './non-http'
@@ -37,7 +42,7 @@ interface AppDatabaseAccess {
   database: AppDatabase
   session: D1DatabaseSessionBinding
   consistency: 'strong'
-  sessionStart: D1SessionConstraint | string
+  sessionStart: D1SessionDescription
 }
 
 type RuntimeConfigShape = {
@@ -66,22 +71,72 @@ function unknownD1ExecutionObservation(statementCount: number): D1ExecutionObser
     databaseDurationUnknownCount: statementCount,
     attempts: 0,
     attemptsUnknownCount: statementCount,
-    servedByRegion: null,
-    servedByColo: null,
-    servedByPrimary: null
+    servedByRegion: 'unknown',
+    servedByColo: 'unknown',
+    servedByPrimary: 'unknown'
   }
 }
 
-function mergeMetadataString(current: string | null, next: string | null) {
-  if (next === null) {
-    return current
+function mergeMetadataString(current: D1MetadataSummary | null, next: D1MetadataSummary) {
+  if (current === null) {
+    return next
   }
 
-  return current === null
-    ? next
-    : current === next
-      ? current
-      : 'mixed'
+  if (current === 'mixed' || next === 'mixed') {
+    return 'mixed'
+  }
+
+  return current === next ? current : 'mixed'
+}
+
+function mergeMetadataPrimary(current: D1PrimarySummary | null, next: D1PrimarySummary) {
+  if (current === null) {
+    return next
+  }
+
+  if (current === 'mixed' || next === 'mixed') {
+    return 'mixed'
+  }
+
+  return current === next ? current : 'mixed'
+}
+
+function readD1StatementObservation(entry: unknown): D1StatementObservation {
+  const metadata = typeof entry === 'object' && entry !== null && 'meta' in entry
+    ? (entry as { meta?: unknown }).meta
+    : undefined
+  const timings = typeof metadata === 'object' && metadata !== null && 'timings' in metadata
+    ? (metadata as { timings?: unknown }).timings
+    : undefined
+  const sqlDuration = typeof timings === 'object' && timings !== null && 'sql_duration_ms' in timings
+    ? (timings as { sql_duration_ms?: unknown }).sql_duration_ms
+    : undefined
+  const totalAttempts = typeof metadata === 'object' && metadata !== null && 'total_attempts' in metadata
+    ? (metadata as { total_attempts?: unknown }).total_attempts
+    : undefined
+  const region = typeof metadata === 'object' && metadata !== null && 'served_by_region' in metadata
+    ? (metadata as { served_by_region?: unknown }).served_by_region
+    : undefined
+  const colo = typeof metadata === 'object' && metadata !== null && 'served_by_colo' in metadata
+    ? (metadata as { served_by_colo?: unknown }).served_by_colo
+    : undefined
+  const primary = typeof metadata === 'object' && metadata !== null && 'served_by_primary' in metadata
+    ? (metadata as { served_by_primary?: unknown }).served_by_primary
+    : undefined
+
+  return {
+    databaseDurationMs: typeof sqlDuration === 'number' && Number.isFinite(sqlDuration)
+      ? Math.max(0, sqlDuration)
+      : 0,
+    databaseDurationUnknownCount: typeof sqlDuration === 'number' && Number.isFinite(sqlDuration) ? 0 : 1,
+    attempts: typeof totalAttempts === 'number' && Number.isFinite(totalAttempts)
+      ? Math.max(0, Math.floor(totalAttempts))
+      : 0,
+    attemptsUnknownCount: typeof totalAttempts === 'number' && Number.isFinite(totalAttempts) ? 0 : 1,
+    servedByRegion: typeof region === 'string' ? region : 'unknown',
+    servedByColo: typeof colo === 'string' ? colo : 'unknown',
+    servedByPrimary: typeof primary === 'boolean' ? primary : 'unknown'
+  }
 }
 
 function readDatabaseDuration(result: unknown, statementCount: number, expectsResultMetadata: boolean): D1ExecutionObservation {
@@ -89,60 +144,30 @@ function readDatabaseDuration(result: unknown, statementCount: number, expectsRe
     return unknownD1ExecutionObservation(statementCount)
   }
 
-  const results = Array.isArray(result) ? result : [result]
+  const normalizedStatementCount = Math.max(0, statementCount)
+  const isBatchResult = Array.isArray(result)
+  const results = isBatchResult ? result : [result]
+  const statementObservations: D1StatementObservation[] = []
   let databaseDurationMs = 0
-  let databaseDurationUnknownCount = Math.max(0, statementCount - results.length)
+  let databaseDurationUnknownCount = 0
   let attempts = 0
-  let attemptsUnknownCount = Math.max(0, statementCount - results.length)
-  let servedByRegion: string | null = null
-  let servedByColo: string | null = null
-  let servedByPrimary: boolean | 'mixed' | null = null
-  let servedByPrimaryMixed = false
+  let attemptsUnknownCount = 0
+  let servedByRegion: D1MetadataSummary | null = null
+  let servedByColo: D1MetadataSummary | null = null
+  let servedByPrimary: D1PrimarySummary | null = null
 
-  for (const entry of results) {
-    const metadata = typeof entry === 'object' && entry !== null && 'meta' in entry
-      ? (entry as { meta?: unknown }).meta
-      : undefined
-    const timings = typeof metadata === 'object' && metadata !== null && 'timings' in metadata
-      ? (metadata as { timings?: unknown }).timings
-      : undefined
-    const sqlDuration = typeof timings === 'object' && timings !== null && 'sql_duration_ms' in timings
-      ? (timings as { sql_duration_ms?: unknown }).sql_duration_ms
-      : undefined
-    const totalAttempts = typeof metadata === 'object' && metadata !== null && 'total_attempts' in metadata
-      ? (metadata as { total_attempts?: unknown }).total_attempts
-      : undefined
-    const region = typeof metadata === 'object' && metadata !== null && 'served_by_region' in metadata
-      ? (metadata as { served_by_region?: unknown }).served_by_region
-      : undefined
-    const colo = typeof metadata === 'object' && metadata !== null && 'served_by_colo' in metadata
-      ? (metadata as { served_by_colo?: unknown }).served_by_colo
-      : undefined
-    const primary = typeof metadata === 'object' && metadata !== null && 'served_by_primary' in metadata
-      ? (metadata as { served_by_primary?: unknown }).served_by_primary
-      : undefined
+  for (let index = 0; index < normalizedStatementCount; index += 1) {
+    const observation = readD1StatementObservation(results[index])
+    databaseDurationMs += observation.databaseDurationMs
+    databaseDurationUnknownCount += observation.databaseDurationUnknownCount
+    attempts += observation.attempts
+    attemptsUnknownCount += observation.attemptsUnknownCount
+    servedByRegion = mergeMetadataString(servedByRegion, observation.servedByRegion)
+    servedByColo = mergeMetadataString(servedByColo, observation.servedByColo)
+    servedByPrimary = mergeMetadataPrimary(servedByPrimary, observation.servedByPrimary)
 
-    if (typeof sqlDuration === 'number' && Number.isFinite(sqlDuration)) {
-      databaseDurationMs += Math.max(0, sqlDuration)
-    } else {
-      databaseDurationUnknownCount += 1
-    }
-
-    if (typeof totalAttempts === 'number' && Number.isFinite(totalAttempts)) {
-      attempts += Math.max(0, Math.floor(totalAttempts))
-    } else {
-      attemptsUnknownCount += 1
-    }
-
-    servedByRegion = mergeMetadataString(servedByRegion, typeof region === 'string' ? region : null)
-    servedByColo = mergeMetadataString(servedByColo, typeof colo === 'string' ? colo : null)
-
-    if (typeof primary === 'boolean') {
-      if (servedByPrimary === null) {
-        servedByPrimary = primary
-      } else if (servedByPrimary !== primary) {
-        servedByPrimaryMixed = true
-      }
+    if (isBatchResult && statementObservations.length < maxReportedD1Statements) {
+      statementObservations.push(observation)
     }
   }
 
@@ -151,10 +176,28 @@ function readDatabaseDuration(result: unknown, statementCount: number, expectsRe
     databaseDurationUnknownCount,
     attempts,
     attemptsUnknownCount,
-    servedByRegion,
-    servedByColo,
-    servedByPrimary: servedByPrimaryMixed ? 'mixed' : servedByPrimary
+    servedByRegion: servedByRegion ?? 'unknown',
+    servedByColo: servedByColo ?? 'unknown',
+    servedByPrimary: servedByPrimary ?? 'unknown',
+    ...(isBatchResult
+      ? {
+          statementMetadata: statementObservations,
+          statementMetadataOverflowCount: Math.max(0, normalizedStatementCount - statementObservations.length)
+        }
+      : {})
   }
+}
+
+function isConstraintLikeD1SessionValue(value: string) {
+  return /^(?:first(?:[-_\s]|$)|primary$|unconstrained$)/iu.test(value)
+}
+
+function invalidD1BookmarkError() {
+  return new ApiError({
+    statusCode: 400,
+    code: 'invalid_database_bookmark',
+    message: 'The D1 session bookmark is invalid.'
+  })
 }
 
 async function measureD1Execution<T>(
@@ -172,7 +215,7 @@ async function measureD1Execution<T>(
     finishRequestD1Execution(event, execution, readDatabaseDuration(result, statementCount, expectsResultMetadata))
     return result
   } catch (error) {
-    finishRequestD1Execution(event, execution, unknownD1ExecutionObservation(statementCount))
+    finishRequestD1Execution(event, execution, unknownD1ExecutionObservation(statementCount), 'failed')
     throw error
   }
 }
@@ -281,7 +324,15 @@ function resolveIncomingBookmark(event: H3Event) {
 }
 
 function resolveSessionStart(incomingBookmark?: string) {
-  return incomingBookmark ?? 'first-primary'
+  if (incomingBookmark === undefined) {
+    return 'first-primary'
+  }
+
+  if (isConstraintLikeD1SessionValue(incomingBookmark)) {
+    throw invalidD1BookmarkError()
+  }
+
+  return incomingBookmark
 }
 
 function createStrongDatabaseAccess(
@@ -298,14 +349,14 @@ function createStrongDatabaseAccess(
     })
   }
 
-  const sessionStart = resolveSessionStart(incomingBookmark)
-  const session = createTimedSessionDatabaseBinding(event, binding.withSession(sessionStart))
+  const sessionAnchor = resolveSessionStart(incomingBookmark)
+  const session = createTimedSessionDatabaseBinding(event, binding.withSession(sessionAnchor))
 
   return {
     database: createRequestDatabase(createSessionDatabaseBinding(session)),
     session,
     consistency: 'strong',
-    sessionStart
+    sessionStart: sessionAnchor === 'first-primary' ? 'first-primary' : 'bookmark'
   }
 }
 
