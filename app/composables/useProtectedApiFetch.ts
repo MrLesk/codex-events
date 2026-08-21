@@ -1,23 +1,15 @@
 import type { AsyncData, NuxtError, UseFetchOptions } from 'nuxt/app'
 import type { FetchOptions, FetchRequest } from 'ofetch'
-import { toValue } from 'vue'
+import { computed, toValue } from 'vue'
 
 import { useAccountBootstrap } from './useAccountBootstrap'
 import { useApiClient, type ApiClient } from './useApiClient'
 import { useAuthorizationCache } from './useAuthorizationCache'
-import { useProtectedRequestOwner } from './useProtectedRequestOwner'
-
-function stableRequestPart(value: unknown) {
-  if (value === undefined) {
-    return 'undefined'
-  }
-
-  try {
-    return JSON.stringify(value)
-  } catch {
-    return String(value)
-  }
-}
+import {
+  buildProtectedRequestKey,
+  resolveProtectedWatchSources,
+  useProtectedRequestOwner
+} from './useProtectedRequestOwner'
 
 export function useApiFetch<Data>(
   request: MaybeRefOrGetter<string>,
@@ -26,13 +18,21 @@ export function useApiFetch<Data>(
   const apiClient = useApiClient()
   const bootstrap = useAccountBootstrap()
   const authorizationCache = useAuthorizationCache()
-  const protectedKey = authorizationCache.protectedKey(options?.key ?? request)
+  const protectedRequestShapeKey = computed(() => buildProtectedRequestKey(
+    toValue(options?.key ?? request),
+    toValue(request),
+    toValue(options?.method ?? 'GET'),
+    toValue(options?.baseURL),
+    toValue(options?.query),
+    toValue(options?.params),
+    toValue(options?.headers),
+    toValue(options?.body),
+    toValue(options?.responseType),
+    toValue(options?.ignoreResponseError),
+    resolveProtectedWatchSources(options?.watch)
+  ))
+  const protectedKey = authorizationCache.protectedKey(protectedRequestShapeKey)
   const protectedRequestOwner = useProtectedRequestOwner()
-  const buildOwnerKey = (requestValue: unknown, query: unknown) => [
-    toValue(protectedKey),
-    stableRequestPart(requestValue),
-    stableRequestPart(query)
-  ].join(':')
   const gatedApiClient: ApiClient = async <T>(request: FetchRequest, fetchOptions?: FetchOptions) => {
     const method = String(fetchOptions?.method ?? 'GET').toUpperCase()
 
@@ -44,7 +44,7 @@ export function useApiFetch<Data>(
     await bootstrap.ensureLoaded(fetchOptions?.signal ?? undefined)
 
     return await protectedRequestOwner.execute(
-      buildOwnerKey(request, fetchOptions?.query),
+      toValue(protectedKey),
       fetchOptions?.signal ?? undefined,
       async ownerSignal => await apiClient<T>(request, {
         ...fetchOptions,
@@ -65,10 +65,7 @@ export function useApiFetch<Data>(
   const rawExecute = asyncData.execute
   const rawClear = asyncData.clear
   const refresh = (refreshOptions?: Parameters<typeof asyncData.refresh>[0]) => {
-    protectedRequestOwner.invalidate(buildOwnerKey(
-      toValue(request),
-      toValue(options?.query)
-    ))
+    protectedRequestOwner.invalidate(toValue(protectedKey))
     return rawRefresh({
       ...refreshOptions,
       dedupe: 'cancel'
@@ -85,10 +82,7 @@ export function useApiFetch<Data>(
     })
   }
   const clear = () => {
-    protectedRequestOwner.invalidate(buildOwnerKey(
-      toValue(request),
-      toValue(options?.query)
-    ))
+    protectedRequestOwner.invalidate(toValue(protectedKey))
     rawClear()
   }
 

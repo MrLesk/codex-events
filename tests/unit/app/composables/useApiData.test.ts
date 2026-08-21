@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { computed, nextTick, ref, toValue } from 'vue'
 
 const clientFetch = vi.hoisted(() => vi.fn())
 const useApiClient = vi.hoisted(() => vi.fn())
@@ -6,6 +7,24 @@ const useAccountBootstrap = vi.hoisted(() => vi.fn())
 const ensureLoaded = vi.hoisted(() => vi.fn())
 const useAuthorizationCache = vi.hoisted(() => vi.fn())
 const useProtectedRequestOwner = vi.hoisted(() => vi.fn())
+const buildProtectedRequestKey = vi.hoisted(() => vi.fn((...parts: unknown[]) => JSON.stringify(parts)))
+const resolveProtectedWatchSources = vi.hoisted(() => vi.fn((sources: unknown[] | false | undefined) => {
+  if (!sources || sources === false) {
+    return []
+  }
+
+  return sources.map((source) => {
+    if (typeof source === 'function') {
+      return source()
+    }
+
+    if (source && typeof source === 'object' && 'value' in source) {
+      return source.value
+    }
+
+    return source
+  })
+}))
 const useAsyncData = vi.hoisted(() => vi.fn())
 const protectedExecute = vi.hoisted(() => vi.fn())
 const protectedInvalidate = vi.hoisted(() => vi.fn())
@@ -23,6 +42,8 @@ vi.mock('../../../../app/composables/useAuthorizationCache', () => ({
 }))
 
 vi.mock('../../../../app/composables/useProtectedRequestOwner', () => ({
+  buildProtectedRequestKey,
+  resolveProtectedWatchSources,
   useProtectedRequestOwner
 }))
 
@@ -42,7 +63,7 @@ describe('useApiData', () => {
     useApiClient.mockReturnValue(clientFetch)
     useAccountBootstrap.mockReturnValue({ ensureLoaded })
     useAuthorizationCache.mockReturnValue({
-      protectedKey: (key: string) => `protected-api:0:${key}`
+      protectedKey: (key: unknown) => computed(() => `protected-api:0:${toValue(key as never)}`)
     })
     protectedExecute.mockImplementation(async (
       _key: string,
@@ -87,7 +108,7 @@ describe('useApiData', () => {
       })
     })
 
-    expect(request.key).toBe('protected-api:0:session-actor:auth0|user')
+    expect(toValue(request.key)).toBe('protected-api:0:session-actor:auth0|user')
     expect(request.options).toMatchObject({
       deep: false,
       dedupe: 'cancel'
@@ -158,6 +179,30 @@ describe('useApiData', () => {
 
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
     expect(consumer).not.toHaveBeenCalled()
+  })
+
+  test('changes the protected async-data key when a watched request shape changes', async () => {
+    const watchedValue = ref('first')
+    let capturedKey: unknown
+    let capturedHandler: ((nuxtApp: unknown, context: { signal: AbortSignal }) => Promise<unknown>) | undefined
+    useAsyncData.mockImplementation((key, handler, options) => {
+      capturedKey = key
+      capturedHandler = handler
+      return { key, handler, options }
+    })
+
+    const { useApiData } = await import('../../../../app/composables/useApiData')
+    useApiData('shared-read', async () => 'ready', {
+      watch: [watchedValue]
+    })
+
+    const firstKey = toValue(capturedKey as never)
+    watchedValue.value = 'second'
+    await nextTick()
+
+    expect(toValue(capturedKey as never)).not.toBe(firstKey)
+    await capturedHandler!({}, { signal: new AbortController().signal })
+    expect(protectedExecute.mock.calls[0]?.[0]).toBe(toValue(capturedKey as never))
   })
 
   test('keeps public async-data keys independent from authorization generation', async () => {

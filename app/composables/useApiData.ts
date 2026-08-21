@@ -1,10 +1,16 @@
 import type { MultiWatchSources } from 'vue'
 import type { ApiDataResponse } from '~/lib/api'
 
+import { computed, toValue } from 'vue'
+
 import { useAccountBootstrap } from './useAccountBootstrap'
 import { useApiClient } from './useApiClient'
 import { useAuthorizationCache, type ApiCacheScope } from './useAuthorizationCache'
-import { useProtectedRequestOwner } from './useProtectedRequestOwner'
+import {
+  buildProtectedRequestKey,
+  resolveProtectedWatchSources,
+  useProtectedRequestOwner
+} from './useProtectedRequestOwner'
 
 interface UseApiDataOptions<Data> {
   cacheScope?: ApiCacheScope
@@ -34,8 +40,16 @@ export function useApiData<Data>(
   const bootstrap = cacheScope === 'protected'
     ? useAccountBootstrap()
     : null
+  const protectedRequestShapeKey = cacheScope === 'protected'
+    ? computed(() => {
+        const watchedSources = resolveProtectedWatchSources(options?.watch)
+        return watchedSources.length > 0
+          ? buildProtectedRequestKey(toValue(key), watchedSources)
+          : toValue(key)
+      })
+    : null
   const resolvedKey = cacheScope === 'protected'
-    ? useAuthorizationCache().protectedKey(key)
+    ? useAuthorizationCache().protectedKey(protectedRequestShapeKey!)
     : key
   const protectedRequestOwner = cacheScope === 'protected'
     ? useProtectedRequestOwner()

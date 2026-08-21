@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-08-21 02:39'
-updated_date: '2026-08-21 03:31'
+updated_date: '2026-08-21 04:10'
 labels: []
 dependencies: []
 parent_task_id: TASK-432.7
@@ -26,13 +26,15 @@ Deployed signed-in browser verification at SHA ec90231d found protected query-on
 - [x] #4 Cancellation and stale-response suppression continue to work without converting an abort into a retry
 - [x] #5 The invariant is owned by the shared protected fetch/data architecture rather than Staff, Feedback, or other page-local flags
 - [x] #6 A deterministic browser regression covers the Staff candidates 200 case and Feedback 409 case without timing sleeps or relaxed request counts
+- [x] #7 Watched protected-read inputs cannot reuse a settled response for a different request shape; the owner key changes or the prior settlement is invalidated before execution
+- [x] #8 The shared protected request owner has an explicit bounded retention policy that preserves active subscribers and same-key settlement deduplication without unbounded app-lifetime growth
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [x] #1 Canonical docs were updated or confirmed unchanged
 - [x] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
+- [x] #3 Relevant validation commands pass
 - [x] #4 Tests were added or updated when behavior changed
 - [x] #5 Test gaps are documented when automation is not practical
 - [x] #6 Config and developer workflow docs were updated when setup changed
@@ -58,9 +60,13 @@ Deployed signed-in browser verification at SHA ec90231d found protected query-on
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Pre-fix reproduction: the local account-workspace browser suite passed 23 scenarios, but the Staff case recorded two identical GETs to /api/events/<event>/roles/candidates?page=1&page_size=20 while the protected rosters page read remained single. A fresh signed-in deployed browser capture at ec90231d reproduced the terminal Feedback case with two identical GETs to /api/account/events/cfp-test-meetup-august-2026/feedback?includeEventShell=true, both 409; the second began immediately after the first response without user intent. The Staff trace showed two candidate requests start back-to-back before the first response. Root cause is multiple lifecycle owners and unconditional async-data/watch activation at the shared boundary, not a Staff/Feedback-specific user action.
-
-Reviewer validation evidence (2026-08-21):\n- Targeted TASK-432.7.2 browser scenarios: 2 passed in 14.1s. Staff candidates emitted exactly one protected candidates GET and returned 200. Feedback emitted exactly one protected feedback GET and returned the expected lifecycle 409; exactly one matching browser console 409 was allowed, with no page errors, API errors, or duplicate request.\n- Full account-workspace BDD: 25 passed in 40.2s (the 23-case suite plus the two TASK-432.7.2 scenarios); topology checks recorded no duplicate protected reads.\n- lint: passed.\n- typecheck: passed.\n- unit: 165 files / 1,096 tests passed.\n- integration: 44 files / 470 tests passed in 104.92s.\n- git diff --check: passed.\n- Full regular BDD in the task-isolated checkout: 87/88 passed. The sole failure was the temporary checkout's symlinked node_modules causing Vite to request photoswipe.css through an out-of-root /_nuxt path (403/404); the protected operations read itself was one request and returned 200. The shared checkout's regular run was 86/88 because the unrelated uncommitted app/composables/useAccountBootstrap.ts patch caused two simplified-claiming SSR 500s; that file is excluded from this task.\n- Destructive BDD did not run after the regular suite failure. Task remains In Progress rather than Done until the required full regular/destructive gate is rerun in a clean validation environment.\n- No deployment or remote-test verification was performed; no push was made.\n\nArchitecture evidence: ofetch's implicit GET retry could replay a terminal 409, and separate lifecycle owners could replay settled reads. The shared protected request owner now keys ownership by authorization generation and request key, retains every non-abort settlement until explicit refresh/action invalidation, preserves abort/stale-response behavior, and the low-level protected client structurally forces retry:false.
+Current-state evidence (2026-08-21):
+- The shared protected boundary derives the Nuxt and owner identity from authorization generation, the base key, every declared reactive watch source, and request-shaping inputs. useApiData and useApiFetch compute the same identity before Nuxt watcher execution, so a changed watched shape cannot reuse a settled 2xx or 4xx response.
+- Each Nuxt app owns a bounded inactive-settled LRU of 32 entries. Trimming evicts only settled entries with no active subscribers, never aborts an active read, and runs after settlement and subscriber cleanup. Same-key in-flight sharing, settled 2xx/4xx dedupe, explicit invalidation, authorization-generation separation, and abort/stale behavior remain intact.
+- Focused proof covers reactive-key freshness, bounded retention, active-subscriber preservation, Staff candidates 200 settlement, and Feedback lifecycle 409 settlement.
+- Earlier clean shared-checkout gates: lint, typecheck, unit 1,096, integration 470, account-workspace BDD 25, regular BDD 88, and destructive BDD 2.
+- Final gates after this patch: targeted composable unit tests 16 passed; lint passed; typecheck passed; unit 165 files / 1,101 tests passed; integration 44 files / 470 tests passed; account-workspace BDD 25 passed; regular BDD 88 passed; destructive BDD 2 passed; Cloudflare production build passed; git diff --check passed.
+- No production, remote-test, or deployment verification was performed. TASK-432.7.2 remains In Progress pending deployed browser verification.
 <!-- SECTION:NOTES:END -->
 
 ## Comments
@@ -71,10 +77,16 @@ created: 2026-08-21 03:12
 ---
 Fresh reviewer/finisher takeover: auditing the existing uncommitted patch before making any code changes.
 ---
+
+author: @codex
+created: 2026-08-21 03:47
+---
+Fresh architecture review blocked rollout: protected useAsyncData watch changes can reuse stale owner-cached data when the watched request shape is absent from the key, and settled search/page entries have no memory bound. A fresh Luna worker must make both invariants structural, update persistent guidance, and add deterministic tests before push.
+---
 <!-- COMMENTS:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Implemented TASK-432.7.2's shared protected-read ownership and retry policy. Protected reads now force retry:false; one owner per authorization generation/request key retains non-abort settlements until explicit user refresh/action, while aborts remain aborts. Staff 200 and Feedback 409 browser regressions pass with exact request counts. Targeted, account-workspace, lint, typecheck, unit, integration, and diff checks pass. Full regular BDD is not clean because of validation-environment/unrelated-worktree failures, destructive BDD was not run, so the task remains In Progress.
+Implemented the shared protected-read freshness and bounded-retention invariants. Watched request shapes now participate in the pre-watcher Nuxt and owner identity, and each Nuxt app retains only a bounded inactive-settled LRU without evicting active subscribers. Focused, unit, integration, account-workspace, regular 88-test, destructive 2-test, lint, typecheck, production build, and diff checks pass. Remains In Progress pending deployed browser verification.
 <!-- SECTION:FINAL_SUMMARY:END -->
