@@ -7,32 +7,25 @@ import {
   setHeader
 } from 'h3'
 
+import {
+  isPublicCacheableApiPath,
+  isStaticFrameworkApiPath,
+  publicEventCacheControl,
+  publicEventCdnCacheControl
+} from '#shared/http/public-cache-topology'
+
+export {
+  isPublicCacheableApiPath,
+  isStaticFrameworkApiPath,
+  publicEventCacheControl,
+  publicEventCdnCacheControl
+} from '#shared/http/public-cache-topology'
+
 export const protectedApiCacheControl = 'private, no-store'
 export const protectedApiCdnCacheControl = 'private, no-store'
 
-export const publicEventCacheControl = 'public, max-age=30, stale-if-error=0'
-export const publicEventCdnCacheControl = 'public, max-age=30, stale-if-error=0'
-
 type BeforeResponse = {
   body?: unknown
-}
-
-const publicCacheableApiPathPatterns = [
-  /^\/api\/public\/events$/u,
-  /^\/api\/public\/events\/[^/]+$/u,
-  /^\/api\/public\/events\/[^/]+\/(?:evaluation-criteria|photos|prizes|published-projects|winners)$/u,
-  /^\/api\/public\/events\/[^/]+\/images\/(?:background|banner)$/u,
-  /^\/api\/public\/events\/[^/]+\/photos\/[^/]+\/image$/u,
-  /^\/api\/public\/platform\/event-default-background-image$/u
-]
-
-const staticFrameworkApiPathPatterns = [
-  /^\/api\/_nuxt_icon\/[^/]+\.json$/u
-]
-
-function normalizedPath(path: string) {
-  const withoutTrailingSlash = path.replace(/\/+$/u, '')
-  return withoutTrailingSlash || '/'
 }
 
 function hasHeaderValue(value: string | number | string[] | undefined, expected: string) {
@@ -65,18 +58,8 @@ function withProtectedResponseCacheHeaders(response: Response) {
   }
 }
 
-export function isPublicCacheableApiPath(path: string) {
-  const normalized = normalizedPath(path)
-  return publicCacheableApiPathPatterns.some(pattern => pattern.test(normalized))
-}
-
-export function isStaticFrameworkApiPath(path: string) {
-  const normalized = normalizedPath(path)
-  return staticFrameworkApiPathPatterns.some(pattern => pattern.test(normalized))
-}
-
 export function isProtectedApiPath(path: string) {
-  return normalizedPath(path).startsWith('/api/')
+  return path.replace(/\/+$/u, '').startsWith('/api/')
     && !isPublicCacheableApiPath(path)
     && !isStaticFrameworkApiPath(path)
 }
@@ -85,7 +68,7 @@ export function applyApiResponseCachePolicy(
   event: H3Event,
   response?: BeforeResponse
 ) {
-  const path = normalizedPath(getRequestURL(event).pathname)
+  const path = getRequestURL(event).pathname.replace(/\/+$/u, '') || '/'
 
   if (!path.startsWith('/api/')) {
     return 'outside_api' as const

@@ -330,6 +330,15 @@ For the selected target, the generator resolves the application URL, Cloudflare 
 
 Two repo-specific details matter when maintaining this tooling:
 
+- **Cloudflare public caching uses a split entrypoint wrapper.** The generated
+  deployment config points Wrangler at
+  `tools/deploy/cloudflare-worker-entrypoint.mjs`, which keeps the Nitro
+  gateway uncached and exposes the named `PublicCache` entrypoint only through
+  `ctx.exports`; generated configs explicitly enable the required
+  `enable_ctx_exports` compatibility flag. Do not deploy
+  `.output/server/index.mjs` directly or enable cache on the default gateway.
+  The tracked `wrangler.jsonc` remains local and cache-disabled.
+
 - **Queue consumers are reconciled separately from `wrangler deploy`.** The generated config binds Queue producers only. Remote workflows deploy the Worker first, then reconcile consumers by deleting existing consumers from each environment-owned queue through the Cloudflare Queues API and re-adding the Worker with the desired batch and retry settings. Cloudflare keeps an inactive Worker consumer in the single-consumer slot until it is removed, so consumer attachment is intentionally separate from deploy.
 - **Cloudflare credentials use Wrangler's supported names.** Deploy scripts and workflows keep `CF_*` as the project configuration surface, then map them to `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` when Wrangler runs, avoiding Wrangler's deprecated `CF_ACCOUNT_ID`/`CF_API_TOKEN` aliases without storing credentials under two names.
 

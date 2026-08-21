@@ -14,6 +14,10 @@ import {
   resolveEventDetailBackgroundImageUrl
 } from '~/domains/events/presentation'
 import type { EventPhotoRecord } from '#shared/domains/events/photos'
+import {
+  publicEventCacheControl,
+  publicEventCdnCacheControl
+} from '#shared/http/public-cache-topology'
 import type {
   PublishedProjectEntry,
   WinnerEntry
@@ -80,8 +84,8 @@ if (!eventData.value) {
 }
 
 if (import.meta.server) {
-  useResponseHeader('cache-control').value = 'public, max-age=30, stale-if-error=0'
-  useResponseHeader('cloudflare-cdn-cache-control').value = 'public, max-age=30, stale-if-error=0'
+  useResponseHeader('cache-control').value = publicEventCacheControl
+  useResponseHeader('cloudflare-cdn-cache-control').value = publicEventCdnCacheControl
 }
 
 const event = computed(() => eventData.value!)

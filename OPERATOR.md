@@ -258,15 +258,20 @@ authenticated body, `CF-Cache-Status: HIT`, or `Age`.
 
 4. Request one operator-supplied, immutable public event or media URL twice.
 Confirm both exact public 30-second directives and record `CF-Cache-Status`
-for the edge behavior. Do not treat a public HIT as evidence that protected
-APIs are safe to cache.
+for the edge behavior; the second request should provide the deployed edge
+HIT evidence for the selected public response. Do not treat a public HIT as
+evidence that protected APIs are safe to cache.
 
 5. In the Cloudflare zone, inspect Cache Rules for the deployed hostname.
 `/api/**` must bypass shared caching or honor the origin no-store directives;
 no rule may override them or use a cache key that ignores Cookie. The Worker
-configuration must show `cache.enabled=false` in both the tracked source and
-the generated target config. If either check is false, stop the release gate
-and remediate the zone/deployment configuration before investigating latency.
+configuration must keep `cache.enabled=false` in the tracked local config and
+must show the generated split topology: top-level cache enabled, the default
+gateway export disabled, and `exports.PublicCache.cache.enabled=true`, with
+`main` pointing at the checked-in Cloudflare entrypoint wrapper and
+`enable_ctx_exports` present in `compatibility_flags`. If either the deployment
+topology or zone rule check is false, stop the release gate and
+remediate the zone/deployment configuration before investigating latency.
 
 The MCP rollout is additive. Migration `0071_mcp_access_tokens.sql` must finish
 before the Worker serving `/mcp` is deployed; the checked-in workflow already

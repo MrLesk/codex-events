@@ -41,7 +41,11 @@ DLQ-backed exhaustion. Migration tests cover immutable and migration-era stable
 keys.
 
 Local integration tests verify response headers, streaming bodies, object-write
-ordering, revision checks, and transform configuration. They also verify that
+ordering, revision checks, and transform configuration. Source tests also verify
+that the generated deployment config points Wrangler at the split Cloudflare
+entrypoint, enables cache only on the named `PublicCache` export, leaves the
+default gateway uncached, and forwards only sanitized requests for explicit
+public routes. They also verify that
 protected actor/product API success and error responses, including
 unauthenticated `/api/session` and unknown generated-framework paths, emit
 browser and Cloudflare no-store directives; the separate static-framework
@@ -52,7 +56,8 @@ bypass the Worker, so deployed `CF-Cache-Status` and equivalent production
 revocation verification remain a release-gate check. The read-only, opt-in
 remote smoke test in `OPERATOR.md` checks authenticated then unauthenticated
 `/api/session`, Cookie isolation, `CF-Cache-Status`, `Age`, public cache
-controls, and the zone Cache Rules/origin no-store boundary; it does not deploy
+controls, the split entrypoint configuration, and the zone Cache Rules/origin
+no-store boundary; it does not deploy
 or purge remote objects. Newly issued managed responses have the documented
 `public, max-age=30, stale-if-error=0` browser and edge freshness window.
 

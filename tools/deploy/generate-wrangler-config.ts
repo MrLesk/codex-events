@@ -104,6 +104,20 @@ export interface GeneratedDeployWranglerConfig {
   cache: {
     enabled: boolean
   }
+  exports: {
+    default: {
+      type: 'worker'
+      cache: {
+        enabled: boolean
+      }
+    }
+    PublicCache: {
+      type: 'worker'
+      cache: {
+        enabled: boolean
+      }
+    }
+  }
   triggers: {
     crons: string[]
   }
@@ -452,9 +466,10 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
   return {
     $schema: '../../node_modules/wrangler/config-schema.json',
     name: input.workerName,
-    main: '../../.output/server/index.mjs',
+    main: '../../tools/deploy/cloudflare-worker-entrypoint.mjs',
     compatibility_date: '2026-03-23',
     compatibility_flags: [
+      'enable_ctx_exports',
       'nodejs_compat',
       'no_nodejs_compat_v2'
     ],
@@ -474,7 +489,21 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
       }
     },
     cache: {
-      enabled: false
+      enabled: true
+    },
+    exports: {
+      default: {
+        type: 'worker',
+        cache: {
+          enabled: false
+        }
+      },
+      PublicCache: {
+        type: 'worker',
+        cache: {
+          enabled: true
+        }
+      }
     },
     triggers: {
       crons: ['*/5 * * * *']

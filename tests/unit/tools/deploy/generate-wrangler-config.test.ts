@@ -74,9 +74,24 @@ describe('deploy Wrangler config generator', () => {
     expect(input.auth0CustomDomain).toBe('auth.test.example.com')
     expect(input.d1Placement).toEqual({ jurisdiction: 'eu' })
     expect(config.name).toBe('codex-events-test')
-    expect(config.main).toBe('../../.output/server/index.mjs')
+    expect(config.main).toBe('../../tools/deploy/cloudflare-worker-entrypoint.mjs')
+    expect(config.compatibility_flags).toEqual([
+      'enable_ctx_exports',
+      'nodejs_compat',
+      'no_nodejs_compat_v2'
+    ])
     expect(config.assets.directory).toBe('../../.output/public')
-    expect(config.cache).toEqual({ enabled: false })
+    expect(config.cache).toEqual({ enabled: true })
+    expect(config.exports).toEqual({
+      default: {
+        type: 'worker',
+        cache: { enabled: false }
+      },
+      PublicCache: {
+        type: 'worker',
+        cache: { enabled: true }
+      }
+    })
     expect(config.images).toEqual({ binding: 'IMAGES' })
     expect(config.routes).toEqual([
       {
@@ -176,7 +191,7 @@ describe('deploy Wrangler config generator', () => {
     expect(input.environmentName).toBe('prod')
     expect(input.appBaseUrl).toBe('https://events.example.com')
     expect(config.name).toBe('codex-events-prod')
-    expect(config.cache).toEqual({ enabled: false })
+    expect(config.cache).toEqual({ enabled: true })
     expect(config.routes[0]?.pattern).toBe('events.example.com')
     expect(config.vars.NUXT_AUTH0_DOMAIN).toBe('auth.events.example.com')
     expect(config.d1_databases[0]?.database_name).toBe('codex-events-prod')
@@ -206,7 +221,7 @@ describe('deploy Wrangler config generator', () => {
     expect(config.triggers).toEqual({ crons: ['*/5 * * * *'] })
   })
 
-  test('keeps Worker cache disabled in the tracked local and generated deployment configs', () => {
+  test('keeps local Wrangler safe while generated deployments use the split cache topology', () => {
     const localConfig = JSON.parse(readFileSync(new URL('../../../../wrangler.jsonc', import.meta.url), 'utf8')) as {
       cache?: { enabled?: boolean }
     }
@@ -215,7 +230,9 @@ describe('deploy Wrangler config generator', () => {
 
     for (const target of ['test', 'production'] as const) {
       const config = buildDeployWranglerConfig(resolveDeployConfigInput(target, createEnvironment()))
-      expect(config.cache).toEqual({ enabled: false })
+      expect(config.cache).toEqual({ enabled: true })
+      expect(config.exports.default.cache).toEqual({ enabled: false })
+      expect(config.exports.PublicCache.cache).toEqual({ enabled: true })
     }
   })
 

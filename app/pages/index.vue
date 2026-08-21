@@ -1,5 +1,11 @@
 <script setup lang="ts">
+import { defineRouteRules } from '#app/composables/pages'
+
 import type { PublicApiListResponse, PublicEvent } from '~/domains/events/presentation'
+import {
+  publicEventCacheControl,
+  publicEventCdnCacheControl
+} from '#shared/http/public-cache-topology'
 
 import EventCard from '~/components/public/events/EventCard.vue'
 import {
@@ -8,6 +14,17 @@ import {
   type PublicHomepageTab
 } from '~/domains/events/public-homepage'
 import { normalizeTabQueryValue } from '~/lib/query-values'
+
+defineRouteRules({
+  cache: {
+    maxAge: 30
+  }
+})
+
+if (import.meta.server) {
+  useResponseHeader('cache-control').value = publicEventCacheControl
+  useResponseHeader('cloudflare-cdn-cache-control').value = publicEventCdnCacheControl
+}
 
 const publicEventsPageSize = 4
 const route = useRoute()
