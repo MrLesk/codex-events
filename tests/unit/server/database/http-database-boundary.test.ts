@@ -392,6 +392,25 @@ describe('HTTP database boundary', () => {
     expect(clientSource).toMatch(/if\s*\(!isHttpRequest\(event\)\)\s*\{[\s\S]*?getTestDatabase\(event\)/u)
   })
 
+  test('keeps D1 execution attribution at the capability-narrowed session adapter', () => {
+    const clientSource = readFileSync(join(serverRoot, 'database/client.ts'), 'utf8')
+    const timingSource = readFileSync(join(serverRoot, 'http/request-timing.ts'), 'utf8')
+    const allowedInstrumentationFiles = new Set([
+      'server/database/client.ts',
+      'server/http/request-timing.ts'
+    ])
+    const instrumentationFiles = sourceFiles(serverRoot)
+      .filter(file => /\b(?:startRequestD1Execution|finishRequestD1Execution|measureD1Execution)\b/u.test(readFileSync(file, 'utf8')))
+      .map(relativePath)
+      .sort()
+
+    expect(instrumentationFiles).toEqual([...allowedInstrumentationFiles].sort())
+    expect(clientSource).toMatch(/createTimedSessionDatabaseBinding\(event, binding\.withSession\(sessionStart\)\)/u)
+    expect(clientSource).toMatch(/const rawStatementByTimedStatement = new WeakMap/u)
+    expect(clientSource).toMatch(/batch: async <T>[\s\S]*?measureD1Execution/u)
+    expect(timingSource).toMatch(/const maxReportedD1Executions = 8/u)
+  })
+
   test('runs recovery only from explicit background entrypoints', () => {
     const middlewareRecoveryFiles = sourceFiles(join(serverRoot, 'middleware'))
       .filter(file => /startup-recovery/u.test(basename(file)))

@@ -19,6 +19,13 @@ interface D1ResultMeta {
   rows_written: number
   served_by: string
   size_after: number
+  total_attempts: number
+  served_by_region: string
+  served_by_colo: string
+  served_by_primary: boolean
+  timings: {
+    sql_duration_ms: number
+  }
 }
 
 interface D1QueryResult<TResult> {
@@ -109,7 +116,14 @@ function createResultMeta(options: {
     changed_db: (options.changes ?? 0) > 0,
     size_after: 0,
     rows_read: options.rowsRead ?? 0,
-    rows_written: options.rowsWritten ?? options.changes ?? 0
+    rows_written: options.rowsWritten ?? options.changes ?? 0,
+    total_attempts: 1,
+    served_by_region: 'test-region',
+    served_by_colo: 'test-colo',
+    served_by_primary: true,
+    timings: {
+      sql_duration_ms: 0
+    }
   } satisfies D1ResultMeta
 }
 

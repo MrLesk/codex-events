@@ -5,6 +5,7 @@ status: In Progress
 assignee:
   - '@luna-actor-request-plan'
 created_date: '2026-08-21 04:29'
+updated_date: '2026-08-21 04:49'
 labels: []
 dependencies: []
 parent_task_id: TASK-432.9
@@ -49,10 +50,14 @@ Deployed signed-in browser evidence at d4644d5c shows /api/session resolving the
 3. Use the evidence to design one canonical strong protected request plan that resolves identity/consent/authorization and page data without serialized database round trips or stale client assertions.
 4. Update canonical architecture and persistent agent guidance before applying the route migration.
 5. Migrate representative page-shaped routes through the shared boundary, add source/reachability and browser timing gates, validate, deploy to test, and repeat the signed-in journeys.
+
+Phase 1 evidence boundary: the capability-narrowed request-scoped D1 adapter wraps the one session's prepare/batch execution methods; deployment must inspect execution-level Server-Timing before any authorization or query redesign.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 Baseline at d4644d5c: /api/session TTFB 88–142 ms with actor-d1 23–28 ms. Account overview TTFB 3.69–3.97 s with actor-d1 3.41–3.79 s and page D1 58–100 ms. Event entry TTFB 4.12 s with actor-d1 2.91 s and page D1 289 ms. Operations TTFB 3.96 s with actor-d1 2.97 s and page D1 260 ms. Staff rosters TTFB 4.11 s with actor-d1 3.60 s and page D1 151 ms. Feedback 409 TTFB 3.65 s with actor-d1 3.14 s and page D1 37 ms. Staff candidates TTFB 3.65 s while actor-d1 was only 19 ms and total was 3.49 s, so the slow slot can move to the next D1-backed operation. Direct authenticated overview fetches with and without an incoming bookmark were both about 4.4 s, so the bookmark header alone is not the cause.
+
+Phase 1 implementation is complete locally and remains pre-deploy. The capability-narrowed request-scoped D1 session adapter now attributes every executed prepared-statement method and batch with a request-local ordinal, API/kind, adapter duration, statement count, and bounded D1 metadata. Server-Timing fields are d1-exec-total, d1-db-total, and d1-exec-1 through d1-exec-8; d1-exec-total carries execution/statement/overflow counts, while d1-db-total and each entry carry known sql_duration_ms, explicit unknown counts, total_attempts, and bounded served_by_region/served_by_colo/served_by_primary summaries. Mixed serving metadata is reported as mixed; missing or error metadata stays unknown. SQL, binds, results, identity/cookie values, inferred table names, and raw capabilities are excluded. Fake-D1 exposes deterministic equivalent result metadata. A source invariant keeps execution timing at the capability-narrowed adapter and prevents route-level instrumentation. Validation: lint, typecheck, 165 unit files/1102 tests, 44 integration files/473 tests, focused request-timing integration 6/6 after final review, account-workspace BDD 25/25, build:cloudflare, and Wrangler deploy --dry-run all passed. ACs and DoD remain unchecked; status remains In Progress pending deployment evidence.
 <!-- SECTION:NOTES:END -->

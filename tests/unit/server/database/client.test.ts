@@ -131,7 +131,9 @@ describe('resolveNonHttpD1Binding', () => {
       value: session
     })).toBe(false)
     expect(Reflect.get(database, '$client')).toBeUndefined()
-    expect(requestSession).toBe(session)
+    expect(requestSession).not.toBe(session)
+    expect(Reflect.get(requestSession, 'withSession')).toBeUndefined()
+    expect(Reflect.get(requestSession, '$client')).toBeUndefined()
     expect(session.prepare).toHaveBeenCalledWith('select 1')
     expect(session.batch).toHaveBeenCalledTimes(1)
   })
