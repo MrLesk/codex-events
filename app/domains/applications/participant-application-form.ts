@@ -113,8 +113,8 @@ export function buildParticipantRegistrationFormSchema(options: {
         ])
       : z.string(),
     profileForm: z.object({
-      firstName: z.string().trim().min(1).max(120),
-      familyName: z.string().trim().min(1).max(120),
+      firstName: z.string().trim().min(1, 'Enter your first name.').max(120, 'Keep your first name under 120 characters.'),
+      familyName: z.string().trim().min(1, 'Enter your family name.').max(120, 'Keep your family name under 120 characters.'),
       xProfileUrl: isProfileFieldVisible('xProfileUrl')
         ? createOptionalSocialProfileUrlSchema(
             'xProfileUrl',

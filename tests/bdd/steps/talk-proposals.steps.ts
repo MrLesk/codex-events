@@ -152,9 +152,31 @@ When('I open the remembered Meetup Call for talks with the saved {string} sessio
 })
 
 Then('Event registration and Talk proposal should be shown as separate sections', async ({ page }) => {
-  await expect(page.getByText('Event registration', { exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Event registration', exact: true })).toBeVisible()
   await expect(page.getByTestId('combined-talk-proposal-section')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Register and submit proposal' })).toBeVisible()
+})
+
+Then('the desktop registration progress rail should be visible', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await expect(page.getByTestId('registration-progress-rail')).toBeVisible()
+  await expect(page.getByTestId('registration-progress-registration')).toBeVisible()
+  const talkProposalProgress = page.getByTestId('registration-progress-talk-proposal')
+  await expect(talkProposalProgress).toBeVisible()
+  await talkProposalProgress.click()
+  await expect(page.getByTestId('combined-talk-proposal-section')).toBeFocused()
+})
+
+When('I try to submit the incomplete combined registration and Talk proposal', async ({ page }) => {
+  await page.getByRole('textbox', { name: /First name/ }).fill('')
+  await page.getByRole('button', { name: 'Register and submit proposal' }).click()
+})
+
+Then('the first missing registration field should receive focus', async ({ page }) => {
+  const firstName = page.getByRole('textbox', { name: /First name/ })
+  await expect(firstName).toBeFocused()
+  await expect(page.getByText('Enter your first name.')).toBeVisible()
+  await expect(page.getByTestId('registration-progress-registration')).toBeVisible()
 })
 
 When('I complete the combined registration and Talk proposal', async ({ page }) => {

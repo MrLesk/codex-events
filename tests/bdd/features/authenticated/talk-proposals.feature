@@ -6,6 +6,9 @@ Feature: Meetup Call for talks
     When the saved "platform_admin" session creates an open Meetup with a Call for talks
     And I open the remembered Meetup Call for talks with the saved "regular_user" session
     Then Event registration and Talk proposal should be shown as separate sections
+    And the desktop registration progress rail should be visible
+    When I try to submit the incomplete combined registration and Talk proposal
+    Then the first missing registration field should receive focus
     When I complete the combined registration and Talk proposal
     Then the submitted Talk proposal workspace should open
 

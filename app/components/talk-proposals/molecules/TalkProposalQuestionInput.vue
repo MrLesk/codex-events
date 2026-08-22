@@ -7,9 +7,13 @@ const props = defineProps<{
   question: TalkProposalQuestionDefinition
   disabled?: boolean
   error?: string
+  registrationFieldPrefix?: string
 }>()
 
 const inputId = computed(() => `talk-proposal-question-${props.question.id}`)
+const registrationFieldId = computed(() => props.registrationFieldPrefix
+  ? `${props.registrationFieldPrefix}.${props.question.id}`
+  : '')
 const label = computed(() => `${props.question.prompt}${props.question.required ? ' *' : ''}`)
 const textValue = computed({
   get: () => typeof modelValue.value === 'string' ? modelValue.value : '',
@@ -24,6 +28,7 @@ const checkedValue = computed({
 <template>
   <AppFormField
     v-if="question.type !== 'acknowledgement'"
+    :data-registration-field="registrationFieldId || undefined"
     :name="inputId"
     :label="label"
   >
@@ -68,6 +73,7 @@ const checkedValue = computed({
   <div
     v-else
     class="space-y-2"
+    :data-registration-field="registrationFieldId || undefined"
   >
     <AppCheckbox
       v-model="checkedValue"
