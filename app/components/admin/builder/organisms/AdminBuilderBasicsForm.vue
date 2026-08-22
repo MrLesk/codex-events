@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import AdminMarkdownEditorField from '~/components/admin/AdminMarkdownEditorField.vue'
 import type { EventFormState } from '~/domains/events/admin-event'
+import { getCountryOptions } from '~/utils/country-options'
 
 const form = defineModel<EventFormState>('form', { required: true })
 
@@ -20,6 +22,7 @@ const eventStartsAtModel = computed({
 })
 
 const isHackathon = computed(() => form.value.eventType === 'hackathon')
+const countryOptions = computed(() => getCountryOptions(form.value.country))
 
 const onsiteActive = computed(() => props.locationChosen && form.value.inPersonEvent)
 const onlineActive = computed(() => props.locationChosen && !form.value.inPersonEvent)
@@ -123,15 +126,35 @@ const onlineActive = computed(() => props.locationChosen && !form.value.inPerson
             {{ errors.city }}
           </p>
         </AppFormField>
-        <AppFormField label="Country">
-          <AppInput
+        <AppFormField
+          name="event-builder-country"
+          label="Country"
+        >
+          <AppSelect
             id="event-builder-country"
             v-model="form.country"
             data-testid="event-builder-country"
+            required
             :aria-invalid="Boolean(errors.country)"
-          />
+            :aria-describedby="errors.country ? 'event-builder-country-error' : undefined"
+          >
+            <option
+              disabled
+              value=""
+            >
+              Select a country
+            </option>
+            <option
+              v-for="option in countryOptions"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </option>
+          </AppSelect>
           <p
             v-if="errors.country"
+            id="event-builder-country-error"
             class="mt-1.5 text-xs text-rose-500"
           >
             {{ errors.country }}
@@ -154,15 +177,19 @@ const onlineActive = computed(() => props.locationChosen && !form.value.inPerson
       </div>
     </div>
 
-    <AppFormField label="Description">
-      <AppTextarea
-        id="event-builder-description"
+    <div
+      data-testid="event-builder-description"
+      :aria-invalid="Boolean(errors.description)"
+      :aria-describedby="errors.description ? 'event-builder-description-error' : undefined"
+    >
+      <AdminMarkdownEditorField
         v-model="form.description"
-        data-testid="event-builder-description"
-        :rows="4"
+        name="event-builder-description"
+        editor-id="event-builder-description"
+        label="Description"
         placeholder="What participants can expect, in a few sentences."
-        :aria-invalid="Boolean(errors.description)"
-        :aria-describedby="errors.description ? 'event-builder-description-error' : undefined"
+        height="240px"
+        required
       />
       <p
         v-if="errors.description"
@@ -171,7 +198,7 @@ const onlineActive = computed(() => props.locationChosen && !form.value.inPerson
       >
         {{ errors.description }}
       </p>
-    </AppFormField>
+    </div>
 
     <div class="grid gap-4 sm:grid-cols-2">
       <AppFormField label="Registration opens">

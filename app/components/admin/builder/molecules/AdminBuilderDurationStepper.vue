@@ -2,7 +2,8 @@
 import {
   eventBuilderMaxBlockDurationMinutes,
   eventBuilderMinBlockDurationMinutes,
-  getNextEventBuilderDurationMinutes
+  getNextEventBuilderDurationMinutes,
+  parseEventBuilderDurationMinutes
 } from '~/domains/events/builder'
 
 const props = defineProps<{
@@ -19,16 +20,19 @@ function step(direction: -1 | 1) {
 }
 
 function setManualDuration(raw: string) {
-  const parsed = Number(raw)
+  const parsed = parseEventBuilderDurationMinutes(raw)
 
-  if (!Number.isFinite(parsed)) {
+  if (parsed === null) {
     return
   }
 
-  model.value = Math.min(
-    eventBuilderMaxBlockDurationMinutes,
-    Math.max(eventBuilderMinBlockDurationMinutes, Math.round(parsed))
-  )
+  model.value = parsed
+}
+
+function restoreManualDuration(event: FocusEvent) {
+  if (event.currentTarget instanceof HTMLInputElement) {
+    event.currentTarget.value = String(model.value)
+  }
 }
 
 const formatted = computed(() => {
@@ -45,7 +49,7 @@ const formatted = computed(() => {
 
 <template>
   <div
-    class="inline-flex items-center gap-1 rounded-lg border border-black/8 bg-white p-1 dark:border-white/[0.08] dark:bg-[#151515]"
+    class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-black/8 bg-white p-1 transition focus-within:border-black/25 dark:border-white/[0.08] dark:bg-[#151515] dark:focus-within:border-white/[0.25]"
     role="group"
     aria-label="Block duration"
   >
@@ -54,7 +58,7 @@ const formatted = computed(() => {
       :aria-label="`Shorten by ${model - decreaseValue} ${model - decreaseValue === 1 ? 'minute' : 'minutes'}`"
       :data-testid="`event-builder-duration-down-${props.blockId}`"
       :disabled="model <= eventBuilderMinBlockDurationMinutes"
-      class="inline-flex size-7 items-center justify-center rounded-md text-toned transition hover:bg-black/5 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-white/[0.06]"
+      class="inline-flex size-7 items-center justify-center rounded-md text-toned transition hover:bg-black/5 hover:text-highlighted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-black/30 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-white/[0.06] dark:focus-visible:outline-white/40"
       @click="step(-1)"
     >
       <AppIcon
@@ -75,6 +79,7 @@ const formatted = computed(() => {
         :data-testid="`event-builder-duration-input-${props.blockId}`"
         class="w-8 bg-transparent text-right text-xs font-medium tabular-nums text-highlighted outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         @input="event => setManualDuration((event.target as HTMLInputElement).value)"
+        @blur="restoreManualDuration"
       >
       <span aria-hidden="true">m</span>
     </label>
@@ -83,7 +88,7 @@ const formatted = computed(() => {
       :aria-label="`Extend by ${increaseValue - model} ${increaseValue - model === 1 ? 'minute' : 'minutes'}`"
       :data-testid="`event-builder-duration-up-${props.blockId}`"
       :disabled="model >= eventBuilderMaxBlockDurationMinutes"
-      class="inline-flex size-7 items-center justify-center rounded-md text-toned transition hover:bg-black/5 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-white/[0.06]"
+      class="inline-flex size-7 items-center justify-center rounded-md text-toned transition hover:bg-black/5 hover:text-highlighted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-black/30 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-white/[0.06] dark:focus-visible:outline-white/40"
       @click="step(1)"
     >
       <AppIcon

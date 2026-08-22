@@ -14,11 +14,15 @@ import {
   getBuilderChecklist,
   getEventBuilderSettingsGroups,
   getNextEventBuilderDurationMinutes,
+  parseEventBuilderDurationMinutes,
   pruneBlocksForEventType,
   toEventBalanceInputFromState,
   toEventBuilderFormState
 } from '../../../../../app/domains/events/builder'
-import { buildEventCreateBody } from '../../../../../app/domains/events/admin-event'
+import {
+  buildEventConfigurationPatch,
+  buildEventCreateBody
+} from '../../../../../app/domains/events/admin-event'
 import type { EventRecord } from '../../../../../app/domains/events/records'
 
 function buildAgendaEvent(overrides: Partial<EventRecord> = {}): EventRecord {
@@ -88,6 +92,27 @@ function buildAgendaEvent(overrides: Partial<EventRecord> = {}): EventRecord {
   }
 }
 
+describe('parseEventBuilderDurationMinutes', () => {
+  test('preserves directly entered integer minute values without snapping to the button grid', () => {
+    expect(parseEventBuilderDurationMinutes('9')).toBe(9)
+    expect(parseEventBuilderDurationMinutes('12')).toBe(12)
+    expect(parseEventBuilderDurationMinutes('47')).toBe(47)
+  })
+
+  test('clamps integer input to the supported duration bounds', () => {
+    expect(parseEventBuilderDurationMinutes('0')).toBe(1)
+    expect(parseEventBuilderDurationMinutes('1')).toBe(1)
+    expect(parseEventBuilderDurationMinutes('480')).toBe(480)
+    expect(parseEventBuilderDurationMinutes('481')).toBe(480)
+  })
+
+  test('leaves incomplete and non-integer input uncommitted', () => {
+    expect(parseEventBuilderDurationMinutes('')).toBeNull()
+    expect(parseEventBuilderDurationMinutes('12.5')).toBeNull()
+    expect(parseEventBuilderDurationMinutes('-4')).toBeNull()
+  })
+})
+
 describe('getNextEventBuilderDurationMinutes', () => {
   test('steps one minute at a time through durations below ten minutes', () => {
     expect(getNextEventBuilderDurationMinutes(5, -1)).toBe(4)
@@ -122,6 +147,19 @@ describe('computeBlockSchedule', () => {
     expect(schedule[0]).toMatchObject({ startsAt: '2026-09-12T18:00', endsAt: '2026-09-12T18:15' })
     expect(schedule[1]).toMatchObject({ startsAt: '2026-09-12T18:15', endsAt: '2026-09-12T18:45' })
     expect(schedule[2]).toMatchObject({ startsAt: '2026-09-12T18:45', endsAt: '2026-09-12T19:30' })
+  })
+
+  test('preserves an arbitrary directly entered duration in every following sequential time', () => {
+    const blocks = [
+      { ...createBlockInstance('welcome'), durationMinutes: 17 },
+      { ...createBlockInstance('talk'), durationMinutes: 12 },
+      { ...createBlockInstance('networking'), durationMinutes: 45 }
+    ]
+    const schedule = computeBlockSchedule('2026-09-12T18:00', blocks)
+
+    expect(schedule[0]).toMatchObject({ startsAt: '2026-09-12T18:00', endsAt: '2026-09-12T18:17' })
+    expect(schedule[1]).toMatchObject({ startsAt: '2026-09-12T18:17', endsAt: '2026-09-12T18:29' })
+    expect(schedule[2]).toMatchObject({ startsAt: '2026-09-12T18:29', endsAt: '2026-09-12T19:14' })
   })
 
   test('crosses midnight without breaking', () => {
@@ -265,6 +303,33 @@ describe('createBuilderStateFromEvent', () => {
     expect(createBuilderStateFromEvent(event).hydratedNonSequential).toBe(true)
   })
 
+  test('keeps event and track Markdown plus an existing country unchanged in the edit payload', () => {
+    const description = '# Builder event\n\n**Bring a laptop.**'
+    const shortDescription = 'For teams building **agent workflows**.'
+    const event = buildAgendaEvent({
+      eventType: 'build',
+      description,
+      country: 'Czech Republic',
+      tracks: [{
+        id: 'track-1',
+        eventId: 'event-1',
+        name: 'Agent workflows',
+        shortDescription,
+        fullDescription: 'Participant guidelines.',
+        staffInstructions: 'Staff instructions.',
+        resources: [],
+        displayOrder: 0,
+        createdAt: '2026-08-01T00:00:00.000Z'
+      }]
+    })
+    const state = createBuilderStateFromEvent(event)
+    const patch = buildEventConfigurationPatch(toEventBuilderFormState(state), state.form.eventType)
+
+    expect(patch.description).toBe(description)
+    expect(patch.country).toBe('Czech Republic')
+    expect(patch.tracks?.[0]?.shortDescription).toBe(shortDescription)
+  })
+
   test('unknown annotations degrade to custom without breaking', () => {
     const event = buildAgendaEvent({
       agendaItems: [{
@@ -298,6 +363,19 @@ describe('toEventBalanceInputFromState', () => {
 
     expect(minutes).toBe(90)
   })
+
+  test('preserves an arbitrary directly entered duration in the balance input', () => {
+    const state = createEmptyEventBuilderState()
+    const talk = createBlockInstance('talk')
+
+    talk.durationMinutes = 17
+    state.blocks = [talk]
+
+    const item = toEventBalanceInputFromState(state).agendaItems[0]!
+    const minutes = (Date.parse(item.endsAt!) - Date.parse(item.startsAt)) / 60_000
+
+    expect(minutes).toBe(17)
+  })
 })
 
 describe('toEventBuilderFormState + buildEventCreateBody parity', () => {
@@ -325,6 +403,31 @@ describe('toEventBuilderFormState + buildEventCreateBody parity', () => {
     expect(body.agendaItems[0]!.builderBlockType).toBe('talk')
     expect(body.agendaItems[0]!.startsAt).not.toBe('')
     expect(body.submissionOpensAt).toBeUndefined()
+  })
+
+  test('keeps Markdown descriptions and the selected country unchanged in the create payload', () => {
+    const state = createEmptyEventBuilderState()
+    const description = '# Build day\n\n- Ship a project\n- Share the result'
+    const shortDescription = 'Build tools for **event teams**.'
+
+    state.form.eventType = 'build'
+    state.form.description = description
+    state.form.country = 'Austria'
+    state.form.tracks = [{
+      id: 'track-1',
+      name: 'Event tools',
+      shortDescription,
+      fullDescription: '',
+      staffInstructions: '',
+      resources: [],
+      displayOrder: 0
+    }]
+
+    const body = buildEventCreateBody(toEventBuilderFormState(state))
+
+    expect(body.description).toBe(description)
+    expect(body.country).toBe('Austria')
+    expect(body.tracks[0]?.shortDescription).toBe(shortDescription)
   })
 })
 

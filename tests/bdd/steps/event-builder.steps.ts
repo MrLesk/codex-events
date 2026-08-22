@@ -95,6 +95,30 @@ When('I move the last builder block up', async ({ page }) => {
   await grip.press('ArrowUp')
 })
 
+When('I set a builder event start', async ({ page }) => {
+  const dateTime = page.getByTestId('event-builder-event-starts-at')
+
+  await dateTime.getByRole('spinbutton').first().click()
+  await page.keyboard.type('151020261800')
+})
+
+When('I clear and type {string} minutes into the first builder block', async ({ page }, minutes: string) => {
+  const input = page.locator('[data-testid^="event-builder-duration-input-"]').first()
+
+  await input.press('ControlOrMeta+A')
+  await input.press('Backspace')
+  await expect(input).toHaveValue('')
+  await input.pressSequentially(minutes)
+})
+
+Then('the first builder block duration should be {int} minutes', async ({ page }, minutes: number) => {
+  await expect(page.locator('[data-testid^="event-builder-duration-input-"]').first()).toHaveValue(String(minutes))
+})
+
+Then('the second builder block should run from 8:17 AM to 8:32 AM', async ({ page }) => {
+  await expect(page.locator('[data-builder-block-row]').nth(1)).toContainText('8:17 AM – 8:32 AM')
+})
+
 Then('the builder balance score should be visible', async ({ page }) => {
   await expect(page.getByTestId('event-builder-balance-score')).toBeVisible()
   await expect(page.getByTestId('event-builder-score-band')).toBeVisible()
@@ -106,11 +130,11 @@ Then('the builder balance score should be visible', async ({ page }) => {
 
 When('I fill the builder basics for {string}', async ({ page }, eventName: string) => {
   await page.getByTestId('event-builder-name').fill(eventName)
-  await page.getByTestId('event-builder-description').fill('A meetup assembled with the event builder for BDD coverage.')
+  await page.getByTestId('event-builder-description').getByRole('textbox').fill('A **meetup** assembled with the event builder for BDD coverage.')
   // Onsite vs online starts unchosen; the venue fields appear after the pick.
   await page.getByTestId('event-builder-location-onsite').click()
   await page.getByTestId('event-builder-city').fill('Vienna')
-  await page.getByTestId('event-builder-country').fill('Austria')
+  await page.getByTestId('event-builder-country').selectOption('Austria')
   await page.getByTestId('event-builder-address').fill('Karlsplatz 1')
   // Setting the event start derives the registration window defaults.
   // The reka date field is segmented (day/month/year, 24h time), so the value
@@ -118,6 +142,15 @@ When('I fill the builder basics for {string}', async ({ page }, eventName: strin
   await page.getByTestId('event-builder-event-starts-at').getByRole('spinbutton').first().click()
   await page.keyboard.type('151020261800')
   await expect(page.getByTestId('event-builder-registration-opens-at')).toContainText('2026')
+})
+
+When('I use a mobile builder viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+})
+
+When('I add Markdown to the first builder track short description', async ({ page }) => {
+  await page.getByTestId('event-builder-add-track').click()
+  await page.locator('[data-testid^="event-builder-track-short-"]').first().getByRole('textbox').fill('Build **useful tools** for event teams.')
 })
 
 When('I submit the event builder', async ({ page }) => {
@@ -145,4 +178,34 @@ When('I open the event in the builder from the workspace banner', async ({ page 
 
 Then('the builder should hydrate {int} agenda blocks', async ({ page }, expectedCount: number) => {
   await expect(page.locator('[data-builder-block-row]')).toHaveCount(expectedCount)
+})
+
+Then('the builder should retain the saved rich basics', async ({ page }) => {
+  await expect(page.getByTestId('event-builder-description').getByRole('textbox')).toContainText('A **meetup** assembled with the event builder for BDD coverage.')
+  await expect(page.getByTestId('event-builder-country')).toHaveValue('Austria')
+})
+
+Then('the builder rich basics should fit the mobile viewport', async ({ page }) => {
+  const descriptionBounds = await page.getByTestId('event-builder-description').evaluate(element => ({
+    left: element.getBoundingClientRect().left,
+    right: element.getBoundingClientRect().right
+  }))
+  const countryBounds = await page.getByTestId('event-builder-country').evaluate(element => ({
+    left: element.getBoundingClientRect().left,
+    right: element.getBoundingClientRect().right
+  }))
+
+  expect(descriptionBounds.left).toBeGreaterThanOrEqual(0)
+  expect(descriptionBounds.right).toBeLessThanOrEqual(390)
+  expect(countryBounds.left).toBeGreaterThanOrEqual(0)
+  expect(countryBounds.right).toBeLessThanOrEqual(390)
+  await expect(page.getByTestId('event-builder-description').getByRole('textbox')).toContainText('A **meetup** assembled with the event builder for BDD coverage.')
+  await expect(page.getByTestId('event-builder-country')).toHaveValue('Austria')
+})
+
+Then('the builder track short description should retain its Markdown', async ({ page }) => {
+  const editor = page.locator('[data-testid^="event-builder-track-short-"]').first()
+
+  await expect(editor.getByRole('textbox')).toContainText('Build **useful tools** for event teams.')
+  await expect(editor.getByRole('button', { name: 'bold' })).toBeVisible()
 })

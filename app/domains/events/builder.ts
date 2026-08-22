@@ -85,6 +85,17 @@ export const eventBuilderBlockIcons: Record<EventBuilderBlockType, string> = {
 export const eventBuilderMinBlockDurationMinutes = 1
 export const eventBuilderMaxBlockDurationMinutes = 480
 
+export function parseEventBuilderDurationMinutes(raw: string) {
+  if (!/^\d+$/.test(raw)) {
+    return null
+  }
+
+  return Math.min(
+    eventBuilderMaxBlockDurationMinutes,
+    Math.max(eventBuilderMinBlockDurationMinutes, Number(raw))
+  )
+}
+
 export function getNextEventBuilderDurationMinutes(currentMinutes: number, direction: -1 | 1) {
   const current = Math.min(
     eventBuilderMaxBlockDurationMinutes,

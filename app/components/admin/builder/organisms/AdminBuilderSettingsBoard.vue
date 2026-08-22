@@ -491,19 +491,22 @@ const lumaWebhookStatusColor = computed(() => {
                 />
               </button>
             </div>
-            <div class="grid gap-3 sm:grid-cols-2">
+            <div class="grid gap-3">
               <AppFormField label="Name">
                 <AppInput
                   v-model="track.name"
                   size="sm"
                 />
               </AppFormField>
-              <AppFormField label="Short description">
-                <AppInput
-                  v-model="track.shortDescription"
-                  size="sm"
-                />
-              </AppFormField>
+              <AdminMarkdownEditorField
+                v-model="track.shortDescription"
+                :name="`event-builder-track-short-${track.id}`"
+                label="Short description"
+                :editor-id="`event-builder-track-short-${track.id}`"
+                :data-testid="`event-builder-track-short-${track.id}`"
+                height="180px"
+                required
+              />
             </div>
             <AdminMarkdownEditorField
               v-model="track.fullDescription"

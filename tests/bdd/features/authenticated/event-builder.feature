@@ -18,3 +18,33 @@ Feature: Gamified event builder creation flow
     And the workspace settings should show the builder banner
     When I open the event in the builder from the workspace banner
     Then the builder should hydrate 7 agenda blocks
+    And the builder should retain the saved rich basics
+
+  Scenario: Platform admin uses rich builder basics at a mobile width
+    Given the saved "platform_admin" local session state exists
+    When I open the event builder with the saved "platform_admin" session
+    And I name the event "BDD Mobile Builder Meetup"
+    And I choose the "meetup" event type in the builder
+    And I apply the "meetup-community-evening" builder template
+    And I use a mobile builder viewport
+    And I fill the builder basics for "BDD Mobile Builder Meetup"
+    Then the builder rich basics should fit the mobile viewport
+
+  Scenario: Platform admin authors a track short description in Markdown
+    Given the saved "platform_admin" local session state exists
+    When I open the event builder with the saved "platform_admin" session
+    And I name the event "BDD Builder Build"
+    And I choose the "build" event type in the builder
+    And I add Markdown to the first builder track short description
+    Then the builder track short description should retain its Markdown
+
+  Scenario: Platform admin directly edits an agenda block duration
+    Given the saved "platform_admin" local session state exists
+    When I open the event builder with the saved "platform_admin" session
+    And I name the event "BDD Duration Meetup"
+    And I choose the "meetup" event type in the builder
+    And I apply the "meetup-community-evening" builder template
+    And I set a builder event start
+    And I clear and type "17" minutes into the first builder block
+    Then the first builder block duration should be 17 minutes
+    And the second builder block should run from 8:17 AM to 8:32 AM
