@@ -1,6 +1,6 @@
 ---
 name: codex-events
-description: Build and operate Codex Events through the authenticated Codex Events MCP server. Use when a user wants to discover or join an event, work with a team or submission, judge entries, administer an event, or create an event with the conversational builder.
+description: Help people discover and join Codex community events, form teams, submit projects or talks, judge entries, and organize events.
 ---
 
 # Codex Events

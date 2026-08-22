@@ -35,9 +35,16 @@ const mcpManifestSchema = z.object({
 describe('Agent Plugins v1 package', () => {
   test('uses the standard plugin root without legacy Codex packaging', () => {
     expect(existsSync(resolve(pluginRoot, '.codex-plugin'))).toBe(false)
-    expect(pluginManifestSchema.parse(JSON.parse(
+    const manifest = pluginManifestSchema.parse(JSON.parse(
       readFileSync(resolve(pluginRoot, 'plugin.json'), 'utf8')
-    ))).toMatchObject({ name: 'codex-events' })
+    ))
+
+    expect(manifest).toMatchObject({
+      name: 'codex-events',
+      repository: 'https://github.com/globodex/codex-events',
+      license: 'MIT'
+    })
+    expect(manifest.description).not.toMatch(/local|MCP|role-aware/i)
   })
 
   test('connects only to the local MCP endpoint without packaged credentials', () => {
@@ -45,7 +52,7 @@ describe('Agent Plugins v1 package', () => {
       readFileSync(resolve(pluginRoot, 'mcp.json'), 'utf8')
     ))
 
-    expect(manifest.mcpServers['codex-events-local']?.headers).toBeUndefined()
+    expect(manifest.mcpServers['codex-events']?.headers).toBeUndefined()
   })
 
   test('ships one concise skill with confirmation and tool-absence boundaries', () => {
