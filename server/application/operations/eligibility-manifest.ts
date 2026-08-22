@@ -179,6 +179,8 @@ export const mcpEligibilityManifest = [
   { route: 'events/[eventId]/terms/[documentType]/versions.post.ts', disposition: 'include' },
   { route: 'events/[eventId]/terms/current.get.ts', disposition: 'include' },
   { route: 'events/[eventId]/winners/index.get.ts', disposition: 'include' },
+  { route: 'events/builder/analyze.post.ts', disposition: 'include' },
+  { route: 'events/builder/catalog.get.ts', disposition: 'include' },
   { route: 'events/index.get.ts', disposition: 'include' },
   { route: 'events/index.post.ts', disposition: 'include' },
   { route: 'events/participation.get.ts', disposition: 'include' },

@@ -4,6 +4,8 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import accountPatchHandler from '../../../../server/api/account.patch'
+import builderAnalyzeHandler from '../../../../server/api/events/builder/analyze.post'
+import builderCatalogHandler from '../../../../server/api/events/builder/catalog.get'
 import * as operationExecution from '../../../../server/application/operations/execute'
 import { validateApplicationOperationOutput } from '../../../../server/application/operations/output-validation'
 import protectedResourceHandler from '../../../../server/routes/.well-known/oauth-protected-resource.get'
@@ -22,13 +24,20 @@ describe('stateless MCP protocol', () => {
     while (harnesses.length > 0) await harnesses.pop()?.d1Database.close()
   })
 
-  async function setup(options: { isPlatformAdmin?: boolean, isEventOrganizer?: boolean, eventRole?: 'judge' | 'staff' | 'event_admin' } = {}) {
+  async function setup(options: {
+    isPlatformAdmin?: boolean
+    isEventOrganizer?: boolean
+    eventRole?: 'judge' | 'staff' | 'event_admin'
+    eventRoles?: Array<'judge' | 'staff' | 'event_admin'>
+  } = {}) {
     const rateLimiter = { limit: vi.fn(async () => ({ success: true })) }
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/mcp', handler: mcpHandler },
         { method: 'get', path: '/.well-known/oauth-protected-resource', handler: protectedResourceHandler },
-        { method: 'patch', path: '/api/account', handler: accountPatchHandler }
+        { method: 'patch', path: '/api/account', handler: accountPatchHandler },
+        { method: 'get', path: '/api/events/builder/catalog', handler: builderCatalogHandler },
+        { method: 'post', path: '/api/events/builder/analyze', handler: builderAnalyzeHandler }
       ],
       sessionUser: { sub: 'auth0|mcp-user', email: 'mcp@example.com', name: 'MCP User' },
       autoAcceptCurrentPlatformDocuments: false,
@@ -59,17 +68,19 @@ describe('stateless MCP protocol', () => {
       { id: 'accept_privacy', userId: 'mcp_user', platformDocumentId: 'privacy_v1', acceptedAt: '2026-08-02T00:00:00.000Z' },
       { id: 'accept_terms', userId: 'mcp_user', platformDocumentId: 'terms_v1', acceptedAt: '2026-08-02T00:00:00.000Z' }
     ])
-    if (options.eventRole) {
+    const eventRoles = options.eventRoles ?? (options.eventRole ? [options.eventRole] : [])
+    for (const [index, eventRole] of eventRoles.entries()) {
+      const eventId = `mcp_event_${eventRole}_${index}`
       await harness.database.insert(events).values({
-        id: 'mcp_event', eventType: 'hackathon', name: 'MCP Event', slug: `mcp-event-${options.eventRole}`,
+        id: eventId, eventType: 'hackathon', name: 'MCP Event', slug: `mcp-event-${eventRole}-${index}`,
         description: 'MCP role fixture', city: 'Vienna', country: 'Austria', address: 'Fixture',
         registrationOpensAt: '2026-08-01T00:00:00.000Z', registrationClosesAt: '2026-08-02T00:00:00.000Z',
         submissionOpensAt: '2026-08-02T00:00:00.000Z', submissionClosesAt: '2026-08-03T00:00:00.000Z',
         maxTeamMembers: 5, createdByUserId: 'mcp_user'
       })
       await harness.database.insert(eventRoleAssignments).values({
-        id: `mcp_role_${options.eventRole}`, eventId: 'mcp_event', userId: 'mcp_user', role: options.eventRole,
-        isInJudgePool: options.eventRole === 'judge', isStaff: options.eventRole === 'staff'
+        id: `mcp_role_${eventRole}_${index}`, eventId, userId: 'mcp_user', role: eventRole,
+        isInJudgePool: eventRole === 'judge', isStaff: eventRole === 'staff'
       })
     }
     const created = await createMcpAccessToken(harness.database, 'mcp_user', { name: 'Test client' })
@@ -473,14 +484,172 @@ describe('stateless MCP protocol', () => {
     const eventAdmin = await toolNames({ eventRole: 'event_admin' })
     expect(eventAdmin).toContain('post_events_by_eventId_talk-proposals_by_proposalId_actions_reject')
     expect(eventAdmin).not.toContain('post_events')
+    expect(eventAdmin).not.toContain('get_events_builder_catalog')
+    expect(eventAdmin).not.toContain('post_events_builder_analyze')
 
     const organizer = await toolNames({ isEventOrganizer: true })
     expect(organizer).toContain('post_events')
+    expect(organizer).toContain('get_events_builder_catalog')
+    expect(organizer).toContain('post_events_builder_analyze')
     expect(organizer).not.toContain('get_platform-admins')
 
     const platformAdmin = await toolNames({ isPlatformAdmin: true })
     expect(platformAdmin).toContain('post_events')
+    expect(platformAdmin).toContain('get_events_builder_catalog')
+    expect(platformAdmin).toContain('post_events_builder_analyze')
     expect(platformAdmin).toContain('get_platform-admins')
+  })
+
+  test('keeps exact role catalogs and their serialized context sizes under review', async () => {
+    async function toolCatalog(options: Parameters<typeof setup>[0]) {
+      const { harness, credential } = await setup(options)
+      const payload = await rpcPayload(await rpc(harness, credential, {
+        jsonrpc: '2.0', id: 1, method: 'tools/list', params: {}
+      })) as { result: { tools: Array<{ name: string }> } }
+      const serialized = JSON.stringify(payload.result.tools)
+      return {
+        byteSize: new TextEncoder().encode(serialized).byteLength,
+        toolNames: payload.result.tools.map(tool => tool.name)
+      }
+    }
+
+    const catalogs = {
+      participant: await toolCatalog({}),
+      staff: await toolCatalog({ eventRole: 'staff' }),
+      judge: await toolCatalog({ eventRole: 'judge' }),
+      eventAdmin: await toolCatalog({ eventRole: 'event_admin' }),
+      organizer: await toolCatalog({ isEventOrganizer: true }),
+      combined: await toolCatalog({
+        isEventOrganizer: true,
+        eventRoles: ['event_admin', 'judge']
+      }),
+      platformAdmin: await toolCatalog({ isPlatformAdmin: true })
+    }
+    const expectedCombinedNames = [...new Set([
+      ...catalogs.participant.toolNames,
+      ...catalogs.judge.toolNames,
+      ...catalogs.eventAdmin.toolNames,
+      ...catalogs.organizer.toolNames
+    ])].sort()
+
+    expect([...catalogs.combined.toolNames].sort()).toEqual(expectedCombinedNames)
+    expect(catalogs).toMatchSnapshot()
+  })
+
+  test('removes organizer tools on the first discovery after role revocation', async () => {
+    const { harness, credential } = await setup({ isEventOrganizer: true })
+    const before = await rpcPayload(await rpc(harness, credential, {
+      jsonrpc: '2.0', id: 1, method: 'tools/list', params: {}
+    })) as { result: { tools: Array<{ name: string }> } }
+    expect(before.result.tools.map(tool => tool.name)).toEqual(expect.arrayContaining([
+      'get_events_builder_catalog',
+      'post_events_builder_analyze',
+      'post_events'
+    ]))
+
+    await harness.database.update(users)
+      .set({ isEventOrganizer: false })
+      .where(eq(users.id, 'mcp_user'))
+
+    const after = await rpcPayload(await rpc(harness, credential, {
+      jsonrpc: '2.0', id: 2, method: 'tools/list', params: {}
+    })) as { result: { tools: Array<{ name: string }> } }
+    const namesAfterRevocation = after.result.tools.map(tool => tool.name)
+    expect(namesAfterRevocation).not.toContain('get_events_builder_catalog')
+    expect(namesAfterRevocation).not.toContain('post_events_builder_analyze')
+    expect(namesAfterRevocation).not.toContain('post_events')
+  })
+
+  test('exposes builder tools and UI only to event creators and keeps analysis read-only', async () => {
+    const participant = await setup()
+    const participantList = await rpcPayload(await rpc(participant.harness, participant.credential, {
+      jsonrpc: '2.0', id: 1, method: 'tools/list', params: {}
+    })) as { result: { tools: Array<{ name: string }> } }
+    const participantNames = participantList.result.tools.map(tool => tool.name)
+    expect(participantNames).not.toContain('get_events_builder_catalog')
+    expect(participantNames).not.toContain('post_events_builder_analyze')
+    expect(participantNames).not.toContain('post_events')
+
+    const hiddenCall = await rpcPayload(await rpc(participant.harness, participant.credential, {
+      jsonrpc: '2.0', id: 2, method: 'tools/call',
+      params: { name: 'post_events_builder_analyze', arguments: {} }
+    }))
+    expect(hiddenCall).toMatchObject({ error: { code: -32602 } })
+
+    for (const options of [{ isEventOrganizer: true }, { isPlatformAdmin: true }]) {
+      const creator = await setup(options)
+      const listed = await rpcPayload(await rpc(creator.harness, creator.credential, {
+        jsonrpc: '2.0', id: 3, method: 'tools/list', params: {}
+      })) as { result: { tools: Array<{ name: string, _meta?: Record<string, unknown> }> } }
+      const byName = new Map(listed.result.tools.map(tool => [tool.name, tool]))
+      expect([...byName.keys()]).toEqual(expect.arrayContaining([
+        'get_events_builder_catalog',
+        'post_events_builder_analyze',
+        'post_events'
+      ]))
+      expect(byName.get('post_events_builder_analyze')?._meta).toEqual({
+        ui: { resourceUri: 'ui://codex-events/event-builder-analysis-v1.html' }
+      })
+
+      const catalog = await rpcPayload(await rpc(creator.harness, creator.credential, {
+        jsonrpc: '2.0', id: 31, method: 'tools/call',
+        params: { name: 'get_events_builder_catalog', arguments: {} }
+      })) as {
+        result: {
+          structuredContent: {
+            data: { blockDefinitions: unknown[], templates: unknown[] }
+          }
+        }
+      }
+      expect(catalog.result.structuredContent.data.blockDefinitions).toHaveLength(16)
+      expect(catalog.result.structuredContent.data.templates).toHaveLength(7)
+
+      const eventCountBefore = await creator.harness.database.select({ id: events.id }).from(events)
+      const analyzed = await rpcPayload(await rpc(creator.harness, creator.credential, {
+        jsonrpc: '2.0', id: 4, method: 'tools/call',
+        params: {
+          name: 'post_events_builder_analyze',
+          arguments: {
+            body: {
+              eventType: 'meetup',
+              agendaItems: [{
+                startsAt: '2026-09-01T18:00:00.000Z',
+                endsAt: '2026-09-01T18:30:00.000Z',
+                builderBlockType: 'talk'
+              }]
+            }
+          }
+        }
+      })) as { result: { structuredContent: { data: { analysis: { score: number } } } } }
+      expect(analyzed.result.structuredContent.data.analysis.score).toBeTypeOf('number')
+      const eventCountAfter = await creator.harness.database.select({ id: events.id }).from(events)
+      expect(eventCountAfter).toHaveLength(eventCountBefore.length)
+
+      const resources = await rpcPayload(await rpc(creator.harness, creator.credential, {
+        jsonrpc: '2.0', id: 5, method: 'resources/read',
+        params: { uri: 'ui://codex-events/event-builder-analysis-v1.html' }
+      })) as { result: { contents: Array<{ mimeType: string, text: string }> } }
+      expect(resources.result.contents[0]).toMatchObject({
+        mimeType: 'text/html;profile=mcp-app'
+      })
+      expect(resources.result.contents[0]?.text).toContain('ui/notifications/tool-result')
+    }
+  })
+
+  test('repeats event-creator authorization on the REST builder operations', async () => {
+    const participant = await setup()
+    const forbiddenCatalog = await participant.harness.request('/api/events/builder/catalog')
+    expect(forbiddenCatalog.status).toBe(403)
+
+    const organizer = await setup({ isEventOrganizer: true })
+    const catalog = await organizer.harness.request('/api/events/builder/catalog')
+    expect(catalog.status).toBe(200)
+    await expect(catalog.json()).resolves.toMatchObject({
+      data: {
+        blockDefinitions: expect.any(Array),
+        templates: expect.any(Array)
+      }
+    })
   })
 
   test('REST and MCP use the same profile operation output and side effects', async () => {

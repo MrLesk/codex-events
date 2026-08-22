@@ -76,12 +76,19 @@ The source inventory is the shared operation registry. Eligibility is explicit:
   backfill integration controls, queue consumers, startup recovery, email-send
   controls, and other system-only entrypoints.
 
-The explicit manifest contains 149 included method/path pairs, including all
-ten talk-proposal operations. Each appears once with a stable operation ID.
+The explicit manifest contains 169 included method/path pairs, including all
+ten talk-proposal operations and the two read-only event-builder operations.
+Each appears once with a stable operation ID.
 Every other concrete Nitro route has an exclusion reason in the same manifest;
 completeness therefore does not depend on a route opting into the registry.
 There is no generic REST passthrough, wildcard tool, fallback adapter, or
 dual-read path.
+
+The event-builder catalog and analysis operations are visible only to event
+organizers and platform admins. The catalog returns the canonical block
+paytable, event-type profiles, application-field keys, and templates. Analysis
+runs the canonical balance engine against an unsaved agenda and never persists
+the draft. Event creation remains the separate `post_events` mutation.
 
 ## Registry Contract
 
@@ -128,6 +135,10 @@ internal error.
   OAuth user/client pair per 60 seconds; operation-specific limits still apply.
 - Tool lists are filtered by current coarse capabilities. Each call reruns all
   exact event, team, assignment, consent, and lifecycle guards.
+- Tool-catalog tests record the exact tool names and serialized descriptor size
+  for representative participant, staff, judge, event-admin, event-organizer,
+  combined-role, and platform-admin actors. Catalog growth is an explicit
+  review event because every added descriptor consumes model context.
 - Manual-token `lastUsedAt` writes are coalesced so ordinary traffic does not
   write on every call.
 - Every mutation attempt writes the authentication method, a safe token ID or
@@ -143,3 +154,9 @@ The supported server stack pins `agents@0.20.1` and
 creates a fresh stateless server for every request. Auth0 OAuth and optional
 30-day manual tokens are supported. Permanent credentials, legacy SSE, and
 protocol-session storage are not part of the platform.
+
+For clients that implement MCP Apps, the event-builder analysis tool advertises
+an optional `ui://` resource that renders the score and recommendations. The
+resource is registered only for actors who can discover the analysis tool. Its
+HTML has no external network or asset dependencies, and the structured tool
+result remains complete for clients that do not render MCP Apps.

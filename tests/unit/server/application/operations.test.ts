@@ -40,7 +40,7 @@ describe('MCP application operation registry', () => {
   test('has unique stable IDs, tool names, and REST bindings', async () => {
     await loadApplicationOperationCatalog()
     const operations = listApplicationOperations()
-    expect(operations).toHaveLength(167)
+    expect(operations).toHaveLength(169)
     expect(new Set(operations.map(operation => operation.id)).size).toBe(operations.length)
     expect(new Set(operations.map(operation => operation.toolName)).size).toBe(operations.length)
     expect(new Set(operations.map(operation => `${operation.rest.method} ${operation.rest.path}`)).size).toBe(operations.length)
@@ -220,7 +220,7 @@ describe('MCP application operation registry', () => {
 
     const included = mcpEligibilityManifest.filter(entry => entry.disposition === 'include')
     const excluded = mcpEligibilityManifest.filter(entry => entry.disposition === 'exclude')
-    expect(included).toHaveLength(167)
+    expect(included).toHaveLength(169)
     expect(excluded).toHaveLength(35)
     expect(excluded.every(entry => entry.reason.length > 0)).toBe(true)
 

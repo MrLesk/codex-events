@@ -241,6 +241,15 @@ a safe prefix remains visible after selecting **Done**. Use
 credential as `Authorization: Bearer <token>`. Do not put credentials in a URL,
 source file, shell history, screenshot, or test fixture.
 
+The local Agent Plugins v1 package is rooted at
+`agent-plugin/codex-events/`. Its root `plugin.json`, `mcp.json`, and
+`skills/` directory are the portable package; it intentionally has no legacy
+`.codex-plugin/` directory. The checked-in `mcp.json` points only to
+`http://localhost:3000/mcp` and contains no credential. Load that directory as
+a local plugin after starting `bun run dev`, and configure any manual token in
+the client. Refresh the local plugin connection after changing tool descriptors
+or MCP Apps metadata.
+
 Use MCP Inspector against the deployed test endpoint for the protocol and OAuth
 baseline. Configure `https://test.codex-events.com/mcp` as Streamable HTTP and
 complete its OAuth flow with its administrator-registered CIMD client and use

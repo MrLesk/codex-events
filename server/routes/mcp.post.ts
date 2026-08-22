@@ -20,6 +20,10 @@ import {
   coalesceMcpTokenLastUse,
   recordMcpMutationAttempt
 } from '#server/domains/mcp/tokens'
+import {
+  eventBuilderAppHtml,
+  eventBuilderAppResourceUri
+} from '#server/domains/mcp/event-builder-app'
 import { isApiError, toApiError } from '#server/http/api-error'
 import { assertMcpRateLimit } from '#server/utils/rate-limit'
 
@@ -179,12 +183,41 @@ export default defineEventHandler(async (event) => {
   const operations = listApplicationOperationsForCapabilities(capabilities)
   const server = new McpServer({ name: 'codex-events', version: '1.0.0' })
 
+  if (operations.some(operation => operation.toolName === 'post_events_builder_analyze')) {
+    server.registerResource(
+      'codex-events-builder-analysis',
+      eventBuilderAppResourceUri,
+      {
+        title: 'Codex Events builder analysis',
+        description: 'A compact visual preview of an unsaved event builder analysis.',
+        mimeType: 'text/html;profile=mcp-app'
+      },
+      async uri => ({
+        contents: [{
+          uri: uri.href,
+          mimeType: 'text/html;profile=mcp-app',
+          text: eventBuilderAppHtml,
+          _meta: {
+            'ui': {
+              prefersBorder: true,
+              csp: { connectDomains: [], resourceDomains: [] }
+            },
+            'openai/widgetDescription': 'Shows the event balance score, meter breakdown, and builder recommendations.'
+          }
+        }]
+      })
+    )
+  }
+
   for (const operation of operations) {
     server.registerTool(operation.toolName, {
       description: operation.description,
       inputSchema: operation.inputSchema,
       outputSchema: operation.outputSchema,
-      annotations: operation.annotations
+      annotations: operation.annotations,
+      ...(operation.toolName === 'post_events_builder_analyze'
+        ? { _meta: { ui: { resourceUri: eventBuilderAppResourceUri } } }
+        : {})
     }, async (input) => {
       try {
         const output = await executeApplicationOperation(event, operation, input)

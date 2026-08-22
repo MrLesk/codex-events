@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "codex-events",
+  "version": "0.1.0",
+  "description": "Build and operate Codex Events through the local role-aware MCP server.",
+  "author": {
+    "name": "Codex Community"
+  },
+  "keywords": [
+    "events",
+    "hackathons",
+    "community"
+  ]
+}

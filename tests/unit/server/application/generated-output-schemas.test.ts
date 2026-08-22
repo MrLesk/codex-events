@@ -33,6 +33,6 @@ describe('generated structured operation output schemas', () => {
     const events = schemas.getStructuredOperationOutputSchema('get.events')
     expect(events).not.toBe(overview)
     expect(fromJSONSchema).toHaveBeenCalledTimes(2)
-    expect(Object.keys(schemas.structuredOperationOutputSchemaFactories)).toHaveLength(167)
+    expect(Object.keys(schemas.structuredOperationOutputSchemaFactories)).toHaveLength(169)
   })
 })
