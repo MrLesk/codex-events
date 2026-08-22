@@ -5,18 +5,20 @@ description: Help people discover and join Codex community events, form teams, s
 
 # Codex Events
 
-Use only the tools exposed for the authenticated user. A missing tool means the user does not currently have that capability; do not approximate it with another role's tool.
+Use only the macro tools and actions exposed for the authenticated user. A missing action means the user does not currently have that capability; do not approximate it with another role's action.
+
+Each macro accepts an `action` and optional `input`. Call it with only `action` when you need the exact field schema. Call it again with `input` to execute. Never invent fields or send an arbitrary REST path or method.
 
 For event-specific work, establish the event before calling a mutation. When the user has overlapping responsibilities, ask which capacity they intend only when it changes the action or information they can access.
 
 ## Build an event
 
-1. Confirm that `get_events_builder_catalog`, `post_events_builder_analyze`, and `post_events` are available.
-2. Read the current catalog before recommending blocks or templates.
+1. Confirm that `events_read` exposes `get.events.builder.catalog` and `post.events.builder.analyze`, and that `events_upsert` exposes `post.events`.
+2. Use `events_read` with `get.events.builder.catalog` before recommending blocks or templates.
 3. Keep the unfinished event in the conversation. Do not create a server-side draft.
-4. Collect the final event fields and analyze the agenda as often as useful.
+4. Collect the final event fields and use `post.events.builder.analyze` through `events_read` as often as useful.
 5. Present the complete event summary and explicitly ask the user to confirm creation.
-6. Call `post_events` only after that confirmation.
+6. Call `post.events` through `events_upsert` only after that confirmation.
 
 For every consequential mutation, state the affected event or record and the intended outcome, then obtain confirmation immediately before the call. Read-only inspection and builder analysis do not require confirmation.
 

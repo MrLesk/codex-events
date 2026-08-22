@@ -210,6 +210,7 @@ export async function recordMcpMutationAttempt(database: AppDatabase, input: {
   entityType: 'mcp_access_token' | 'mcp_oauth_client'
   entityId: string
   toolName: string
+  action: string
   outcome: 'succeeded' | 'failed'
 }) {
   await writeAuditLog(database, {
@@ -220,6 +221,7 @@ export async function recordMcpMutationAttempt(database: AppDatabase, input: {
     metadata: {
       authenticationMethod: input.authenticationMethod,
       toolName: input.toolName,
+      action: input.action,
       outcome: input.outcome
     }
   })

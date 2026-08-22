@@ -24,7 +24,13 @@ import {
   eventBuilderAppHtml,
   eventBuilderAppResourceUri
 } from '#server/domains/mcp/event-builder-app'
-import { isApiError, toApiError } from '#server/http/api-error'
+import {
+  createMcpMacroTools,
+  describeMcpMacroAction,
+  findMcpMacroAction,
+  validateMcpMacroActionInput
+} from '#server/domains/mcp/macro-tools'
+import { ApiError, isApiError, toApiError } from '#server/http/api-error'
 import { assertMcpRateLimit } from '#server/utils/rate-limit'
 
 function configuredHostnames(value: string | undefined, fallback: string[]) {
@@ -181,9 +187,13 @@ export default defineEventHandler(async (event) => {
   await loadApplicationOperationCatalog()
   const capabilities = await actorCapabilities(event, actor.platformUser.id, actor.platformUser.isPlatformAdmin)
   const operations = listApplicationOperationsForCapabilities(capabilities)
+  const macros = createMcpMacroTools(operations)
   const server = new McpServer({ name: 'codex-events', version: '1.0.0' })
 
-  if (operations.some(operation => operation.toolName === 'post_events_builder_analyze')) {
+  const builderMacro = macros.find(macro =>
+    macro.operations.some(operation => operation.id === 'post.events.builder.analyze')
+  )
+  if (builderMacro) {
     server.registerResource(
       'codex-events-builder-analysis',
       eventBuilderAppResourceUri,
@@ -209,18 +219,32 @@ export default defineEventHandler(async (event) => {
     )
   }
 
-  for (const operation of operations) {
-    server.registerTool(operation.toolName, {
-      description: operation.description,
-      inputSchema: operation.inputSchema,
-      outputSchema: operation.outputSchema,
-      annotations: operation.annotations,
-      ...(operation.toolName === 'post_events_builder_analyze'
+  for (const macro of macros) {
+    server.registerTool(macro.name, {
+      description: macro.description,
+      inputSchema: macro.inputSchema,
+      annotations: macro.annotations,
+      ...(macro === builderMacro
         ? { _meta: { ui: { resourceUri: eventBuilderAppResourceUri } } }
         : {})
     }, async (input) => {
       try {
-        const output = await executeApplicationOperation(event, operation, input)
+        const request = input as { action?: unknown, input?: unknown }
+        const operation = findMcpMacroAction(macro, request.action)
+        if (!operation) {
+          throw new ApiError({
+            statusCode: 403,
+            code: 'mcp_action_not_available',
+            message: 'This action is not available to the current user.'
+          })
+        }
+        const output = request.input === undefined
+          ? describeMcpMacroAction(operation)
+          : await executeApplicationOperation(
+              event,
+              operation,
+              validateMcpMacroActionInput(operation, request.input)
+            )
         return {
           content: [{ type: 'text', text: JSON.stringify(output) }],
           structuredContent: output as Record<string, unknown>
@@ -228,7 +252,7 @@ export default defineEventHandler(async (event) => {
       } catch (error) {
         const apiError = toApiError(error)
         if (!isApiError(error)) {
-          console.error('Unhandled MCP operation error', { toolName: operation.toolName })
+          console.error('Unhandled MCP operation error', { toolName: macro.name })
         }
         const safeError = { error: { code: apiError.code, message: apiError.message, ...(apiError.details ? { details: apiError.details } : {}) } }
         return {
@@ -248,10 +272,18 @@ export default defineEventHandler(async (event) => {
   })
   const payload = await request.clone().json().catch(() => null) as {
     method?: unknown
-    params?: { name?: unknown }
+    params?: { name?: unknown, arguments?: unknown }
   } | null
-  const attemptedOperation = payload?.method === 'tools/call' && typeof payload.params?.name === 'string'
-    ? operations.find(operation => operation.toolName === payload.params!.name)
+  const attemptedMacro = payload?.method === 'tools/call' && typeof payload.params?.name === 'string'
+    ? macros.find(macro => macro.name === payload.params!.name)
+    : undefined
+  const attemptedArguments = payload?.params?.arguments && typeof payload.params.arguments === 'object'
+    ? payload.params.arguments as { action?: unknown, input?: unknown }
+    : undefined
+  const attemptedOperation = attemptedMacro
+    && attemptedArguments
+    && Object.prototype.hasOwnProperty.call(attemptedArguments, 'input')
+    ? findMcpMacroAction(attemptedMacro, attemptedArguments.action)
     : undefined
   let outcome: 'succeeded' | 'failed' = 'failed'
   try {
@@ -272,7 +304,8 @@ export default defineEventHandler(async (event) => {
         authenticationMethod: authenticated.method,
         entityType: authenticated.auditEntityType,
         entityId: authenticated.auditEntityId,
-        toolName: attemptedOperation.toolName,
+        toolName: attemptedMacro!.name,
+        action: attemptedOperation.id,
         outcome
       })
     }

@@ -33,19 +33,22 @@ function parsePersonaKey(value: string): StablePersonaKey {
 function representativeCall(persona: StablePersonaKey) {
   if (persona === 'event_admin') {
     return {
-      toolName: 'get_events_by_eventId_roles',
-      arguments: { params: { eventId: platformFixtureIds.eventId } }
+      toolName: 'administration_read',
+      arguments: {
+        action: 'get.events.by-eventId.roles',
+        input: { params: { eventId: platformFixtureIds.eventId } }
+      }
     }
   }
   if (persona === 'platform_admin') {
     return {
-      toolName: 'get_platform-admins',
-      arguments: {}
+      toolName: 'administration_read',
+      arguments: { action: 'get.platform-admins', input: {} }
     }
   }
   return {
-    toolName: 'get_events',
-    arguments: { query: {} }
+    toolName: 'events_read',
+    arguments: { action: 'get.events', input: { query: {} } }
   }
 }
 

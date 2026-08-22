@@ -78,21 +78,48 @@ The source inventory is the shared operation registry. Eligibility is explicit:
 
 The explicit manifest contains 169 included method/path pairs, including all
 ten talk-proposal operations and the two read-only event-builder operations.
-Each appears once with a stable operation ID.
+Each appears once with a stable operation ID and is routed through one compact
+macro tool.
 Every other concrete Nitro route has an exclusion reason in the same manifest;
 completeness therefore does not depend on a route opting into the registry.
-There is no generic REST passthrough, wildcard tool, fallback adapter, or
-dual-read path.
+There is no generic REST passthrough, arbitrary path or method input, fallback
+adapter, or dual-read path.
 
 The event-builder catalog and analysis operations are visible only to event
 organizers and platform admins. The catalog returns the canonical block
 paytable, event-type profiles, application-field keys, and templates. Analysis
 runs the canonical balance engine against an unsaved agenda and never persists
-the draft. Event creation remains the separate `post_events` mutation.
+the draft. Event creation remains the `post.events` action in `events_upsert`.
+
+## Macro Tool Contract
+
+The MCP surface has at most eight tools:
+
+- `events_read` and `events_upsert`;
+- `participation_read` and `participation_upsert`;
+- `judging_read` and `judging_upsert`;
+- `administration_read` and `administration_upsert`.
+
+A macro is registered only when the current actor has at least one operation in
+that group. Its `action` enum contains only operation IDs authorized by the
+actor's combined current capabilities. An unauthorized operation is absent
+from discovery and cannot be selected through another macro. Role changes are
+reflected on the next request.
+
+Each macro accepts an `action` and optional `input`. Omitting `input` returns
+the selected action's description, effect, and exact JSON input schema without
+running it. Supplying `input` executes the action. The input is validated
+against the operation's existing Zod schema before its executor runs, including
+the exact `params`, `query`, and `body` fields. Validation errors contain safe
+field paths and messages.
+
+The complete operation schemas are not repeated in `tools/list`. Discovery
+contains only the macro descriptions and role-filtered action enums. This keeps
+the model context small while preserving exact operation contracts on demand.
 
 ## Registry Contract
 
-Every operation declares:
+Every operation routed by a macro declares:
 
 - stable ID and user-facing tool description;
 - one REST method and route template;
@@ -118,7 +145,7 @@ the audit APIs intentionally return metadata from multiple domain action types.
 The eligibility manifest is maintained independently for every concrete API
 route. Each exclusion uses a reviewed category, and the MCP loader catalog is
 generated only from entries explicitly marked for inclusion. Completeness tests
-compare the manifest, concrete routes, generated catalog, and registered tools.
+compare the manifest, concrete routes, generated catalog, and routed actions.
 
 REST handlers parse HTTP transport values and invoke the executor. MCP tools
 parse protocol input and invoke the same executor. Expected failures retain the
@@ -135,14 +162,16 @@ internal error.
   OAuth user/client pair per 60 seconds; operation-specific limits still apply.
 - Tool lists are filtered by current coarse capabilities. Each call reruns all
   exact event, team, assignment, consent, and lifecycle guards.
-- Tool-catalog tests record the exact tool names and serialized descriptor size
-  for representative participant, staff, judge, event-admin, event-organizer,
-  combined-role, and platform-admin actors. Catalog growth is an explicit
-  review event because every added descriptor consumes model context.
+- Tool-catalog tests record the exact macro names, authorized actions, and
+  serialized descriptor size for representative participant, staff, judge,
+  event-admin, event-organizer, combined-role, and platform-admin actors.
+  Catalog growth is an explicit review event because every added descriptor
+  consumes model context.
 - Manual-token `lastUsedAt` writes are coalesced so ordinary traffic does not
   write on every call.
 - Every mutation attempt writes the authentication method, a safe token ID or
-  OAuth client reference, tool name, outcome, and timestamp to audit storage.
+  OAuth client reference, macro tool name, action ID, outcome, and timestamp to
+  audit storage.
   Tool inputs, request bodies, OAuth credentials, authorization codes, refresh
   tokens, manual credentials, hashes, and secrets are never logged or audited.
 - Observability may record HTTP status, sanitized error code, operation ID,
@@ -155,8 +184,8 @@ creates a fresh stateless server for every request. Auth0 OAuth and optional
 30-day manual tokens are supported. Permanent credentials, legacy SSE, and
 protocol-session storage are not part of the platform.
 
-For clients that implement MCP Apps, the event-builder analysis tool advertises
-an optional `ui://` resource that renders the score and recommendations. The
-resource is registered only for actors who can discover the analysis tool. Its
-HTML has no external network or asset dependencies, and the structured tool
-result remains complete for clients that do not render MCP Apps.
+For clients that implement MCP Apps, `events_read` advertises an optional
+`ui://` resource when the actor can use `post.events.builder.analyze`. The UI
+renders the score and recommendations for that action. Its HTML has no external
+network or asset dependencies, and the structured result remains complete for
+clients that do not render MCP Apps.

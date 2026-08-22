@@ -171,6 +171,20 @@ describe('stateless MCP protocol', () => {
     return JSON.parse(text) as Record<string, unknown>
   }
 
+  type ListedTool = {
+    name: string
+    inputSchema: { properties?: { action?: { enum?: string[] } } }
+    outputSchema?: Record<string, unknown>
+    annotations?: Record<string, unknown>
+    securitySchemes?: Array<{ type: string, scopes: string[] }>
+    _meta?: Record<string, unknown>
+  }
+
+  function actionsFor(tools: ListedTool[], toolName?: string) {
+    const selected = toolName ? tools.filter(tool => tool.name === toolName) : tools
+    return new Set(selected.flatMap(tool => tool.inputSchema.properties?.action?.enum ?? []))
+  }
+
   test('negotiates 2026-07-28, initializes legacy clients, lists tools, and calls a public discovery operation', async () => {
     const { harness, credential, rateLimiter } = await setup()
 
@@ -186,7 +200,7 @@ describe('stateless MCP protocol', () => {
       result: { tools: Array<{ name: string, securitySchemes: Array<{ type: string, scopes: string[] }> }> }
     }
     expect(modernList.status, JSON.stringify(modernListPayload)).toBe(200)
-    expect(modernListPayload.result.tools.some(tool => tool.name === 'get_events')).toBe(true)
+    expect(modernListPayload.result.tools.some(tool => tool.name === 'events_read')).toBe(true)
     expect(modernListPayload.result.tools.every(tool => (
       tool.securitySchemes.length === 1
       && tool.securitySchemes[0]?.type === 'oauth2'
@@ -204,26 +218,20 @@ describe('stateless MCP protocol', () => {
     })
 
     const listed = await rpc(harness, credential, { jsonrpc: '2.0', id: 4, method: 'tools/list', params: {} })
-    const listPayload = await rpcPayload(listed) as { result: { tools: Array<{ name: string, inputSchema: Record<string, unknown>, outputSchema: Record<string, unknown>, annotations: Record<string, unknown>, securitySchemes: Array<{ type: string, scopes: string[] }> }> } }
-    expect(listPayload.result.tools.some(tool => tool.name === 'get_events')).toBe(true)
-    const eventsTool = listPayload.result.tools.find(tool => tool.name === 'get_events')!
-    expect(eventsTool.inputSchema).toMatchObject({ type: 'object', properties: { query: expect.any(Object) } })
-    expect(eventsTool.outputSchema).toMatchObject({
+    const listPayload = await rpcPayload(listed) as { result: { tools: ListedTool[] } }
+    expect(listPayload.result.tools.some(tool => tool.name === 'events_read')).toBe(true)
+    const eventsTool = listPayload.result.tools.find(tool => tool.name === 'events_read')!
+    expect(eventsTool.inputSchema).toMatchObject({
       type: 'object',
-      properties: {
-        data: {
-          type: 'array',
-          items: { type: 'object', properties: { id: { type: 'string' }, eventType: expect.any(Object), name: { type: 'string' } } }
-        },
-        meta: expect.any(Object)
-      }
+      properties: { action: { enum: expect.arrayContaining(['get.events']) }, input: expect.any(Object) }
     })
+    expect(eventsTool.outputSchema).toBeUndefined()
     expect(eventsTool.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false, idempotentHint: true })
     expect(eventsTool.securitySchemes).toEqual([{ type: 'oauth2', scopes: [] }])
 
     const called = await rpc(harness, credential, {
       jsonrpc: '2.0', id: 5, method: 'tools/call',
-      params: { name: 'get_events', arguments: { query: {} } }
+      params: { name: 'events_read', arguments: { action: 'get.events', input: { query: {} } } }
     })
     expect(called.status).toBe(200)
     expect(await rpcPayload(called)).toMatchObject({ result: { structuredContent: { data: [] } } })
@@ -280,9 +288,9 @@ describe('stateless MCP protocol', () => {
       const response = await rpc(harness, fixture.credential, {
         jsonrpc: '2.0', id: 1, method: 'tools/list', params: {}
       })
-      const payload = await rpcPayload(response) as { result: { tools: Array<{ name: string }> } }
+      const payload = await rpcPayload(response) as { result: { tools: ListedTool[] } }
       expect(response.status, JSON.stringify(payload)).toBe(200)
-      expect(payload.result.tools.some(tool => tool.name === 'patch_account')).toBe(true)
+      expect(actionsFor(payload.result.tools, 'participation_upsert')).toContain('patch.account')
       expect(rateLimiter.limit).toHaveBeenCalledWith({
         key: expect.stringContaining('mcp-credential:oauth:mcp_user:codex-test-client')
       })
@@ -290,8 +298,11 @@ describe('stateless MCP protocol', () => {
       const mutation = await rpc(harness, fixture.credential, {
         jsonrpc: '2.0', id: 2, method: 'tools/call',
         params: {
-          name: 'patch_account',
-          arguments: { body: { firstName: 'OAuth', familyName: 'User' } }
+          name: 'participation_upsert',
+          arguments: {
+            action: 'patch.account',
+            input: { body: { firstName: 'OAuth', familyName: 'User' } }
+          }
         }
       })
       expect(mutation.status).toBe(200)
@@ -305,7 +316,8 @@ describe('stateless MCP protocol', () => {
         entityId: 'codex-test-client',
         metadata: {
           authenticationMethod: 'oauth',
-          toolName: 'patch_account',
+          toolName: 'participation_upsert',
+          action: 'patch.account',
           outcome: 'succeeded'
         }
       })
@@ -329,7 +341,7 @@ describe('stateless MCP protocol', () => {
 
     const response = await rpc(harness, credential, {
       jsonrpc: '2.0', id: 1, method: 'tools/call',
-      params: { name: 'get_events', arguments: { query: {} } }
+      params: { name: 'events_read', arguments: { action: 'get.events', input: { query: {} } } }
     })
     const payload = await rpcPayload(response) as {
       result: { isError: boolean, structuredContent: { error: Record<string, unknown> } }
@@ -419,21 +431,24 @@ describe('stateless MCP protocol', () => {
 
   test('re-reads legal consent for discovery and audits mutation attempts without arguments', async () => {
     const { harness, credential } = await setup()
-    const listBefore = await rpcPayload(await rpc(harness, credential, { jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} })) as { result: { tools: Array<{ name: string }> } }
-    expect(listBefore.result.tools.some(tool => tool.name === 'patch_account')).toBe(true)
+    const listBefore = await rpcPayload(await rpc(harness, credential, { jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} })) as { result: { tools: ListedTool[] } }
+    expect(actionsFor(listBefore.result.tools)).toContain('patch.account')
 
     await harness.database.delete(userPlatformDocumentAcceptances)
-    const listAfter = await rpcPayload(await rpc(harness, credential, { jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} })) as { result: { tools: Array<{ name: string }> } }
-    expect(listAfter.result.tools.some(tool => tool.name === 'patch_account')).toBe(false)
-    expect(listAfter.result.tools.some(tool => tool.name === 'get_events')).toBe(true)
+    const listAfter = await rpcPayload(await rpc(harness, credential, { jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} })) as { result: { tools: ListedTool[] } }
+    expect(actionsFor(listAfter.result.tools)).not.toContain('patch.account')
+    expect(actionsFor(listAfter.result.tools)).toContain('get.events')
 
     await harness.database.insert(userPlatformDocumentAcceptances).values([
       { id: 'accept_privacy_again', userId: 'mcp_user', platformDocumentId: 'privacy_v1', acceptedAt: '2026-08-03T00:00:00.000Z' },
       { id: 'accept_terms_again', userId: 'mcp_user', platformDocumentId: 'terms_v1', acceptedAt: '2026-08-03T00:00:00.000Z' }
     ])
-    const argumentsPayload = { body: { firstName: '', familyName: '' } }
+    const argumentsPayload = {
+      action: 'patch.account',
+      input: { body: { firstName: '', familyName: '' } }
+    }
     const called = await rpcPayload(await rpc(harness, credential, {
-      jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'patch_account', arguments: argumentsPayload }
+      jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'participation_upsert', arguments: argumentsPayload }
     })) as { result: { isError: boolean } }
     expect(called.result.isError).toBe(true)
 
@@ -441,7 +456,8 @@ describe('stateless MCP protocol', () => {
       .where(eq(auditLogs.action, 'mcp.mutation_attempted')).get()
     expect(mutationAudit?.metadata).toMatchObject({
       authenticationMethod: 'manual_token',
-      toolName: 'patch_account',
+      toolName: 'participation_upsert',
+      action: 'patch.account',
       outcome: 'failed'
     })
     expect(JSON.stringify(mutationAudit?.metadata)).not.toContain('firstName')
@@ -452,52 +468,52 @@ describe('stateless MCP protocol', () => {
     const { harness, credential } = await setup({ isPlatformAdmin: true })
     const before = await rpcPayload(await rpc(harness, credential, {
       jsonrpc: '2.0', id: 1, method: 'tools/list', params: {}
-    })) as { result: { tools: Array<{ name: string }> } }
-    expect(before.result.tools.some(tool => tool.name === 'get_platform-admins')).toBe(true)
+    })) as { result: { tools: ListedTool[] } }
+    expect(actionsFor(before.result.tools)).toContain('get.platform-admins')
 
     await harness.database.update(users).set({ isPlatformAdmin: false }).where(eq(users.id, 'mcp_user'))
     const after = await rpcPayload(await rpc(harness, credential, {
       jsonrpc: '2.0', id: 2, method: 'tools/list', params: {}
-    })) as { result: { tools: Array<{ name: string }> } }
-    expect(after.result.tools.some(tool => tool.name === 'get_platform-admins')).toBe(false)
-    expect(after.result.tools.some(tool => tool.name === 'patch_account')).toBe(true)
+    })) as { result: { tools: ListedTool[] } }
+    expect(actionsFor(after.result.tools)).not.toContain('get.platform-admins')
+    expect(actionsFor(after.result.tools)).toContain('patch.account')
   })
 
   test('advertises role-aware catalogs for participant, staff, event admin, organizer, and platform admin actors', async () => {
-    async function toolNames(options: Parameters<typeof setup>[0]) {
+    async function toolActions(options: Parameters<typeof setup>[0]) {
       const { harness, credential } = await setup(options)
       const payload = await rpcPayload(await rpc(harness, credential, {
         jsonrpc: '2.0', id: 1, method: 'tools/list', params: {}
-      })) as { result: { tools: Array<{ name: string }> } }
-      return new Set(payload.result.tools.map(tool => tool.name))
+      })) as { result: { tools: ListedTool[] } }
+      return actionsFor(payload.result.tools)
     }
 
-    const participant = await toolNames({})
-    expect(participant).toContain('get_events_by_eventId_staff')
-    expect(participant).not.toContain('get_events_by_eventId_talk-proposals')
-    expect(participant).not.toContain('post_events')
+    const participant = await toolActions({})
+    expect(participant).toContain('get.events.by-eventId.staff')
+    expect(participant).not.toContain('get.events.by-eventId.talk-proposals')
+    expect(participant).not.toContain('post.events')
 
-    const staff = await toolNames({ eventRole: 'staff' })
-    expect(staff).toContain('get_events_by_eventId_talk-proposals')
-    expect(staff).not.toContain('post_events_by_eventId_talk-proposals_by_proposalId_actions_reject')
+    const staff = await toolActions({ eventRole: 'staff' })
+    expect(staff).toContain('get.events.by-eventId.talk-proposals')
+    expect(staff).not.toContain('post.events.by-eventId.talk-proposals.by-proposalId.actions.reject')
 
-    const eventAdmin = await toolNames({ eventRole: 'event_admin' })
-    expect(eventAdmin).toContain('post_events_by_eventId_talk-proposals_by_proposalId_actions_reject')
-    expect(eventAdmin).not.toContain('post_events')
-    expect(eventAdmin).not.toContain('get_events_builder_catalog')
-    expect(eventAdmin).not.toContain('post_events_builder_analyze')
+    const eventAdmin = await toolActions({ eventRole: 'event_admin' })
+    expect(eventAdmin).toContain('post.events.by-eventId.talk-proposals.by-proposalId.actions.reject')
+    expect(eventAdmin).not.toContain('post.events')
+    expect(eventAdmin).not.toContain('get.events.builder.catalog')
+    expect(eventAdmin).not.toContain('post.events.builder.analyze')
 
-    const organizer = await toolNames({ isEventOrganizer: true })
-    expect(organizer).toContain('post_events')
-    expect(organizer).toContain('get_events_builder_catalog')
-    expect(organizer).toContain('post_events_builder_analyze')
-    expect(organizer).not.toContain('get_platform-admins')
+    const organizer = await toolActions({ isEventOrganizer: true })
+    expect(organizer).toContain('post.events')
+    expect(organizer).toContain('get.events.builder.catalog')
+    expect(organizer).toContain('post.events.builder.analyze')
+    expect(organizer).not.toContain('get.platform-admins')
 
-    const platformAdmin = await toolNames({ isPlatformAdmin: true })
-    expect(platformAdmin).toContain('post_events')
-    expect(platformAdmin).toContain('get_events_builder_catalog')
-    expect(platformAdmin).toContain('post_events_builder_analyze')
-    expect(platformAdmin).toContain('get_platform-admins')
+    const platformAdmin = await toolActions({ isPlatformAdmin: true })
+    expect(platformAdmin).toContain('post.events')
+    expect(platformAdmin).toContain('get.events.builder.catalog')
+    expect(platformAdmin).toContain('post.events.builder.analyze')
+    expect(platformAdmin).toContain('get.platform-admins')
   })
 
   test('keeps exact role catalogs and their serialized context sizes under review', async () => {
@@ -505,11 +521,15 @@ describe('stateless MCP protocol', () => {
       const { harness, credential } = await setup(options)
       const payload = await rpcPayload(await rpc(harness, credential, {
         jsonrpc: '2.0', id: 1, method: 'tools/list', params: {}
-      })) as { result: { tools: Array<{ name: string }> } }
+      })) as { result: { tools: ListedTool[] } }
       const serialized = JSON.stringify(payload.result.tools)
       return {
         byteSize: new TextEncoder().encode(serialized).byteLength,
-        toolNames: payload.result.tools.map(tool => tool.name)
+        toolNames: payload.result.tools.map(tool => tool.name),
+        actions: payload.result.tools.map(tool => ({
+          toolName: tool.name,
+          actions: [...actionsFor([tool])].sort()
+        }))
       }
     }
 
@@ -525,14 +545,14 @@ describe('stateless MCP protocol', () => {
       }),
       platformAdmin: await toolCatalog({ isPlatformAdmin: true })
     }
-    const expectedCombinedNames = [...new Set([
-      ...catalogs.participant.toolNames,
-      ...catalogs.judge.toolNames,
-      ...catalogs.eventAdmin.toolNames,
-      ...catalogs.organizer.toolNames
+    const expectedCombinedActions = [...new Set([
+      ...catalogs.participant.actions.flatMap(tool => tool.actions),
+      ...catalogs.judge.actions.flatMap(tool => tool.actions),
+      ...catalogs.eventAdmin.actions.flatMap(tool => tool.actions),
+      ...catalogs.organizer.actions.flatMap(tool => tool.actions)
     ])].sort()
 
-    expect([...catalogs.combined.toolNames].sort()).toEqual(expectedCombinedNames)
+    expect(catalogs.combined.actions.flatMap(tool => tool.actions).sort()).toEqual(expectedCombinedActions)
     expect(catalogs).toMatchSnapshot()
   })
 
@@ -540,12 +560,10 @@ describe('stateless MCP protocol', () => {
     const { harness, credential } = await setup({ isEventOrganizer: true })
     const before = await rpcPayload(await rpc(harness, credential, {
       jsonrpc: '2.0', id: 1, method: 'tools/list', params: {}
-    })) as { result: { tools: Array<{ name: string }> } }
-    expect(before.result.tools.map(tool => tool.name)).toEqual(expect.arrayContaining([
-      'get_events_builder_catalog',
-      'post_events_builder_analyze',
-      'post_events'
-    ]))
+    })) as { result: { tools: ListedTool[] } }
+    expect(actionsFor(before.result.tools)).toContain('get.events.builder.catalog')
+    expect(actionsFor(before.result.tools)).toContain('post.events.builder.analyze')
+    expect(actionsFor(before.result.tools)).toContain('post.events')
 
     await harness.database.update(users)
       .set({ isEventOrganizer: false })
@@ -553,47 +571,57 @@ describe('stateless MCP protocol', () => {
 
     const after = await rpcPayload(await rpc(harness, credential, {
       jsonrpc: '2.0', id: 2, method: 'tools/list', params: {}
-    })) as { result: { tools: Array<{ name: string }> } }
-    const namesAfterRevocation = after.result.tools.map(tool => tool.name)
-    expect(namesAfterRevocation).not.toContain('get_events_builder_catalog')
-    expect(namesAfterRevocation).not.toContain('post_events_builder_analyze')
-    expect(namesAfterRevocation).not.toContain('post_events')
+    })) as { result: { tools: ListedTool[] } }
+    const actionsAfterRevocation = actionsFor(after.result.tools)
+    expect(actionsAfterRevocation).not.toContain('get.events.builder.catalog')
+    expect(actionsAfterRevocation).not.toContain('post.events.builder.analyze')
+    expect(actionsAfterRevocation).not.toContain('post.events')
   })
 
   test('exposes builder tools and UI only to event creators and keeps analysis read-only', async () => {
     const participant = await setup()
     const participantList = await rpcPayload(await rpc(participant.harness, participant.credential, {
       jsonrpc: '2.0', id: 1, method: 'tools/list', params: {}
-    })) as { result: { tools: Array<{ name: string }> } }
-    const participantNames = participantList.result.tools.map(tool => tool.name)
-    expect(participantNames).not.toContain('get_events_builder_catalog')
-    expect(participantNames).not.toContain('post_events_builder_analyze')
-    expect(participantNames).not.toContain('post_events')
+    })) as { result: { tools: ListedTool[] } }
+    const participantActions = actionsFor(participantList.result.tools)
+    expect(participantActions).not.toContain('get.events.builder.catalog')
+    expect(participantActions).not.toContain('post.events.builder.analyze')
+    expect(participantActions).not.toContain('post.events')
 
     const hiddenCall = await rpcPayload(await rpc(participant.harness, participant.credential, {
       jsonrpc: '2.0', id: 2, method: 'tools/call',
-      params: { name: 'post_events_builder_analyze', arguments: {} }
+      params: {
+        name: 'events_read',
+        arguments: { action: 'post.events.builder.analyze', input: { body: {} } }
+      }
     }))
-    expect(hiddenCall).toMatchObject({ error: { code: -32602 } })
+    expect(hiddenCall).toMatchObject({ result: { isError: true } })
+
+    const legacyCall = await rpcPayload(await rpc(participant.harness, participant.credential, {
+      jsonrpc: '2.0', id: 21, method: 'tools/call',
+      params: { name: 'post_events', arguments: {} }
+    }))
+    expect(legacyCall).toMatchObject({ error: { code: -32602 } })
 
     for (const options of [{ isEventOrganizer: true }, { isPlatformAdmin: true }]) {
       const creator = await setup(options)
       const listed = await rpcPayload(await rpc(creator.harness, creator.credential, {
         jsonrpc: '2.0', id: 3, method: 'tools/list', params: {}
-      })) as { result: { tools: Array<{ name: string, _meta?: Record<string, unknown> }> } }
+      })) as { result: { tools: ListedTool[] } }
       const byName = new Map(listed.result.tools.map(tool => [tool.name, tool]))
-      expect([...byName.keys()]).toEqual(expect.arrayContaining([
-        'get_events_builder_catalog',
-        'post_events_builder_analyze',
-        'post_events'
-      ]))
-      expect(byName.get('post_events_builder_analyze')?._meta).toEqual({
+      expect(actionsFor(listed.result.tools, 'events_read')).toContain('get.events.builder.catalog')
+      expect(actionsFor(listed.result.tools, 'events_read')).toContain('post.events.builder.analyze')
+      expect(actionsFor(listed.result.tools, 'events_upsert')).toContain('post.events')
+      expect(byName.get('events_read')?._meta).toEqual({
         ui: { resourceUri: 'ui://codex-events/event-builder-analysis-v1.html' }
       })
 
       const catalog = await rpcPayload(await rpc(creator.harness, creator.credential, {
         jsonrpc: '2.0', id: 31, method: 'tools/call',
-        params: { name: 'get_events_builder_catalog', arguments: {} }
+        params: {
+          name: 'events_read',
+          arguments: { action: 'get.events.builder.catalog', input: {} }
+        }
       })) as {
         result: {
           structuredContent: {
@@ -604,19 +632,45 @@ describe('stateless MCP protocol', () => {
       expect(catalog.result.structuredContent.data.blockDefinitions).toHaveLength(16)
       expect(catalog.result.structuredContent.data.templates).toHaveLength(7)
 
+      const described = await rpcPayload(await rpc(creator.harness, creator.credential, {
+        jsonrpc: '2.0', id: 32, method: 'tools/call',
+        params: {
+          name: 'events_upsert',
+          arguments: { action: 'post.events' }
+        }
+      })) as { result: { structuredContent: { action: string, inputSchema: unknown } } }
+      expect(described.result.structuredContent).toMatchObject({
+        action: 'post.events',
+        inputSchema: { type: 'object', properties: { body: expect.any(Object) } }
+      })
+
+      const invalid = await rpcPayload(await rpc(creator.harness, creator.credential, {
+        jsonrpc: '2.0', id: 33, method: 'tools/call',
+        params: {
+          name: 'events_upsert',
+          arguments: { action: 'post.events', input: { body: {} } }
+        }
+      })) as { result: { isError: boolean, structuredContent: { error: { code: string, details: { issues: Array<{ path: string[] }> } } } } }
+      expect(invalid.result.isError).toBe(true)
+      expect(invalid.result.structuredContent.error.code).toBe('invalid_request')
+      expect(invalid.result.structuredContent.error.details.issues.some(issue => issue.path[0] === 'body')).toBe(true)
+
       const eventCountBefore = await creator.harness.database.select({ id: events.id }).from(events)
       const analyzed = await rpcPayload(await rpc(creator.harness, creator.credential, {
         jsonrpc: '2.0', id: 4, method: 'tools/call',
         params: {
-          name: 'post_events_builder_analyze',
+          name: 'events_read',
           arguments: {
-            body: {
-              eventType: 'meetup',
-              agendaItems: [{
-                startsAt: '2026-09-01T18:00:00.000Z',
-                endsAt: '2026-09-01T18:30:00.000Z',
-                builderBlockType: 'talk'
-              }]
+            action: 'post.events.builder.analyze',
+            input: {
+              body: {
+                eventType: 'meetup',
+                agendaItems: [{
+                  startsAt: '2026-09-01T18:00:00.000Z',
+                  endsAt: '2026-09-01T18:30:00.000Z',
+                  builderBlockType: 'talk'
+                }]
+              }
             }
           }
         }
@@ -665,7 +719,10 @@ describe('stateless MCP protocol', () => {
 
     const mcpPayload = await rpcPayload(await rpc(harness, credential, {
       jsonrpc: '2.0', id: 1, method: 'tools/call',
-      params: { name: 'patch_account', arguments: { body } }
+      params: {
+        name: 'participation_upsert',
+        arguments: { action: 'patch.account', input: { body } }
+      }
     })) as { result: { structuredContent: { data: { user: Record<string, unknown> } } } }
     expect(mcpPayload.result.structuredContent.data.user).toMatchObject(body)
     expect(Object.keys(mcpPayload.result.structuredContent.data.user).sort())
@@ -676,6 +733,10 @@ describe('stateless MCP protocol', () => {
     const accountAudits = await harness.database.select().from(auditLogs).where(eq(auditLogs.action, 'account.updated'))
     expect(accountAudits).toHaveLength(2)
     const mcpAudit = await harness.database.select().from(auditLogs).where(eq(auditLogs.action, 'mcp.mutation_attempted')).get()
-    expect(mcpAudit?.metadata).toMatchObject({ toolName: 'patch_account', outcome: 'succeeded' })
+    expect(mcpAudit?.metadata).toMatchObject({
+      toolName: 'participation_upsert',
+      action: 'patch.account',
+      outcome: 'succeeded'
+    })
   })
 })

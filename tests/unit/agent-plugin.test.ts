@@ -55,11 +55,12 @@ describe('Agent Plugins v1 package', () => {
     expect(manifest.mcpServers['codex-events']?.headers).toBeUndefined()
   })
 
-  test('ships one concise skill with confirmation and tool-absence boundaries', () => {
+  test('ships one concise skill with confirmation and action-absence boundaries', () => {
     const skill = readFileSync(resolve(pluginRoot, 'skills/codex-events/SKILL.md'), 'utf8')
 
     expect(skill).toContain('name: codex-events')
-    expect(skill).toContain('A missing tool means the user does not currently have that capability')
+    expect(skill).toContain('A missing action means the user does not currently have that capability')
+    expect(skill).toContain('events_upsert')
     expect(skill).toContain('explicitly ask the user to confirm creation')
   })
 })

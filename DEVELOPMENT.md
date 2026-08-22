@@ -241,6 +241,12 @@ a safe prefix remains visible after selecting **Done**. Use
 credential as `Authorization: Bearer <token>`. Do not put credentials in a URL,
 source file, shell history, screenshot, or test fixture.
 
+Discovery returns at most eight read/upsert macro tools. Each macro's `action`
+enum is filtered for the current actor. Call a macro with only `action` to read
+the exact field schema, or add `input` to execute it. The server validates that
+input against the selected shared operation before running its existing guards
+and business logic.
+
 The local Agent Plugins v1 package is rooted at
 `agent-plugin/codex-events/`. Its root `plugin.json`, `mcp.json`, and
 `skills/` directory are the portable package; it intentionally has no legacy
